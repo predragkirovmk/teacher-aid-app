@@ -24,6 +24,16 @@ const nextConfig: NextConfig = {
   experimental: {
     globalNotFound: true,
   },
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.teacheraid.education" }],
+        destination: "https://teacheraid.education/:path*",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {
