@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+<defs>
+<linearGradient id="physics-dark-s" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1"/><stop offset="0.45" stop-color="#DCE5F2" stop-opacity="1"/><stop offset="1" stop-color="#9FB3D4" stop-opacity="1"/></linearGradient>
+<linearGradient id="physics-dark-f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EDF2F9" stop-opacity="0.26"/><stop offset="1" stop-color="#8EA3C6" stop-opacity="0.08"/></linearGradient>
+<clipPath id="physics-dark-c"><path d="M7.62 35.47A20 7.5 -35 1 1 40.38 12.53A20 7.5 -35 1 1 7.62 35.47Z"/></clipPath>
+<filter id="physics-dark-b" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
+<filter id="physics-dark-d" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="6" stdDeviation="3.5" flood-color="#020614" flood-opacity="0.5"/></filter>
+</defs>
+<g filter="url(#physics-dark-d)">
+<path d="M7.62 12.53A20 7.5 35 1 1 40.38 35.47A20 7.5 35 1 1 7.62 12.53Z" fill="url(#physics-dark-s)"/>
+<g clip-path="url(#physics-dark-c)">
+<path d="M7.62 12.53A20 7.5 35 1 1 40.38 35.47A20 7.5 35 1 1 7.62 12.53Z" fill="url(#physics-dark-s)" filter="url(#physics-dark-b)" opacity="0.7"/>
+<path d="M7.62 35.47A20 7.5 -35 1 1 40.38 12.53A20 7.5 -35 1 1 7.62 35.47Z" fill="url(#physics-dark-f)"/>
+</g>
+<path d="M7.62 35.47A20 7.5 -35 1 1 40.38 12.53A20 7.5 -35 1 1 7.62 35.47Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.42" stroke-width="0.8"/>
+</g>
+</svg>

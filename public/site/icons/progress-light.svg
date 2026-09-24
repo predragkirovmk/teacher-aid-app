@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+<defs>
+<linearGradient id="progress-light-s" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#3D5A8C" stop-opacity="1"/><stop offset="0.5" stop-color="#142B5E" stop-opacity="1"/><stop offset="1" stop-color="#0B1B3F" stop-opacity="1"/></linearGradient>
+<linearGradient id="progress-light-f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.62"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.28"/></linearGradient>
+<clipPath id="progress-light-c"><path d="M10 28H38A5 5 0 0 1 43 33V38A5 5 0 0 1 38 43H10A5 5 0 0 1 5 38V33A5 5 0 0 1 10 28Z"/></clipPath>
+<filter id="progress-light-b" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
+<filter id="progress-light-d" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="6" stdDeviation="3.5" flood-color="#0B1B3F" flood-opacity="0.22"/></filter>
+</defs>
+<g filter="url(#progress-light-d)">
+<path d="M12 22H14A3 3 0 0 1 17 25V38A3 3 0 0 1 14 41H12A3 3 0 0 1 9 38V25A3 3 0 0 1 12 22ZM23 13H25A3 3 0 0 1 28 16V38A3 3 0 0 1 25 41H23A3 3 0 0 1 20 38V16A3 3 0 0 1 23 13ZM34 5H36A3 3 0 0 1 39 8V38A3 3 0 0 1 36 41H34A3 3 0 0 1 31 38V8A3 3 0 0 1 34 5Z" fill="url(#progress-light-s)"/>
+<g clip-path="url(#progress-light-c)">
+<path d="M12 22H14A3 3 0 0 1 17 25V38A3 3 0 0 1 14 41H12A3 3 0 0 1 9 38V25A3 3 0 0 1 12 22ZM23 13H25A3 3 0 0 1 28 16V38A3 3 0 0 1 25 41H23A3 3 0 0 1 20 38V16A3 3 0 0 1 23 13ZM34 5H36A3 3 0 0 1 39 8V38A3 3 0 0 1 36 41H34A3 3 0 0 1 31 38V8A3 3 0 0 1 34 5Z" fill="url(#progress-light-s)" filter="url(#progress-light-b)" opacity="0.7"/>
+<path d="M10 28H38A5 5 0 0 1 43 33V38A5 5 0 0 1 38 43H10A5 5 0 0 1 5 38V33A5 5 0 0 1 10 28Z" fill="url(#progress-light-f)"/>
+</g>
+<path d="M10 28H38A5 5 0 0 1 43 33V38A5 5 0 0 1 38 43H10A5 5 0 0 1 5 38V33A5 5 0 0 1 10 28Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.9" stroke-width="0.8"/>
+</g>
+</svg>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+<defs>
+<linearGradient id="chat-light-s" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#3D5A8C" stop-opacity="1"/><stop offset="0.5" stop-color="#142B5E" stop-opacity="1"/><stop offset="1" stop-color="#0B1B3F" stop-opacity="1"/></linearGradient>
+<linearGradient id="chat-light-f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.62"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.28"/></linearGradient>
+<clipPath id="chat-light-c"><path d="M23 6H39A5 5 0 0 1 44 11V20A5 5 0 0 1 39 25H23A5 5 0 0 1 18 20V11A5 5 0 0 1 23 6ZM22 24.5Q22 23 23.5 23L27.5 23Q29 23 27.94 24.06L23.06 28.94Q22 30 22 28.5Z"/></clipPath>
+<filter id="chat-light-b" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
+<filter id="chat-light-d" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="6" stdDeviation="3.5" flood-color="#0B1B3F" flood-opacity="0.22"/></filter>
+</defs>
+<g filter="url(#chat-light-d)">
+<path d="M9 16H24A5 5 0 0 1 29 21V28A5 5 0 0 1 24 33H9A5 5 0 0 1 4 28V21A5 5 0 0 1 9 16ZM19.06 32.06Q18 31 19.5 31L25.5 31Q27 31 27 32.5L27 38.5Q27 40 25.94 38.94Z" fill="url(#chat-light-s)"/>
+<g clip-path="url(#chat-light-c)">
+<path d="M9 16H24A5 5 0 0 1 29 21V28A5 5 0 0 1 24 33H9A5 5 0 0 1 4 28V21A5 5 0 0 1 9 16ZM19.06 32.06Q18 31 19.5 31L25.5 31Q27 31 27 32.5L27 38.5Q27 40 25.94 38.94Z" fill="url(#chat-light-s)" filter="url(#chat-light-b)" opacity="0.7"/>
+<path d="M23 6H39A5 5 0 0 1 44 11V20A5 5 0 0 1 39 25H23A5 5 0 0 1 18 20V11A5 5 0 0 1 23 6ZM22 24.5Q22 23 23.5 23L27.5 23Q29 23 27.94 24.06L23.06 28.94Q22 30 22 28.5Z" fill="url(#chat-light-f)"/>
+</g>
+<path d="M23 6H39A5 5 0 0 1 44 11V20A5 5 0 0 1 39 25H23A5 5 0 0 1 18 20V11A5 5 0 0 1 23 6ZM22 24.5Q22 23 23.5 23L27.5 23Q29 23 27.94 24.06L23.06 28.94Q22 30 22 28.5Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.9" stroke-width="0.8"/>
+</g>
+</svg>

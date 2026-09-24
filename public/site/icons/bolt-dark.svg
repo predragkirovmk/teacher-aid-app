@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+<defs>
+<linearGradient id="bolt-dark-s" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1"/><stop offset="0.45" stop-color="#DCE5F2" stop-opacity="1"/><stop offset="1" stop-color="#9FB3D4" stop-opacity="1"/></linearGradient>
+<linearGradient id="bolt-dark-f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EDF2F9" stop-opacity="0.26"/><stop offset="1" stop-color="#8EA3C6" stop-opacity="0.08"/></linearGradient>
+<clipPath id="bolt-dark-c"><path d="M18 23.5Q18 21 20.5 21L38.5 21Q41 21 39.23 22.77L19.77 42.23Q18 44 18 41.5Z"/></clipPath>
+<filter id="bolt-dark-b" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
+<filter id="bolt-dark-d" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="6" stdDeviation="3.5" flood-color="#020614" flood-opacity="0.5"/></filter>
+</defs>
+<g filter="url(#bolt-dark-d)">
+<path d="M9.5 27Q7 27 8.77 25.23L28.23 5.77Q30 4 30 6.5L30 24.5Q30 27 27.5 27Z" fill="url(#bolt-dark-s)"/>
+<g clip-path="url(#bolt-dark-c)">
+<path d="M9.5 27Q7 27 8.77 25.23L28.23 5.77Q30 4 30 6.5L30 24.5Q30 27 27.5 27Z" fill="url(#bolt-dark-s)" filter="url(#bolt-dark-b)" opacity="0.7"/>
+<path d="M18 23.5Q18 21 20.5 21L38.5 21Q41 21 39.23 22.77L19.77 42.23Q18 44 18 41.5Z" fill="url(#bolt-dark-f)"/>
+</g>
+<path d="M18 23.5Q18 21 20.5 21L38.5 21Q41 21 39.23 22.77L19.77 42.23Q18 44 18 41.5Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.42" stroke-width="0.8"/>
+</g>
+</svg>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+<defs>
+<linearGradient id="skip-dark-s" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1"/><stop offset="0.45" stop-color="#DCE5F2" stop-opacity="1"/><stop offset="1" stop-color="#9FB3D4" stop-opacity="1"/></linearGradient>
+<linearGradient id="skip-dark-f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EDF2F9" stop-opacity="0.26"/><stop offset="1" stop-color="#8EA3C6" stop-opacity="0.08"/></linearGradient>
+<clipPath id="skip-dark-c"><path d="M31.5 8H31.5A5.5 5.5 0 0 1 37 13.5V34.5A5.5 5.5 0 0 1 31.5 40H31.5A5.5 5.5 0 0 1 26 34.5V13.5A5.5 5.5 0 0 1 31.5 8Z"/></clipPath>
+<filter id="skip-dark-b" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
+<filter id="skip-dark-d" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="6" stdDeviation="3.5" flood-color="#020614" flood-opacity="0.5"/></filter>
+</defs>
+<g filter="url(#skip-dark-d)">
+<path d="M8 12.5Q8 9 10.97 10.85L29.03 22.15Q32 24 29.03 25.85L10.97 37.15Q8 39 8 35.5Z" fill="url(#skip-dark-s)"/>
+<g clip-path="url(#skip-dark-c)">
+<path d="M8 12.5Q8 9 10.97 10.85L29.03 22.15Q32 24 29.03 25.85L10.97 37.15Q8 39 8 35.5Z" fill="url(#skip-dark-s)" filter="url(#skip-dark-b)" opacity="0.7"/>
+<path d="M31.5 8H31.5A5.5 5.5 0 0 1 37 13.5V34.5A5.5 5.5 0 0 1 31.5 40H31.5A5.5 5.5 0 0 1 26 34.5V13.5A5.5 5.5 0 0 1 31.5 8Z" fill="url(#skip-dark-f)"/>
+</g>
+<path d="M31.5 8H31.5A5.5 5.5 0 0 1 37 13.5V34.5A5.5 5.5 0 0 1 31.5 40H31.5A5.5 5.5 0 0 1 26 34.5V13.5A5.5 5.5 0 0 1 31.5 8Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.42" stroke-width="0.8"/>
+</g>
+</svg>

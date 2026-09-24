@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+<defs>
+<linearGradient id="private-light-s" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#3D5A8C" stop-opacity="1"/><stop offset="0.5" stop-color="#142B5E" stop-opacity="1"/><stop offset="1" stop-color="#0B1B3F" stop-opacity="1"/></linearGradient>
+<linearGradient id="private-light-f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.62"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.28"/></linearGradient>
+<clipPath id="private-light-c"><path d="M17.5 24A6.5 6.5 0 1 1 30.5 24A6.5 6.5 0 1 1 17.5 24ZM9.67 38.11L35.67 6.11A3 3 0 0 1 40.33 9.89L14.33 41.89A3 3 0 0 1 9.67 38.11Z"/></clipPath>
+<filter id="private-light-b" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
+<filter id="private-light-d" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="6" stdDeviation="3.5" flood-color="#0B1B3F" flood-opacity="0.22"/></filter>
+</defs>
+<g filter="url(#private-light-d)">
+<path d="M4 24Q24 4 44 24Q24 44 4 24Z" fill="url(#private-light-s)"/>
+<g clip-path="url(#private-light-c)">
+<path d="M4 24Q24 4 44 24Q24 44 4 24Z" fill="url(#private-light-s)" filter="url(#private-light-b)" opacity="0.7"/>
+<path d="M17.5 24A6.5 6.5 0 1 1 30.5 24A6.5 6.5 0 1 1 17.5 24ZM9.67 38.11L35.67 6.11A3 3 0 0 1 40.33 9.89L14.33 41.89A3 3 0 0 1 9.67 38.11Z" fill="url(#private-light-f)"/>
+</g>
+<path d="M17.5 24A6.5 6.5 0 1 1 30.5 24A6.5 6.5 0 1 1 17.5 24ZM9.67 38.11L35.67 6.11A3 3 0 0 1 40.33 9.89L14.33 41.89A3 3 0 0 1 9.67 38.11Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.9" stroke-width="0.8"/>
+</g>
+</svg>

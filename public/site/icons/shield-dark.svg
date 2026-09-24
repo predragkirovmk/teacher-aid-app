@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+<defs>
+<linearGradient id="shield-dark-s" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1"/><stop offset="0.45" stop-color="#DCE5F2" stop-opacity="1"/><stop offset="1" stop-color="#9FB3D4" stop-opacity="1"/></linearGradient>
+<linearGradient id="shield-dark-f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EDF2F9" stop-opacity="0.26"/><stop offset="1" stop-color="#8EA3C6" stop-opacity="0.08"/></linearGradient>
+<clipPath id="shield-dark-c"><path d="M18.3 21.7L24.8 28.2A3.25 3.25 0 0 1 20.2 32.8L13.7 26.3A3.25 3.25 0 0 1 18.3 21.7ZM20.14 28.26L38.64 8.76A3.25 3.25 0 0 1 43.36 13.24L24.86 32.74A3.25 3.25 0 0 1 20.14 28.26ZM19.25 30.5A3.25 3.25 0 1 1 25.75 30.5A3.25 3.25 0 1 1 19.25 30.5Z"/></clipPath>
+<filter id="shield-dark-b" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
+<filter id="shield-dark-d" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="6" stdDeviation="3.5" flood-color="#020614" flood-opacity="0.5"/></filter>
+</defs>
+<g filter="url(#shield-dark-d)">
+<path d="M24 4.5Q25.2 4.1 26.4 4.6L38.6 9.4Q40 10 40 11.5V22C40 32 33 39.5 24 44C15 39.5 8 32 8 22V11.5Q8 10 9.4 9.4L21.6 4.6Q22.8 4.1 24 4.5Z" fill="url(#shield-dark-s)"/>
+<g clip-path="url(#shield-dark-c)">
+<path d="M24 4.5Q25.2 4.1 26.4 4.6L38.6 9.4Q40 10 40 11.5V22C40 32 33 39.5 24 44C15 39.5 8 32 8 22V11.5Q8 10 9.4 9.4L21.6 4.6Q22.8 4.1 24 4.5Z" fill="url(#shield-dark-s)" filter="url(#shield-dark-b)" opacity="0.7"/>
+<path d="M18.3 21.7L24.8 28.2A3.25 3.25 0 0 1 20.2 32.8L13.7 26.3A3.25 3.25 0 0 1 18.3 21.7ZM20.14 28.26L38.64 8.76A3.25 3.25 0 0 1 43.36 13.24L24.86 32.74A3.25 3.25 0 0 1 20.14 28.26ZM19.25 30.5A3.25 3.25 0 1 1 25.75 30.5A3.25 3.25 0 1 1 19.25 30.5Z" fill="url(#shield-dark-f)"/>
+</g>
+<path d="M18.3 21.7L24.8 28.2A3.25 3.25 0 0 1 20.2 32.8L13.7 26.3A3.25 3.25 0 0 1 18.3 21.7ZM20.14 28.26L38.64 8.76A3.25 3.25 0 0 1 43.36 13.24L24.86 32.74A3.25 3.25 0 0 1 20.14 28.26ZM19.25 30.5A3.25 3.25 0 1 1 25.75 30.5A3.25 3.25 0 1 1 19.25 30.5Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.42" stroke-width="0.8"/>
+</g>
+</svg>

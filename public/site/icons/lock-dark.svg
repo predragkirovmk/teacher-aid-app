@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+<defs>
+<linearGradient id="lock-dark-s" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1"/><stop offset="0.45" stop-color="#DCE5F2" stop-opacity="1"/><stop offset="1" stop-color="#9FB3D4" stop-opacity="1"/></linearGradient>
+<linearGradient id="lock-dark-f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EDF2F9" stop-opacity="0.26"/><stop offset="1" stop-color="#8EA3C6" stop-opacity="0.08"/></linearGradient>
+<clipPath id="lock-dark-c"><path d="M15 28V17A9 9 0 0 1 33 17V28H28V17A4 4 0 0 0 20 17V28Z"/></clipPath>
+<filter id="lock-dark-b" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
+<filter id="lock-dark-d" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="6" stdDeviation="3.5" flood-color="#020614" flood-opacity="0.5"/></filter>
+</defs>
+<g filter="url(#lock-dark-d)">
+<path d="M15 21H33A6 6 0 0 1 39 27V36A6 6 0 0 1 33 42H15A6 6 0 0 1 9 36V27A6 6 0 0 1 15 21Z" fill="url(#lock-dark-s)"/>
+<g clip-path="url(#lock-dark-c)">
+<path d="M15 21H33A6 6 0 0 1 39 27V36A6 6 0 0 1 33 42H15A6 6 0 0 1 9 36V27A6 6 0 0 1 15 21Z" fill="url(#lock-dark-s)" filter="url(#lock-dark-b)" opacity="0.7"/>
+<path d="M15 28V17A9 9 0 0 1 33 17V28H28V17A4 4 0 0 0 20 17V28Z" fill="url(#lock-dark-f)"/>
+</g>
+<path d="M15 28V17A9 9 0 0 1 33 17V28H28V17A4 4 0 0 0 20 17V28Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.42" stroke-width="0.8"/>
+</g>
+</svg>

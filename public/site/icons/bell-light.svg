@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+<defs>
+<linearGradient id="bell-light-s" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#3D5A8C" stop-opacity="1"/><stop offset="0.5" stop-color="#142B5E" stop-opacity="1"/><stop offset="1" stop-color="#0B1B3F" stop-opacity="1"/></linearGradient>
+<linearGradient id="bell-light-f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.62"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.28"/></linearGradient>
+<clipPath id="bell-light-c"><path d="M13 22A11 11 0 0 1 35 22V31L39 35Q40.5 36.5 39 38H9Q7.5 36.5 9 35L13 31Z"/></clipPath>
+<filter id="bell-light-b" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
+<filter id="bell-light-d" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="6" stdDeviation="3.5" flood-color="#0B1B3F" flood-opacity="0.22"/></filter>
+</defs>
+<g filter="url(#bell-light-d)">
+<path d="M18 38.5A6 6 0 1 1 30 38.5A6 6 0 1 1 18 38.5Z" fill="url(#bell-light-s)"/>
+<g clip-path="url(#bell-light-c)">
+<path d="M18 38.5A6 6 0 1 1 30 38.5A6 6 0 1 1 18 38.5Z" fill="url(#bell-light-s)" filter="url(#bell-light-b)" opacity="0.7"/>
+<path d="M13 22A11 11 0 0 1 35 22V31L39 35Q40.5 36.5 39 38H9Q7.5 36.5 9 35L13 31Z" fill="url(#bell-light-f)"/>
+</g>
+<path d="M13 22A11 11 0 0 1 35 22V31L39 35Q40.5 36.5 39 38H9Q7.5 36.5 9 35L13 31Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.9" stroke-width="0.8"/>
+</g>
+</svg>

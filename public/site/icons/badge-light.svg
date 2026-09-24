@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+<defs>
+<linearGradient id="badge-light-s" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#3D5A8C" stop-opacity="1"/><stop offset="0.5" stop-color="#142B5E" stop-opacity="1"/><stop offset="1" stop-color="#0B1B3F" stop-opacity="1"/></linearGradient>
+<linearGradient id="badge-light-f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.62"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.28"/></linearGradient>
+<clipPath id="badge-light-c"><path d="M10 19A14 14 0 1 1 38 19A14 14 0 1 1 10 19Z"/></clipPath>
+<filter id="badge-light-b" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
+<filter id="badge-light-d" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="6" stdDeviation="3.5" flood-color="#0B1B3F" flood-opacity="0.22"/></filter>
+</defs>
+<g filter="url(#badge-light-d)">
+<path d="M32 25Q34 25 34.51 26.93L38.49 42.07Q39 44 37.17 43.2L32.83 41.3Q31 40.5 29.21 41.39L25.79 43.11Q24 44 22.21 43.11L18.79 41.39Q17 40.5 15.17 41.3L10.83 43.2Q9 44 9.51 42.07L13.49 26.93Q14 25 16 25Z" fill="url(#badge-light-s)"/>
+<g clip-path="url(#badge-light-c)">
+<path d="M32 25Q34 25 34.51 26.93L38.49 42.07Q39 44 37.17 43.2L32.83 41.3Q31 40.5 29.21 41.39L25.79 43.11Q24 44 22.21 43.11L18.79 41.39Q17 40.5 15.17 41.3L10.83 43.2Q9 44 9.51 42.07L13.49 26.93Q14 25 16 25Z" fill="url(#badge-light-s)" filter="url(#badge-light-b)" opacity="0.7"/>
+<path d="M10 19A14 14 0 1 1 38 19A14 14 0 1 1 10 19Z" fill="url(#badge-light-f)"/>
+</g>
+<path d="M10 19A14 14 0 1 1 38 19A14 14 0 1 1 10 19Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.9" stroke-width="0.8"/>
+</g>
+</svg>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+<defs>
+<linearGradient id="chemistry-light-s" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#3D5A8C" stop-opacity="1"/><stop offset="0.5" stop-color="#142B5E" stop-opacity="1"/><stop offset="1" stop-color="#0B1B3F" stop-opacity="1"/></linearGradient>
+<linearGradient id="chemistry-light-f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.62"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.28"/></linearGradient>
+<clipPath id="chemistry-light-c"><path d="M19 8Q19 5 22 5L26 5Q29 5 29 8L29 15Q29 18 30.48 20.61L40.52 38.39Q42 41 39 41L9 41Q6 41 7.48 38.39L17.52 20.61Q19 18 19 15Z"/></clipPath>
+<filter id="chemistry-light-b" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
+<filter id="chemistry-light-d" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="6" stdDeviation="3.5" flood-color="#0B1B3F" flood-opacity="0.22"/></filter>
+</defs>
+<g filter="url(#chemistry-light-d)">
+<path d="M11.46 32.57Q13 30 16 30L32 30Q35 30 36.54 32.57L39.46 37.43Q41 40 38 40L10 40Q7 40 8.54 37.43Z" fill="url(#chemistry-light-s)"/>
+<g clip-path="url(#chemistry-light-c)">
+<path d="M11.46 32.57Q13 30 16 30L32 30Q35 30 36.54 32.57L39.46 37.43Q41 40 38 40L10 40Q7 40 8.54 37.43Z" fill="url(#chemistry-light-s)" filter="url(#chemistry-light-b)" opacity="0.7"/>
+<path d="M19 8Q19 5 22 5L26 5Q29 5 29 8L29 15Q29 18 30.48 20.61L40.52 38.39Q42 41 39 41L9 41Q6 41 7.48 38.39L17.52 20.61Q19 18 19 15Z" fill="url(#chemistry-light-f)"/>
+</g>
+<path d="M19 8Q19 5 22 5L26 5Q29 5 29 8L29 15Q29 18 30.48 20.61L40.52 38.39Q42 41 39 41L9 41Q6 41 7.48 38.39L17.52 20.61Q19 18 19 15Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.9" stroke-width="0.8"/>
+</g>
+</svg>

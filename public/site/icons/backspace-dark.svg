@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+<defs>
+<linearGradient id="backspace-dark-s" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1"/><stop offset="0.45" stop-color="#DCE5F2" stop-opacity="1"/><stop offset="1" stop-color="#9FB3D4" stop-opacity="1"/></linearGradient>
+<linearGradient id="backspace-dark-f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EDF2F9" stop-opacity="0.26"/><stop offset="1" stop-color="#8EA3C6" stop-opacity="0.08"/></linearGradient>
+<clipPath id="backspace-dark-c"><path d="M27.94 15.06L41.94 29.06A2.75 2.75 0 0 1 38.06 32.94L24.06 18.94A2.75 2.75 0 0 1 27.94 15.06ZM41.94 18.94L27.94 32.94A2.75 2.75 0 0 1 24.06 29.06L38.06 15.06A2.75 2.75 0 0 1 41.94 18.94Z"/></clipPath>
+<filter id="backspace-dark-b" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
+<filter id="backspace-dark-d" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="6" stdDeviation="3.5" flood-color="#020614" flood-opacity="0.5"/></filter>
+</defs>
+<g filter="url(#backspace-dark-d)">
+<path d="M5.94 26.29Q4 24 5.94 21.71L13.06 13.29Q15 11 18 11L34 11Q37 11 37 14L37 34Q37 37 34 37L18 37Q15 37 13.06 34.71Z" fill="url(#backspace-dark-s)"/>
+<g clip-path="url(#backspace-dark-c)">
+<path d="M5.94 26.29Q4 24 5.94 21.71L13.06 13.29Q15 11 18 11L34 11Q37 11 37 14L37 34Q37 37 34 37L18 37Q15 37 13.06 34.71Z" fill="url(#backspace-dark-s)" filter="url(#backspace-dark-b)" opacity="0.7"/>
+<path d="M27.94 15.06L41.94 29.06A2.75 2.75 0 0 1 38.06 32.94L24.06 18.94A2.75 2.75 0 0 1 27.94 15.06ZM41.94 18.94L27.94 32.94A2.75 2.75 0 0 1 24.06 29.06L38.06 15.06A2.75 2.75 0 0 1 41.94 18.94Z" fill="url(#backspace-dark-f)"/>
+</g>
+<path d="M27.94 15.06L41.94 29.06A2.75 2.75 0 0 1 38.06 32.94L24.06 18.94A2.75 2.75 0 0 1 27.94 15.06ZM41.94 18.94L27.94 32.94A2.75 2.75 0 0 1 24.06 29.06L38.06 15.06A2.75 2.75 0 0 1 41.94 18.94Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.42" stroke-width="0.8"/>
+</g>
+</svg>

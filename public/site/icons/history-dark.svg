@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+<defs>
+<linearGradient id="history-dark-s" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1"/><stop offset="0.45" stop-color="#DCE5F2" stop-opacity="1"/><stop offset="1" stop-color="#9FB3D4" stop-opacity="1"/></linearGradient>
+<linearGradient id="history-dark-f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EDF2F9" stop-opacity="0.26"/><stop offset="1" stop-color="#8EA3C6" stop-opacity="0.08"/></linearGradient>
+<clipPath id="history-dark-c"><path d="M22 8H38A6 6 0 0 1 44 14V24A6 6 0 0 1 38 30H22A6 6 0 0 1 16 24V14A6 6 0 0 1 22 8Z"/></clipPath>
+<filter id="history-dark-b" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
+<filter id="history-dark-d" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="6" stdDeviation="3.5" flood-color="#020614" flood-opacity="0.5"/></filter>
+</defs>
+<g filter="url(#history-dark-d)">
+<path d="M10 19H26A6 6 0 0 1 32 25V35A6 6 0 0 1 26 41H10A6 6 0 0 1 4 35V25A6 6 0 0 1 10 19Z" fill="url(#history-dark-s)"/>
+<g clip-path="url(#history-dark-c)">
+<path d="M10 19H26A6 6 0 0 1 32 25V35A6 6 0 0 1 26 41H10A6 6 0 0 1 4 35V25A6 6 0 0 1 10 19Z" fill="url(#history-dark-s)" filter="url(#history-dark-b)" opacity="0.7"/>
+<path d="M22 8H38A6 6 0 0 1 44 14V24A6 6 0 0 1 38 30H22A6 6 0 0 1 16 24V14A6 6 0 0 1 22 8Z" fill="url(#history-dark-f)"/>
+</g>
+<path d="M22 8H38A6 6 0 0 1 44 14V24A6 6 0 0 1 38 30H22A6 6 0 0 1 16 24V14A6 6 0 0 1 22 8Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.42" stroke-width="0.8"/>
+</g>
+</svg>
