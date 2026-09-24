@@ -9,8 +9,13 @@ const golos = Golos_Text({
   display: "swap",
 });
 
-const productionHost = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-export const siteUrl = productionHost ? `https://${productionHost}` : "http://localhost:3000";
+// The main domain; previews and local builds point at themselves.
+export const siteUrl =
+  process.env.VERCEL_ENV === "production"
+    ? "https://teacheraid.education"
+    : process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:3000";
 
 export function siteMetadata(t: SiteDict): Metadata {
   const path = t.lang === "mk" ? "/" : "/en";
