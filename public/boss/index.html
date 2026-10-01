@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>TeacherAid Boss Battle</title>
+  <meta name="description" content="Beat the professor in one move.">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0a1533">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Boss Battle">
+  <link rel="manifest" href="/boss/manifest.webmanifest">
+  <link rel="icon" href="/boss/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="/boss/apple-touch-icon.png">
+  <link rel="preload" href="/boss/pressstart.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/boss/pixelify.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/boss/scare.webp" as="image">
+  <link rel="stylesheet" href="/boss/game.css">
+  <script src="/boss/game.js" defer></script>
+</head>
+<body>
+  <main class="game" id="game">
+    <section class="field" aria-label="Battle">
+      <div class="hud px-box">
+        <div class="hud-name"><span>PROF.OLDSCHOOL</span><span>Lv99</span></div>
+        <div class="hp"><b>HP</b><span class="hp-track"><span class="hp-fill" id="hp"></span></span></div>
+      </div>
+      <div class="stage">
+        <img class="prof" id="prof" src="/boss/prof.png" alt="Professor Oldschool, a wild-haired pixel professor" width="114" height="95">
+      </div>
+      <div class="flash" id="flash"></div>
+    </section>
+    <section class="panel">
+      <p class="dialog px-box" id="dialog" aria-hidden="true"></p>
+      <p class="sr" id="live" aria-live="polite"></p>
+      <div class="moves" id="moves"></div>
+    </section>
+  </main>
+
+  <button class="title" id="title" type="button" disabled>
+    <span class="logo">TEACHERAID<small>BOSS BATTLE</small></span>
+    <span class="start" id="start">LOADING...</span>
+    <span class="hint">Sound on for the full experience</span>
+  </button>
+
+  <div class="scare" id="scare" aria-hidden="true">
+    <img id="scare-img" src="/boss/scare.webp" alt="" width="900" height="822">
+    <canvas id="pix"></canvas>
+  </div>
+
+  <section class="win" id="win" aria-labelledby="win-title" hidden>
+    <div class="confetti" id="confetti" aria-hidden="true"></div>
+    <h1 id="win-title">CONGRATULATIONS!</h1>
+    <div class="badge" id="badge" aria-hidden="true"></div>
+    <p class="win-text px-box">You now have the right to beat the old education system.</p>
+    <button class="btn" id="again" type="button">PLAY AGAIN</button>
+  </section>
+</body>
+</html>
