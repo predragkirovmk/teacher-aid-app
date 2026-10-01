@@ -288,13 +288,14 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   inset: 0;
   z-index: 8;
   display: grid;
-  place-content: center;
+  place-content: safe center;
   justify-items: center;
-  gap: 26px;
-  padding: 28px 22px max(28px, env(safe-area-inset-bottom));
+  gap: 18px;
+  padding: max(24px, env(safe-area-inset-top)) 22px max(24px, env(safe-area-inset-bottom));
   text-align: center;
   background: radial-gradient(circle at 50% 38%, #24489e, var(--navy-deep) 72%);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   animation: win-in 0.4s steps(5) both;
 }
 .win[hidden] { display: none; }
@@ -309,7 +310,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   text-shadow: var(--logo-stroke);
 }
 .win h1 span { display: inline-block; animation: wave 1.2s steps(4) calc(var(--i) * 60ms) infinite; }
-.badge { position: relative; width: 120px; animation: badge 0.9s steps(8) both; }
+.badge { position: relative; width: 84px; animation: badge 0.9s steps(8) both; }
 .badge svg { display: block; width: 100%; height: auto; }
 .win-text {
   position: relative;
@@ -317,7 +318,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   padding: 16px 18px;
   background: var(--cream);
   color: var(--ink);
-  font-size: clamp(21px, 6vw, 27px);
+  font-size: clamp(19px, 5.4vw, 25px);
   font-weight: 700;
   line-height: 1.2;
   --inner: var(--cream-line);
@@ -332,6 +333,58 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   box-shadow: 0 -4px 0 var(--ink), 0 4px 0 var(--ink), -4px 0 0 var(--ink), 4px 0 0 var(--ink), inset 0 -4px 0 #c98a1a;
 }
 .btn:active { translate: 0 2px; }
+
+.again {
+  position: relative;
+  padding: 8px;
+  font-family: var(--head);
+  font-size: 9px;
+  color: var(--cream);
+  opacity: 0.75;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* ---------- early access, on the win screen ---------- */
+.claim { position: relative; width: min(100%, 340px); }
+.claim-form { display: grid; gap: 14px; }
+.claim-title {
+  font-family: var(--head);
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--gold);
+  text-shadow: 0 2px 0 var(--ink);
+}
+.claim-input {
+  width: 100%;
+  height: 52px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 0;
+  background: var(--cream);
+  color: var(--ink);
+  font: 700 19px/1 var(--body);
+  -webkit-user-select: text;
+  user-select: text;
+  --inner: var(--cream-line);
+}
+.claim-input::placeholder { color: #9a8f7c; }
+.claim-input:focus { outline: none; background: #fff; --inner: var(--gold); }
+.claim-error:empty { display: none; }
+.claim-error { font-size: 17px; color: #ffd6d2; }
+.claim-form .btn { width: 100%; }
+.claim-form .btn:disabled { opacity: 0.7; }
+.claim-fine { font-size: 15px; line-height: 1.25; color: var(--cream); opacity: 0.75; }
+.claim-done {
+  padding: 14px 16px;
+  background: var(--hp-hi);
+  color: var(--ink);
+  font-family: var(--head);
+  font-size: 12px;
+  line-height: 1.6;
+  --c: var(--ink);
+  animation: pop 0.24s steps(3) both;
+}
 
 .confetti { position: absolute; inset: 0; pointer-events: none; }
 .confetti i {

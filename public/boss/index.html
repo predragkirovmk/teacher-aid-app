@@ -55,7 +55,18 @@
     <h1 id="win-title">CONGRATULATIONS!</h1>
     <div class="badge" id="badge" aria-hidden="true"></div>
     <p class="win-text px-box">You now have the right to beat the old education system.</p>
-    <button class="btn" id="again" type="button">PLAY AGAIN</button>
+    <div class="claim" id="claim">
+      <form class="claim-form" id="claim-form" method="post" action="/api/early-access" novalidate>
+        <p class="claim-title">GET EARLY ACCESS TO TEACHERAID</p>
+        <label class="sr" for="claim-email">Email</label>
+        <input class="claim-input px-box" id="claim-email" name="email" type="email" autocomplete="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="send" placeholder="you@school.edu" required>
+        <div class="sr" aria-hidden="true"><label>Website <input name="website" type="text" tabindex="-1" autocomplete="off"></label></div>
+        <p class="claim-error" id="claim-error" role="alert"></p>
+        <button class="btn" id="claim-button" type="submit">GET EARLY ACCESS</button>
+        <p class="claim-fine">We’ll only email you about TeacherAid. Unsubscribe anytime.</p>
+      </form>
+    </div>
+    <button class="again" id="again" type="button">PLAY AGAIN</button>
   </section>
 </body>
 </html>

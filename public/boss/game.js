@@ -360,7 +360,65 @@
     win.hidden = false;
     fanfare();
     buzz([60, 40, 60, 40, 200]);
-    $("again").focus({ preventScroll: true });
+  }
+
+  /* ---------- early access: the same sign-up as /early-access ---------- */
+  const CLAIM_ERRORS = {
+    invalid_email: "Check the email address and try again.",
+    rate_limited: "Too many tries. Wait a minute and try again.",
+    network: "No connection. Try again in a moment.",
+    server_error: "Something went wrong. Try again.",
+  };
+  const claimForm = $("claim-form");
+  const claimButton = $("claim-button");
+  const claimError = $("claim-error");
+  const claimEmail = $("claim-email");
+
+  claimForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (claimButton.disabled) return;
+    if (!claimEmail.checkValidity()) {
+      claimError.textContent = CLAIM_ERRORS.invalid_email;
+      claimEmail.setAttribute("aria-invalid", "true");
+      return;
+    }
+    const data = new FormData(claimForm);
+    claimButton.disabled = true;
+    claimButton.textContent = "SENDING...";
+    claimError.textContent = "";
+    try {
+      const res = await fetch("/api/early-access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: data.get("email"),
+          website: data.get("website"),
+          src: new URLSearchParams(location.search).get("src") || "boss",
+        }),
+      });
+      if (res.ok) {
+        const done = document.createElement("p");
+        done.className = "claim-done px-box";
+        done.setAttribute("role", "status");
+        done.textContent = "You’re in. Thank you.";
+        $("claim").replaceChildren(done);
+        blip();
+        return;
+      }
+      const body = await res.json().catch(() => ({}));
+      claimError.textContent = CLAIM_ERRORS[body.error] || CLAIM_ERRORS.server_error;
+    } catch {
+      claimError.textContent = CLAIM_ERRORS.network;
+    }
+    claimEmail.setAttribute("aria-invalid", "true");
+    claimButton.disabled = false;
+    claimButton.textContent = "GET EARLY ACCESS";
+  });
+
+  function blip() {
+    if (!audio()) return;
+    tone(988, ac.currentTime, 0.08, "square", 0.08);
+    tone(1319, ac.currentTime + 0.08, 0.16, "square", 0.08);
   }
 
   function reset() {

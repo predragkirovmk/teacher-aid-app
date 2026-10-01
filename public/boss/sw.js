@@ -1,5 +1,5 @@
 // Precaches the whole game so a second scan works offline on bad venue wifi.
-const CACHE = "boss-v2";
+const CACHE = "boss-v3";
 const ASSETS = [
   "/boss/index.html",
   "/boss/game.css",
