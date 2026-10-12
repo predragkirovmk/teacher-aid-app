@@ -48,6 +48,13 @@ const nextConfig: NextConfig = {
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
         ],
       },
+      {
+        // The student app scans class QR codes, so it alone may use the camera.
+        source: "/app/:path*",
+        headers: [
+          { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(), browsing-topics=()" },
+        ],
+      },
     ];
   },
 };
