@@ -782,6 +782,8 @@ button.item:active {
   border-radius: 28px;
   box-shadow: 0 0 0 100vmax rgba(3, 12, 30, 0.55);
   pointer-events: none;
+  /* The scan line moves in units of the frame's own height. */
+  container-type: size;
 }
 .frame i {
   position: absolute;
@@ -819,6 +821,7 @@ button.item:active {
 }
 .frame b {
   position: absolute;
+  top: 0;
   left: 8px;
   right: 8px;
   height: 3px;
@@ -829,10 +832,10 @@ button.item:active {
 }
 @keyframes sweep {
   from {
-    top: 8%;
+    transform: translateY(8cqh);
   }
   to {
-    top: 90%;
+    transform: translateY(90cqh);
   }
 }
 .scan__msg {
@@ -1355,17 +1358,27 @@ button.pill {
   }
 }
 
-/* Scan: the frame tightens around the code, then the result takes over. */
+/* Scan: the frame tightens around the code, then the result takes over. The extra dimming and the
+   glow are a second layer that fades in, so the lock animates opacity instead of a screen-sized shadow. */
 .frame {
-  transition:
-    transform var(--spring-snappy-dur) var(--spring-snappy),
-    box-shadow var(--spring-snappy-dur) var(--spring-snappy);
+  transition: transform var(--spring-snappy-dur) var(--spring-snappy);
+}
+.frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    0 0 0 100vmax rgba(3, 12, 30, 0.33),
+    0 0 28px rgba(255, 200, 61, 0.55);
+  opacity: 0;
+  transition: opacity var(--spring-snappy-dur) var(--spring-snappy);
 }
 .frame--locked {
   transform: translate(-50%, -50%) scale(0.93);
-  box-shadow:
-    0 0 0 100vmax rgba(3, 12, 30, 0.7),
-    0 0 28px rgba(255, 200, 61, 0.55);
+}
+.frame--locked::after {
+  opacity: 1;
 }
 .frame--locked b {
   opacity: 0;
