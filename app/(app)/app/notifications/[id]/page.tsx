@@ -35,6 +35,13 @@ export default function NotificationDetail() {
       ? t("notif.checkin.title", { subject: t(`subj.${n.subject}`) })
       : t(`notif.${n.id as "n-math"}.title`);
   const body = n.kind === "checkin" ? t("notif.checkin.body") : t(`notif.${n.id as "n-math"}.body`);
+  // The button names where it goes instead of a bare "Open".
+  const action =
+    n.link === "/app/summary"
+      ? t("notif.open.summary")
+      : n.link === "/app/attendance"
+        ? t("notif.open.attendance")
+        : t("notif.open.subject", { subject: t(`subj.${n.subject}`) });
 
   return (
     <main className="screen screen--bare">
@@ -51,8 +58,8 @@ export default function NotificationDetail() {
           {body}
         </p>
       </div>
-      <Link href={n.link} className="btn btn--primary btn--block" style={{ marginTop: 16 }}>
-        {t("notif.open")}
+      <Link href={n.link} className="btn btn--ghost btn--block" style={{ marginTop: 16 }}>
+        {action}
       </Link>
     </main>
   );
