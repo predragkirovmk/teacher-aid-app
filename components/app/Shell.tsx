@@ -192,16 +192,35 @@ export function Sheet({
     setTimeout(onClose, 230);
   }, [onClose]);
 
+  // The latest close, for the Escape key, without setting the sheet up again on every render.
+  const closeRef = useRef(close);
   useEffect(() => {
+    closeRef.current = close;
+  }, [close]);
+
+  // Open: everything behind the sheet (except its scrim) becomes inert, so keyboard focus and
+  // screen readers stay in the sheet, and focus moves to its first button. Close: the page comes
+  // back first, then focus returns to where it was.
+  useEffect(() => {
+    const sheet = ref.current;
     const prev = document.activeElement as HTMLElement | null;
-    ref.current?.querySelector<HTMLElement>("button:not(.sheet__handle)")?.focus();
-    const key = (e: KeyboardEvent) => e.key === "Escape" && close();
+    const behind: HTMLElement[] = [];
+    for (let node: Element | null = sheet; node?.parentElement && node !== document.body; node = node.parentElement) {
+      for (const sib of Array.from(node.parentElement.children)) {
+        if (sib === node || sib.classList.contains("scrim") || !(sib instanceof HTMLElement) || sib.inert) continue;
+        sib.inert = true;
+        behind.push(sib);
+      }
+    }
+    sheet?.querySelector<HTMLElement>("button:not(.sheet__handle)")?.focus();
+    const key = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
     window.addEventListener("keydown", key);
     return () => {
       window.removeEventListener("keydown", key);
+      behind.forEach((el) => (el.inert = false));
       prev?.focus?.();
     };
-  }, [close]);
+  }, []);
 
   const style =
     phase === "drag"
