@@ -1,14 +1,12 @@
 "use client";
 
-import { Camera, ChevronLeft, ImageUp, Keyboard, TriangleAlert } from "lucide-react";
-import Link from "next/link";
+import { Camera, ImageUp, QrCode, TriangleAlert, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { ScanResultView } from "@/components/app/ScanResult";
 import { useT } from "@/lib/app/i18n";
 import { leave } from "@/lib/app/nav";
+import { useQT } from "@/lib/app/quiz-copy";
 import { decodeCanvas, decodeImageFile, interpretCode, type ScanResult } from "@/lib/app/scan";
-import { actions, type Checkin } from "@/lib/app/store";
 
 type Phase = "starting" | "scanning" | "denied" | "unavailable" | "error";
 
@@ -25,6 +23,7 @@ const cameraBlocked = () => !window.isSecureContext || !navigator.mediaDevices?.
 
 export default function Scan() {
   const { t } = useT();
+  const { t: qt } = useQT();
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -38,9 +37,8 @@ export default function Scan() {
   const [camPhase, setPhase] = useState<Phase>("starting");
   const phase: Phase | "insecure" = insecure ? "insecure" : camPhase;
   const [attempt, setAttempt] = useState(0);
-  const [result, setResult] = useState<{ scan: ScanResult; entry: Checkin | null } | null>(null);
-  const [typing, setTyping] = useState(false);
-  const [code, setCode] = useState("");
+  /** A code that is not a class QR; a class QR leaves for the quiz instead. */
+  const [result, setResult] = useState<ScanResult | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
   const lockTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -49,19 +47,20 @@ export default function Scan() {
     if (handled.current) return;
     handled.current = true;
     const scan = interpretCode(raw);
-    const entry = scan.kind === "class" ? actions.checkIn(scan.subject.id) : null;
     if (scan.kind === "class") navigator.vibrate?.(60);
-    // The frame tightens for a beat so the scan reads as caught, then the result takes over.
+    // The frame tightens for a beat so the scan reads as caught, then the quiz opens. Joining the
+    // quiz records the check-in. Replace, so Back from the quiz skips the camera.
     const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     setLocked(true);
     lockTimer.current = setTimeout(
       () => {
+        if (scan.kind === "class") return router.replace(`/app/play/${scan.subject.code}`);
         setLocked(false);
-        setResult({ scan, entry });
+        setResult(scan);
       },
       calm ? 0 : 240,
     );
-  }, []);
+  }, [router]);
 
   useEffect(() => () => clearTimeout(lockTimer.current), []);
 
@@ -150,8 +149,8 @@ export default function Scan() {
         <canvas ref={canvasRef} hidden />
         <div className="scan__top">
           {/* The scanner works like a modal: Back returns to the screen it was opened from. */}
-          <button className="round" aria-label={t("back")} style={{ background: "rgba(3,12,30,0.5)" }} onClick={() => leave(router)}>
-            <ChevronLeft size={26} strokeWidth={2} />
+          <button className="round" aria-label={t("close")} style={{ background: "rgba(3,12,30,0.5)" }} onClick={() => leave(router)}>
+            <X size={24} strokeWidth={2} />
           </button>
           <h1 className="top__title" style={{ margin: 0 }}>
             {t("scan.title")}
@@ -206,42 +205,10 @@ export default function Scan() {
             }
           }}
         />
-        <button className="btn btn--ghost" onClick={() => fileRef.current?.click()}>
+        <button className="btn btn--ghost span2" onClick={() => fileRef.current?.click()}>
           <ImageUp size={20} strokeWidth={2} aria-hidden="true" />
           {t("scan.upload")}
         </button>
-        <button className="btn btn--ghost" onClick={() => setTyping((v) => !v)} aria-expanded={typing}>
-          <Keyboard size={20} strokeWidth={2} aria-hidden="true" />
-          {t("scan.type")}
-        </button>
-        {typing && (
-          <form
-            className="codeform"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (code.trim()) handle(code);
-            }}
-          >
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder={t("scan.typePlaceholder")}
-              aria-label={t("scan.type")}
-              autoCapitalize="characters"
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-              enterKeyHint="go"
-              autoFocus
-            />
-            <button className="btn btn--primary" style={{ minHeight: 52, padding: "0 20px" }} type="submit">
-              {t("scan.submit")}
-            </button>
-          </form>
-        )}
-        <Link href="/app/qr-kit" className="btn btn--ghost span2" style={{ minHeight: 48 }}>
-          {t("scan.kit")}
-        </Link>
       </div>
 
       {needIntro && (
@@ -274,16 +241,24 @@ export default function Scan() {
       )}
 
       {result && (
-        <ScanResultView
-          result={result.scan}
-          entry={result.entry}
-          onAgain={() => {
-            setNote(null);
-            setPhase("starting");
-            setResult(null);
-          }}
-          onDone={() => leave(router)}
-        />
+        <section className="scan-miss glass" role="alert">
+          <span className="scan-miss__badge" aria-hidden="true">
+            <QrCode size={32} strokeWidth={2} color="var(--yellow)" />
+          </span>
+          <h2 className="scan-miss__title">{qt("q.unknown.title")}</h2>
+          <p className="scan-miss__body">{qt("q.unknown.body")}</p>
+          <button
+            className="btn btn--primary btn--block"
+            autoFocus
+            onClick={() => {
+              setNote(null);
+              setPhase("starting");
+              setResult(null);
+            }}
+          >
+            {qt("q.unknown.cta")}
+          </button>
+        </section>
       )}
     </main>
   );
