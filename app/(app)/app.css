@@ -136,13 +136,6 @@ a {
   }
 }
 
-@keyframes enter {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-}
-
 /* ---- type ---- */
 .t-display {
   font-family: var(--font-display);
@@ -1053,8 +1046,15 @@ button.pill {
   border-radius: 999px;
   font-size: var(--fs-label);
   font-weight: 650;
-  animation: enter var(--spring-snappy-dur) var(--spring-snappy);
   cursor: pointer;
+  /* Transitions, not a keyframe: a new message mid-exit turns back from where it is. */
+  transition:
+    opacity var(--spring-snappy-dur) var(--spring-snappy),
+    transform var(--spring-snappy-dur) var(--spring-snappy);
+  @starting-style {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1471,14 +1471,11 @@ button.pill {
     transform: translateY(-4px) scale(0.98);
   }
 }
-.toast {
-  transition:
-    opacity 180ms ease-in,
-    transform 180ms ease-in;
-}
 .toast--out {
   opacity: 0;
   transform: translateX(-50%) translateY(-8px);
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 /* FAQ: answers open and close smoothly where the browser supports animating a details element. */
