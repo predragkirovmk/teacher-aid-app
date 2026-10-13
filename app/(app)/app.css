@@ -406,6 +406,7 @@ button.card:active {
 /* ---- subject cards ---- */
 .subject {
   position: relative;
+  container-type: inline-size;
   flex: none;
   width: calc(100% - 28px);
   min-height: 190px;
@@ -440,12 +441,14 @@ button.card:active {
 .subject__name {
   font-family: var(--font-display);
   position: relative;
-  font-size: var(--fs-title1);
+  /* One word cannot wrap, so at large text the name stops growing at the card's width
+     instead of breaking mid-word. */
+  font-size: min(var(--fs-title1), 11cqi);
   line-height: 1.05;
   font-weight: 700;
   letter-spacing: -0.02em;
   max-width: 78%;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   hyphens: auto;
 }
 .subject__foot {
@@ -1206,6 +1209,7 @@ button.pill {
 .next {
   display: block;
   position: relative;
+  container-type: inline-size;
   overflow: hidden;
   border-radius: var(--radius-card);
   padding: 24px;
@@ -1227,12 +1231,14 @@ button.pill {
 }
 .next__name {
   font-family: var(--font-display);
-  font-size: var(--fs-title1);
+  /* One word cannot wrap, so at large text the name stops growing at the card's width
+     instead of breaking mid-word. */
+  font-size: min(var(--fs-title1), 11cqi);
   line-height: 1.05;
   font-weight: 700;
   letter-spacing: -0.02em;
   max-width: 80%;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   hyphens: auto;
 }
 .next__foot {
