@@ -394,6 +394,11 @@
   transform: scale(0.96);
   background: var(--card-press);
 }
+/* Press in fast, spring back on release. */
+:is(.q-opt, .q-tf__btn, .pe-pick):active {
+  transition-duration: 100ms;
+  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
 .q-tf__icon {
   width: 4.5rem;
   height: 4.5rem;

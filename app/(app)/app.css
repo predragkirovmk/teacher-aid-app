@@ -321,6 +321,12 @@ button.card:active {
   color: var(--text);
 }
 
+/* Press in fast, spring back on release: the press answers at once, the release settles. */
+:is(.btn, .card, .round, .subject, .next, .scan-fab):active {
+  transition-duration: 100ms;
+  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
 /* ---- search ---- */
 .search {
   position: relative;
