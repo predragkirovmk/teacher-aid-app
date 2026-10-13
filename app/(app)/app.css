@@ -827,31 +827,6 @@ button.item:active {
 .scan__tools .span2 {
   grid-column: 1 / -1;
 }
-.codeform {
-  display: flex;
-  gap: 10px;
-  grid-column: 1 / -1;
-}
-.codeform input {
-  flex: 1;
-  min-width: 0;
-  height: 52px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--card);
-  padding: 0 20px;
-  font-size: 1rem;
-  text-transform: uppercase;
-  outline: none;
-}
-.codeform input::placeholder {
-  text-transform: none;
-  color: var(--text-2);
-}
-.codeform input:focus-visible {
-  outline: 3px solid var(--yellow);
-  outline-offset: 2px;
-}
 .warn {
   display: flex;
   align-items: center;
@@ -864,21 +839,7 @@ button.item:active {
   text-align: center;
 }
 
-/* ---- result ---- */
-.result-screen {
-  position: absolute;
-  inset: 0;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 12px;
-  padding: 32px 28px calc(env(safe-area-inset-bottom) + 28px);
-  background: linear-gradient(180deg, var(--ground-top), var(--ground-bottom));
-  animation: fade 200ms;
-}
+/* ---- badge ---- */
 .badge {
   width: 112px;
   height: 112px;
@@ -893,17 +854,6 @@ button.item:active {
   background: rgba(255, 255, 255, 0.14);
   color: #fff;
 }
-.raw {
-  max-width: 100%;
-  word-break: break-all;
-  padding: 12px 16px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid var(--line);
-  font-size: 0.875rem;
-  text-align: left;
-}
-
 /* ---- kit ---- */
 .kit {
   display: grid;
@@ -1397,17 +1347,7 @@ button.pill {
   opacity: 0;
 }
 
-/* Result: the badge pops, then the check draws itself. */
-.draw {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: draw 320ms var(--ease) 180ms forwards;
-}
-@keyframes draw {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
+/* The camera intro badge pops in. */
 .badge {
   animation: pop 380ms var(--ease);
 }
@@ -1420,12 +1360,8 @@ button.pill {
 
 @media (prefers-reduced-motion: reduce) {
   .rise,
-  .draw,
   .badge {
     animation: none;
-  }
-  .draw {
-    stroke-dashoffset: 0;
   }
   .frame--locked {
     transform: translate(-50%, -50%);

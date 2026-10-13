@@ -1,6 +1,6 @@
 "use client";
 
-import { Languages, RotateCcw } from "lucide-react";
+import { Languages, QrCode, RotateCcw } from "lucide-react";
 import { Row } from "@/components/app/Row";
 import { Top } from "@/components/app/Top";
 import { useUI } from "@/components/app/ui";
@@ -61,6 +61,7 @@ export default function SettingsPage() {
             <span className="t-cap">{t("settings.resetHint")}</span>
           </span>
         </button>
+        <Row icon={QrCode} label={t("scan.kit")} href="/app/qr-kit" />
       </div>
       <p className="t-cap" style={{ textAlign: "center", marginTop: 26 }}>
         {t("settings.about")}
