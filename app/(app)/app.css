@@ -1442,7 +1442,7 @@ button.pill {
     opacity 160ms;
 }
 .tab__badge[data-on="false"] {
-  transform: scale(0);
+  transform: scale(0.5);
   opacity: 0;
 }
 .tab__count {
