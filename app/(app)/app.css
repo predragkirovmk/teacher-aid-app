@@ -159,7 +159,7 @@ a {
 /* ---- header ---- */
 .top {
   display: grid;
-  grid-template-columns: 48px 1fr 48px;
+  grid-template-columns: 48px minmax(0, 1fr) 48px;
   align-items: center;
   margin-bottom: 18px;
   min-height: 48px;
@@ -167,6 +167,7 @@ a {
 .top__title {
   font-family: var(--font-display);
   text-align: center;
+  overflow-wrap: break-word;
   font-size: 1.125rem;
   font-weight: 650;
 }
@@ -598,7 +599,7 @@ button.item:active {
   font-size: 1rem;
   font-weight: 650;
   line-height: 1.25;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .item__main {
   display: flex;
@@ -606,7 +607,12 @@ button.item:active {
   align-items: center;
   justify-content: space-between;
   column-gap: 12px;
-  row-gap: 2px;
+  row-gap: 4px;
+}
+/* A two-line text block beside a status: it keeps 8rem, so the status wraps under it as text grows. */
+.item__text {
+  flex: 1 1 8rem;
+  min-width: 0;
 }
 .dot-unread {
   display: inline-flex;
@@ -722,7 +728,7 @@ button.item:active {
   top: 0;
   padding: calc(env(safe-area-inset-top) + 16px) 20px 0;
   display: grid;
-  grid-template-columns: 48px 1fr 48px;
+  grid-template-columns: 48px minmax(0, 1fr) 48px;
   align-items: center;
 }
 .frame {
@@ -808,7 +814,7 @@ button.item:active {
 .scan__tools {
   padding: 16px 20px calc(env(safe-area-inset-bottom) + 20px);
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
   gap: 12px;
   background: var(--ground-bottom);
   border-radius: 32px 32px 0 0;
@@ -901,7 +907,7 @@ button.item:active {
 /* ---- kit ---- */
 .kit {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
   gap: 14px;
 }
 .kit figure {
@@ -1482,7 +1488,7 @@ button.pill {
   transition:
     opacity 220ms var(--ease),
     max-width 260ms var(--ease);
-  max-width: 120px;
+  max-width: 12em;
   overflow: hidden;
   white-space: nowrap;
 }

@@ -65,16 +65,18 @@ export default function Attendance() {
       <ul className="list">
         {log.map((l) => (
           <li key={l.id} className="item" style={{ minHeight: 64 }}>
-            <span className="grow">
-              <span className="item__title" style={{ display: "block" }}>
-                {t(`subj.${l.subject}`)}
+            <span className="grow item__main">
+              <span className="item__text">
+                <span className="item__title" style={{ display: "block" }}>
+                  {t(`subj.${l.subject}`)}
+                </span>
+                <span className="t-cap">
+                  {formatDate(l.when, locale)}
+                  {l.scanned ? `, ${t("att.scanned")}` : ""}
+                </span>
               </span>
-              <span className="t-cap">
-                {formatDate(l.when, locale)}
-                {l.scanned ? `, ${t("att.scanned")}` : ""}
-              </span>
+              <StatusBadge status={l.status} />
             </span>
-            <StatusBadge status={l.status} />
           </li>
         ))}
       </ul>

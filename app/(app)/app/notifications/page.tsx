@@ -45,7 +45,7 @@ export default function Notifications() {
                       ? t("notif.checkin.title", { subject: t(`subj.${n.subject}`) })
                       : t(`notif.${n.id as "n-math"}.title`)}
                   </span>
-                  <span className="t-cap" style={{ display: "flex", gap: 10, marginTop: 2 }}>
+                  <span className="t-cap" style={{ display: "flex", flexWrap: "wrap", columnGap: 10, marginTop: 2 }}>
                     {formatDate(n.when, locale)}
                     <span className="dot-unread" data-on={n.unread} aria-hidden={!n.unread}>
                       {t("notif.unread")}

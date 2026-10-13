@@ -52,13 +52,15 @@ export default function Achievements() {
               <span className={`item__icon${fresh(a) ? " unlock" : ""}`} style={on ? { background: "var(--yellow)", color: "var(--ink)" } : undefined}>
                 {on ? <Icon size={22} strokeWidth={2} /> : <Lock size={22} strokeWidth={2} />}
               </span>
-              <span className="grow">
-                <span className="item__title" style={{ display: "block" }}>
-                  {t(`ach.${a}.title`)}
+              <span className="grow item__main">
+                <span className="item__text">
+                  <span className="item__title" style={{ display: "block" }}>
+                    {t(`ach.${a}.title`)}
+                  </span>
+                  <span className="t-cap">{t(`ach.${a}.body`)}</span>
                 </span>
-                <span className="t-cap">{t(`ach.${a}.body`)}</span>
+                <span className="status">{on ? t("ach.unlocked") : t("ach.locked")}</span>
               </span>
-              <span className="status">{on ? t("ach.unlocked") : t("ach.locked")}</span>
             </li>
           );
         })}

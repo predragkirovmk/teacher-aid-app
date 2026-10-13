@@ -20,11 +20,13 @@ export default function Schedule() {
             {d.slots.map((s) => (
               <li key={s.time}>
                 <Link href={`/app/subject/${s.subject}`} className="item">
-                  <span className="t-label" style={{ width: 52, fontVariantNumeric: "tabular-nums" }}>
+                  <span className="t-label" style={{ minWidth: 52, flex: "none", fontVariantNumeric: "tabular-nums" }}>
                     {s.time}
                   </span>
-                  <span className="grow item__title">{t(`subj.${s.subject}`)}</span>
-                  <span className="pill">{t(`kind.${s.kind}`)}</span>
+                  <span className="grow item__main">
+                    <span className="item__title">{t(`subj.${s.subject}`)}</span>
+                    <span className="pill">{t(`kind.${s.kind}`)}</span>
+                  </span>
                 </Link>
               </li>
             ))}
