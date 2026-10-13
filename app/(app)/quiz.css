@@ -311,6 +311,8 @@
   letter-spacing: -0.01em;
   margin: 0;
   overflow-wrap: anywhere;
+  /* Even lines, so a question never ends on one orphaned word. */
+  text-wrap: balance;
 }
 .q-question--small {
   font-family: var(--font);

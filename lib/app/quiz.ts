@@ -76,20 +76,20 @@ export const QUIZZES: Record<SubjectId, Quiz> = {
       {
         id: "m1",
         kind: "mc",
-        text: t("Реши ја равенката: 3x + 6 = 21", "Solve the equation: 3x + 6 = 21"),
+        text: t("Реши ја равенката: 3x\u00a0+\u00a06\u00a0=\u00a021", "Solve the equation: 3x\u00a0+\u00a06\u00a0=\u00a021"),
         options: [t("x = 9", "x = 9"), t("x = 5", "x = 5"), t("x = 7", "x = 7"), t("x = 15", "x = 15")],
         answer: 1,
       },
       {
         id: "m2",
         kind: "tf",
-        text: t("Равенката 2x = 2x + 1 нема решение.", "The equation 2x = 2x + 1 has no solution."),
+        text: t("Равенката 2x\u00a0=\u00a02x\u00a0+\u00a01 нема решение.", "The equation 2x\u00a0=\u00a02x\u00a0+\u00a01 has no solution."),
         answer: 0,
       },
       {
         id: "m3",
         kind: "mc",
-        text: t("Колку е x ако x/4 = 3?", "What is x if x/4 = 3?"),
+        text: t("Колку е x ако x/4\u00a0=\u00a03?", "What is x if x/4\u00a0=\u00a03?"),
         options: [t("12", "12"), t("7", "7"), t("0,75", "0.75"), t("1", "1")],
         answer: 0,
       },
@@ -105,7 +105,7 @@ export const QUIZZES: Record<SubjectId, Quiz> = {
       {
         id: "m5",
         kind: "mc",
-        text: t("Колку е наклонот на правата y = 2x − 3?", "What is the slope of the line y = 2x − 3?"),
+        text: t("Колку е наклонот на правата y\u00a0=\u00a02x\u00a0−\u00a03?", "What is the slope of the line y\u00a0=\u00a02x\u00a0−\u00a03?"),
         options: [t("−3", "−3"), t("3", "3"), t("2", "2"), t("−2", "−2")],
         answer: 2,
       },
