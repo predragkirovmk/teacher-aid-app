@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ScanResultView } from "@/components/app/ScanResult";
 import { useT } from "@/lib/app/i18n";
+import { leave } from "@/lib/app/nav";
 import { decodeCanvas, decodeImageFile, interpretCode, type ScanResult } from "@/lib/app/scan";
 import { actions, type Checkin } from "@/lib/app/store";
 
@@ -148,9 +149,10 @@ export default function Scan() {
         <video ref={videoRef} playsInline muted aria-hidden="true" />
         <canvas ref={canvasRef} hidden />
         <div className="scan__top">
-          <Link href="/app" className="round" aria-label={t("back")} style={{ background: "rgba(3,12,30,0.5)" }}>
+          {/* The scanner works like a modal: Back returns to the screen it was opened from. */}
+          <button className="round" aria-label={t("back")} style={{ background: "rgba(3,12,30,0.5)" }} onClick={() => leave(router)}>
             <ChevronLeft size={26} strokeWidth={2} />
-          </Link>
+          </button>
           <h1 className="top__title" style={{ margin: 0 }}>
             {t("scan.title")}
           </h1>
@@ -265,9 +267,9 @@ export default function Scan() {
           >
             {t("scan.intro.cta")}
           </button>
-          <Link href="/app" className="sr">
+          <button className="sr" onClick={() => leave(router)}>
             {t("back")}
-          </Link>
+          </button>
         </div>
       )}
 
@@ -280,7 +282,7 @@ export default function Scan() {
             setPhase("starting");
             setResult(null);
           }}
-          onDone={() => router.push("/app")}
+          onDone={() => leave(router)}
         />
       )}
     </main>

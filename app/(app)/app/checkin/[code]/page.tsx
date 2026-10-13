@@ -27,8 +27,9 @@ export default function CheckinLink() {
       <ScanResultView
         result={scan}
         entry={entry}
-        onAgain={() => router.push("/app/scan")}
-        onDone={() => router.push("/app")}
+        // This screen is where a class link lands, so leaving it replaces it rather than stacking on it.
+        onAgain={() => router.replace("/app/scan")}
+        onDone={() => router.replace("/app")}
       />
     </main>
   );

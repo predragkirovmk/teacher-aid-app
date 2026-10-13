@@ -39,7 +39,7 @@ export function ScanResultView({
           <button className="btn btn--primary btn--block" onClick={onDone}>
             {t("res.done")}
           </button>
-          <Link href="/app/attendance" className="btn btn--ghost btn--block">
+          <Link href="/app/attendance" replace className="btn btn--ghost btn--block">
             {t("res.attendance")}
           </Link>
         </div>
