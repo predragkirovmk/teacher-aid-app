@@ -46,7 +46,7 @@ export default function SettingsPage() {
               onConfirm: () => {
                 actions.reset();
                 actions.setLocale(locale);
-                toast(t("settings.reset"));
+                toast(t("settings.resetDone"));
               },
             })
           }
