@@ -2,6 +2,7 @@
 
 import { CircleCheck, QrCode } from "lucide-react";
 import Link from "next/link";
+import { ViewTransition } from "react";
 import { notFound, useParams } from "next/navigation";
 import { SubjectCard } from "@/components/app/SubjectCard";
 import { Top } from "@/components/app/Top";
@@ -22,7 +23,9 @@ export default function SubjectPage() {
   return (
     <main className="screen">
       <Top title={t(`subj.${subject.id}`)} />
-      <SubjectCard subject={subject} hero />
+      <ViewTransition name={`subject-${subject.id}`} share="morph" default="none">
+        <SubjectCard subject={subject} hero />
+      </ViewTransition>
       <div className="stack" style={{ marginTop: 16 }}>
         {next && (
           <div className="card">

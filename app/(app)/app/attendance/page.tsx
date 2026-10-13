@@ -6,6 +6,7 @@ import { Top } from "@/components/app/Top";
 import type { AttendanceStatus } from "@/lib/app/data";
 import { formatDate, useAttendance } from "@/lib/app/derived";
 import { useT } from "@/lib/app/i18n";
+import { useTween } from "@/lib/app/tween";
 
 const ICON = { present: CircleCheck, late: Clock, absent: CircleX } as const;
 
@@ -23,6 +24,7 @@ function StatusBadge({ status }: { status: AttendanceStatus }) {
 export default function Attendance() {
   const { t, locale } = useT();
   const { attended, total, percent, log } = useAttendance();
+  const tween = useTween(percent, "teacheraid-shown-attendance-ring", true);
   const r = 86;
   const c = 2 * Math.PI * r;
 
@@ -41,13 +43,12 @@ export default function Attendance() {
             strokeWidth="16"
             strokeLinecap="round"
             strokeDasharray={c}
-            strokeDashoffset={c * (1 - percent / 100)}
-            style={{ transition: "stroke-dashoffset 600ms cubic-bezier(0.2,0.7,0.2,1)" }}
+            strokeDashoffset={c * (1 - tween.value / 100)}
           />
         </svg>
         <div className="ring__val">
           <span className="t-num" style={{ fontSize: 52 }}>
-            {percent}%
+            {tween.value}%
           </span>
         </div>
       </div>
@@ -61,7 +62,7 @@ export default function Attendance() {
       </Link>
 
       <h2 className="section-h">{t("att.recent")}</h2>
-      <ul className="list" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+      <ul className="list">
         {log.map((l) => (
           <li key={l.id} className="item" style={{ minHeight: 64 }}>
             <span className="grow">

@@ -13,15 +13,10 @@ export default function Leaderboard() {
     <main className="screen">
       <Top title={t("lb.title")} />
       <p className="t-cap sub">{t("lb.sub")}</p>
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="bars" style={{ height: 72, marginBottom: 12 }} aria-hidden="true">
-          <span style={{ height: "70%" }} />
-          <span style={{ height: "100%" }} />
-          <span style={{ height: "55%" }} />
-        </div>
-        <div className="t-label">{t("lb.gap", { n: third.points - me.points })}</div>
-      </div>
-      <ol className="list" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+      <p className="t-label" style={{ margin: "0 4px 14px" }}>
+        {t("lb.gap", { n: third.points - me.points })}
+      </p>
+      <ol className="list">
         {LEADERBOARD.map((l, i) => (
           <li key={l.name} className={`item${l.me ? " item--me" : ""}`} style={{ minHeight: 64 }}>
             <span className="rank">{i + 1}</span>

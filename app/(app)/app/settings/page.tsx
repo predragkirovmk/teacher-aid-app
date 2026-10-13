@@ -8,7 +8,7 @@ import { actions, useApp } from "@/lib/app/store";
 
 export default function SettingsPage() {
   const { t, locale } = useT();
-  const { openLang, toast } = useUI();
+  const { openLang, toast, confirm } = useUI();
   const { notificationsOn } = useApp();
 
   return (
@@ -17,7 +17,7 @@ export default function SettingsPage() {
       <div className="list">
         <button className="item" onClick={openLang}>
           <span className="item__icon">
-            <Languages size={22} strokeWidth={2} />
+            <Languages size={22} strokeWidth={2} aria-hidden="true" />
           </span>
           <span className="grow item__title">{t("settings.language")}</span>
           <span className="t-cap">{t("profile.langValue")}</span>
@@ -42,24 +42,32 @@ export default function SettingsPage() {
       </div>
 
       <h2 className="section-h">{t("settings.demo")}</h2>
-      <button
-        className="item"
-        onClick={() => {
-          actions.reset();
-          actions.setLocale(locale);
-          toast(t("settings.reset"));
-        }}
-      >
-        <span className="item__icon">
-          <RotateCcw size={22} strokeWidth={2} />
-        </span>
-        <span className="grow">
-          <span className="item__title" style={{ display: "block" }}>
-            {t("settings.reset")}
+      <div className="list">
+        <button
+          className="item"
+          onClick={() =>
+            confirm({
+              title: t("confirm.reset"),
+              confirmLabel: t("settings.reset"),
+              onConfirm: () => {
+                actions.reset();
+                actions.setLocale(locale);
+                toast(t("settings.reset"));
+              },
+            })
+          }
+        >
+          <span className="item__icon">
+            <RotateCcw size={22} strokeWidth={2} aria-hidden="true" />
           </span>
-          <span className="t-cap">{t("settings.resetHint")}</span>
-        </span>
-      </button>
+          <span className="grow">
+            <span className="item__title" style={{ display: "block" }}>
+              {t("settings.reset")}
+            </span>
+            <span className="t-cap">{t("settings.resetHint")}</span>
+          </span>
+        </button>
+      </div>
       <p className="t-cap" style={{ textAlign: "center", marginTop: 26 }}>
         {t("settings.about")}
       </p>

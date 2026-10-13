@@ -1,15 +1,18 @@
 "use client";
 
-import { ChevronRight, Languages, ShieldCheck } from "lucide-react";
+import { ChevronRight, FileText, Languages, LogOut, Settings, ShieldCheck, Trophy, CircleHelp } from "lucide-react";
 import Link from "next/link";
-import { Mark } from "@/components/app/Mark";
+import { useRouter } from "next/navigation";
+import { Row } from "@/components/app/Row";
 import { useUI } from "@/components/app/ui";
 import { useAttendance } from "@/lib/app/derived";
 import { useT } from "@/lib/app/i18n";
+import { actions } from "@/lib/app/store";
 
 export default function Profile() {
   const { t } = useT();
-  const { openLang } = useUI();
+  const router = useRouter();
+  const { openLang, confirm } = useUI();
   const { percent } = useAttendance();
 
   return (
@@ -26,42 +29,55 @@ export default function Profile() {
         <div className="t-cap">{t("user.school")}</div>
       </div>
 
-      <div className="grid2" style={{ position: "relative", zIndex: 1 }}>
+      <div className="grid2" style={{ marginBottom: 22 }}>
         <Link href="/app/attendance" className="card" style={{ padding: 16 }}>
           <div className="row row--between">
             <span className="t-label">{t("home.attendance")}</span>
             <ChevronRight size={22} strokeWidth={2} aria-hidden="true" />
           </div>
-          <div className="t-num" style={{ marginTop: 8, fontSize: 38 }}>
+          <div className="tile-big" style={{ marginTop: 8 }}>
             {percent}%
           </div>
-        </Link>
-        <Link href="/app/faq" className="card row" style={{ padding: 16, justifyContent: "center" }}>
-          <span className="t-title" style={{ fontSize: 26 }}>
-            {t("profile.faq")}
-          </span>
         </Link>
         <Link href="/app/summary" className="card" style={{ padding: 16 }}>
           <div className="row row--between">
             <span className="t-label">{t("home.summary")}</span>
             <ChevronRight size={22} strokeWidth={2} aria-hidden="true" />
           </div>
-          <div className="t-num" style={{ marginTop: 8, fontSize: 38 }}>
+          <div className="tile-big" style={{ marginTop: 8 }}>
             4/5
           </div>
         </Link>
-        <button className="card" style={{ padding: 16, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 8 }} onClick={openLang}>
-          <span className="row row--between" style={{ width: "100%" }}>
-            <span className="t-label">{t("profile.language")}</span>
-            <Languages size={22} strokeWidth={2} aria-hidden="true" />
-          </span>
-          <span className="t-title" style={{ fontSize: 22 }}>
-            {t("profile.langValue")}
-          </span>
-        </button>
       </div>
 
-      <Mark size={220} className="ghost-mark" />
+      <div className="stack" style={{ gap: 18 }}>
+        <div className="list">
+          <Row icon={FileText} label={t("drawer.documents")} href="/app/documents" />
+          <Row icon={Trophy} label={t("drawer.achievements")} href="/app/achievements" />
+        </div>
+        <div className="list">
+          <Row icon={Settings} label={t("drawer.settings")} href="/app/settings" />
+          <Row icon={Languages} label={t("profile.language")} value={t("profile.langValue")} onClick={openLang} />
+          <Row icon={CircleHelp} label={t("profile.faq")} href="/app/faq" />
+        </div>
+        <div className="list">
+          <Row
+            icon={LogOut}
+            label={t("drawer.logout")}
+            chevron={false}
+            onClick={() =>
+              confirm({
+                title: t("confirm.logout"),
+                confirmLabel: t("drawer.logout"),
+                onConfirm: () => {
+                  actions.setSignedIn(false);
+                  router.push("/app/welcome");
+                },
+              })
+            }
+          />
+        </div>
+      </div>
     </main>
   );
 }

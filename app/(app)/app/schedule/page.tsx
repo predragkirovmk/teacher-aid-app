@@ -14,19 +14,17 @@ export default function Schedule() {
       {WEEK.map((d) => (
         <section key={d.day}>
           <h2 className="section-h" style={{ marginTop: 18 }}>
-            {t(`dayLong.${d.day}`)}
+            {t(`dayLong.${d.day}`)} {d.date}
           </h2>
-          <ul className="list" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          <ul className="list">
             {d.slots.map((s) => (
               <li key={s.time}>
-                <Link href={`/app/subject/${s.subject}`} className={`item${s.kind !== "lesson" ? " item--me" : ""}`} style={{ minHeight: 64 }}>
+                <Link href={`/app/subject/${s.subject}`} className="item">
                   <span className="t-label" style={{ width: 52, fontVariantNumeric: "tabular-nums" }}>
                     {s.time}
                   </span>
                   <span className="grow item__title">{t(`subj.${s.subject}`)}</span>
-                  <span className={`pill${s.kind !== "lesson" ? "" : ""}`} style={s.kind !== "lesson" ? { background: "var(--ink)", color: "var(--yellow)" } : undefined}>
-                    {t(`kind.${s.kind}`)}
-                  </span>
+                  <span className="pill">{t(`kind.${s.kind}`)}</span>
                 </Link>
               </li>
             ))}

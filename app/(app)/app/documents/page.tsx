@@ -13,7 +13,7 @@ export default function Documents() {
     <main className="screen">
       <Top title={t("docs.title")} />
       <p className="t-cap sub">{t("docs.sub")}</p>
-      <ul className="list" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+      <ul className="list">
         {DOCS.map((d) => (
           <li key={d}>
             <button className="item" onClick={() => toast(t("doc.demo"))}>

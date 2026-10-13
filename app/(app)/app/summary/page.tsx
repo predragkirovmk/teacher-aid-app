@@ -20,7 +20,7 @@ export default function Summary() {
         <div className="t-cap">{t("sum.sub", { n: right })}</div>
       </div>
 
-      <ol className="list" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+      <ol className="list">
         {QUIZ.map((q, i) => (
           <li key={q.id} className="item" style={{ alignItems: "flex-start" }}>
             <span className="rank">{i + 1}</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ImageUp, Keyboard, TriangleAlert } from "lucide-react";
+import { Camera, ChevronLeft, ImageUp, Keyboard, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -9,9 +9,17 @@ import { useT } from "@/lib/app/i18n";
 import { decodeCanvas, decodeImageFile, interpretCode, type ScanResult } from "@/lib/app/scan";
 import { actions, type Checkin } from "@/lib/app/store";
 
-type Phase = "starting" | "scanning" | "denied" | "unavailable";
+type Phase = "starting" | "scanning" | "denied" | "unavailable" | "error";
 
 const noop = () => () => {};
+const INTRO_KEY = "teacheraid-camera-intro";
+const introSeen = () => {
+  try {
+    return window.localStorage.getItem(INTRO_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
 const cameraBlocked = () => !window.isSecureContext || !navigator.mediaDevices?.getUserMedia;
 
 export default function Scan() {
@@ -23,6 +31,9 @@ export default function Scan() {
   const handled = useRef(false);
 
   const insecure = useSyncExternalStore(noop, cameraBlocked, () => false);
+  const seen = useSyncExternalStore(noop, introSeen, () => true);
+  const [introOk, setIntroOk] = useState(false);
+  const needIntro = !seen && !introOk;
   const [camPhase, setPhase] = useState<Phase>("starting");
   const phase: Phase | "insecure" = insecure ? "insecure" : camPhase;
   const [attempt, setAttempt] = useState(0);
@@ -30,6 +41,8 @@ export default function Scan() {
   const [typing, setTyping] = useState(false);
   const [code, setCode] = useState("");
   const [note, setNote] = useState<string | null>(null);
+  const [locked, setLocked] = useState(false);
+  const lockTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const handle = useCallback((raw: string) => {
     if (handled.current) return;
@@ -37,11 +50,22 @@ export default function Scan() {
     const scan = interpretCode(raw);
     const entry = scan.kind === "class" ? actions.checkIn(scan.subject.id) : null;
     if (scan.kind === "class") navigator.vibrate?.(60);
-    setResult({ scan, entry });
+    // The frame tightens for a beat so the scan reads as caught, then the result takes over.
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setLocked(true);
+    lockTimer.current = setTimeout(
+      () => {
+        setLocked(false);
+        setResult({ scan, entry });
+      },
+      calm ? 0 : 240,
+    );
   }, []);
 
+  useEffect(() => () => clearTimeout(lockTimer.current), []);
+
   useEffect(() => {
-    if (result) return;
+    if (result || needIntro) return;
     handled.current = false;
     let stopped = false;
     let raf = 0;
@@ -59,7 +83,13 @@ export default function Scan() {
       } catch (e) {
         if (stopped) return;
         const name = (e as DOMException).name;
-        setPhase(name === "NotFoundError" || name === "OverconstrainedError" ? "unavailable" : "denied");
+        setPhase(
+          name === "NotAllowedError" || name === "SecurityError"
+            ? "denied"
+            : name === "NotFoundError" || name === "OverconstrainedError"
+              ? "unavailable"
+              : "error",
+        );
         return;
       }
       if (stopped) {
@@ -96,7 +126,7 @@ export default function Scan() {
       stream?.getTracks().forEach((tr) => tr.stop());
       video.srcObject = null;
     };
-  }, [attempt, result, handle]);
+  }, [attempt, result, handle, needIntro]);
 
   const message =
     phase === "starting"
@@ -107,8 +137,10 @@ export default function Scan() {
           ? t("scan.insecure")
           : phase === "unavailable"
             ? t("scan.unavailable")
-            : t("scan.hint");
-  const failed = phase === "denied" || phase === "insecure" || phase === "unavailable";
+            : phase === "error"
+              ? t("scan.error")
+              : t("scan.hint");
+  const failed = phase === "denied" || phase === "insecure" || phase === "unavailable" || phase === "error";
 
   return (
     <main className="scan">
@@ -125,7 +157,7 @@ export default function Scan() {
           <span />
         </div>
         {phase === "scanning" && (
-          <div className="frame" aria-hidden="true">
+          <div className={`frame${locked ? " frame--locked" : ""}`} aria-hidden="true">
             <i />
             <i />
             <i />
@@ -195,6 +227,9 @@ export default function Scan() {
               aria-label={t("scan.type")}
               autoCapitalize="characters"
               autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="go"
               autoFocus
             />
             <button className="btn btn--primary" style={{ minHeight: 52, padding: "0 20px" }} type="submit">
@@ -206,6 +241,35 @@ export default function Scan() {
           {t("scan.kit")}
         </Link>
       </div>
+
+      {needIntro && (
+        <div className="scan-intro">
+          <span className="badge badge--quiet" style={{ width: 96, height: 96 }}>
+            <Camera size={44} strokeWidth={2} aria-hidden="true" />
+          </span>
+          <h2 className="t-title">{t("scan.intro.title")}</h2>
+          <p className="t-body muted" style={{ margin: 0, maxWidth: 320 }}>
+            {t("scan.intro.body")}
+          </p>
+          <button
+            className="btn btn--primary btn--block"
+            style={{ marginTop: 18, maxWidth: 320 }}
+            onClick={() => {
+              try {
+                window.localStorage.setItem(INTRO_KEY, "1");
+              } catch {
+                // ignore
+              }
+              setIntroOk(true);
+            }}
+          >
+            {t("scan.intro.cta")}
+          </button>
+          <Link href="/app" className="sr">
+            {t("back")}
+          </Link>
+        </div>
+      )}
 
       {result && (
         <ScanResultView
