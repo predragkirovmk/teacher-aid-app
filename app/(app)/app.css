@@ -178,6 +178,13 @@ a {
 .muted {
   color: var(--text-2);
 }
+/* Headings even out their lines; running text avoids a lone last word. */
+:is(.t-display, .t-title, .large, .top__title, .subject__name, .next__name, .profile__name) {
+  text-wrap: balance;
+}
+:is(.t-body, .t-cap, .item__title, details.faq summary, details.faq p) {
+  text-wrap: pretty;
+}
 
 /* ---- header ---- */
 .top {
