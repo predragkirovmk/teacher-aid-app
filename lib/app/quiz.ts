@@ -341,7 +341,7 @@ function reducer(quiz: Quiz) {
       case "tick": {
         if (s.stage === "lobby") {
           // Classmates keep arriving until the teacher starts.
-          const due = Math.min(N, 9 + Math.floor((a.now - s.stageAt) / 420));
+          const due = Math.min(N, 9 + Math.floor((a.now - s.stageAt) / 640));
           return due <= s.joined ? s : { ...s, now: a.now, joined: due };
         }
         if (s.stage !== "question") return s;

@@ -842,8 +842,7 @@
 }
 @keyframes q-tick {
   from {
-    transform: translateY(6px) scale(0.92);
-    opacity: 0.5;
+    transform: translateY(5px) scale(0.94);
   }
 }
 @keyframes q-face {
