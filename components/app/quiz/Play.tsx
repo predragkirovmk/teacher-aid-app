@@ -90,12 +90,7 @@ function Joined({ subject }: { subject: Subject }) {
         <ViewTransition name="q-card" share="q-morph" default="none">
           <QuizCard subject={subject} quiz={QUIZZES[subject.id]} live={false} />
         </ViewTransition>
-        <div className="q-opening">
-          <span className="t-label muted">{t("q.opening")}</span>
-          <span className="q-bar" aria-hidden="true">
-            <i />
-          </span>
-        </div>
+        <p className="t-label muted q-opening">{t("q.opening")}</p>
       </div>
     </>
   );

@@ -198,24 +198,8 @@
 
 /* ---- joined ---- */
 .q-opening {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-.q-bar {
-  width: 120px;
-  height: 6px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.2);
-  overflow: hidden;
-}
-.q-bar i {
-  display: block;
-  height: 100%;
-  background: #fff;
-  transform-origin: left;
-  animation: q-fill 1600ms linear backwards;
+  margin: 0;
+  text-align: center;
 }
 
 /* ---- lobby ---- */
@@ -833,11 +817,6 @@
   100% {
     opacity: 0;
     transform: translate(-50%, -50%) rotate(var(--a)) translateY(calc(var(--d) * -1)) scale(1);
-  }
-}
-@keyframes q-fill {
-  from {
-    transform: scaleX(0);
   }
 }
 @keyframes q-tick {
