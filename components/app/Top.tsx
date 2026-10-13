@@ -5,8 +5,21 @@ import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useT } from "@/lib/app/i18n";
 
-/** Back button, centred title, optional trailing action. */
-export function Top({ title, right, onBack }: { title: string; right?: ReactNode; onBack?: () => void }) {
+/**
+ * Back button, centred title, optional trailing action. `quiet` keeps the title for screen readers
+ * only, for a screen whose own header already shows it large.
+ */
+export function Top({
+  title,
+  right,
+  onBack,
+  quiet = false,
+}: {
+  title: string;
+  right?: ReactNode;
+  onBack?: () => void;
+  quiet?: boolean;
+}) {
   const router = useRouter();
   const { t } = useT();
   return (
@@ -22,7 +35,7 @@ export function Top({ title, right, onBack }: { title: string; right?: ReactNode
       >
         <CaretLeftIcon size={26} />
       </button>
-      <h1 className="top__title" style={{ margin: 0 }}>
+      <h1 className={quiet ? "sr" : "top__title"} style={{ margin: 0 }}>
         {title}
       </h1>
       <div>{right}</div>

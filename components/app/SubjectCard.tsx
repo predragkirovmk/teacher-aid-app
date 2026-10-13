@@ -6,25 +6,27 @@ import { CaretRightIcon } from "@phosphor-icons/react";
 import type { Subject } from "@/lib/app/data";
 import { useT } from "@/lib/app/i18n";
 
-export function SubjectCard({ subject, hero = false }: { subject: Subject; hero?: boolean }) {
+/**
+ * The header of a subject's own screen. It is not a link: it is the page it would lead to. The
+ * name is the screen's large title; the bar above keeps it only for screen readers.
+ */
+export function SubjectCard({ subject }: { subject: Subject }) {
   const { t } = useT();
   return (
-    <Link
-      href={`/app/subject/${subject.id}`}
-      className={`subject tone-${subject.tone}${hero ? " subject--hero" : ""}`}
-    >
+    <div className={`subject tone-${subject.tone}`}>
       <span className="subject__glyphs" aria-hidden="true">
         {subject.glyphs}
       </span>
-      <span className="subject__name">{t(`subj.${subject.id}`)}</span>
+      <span className="subject__name" aria-hidden="true">
+        {t(`subj.${subject.id}`)}
+      </span>
       <span className="subject__foot">
         <span className="monogram" aria-hidden="true">
           {subject.initials}
         </span>
         <span className="grow">{t(`teacher.${subject.id}`)}</span>
-        <CaretRightIcon size={22} aria-hidden="true" />
       </span>
-    </Link>
+    </div>
   );
 }
 

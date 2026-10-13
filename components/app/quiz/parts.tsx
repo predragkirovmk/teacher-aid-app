@@ -101,7 +101,7 @@ export function QuizCard({ subject, quiz, live = true }: { subject: Subject; qui
   const { t: tt, locale } = useT();
   const { t } = useQT();
   return (
-    <section className="subject subject--hero tone-ice q-quizcard">
+    <section className="subject tone-ice q-quizcard">
       <span className="subject__glyphs" aria-hidden="true">
         {subject.glyphs.split("  ")[0]}
       </span>

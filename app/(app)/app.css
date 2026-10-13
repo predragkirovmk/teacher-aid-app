@@ -322,7 +322,7 @@ button.card:active {
 }
 
 /* Press in fast, spring back on release: the press answers at once, the release settles. */
-:is(.btn, .card, .round, .subject, .next, .scan-fab):active {
+:is(.btn, .card, .round, .next, .scan-fab):active {
   transition-duration: 100ms;
   transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
 }
@@ -407,23 +407,14 @@ button.card:active {
   position: relative;
   container-type: inline-size;
   flex: none;
-  width: calc(100% - 28px);
-  min-height: 190px;
+  width: 100%;
+  min-height: 220px;
   border-radius: var(--radius-card);
   padding: 24px;
   overflow: hidden;
-  scroll-snap-align: start;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: transform var(--spring-press-dur) var(--spring-press);
-}
-.subject:active {
-  transform: scale(0.985);
-}
-.subject--hero {
-  width: 100%;
-  min-height: 220px;
 }
 .subject__glyphs {
   position: absolute;

@@ -23,9 +23,9 @@ export default function SubjectPage() {
 
   return (
     <main className="screen">
-      <Top title={t(`subj.${subject.id}`)} />
+      <Top title={t(`subj.${subject.id}`)} quiet />
       <ViewTransition name={`subject-${subject.id}`} share="morph" default="none">
-        <SubjectCard subject={subject} hero />
+        <SubjectCard subject={subject} />
       </ViewTransition>
       <div className="stack" style={{ marginTop: 16 }}>
         {next && (
