@@ -25,7 +25,7 @@ export default function Schedule() {
                   </span>
                   <span className="grow item__main">
                     <span className="item__title">{t(`subj.${s.subject}`)}</span>
-                    <span className="pill">{t(`kind.${s.kind}`)}</span>
+                    {s.kind !== "lesson" && <span className="pill">{t(`kind.${s.kind}`)}</span>}
                   </span>
                 </Link>
               </li>
