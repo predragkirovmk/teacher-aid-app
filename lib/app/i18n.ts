@@ -171,7 +171,7 @@ const en = {
   "faq.f3.q": "I was marked late by mistake.",
   "faq.f3.a": "Tell your teacher. They can change the mark from their side.",
   "faq.f4.q": "How are leaderboard points earned?",
-  "faq.f4.a": "Points come from correct quiz answers and on-time check-ins.",
+  "faq.f4.a": "Only from quizzes and achievements: each right answer in a live quiz (a quick one earns a little more) and each achievement you unlock. Checking in to a lesson records your attendance and gives no points.",
 
   "welcome.title": "You are logged out",
   "welcome.sub": "This is a demo, so no password is needed.",
@@ -373,7 +373,7 @@ const mk: Record<Key, string> = {
   "faq.f3.q": "Погрешно сум означен како задоцнет.",
   "faq.f3.a": "Кажи му на наставникот. Тој може да ја смени ознаката од своја страна.",
   "faq.f4.q": "Како се собираат поени за ранг-листата?",
-  "faq.f4.a": "Поените доаѓаат од точни одговори на куизови и од навремени пријави.",
+  "faq.f4.a": "Само од квизови и достигнувања: секој точен одговор во квиз (брзиот носи малку повеќе) и секое достигнување што ќе го отклучиш. Пријавата на час го бележи присуството и не носи поени.",
 
   "welcome.title": "Одјавени сте",
   "welcome.sub": "Ова е демо, па лозинка не е потребна.",
