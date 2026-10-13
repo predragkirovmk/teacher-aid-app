@@ -17,7 +17,7 @@ export default function Summary() {
         <div className="t-num" style={{ margin: "8px 0" }}>
           {right}/5
         </div>
-        <div className="t-cap">{t("sum.sub", { n: right })}</div>
+        <div className="t-cap">{t("sum.sub")}</div>
       </div>
 
       <ol className="list">

@@ -72,7 +72,7 @@ const en = {
   "att.scanCta": "Scan to check in",
 
   "sum.title": "Summary",
-  "sum.sub": "{n} of 5 correct on the last lesson",
+  "sum.sub": "correct on the last lesson",
   "sum.lesson": "Mathematics, fractions",
   "sum.right": "Correct",
   "sum.wrong": "Wrong",
@@ -277,7 +277,7 @@ const mk: Record<Key, string> = {
   "att.scanCta": "Скенирај за пријава",
 
   "sum.title": "Резиме",
-  "sum.sub": "{n} од 5 точни на последниот час",
+  "sum.sub": "точни на последниот час",
   "sum.lesson": "Математика, дропки",
   "sum.right": "Точно",
   "sum.wrong": "Неточно",
