@@ -49,7 +49,7 @@ function load() {
   loaded = true;
   try {
     const raw = window.localStorage.getItem(KEY);
-    if (raw) state = sanitize(JSON.parse(raw));
+    state = raw ? sanitize(JSON.parse(raw)) : DEFAULT;
   } catch {
     // Private mode or blocked storage: the demo still works for the session.
   }
@@ -66,8 +66,36 @@ function set(patch: Partial<AppState>) {
   listeners.forEach((l) => l());
 }
 
+/** Read the saved state again and redraw, for when it may have changed outside this page. */
+function reload() {
+  loaded = false;
+  load();
+  listeners.forEach((l) => l());
+}
+
+let watching = false;
+
 function subscribe(cb: () => void) {
   load();
+  if (!watching) {
+    watching = true;
+    // Another tab may change the saved data while this page is open.
+    window.addEventListener("storage", (e) => {
+      if (e.key === KEY || e.key === null) reload();
+    });
+    // A page restored from the back-forward cache (Back after logging out on a newer page) holds
+    // old data, and its router does not navigate reliably, so load it again if the save changed.
+    window.addEventListener("pageshow", (e) => {
+      if (!e.persisted) return;
+      try {
+        const raw = window.localStorage.getItem(KEY);
+        const saved = raw ? sanitize(JSON.parse(raw)) : DEFAULT;
+        if (JSON.stringify(saved) !== JSON.stringify(state)) window.location.reload();
+      } catch {
+        // blocked storage: nothing newer to read
+      }
+    });
+  }
   listeners.add(cb);
   return () => listeners.delete(cb);
 }
