@@ -7,11 +7,11 @@ import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 export const TAB_ORDER = ["/app", "/app/notifications", "/app/profile"];
 
 const EXIT_MS = 190;
-const OUT = `transform ${EXIT_MS}ms cubic-bezier(0.4, 0, 1, 1)`;
 const IN_MS = 300;
 const IN = `transform ${IN_MS}ms cubic-bezier(0.23, 1, 0.32, 1)`;
-const SPRING_MS = 420;
-const SPRING = `transform ${SPRING_MS}ms cubic-bezier(0.34, 1.45, 0.64, 1)`;
+/** The snappy spring from app.css, so a cancelled swipe settles like every other small state change. */
+const SPRING_MS = 390;
+const SPRING = `transform ${SPRING_MS}ms var(--spring-snappy)`;
 /** If the next section has not rendered this long after the exit, bring the old one back. */
 const WATCHDOG_MS = 900;
 
@@ -155,9 +155,15 @@ export function Pager({ pathname, children }: { pathname: string; children: Reac
           rest(0);
           return;
         }
-        el.style.transition = OUT;
+        // A flick keeps its speed: the section leaves at the release velocity instead of starting
+        // again from rest. A slow drag past the threshold still accelerates away.
+        const left = el.clientWidth - Math.abs(dx);
+        const speed = Math.max(0, -dir * s.v);
+        const flung = speed > 0 && left / speed < EXIT_MS;
+        const ms = flung ? Math.max(100, Math.round(left / speed)) : EXIT_MS;
+        el.style.transition = `transform ${ms}ms ${flung ? "linear" : "cubic-bezier(0.4, 0, 1, 1)"}`;
         el.style.transform = `translateX(${-dir * 100}%)`;
-        timers.current.push = setTimeout(go, EXIT_MS - 15);
+        timers.current.push = setTimeout(go, ms - 15);
       }}
       onPointerCancel={() => {
         g.current = null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheck, QrCode } from "lucide-react";
+import { CheckCircleIcon, ScanIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { ViewTransition } from "react";
 import { notFound, useParams } from "next/navigation";
@@ -33,21 +33,21 @@ export default function SubjectPage() {
             <div className="t-title" style={{ marginTop: 4 }}>
               {t(`dayLong.${next.day}`)}, {next.time}
             </div>
-            <div className="t-cap" style={{ marginTop: 2 }}>
+            <div className="t-cap" style={{ marginTop: 4 }}>
               {t(`kind.${next.kind}`)}
             </div>
           </div>
         )}
         {done ? (
           <div className="card row">
-            <CircleCheck size={26} strokeWidth={2} color="var(--yellow)" aria-hidden="true" />
+            <CheckCircleIcon size={26} color="var(--yellow)" aria-hidden="true" />
             <span className="t-label" style={{ fontSize: 17 }}>
               {t("subject.checkedIn")}
             </span>
           </div>
         ) : (
-          <Link href="/app/scan" className="btn btn--primary btn--block">
-            <QrCode size={22} strokeWidth={2} aria-hidden="true" />
+          <Link href="/app/scan" className="btn btn--ghost btn--block">
+            <ScanIcon size={22} aria-hidden="true" />
             {t("subject.checkin")}
           </Link>
         )}

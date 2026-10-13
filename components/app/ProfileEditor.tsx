@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Lock } from "lucide-react";
+import { LockIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import { useId, useState } from "react";
 import { Avatar, AVATAR_ICONS } from "@/components/app/Avatar";
 import { useUI } from "@/components/app/ui";
@@ -90,7 +90,7 @@ export function ProfileEditor({ onDone }: { onDone: () => void }) {
               className="pe-pick"
               onClick={() => setAvatar(a)}
             >
-              {Icon ? <Icon size={30} strokeWidth={2} aria-hidden="true" /> : shown}
+              {Icon ? <Icon size={30} aria-hidden="true" /> : shown}
             </button>
           );
         })}
@@ -120,7 +120,7 @@ export function ProfileEditor({ onDone }: { onDone: () => void }) {
         <div className="pe-help" id={`${id}-help`}>
           {showError ? (
             <span className="pe-err">
-              <AlertCircle size={20} strokeWidth={2} color="var(--yellow)" aria-hidden="true" />
+              <WarningCircleIcon size={20} color="var(--yellow)" aria-hidden="true" />
               {t(`p.err.${error}`)}
             </span>
           ) : (
@@ -133,7 +133,7 @@ export function ProfileEditor({ onDone }: { onDone: () => void }) {
       </div>
 
       <p className="t-cap pe-lock">
-        <Lock size={14} strokeWidth={2} aria-hidden="true" />
+        <LockIcon size={14} aria-hidden="true" />
         {t("p.fromSchoolEdit")}
       </p>
     </form>

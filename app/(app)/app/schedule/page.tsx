@@ -13,7 +13,7 @@ export default function Schedule() {
       <p className="t-cap sub">{t("sch.sub")}</p>
       {WEEK.map((d) => (
         <section key={d.day}>
-          <h2 className="section-h" style={{ marginTop: 18 }}>
+          <h2 className="section-h" style={{ marginTop: 16 }}>
             {t(`dayLong.${d.day}`)} {d.date}
           </h2>
           <ul className="list">

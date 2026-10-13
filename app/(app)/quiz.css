@@ -51,7 +51,7 @@
   display: flex;
   flex-direction: column;
   padding-top: 24px;
-  animation: q-rise 360ms var(--ease) backwards;
+  animation: q-rise var(--spring-smooth-dur) var(--spring-smooth) backwards;
 }
 .q-body--center {
   align-items: center;
@@ -65,25 +65,25 @@
   padding-top: 40px;
 }
 .q-stack {
-  gap: 14px;
+  gap: 16px;
 }
 .q-foot {
   margin: auto 0 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding-top: 18px;
-  animation: q-rise 380ms var(--ease) 60ms backwards;
+  padding-top: 16px;
+  animation: q-rise var(--spring-smooth-dur) var(--spring-smooth) 60ms backwards;
 }
 .q-status {
   align-items: center;
   text-align: center;
-  gap: 6px;
+  gap: 8px;
 }
 .q-status__line {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-size: 1.0625rem;
   font-weight: 600;
 }
@@ -105,7 +105,7 @@
   line-height: 1.05;
   font-weight: 700;
   letter-spacing: -0.02em;
-  margin: 18px 0 0;
+  margin: 16px 0 0;
 }
 .q-big {
   font-family: var(--font-display);
@@ -118,8 +118,8 @@
 .q-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
+  gap: 8px;
+  padding: 8px 16px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.14);
   font-size: 1rem;
@@ -147,11 +147,11 @@
   color: #fff;
 }
 .q-pop {
-  animation: q-pop 560ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  animation: q-pop var(--spring-bouncy-dur) var(--spring-bouncy) backwards;
 }
 .q-draw {
   stroke-dasharray: 1;
-  animation: q-draw 420ms cubic-bezier(0.2, 0.8, 0.2, 1) 220ms backwards;
+  animation: q-draw var(--spring-smooth-dur) var(--spring-smooth) 220ms backwards;
 }
 .q-draw--late {
   animation-delay: 340ms;
@@ -193,7 +193,7 @@
   letter-spacing: -0.03em;
   color: var(--yellow);
   font-variant-numeric: tabular-nums;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 /* ---- joined ---- */
@@ -201,7 +201,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 .q-bar {
   width: 120px;
@@ -241,8 +241,8 @@
 .q-me {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px 14px 14px;
+  gap: 16px;
+  padding: 16px;
   color: #fff;
 }
 .q-me:active {
@@ -254,7 +254,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 .q-me__name {
   font-size: 1.0625rem;
@@ -270,10 +270,10 @@
 .q-joined__count {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 .q-tick {
-  animation: q-tick 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: q-tick var(--spring-snappy-dur) var(--spring-snappy);
 }
 .q-faces {
   display: flex;
@@ -294,10 +294,10 @@
 }
 .q-faces .q-face {
   box-shadow: 0 0 0 3px var(--card);
-  animation: q-face 420ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  animation: q-face var(--spring-bouncy-dur) var(--spring-bouncy) backwards;
 }
 .q-faces .q-face + .q-face {
-  margin-left: -10px;
+  margin-left: -8px;
 }
 .q-face--ice {
   background: var(--ice);
@@ -315,7 +315,7 @@
 
 /* ---- question ---- */
 .q-ask {
-  gap: 14px;
+  gap: 16px;
   padding-top: 32px;
 }
 .q-question {
@@ -338,15 +338,15 @@
 .q-options {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 .q-opt {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   width: 100%;
   min-height: 68px;
-  padding: 12px 18px 12px 12px;
+  padding: 12px 16px 12px 12px;
   border-radius: var(--radius-item);
   background: var(--card);
   color: #fff;
@@ -355,9 +355,9 @@
   font-weight: 600;
   line-height: 1.3;
   transition:
-    transform 120ms,
-    background 120ms;
-  animation: q-rise 380ms var(--ease) backwards;
+    transform var(--spring-press-dur) var(--spring-press),
+    background var(--spring-press-dur) var(--spring-press);
+  animation: q-rise var(--spring-smooth-dur) var(--spring-smooth) backwards;
   animation-delay: calc(var(--i) * 50ms + 140ms);
 }
 .q-opt:active {
@@ -401,9 +401,9 @@
   gap: 16px;
   padding: 16px 8px;
   transition:
-    transform 120ms,
-    background 120ms;
-  animation: q-rise 380ms var(--ease) backwards;
+    transform var(--spring-press-dur) var(--spring-press),
+    background var(--spring-press-dur) var(--spring-press);
+  animation: q-rise var(--spring-smooth-dur) var(--spring-smooth) backwards;
   animation-delay: calc(var(--i) * 60ms + 140ms);
 }
 .q-tf__btn:active {
@@ -461,7 +461,7 @@
   font-variant-numeric: tabular-nums;
 }
 .q-ring[data-low="true"] .q-ring__num {
-  animation: q-beat 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: q-beat var(--spring-bouncy-dur) var(--spring-bouncy);
 }
 
 /* ---- locked and waiting ---- */
@@ -469,10 +469,10 @@
   border-radius: var(--radius-item);
   background: var(--yellow);
   color: var(--ink);
-  padding: 14px 18px 18px 14px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   box-shadow: 0 14px 30px rgba(2, 8, 24, 0.25);
 }
 .q-locked__head {
@@ -484,7 +484,7 @@
 .q-answer {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   font-size: 1.125rem;
   line-height: 1.3;
   font-weight: 650;
@@ -498,7 +498,7 @@
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 .q-dots {
   display: flex;
@@ -512,7 +512,7 @@
   border: 2px solid rgba(255, 255, 255, 0.35);
   transform: scale(0.82);
   transition:
-    transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    transform var(--spring-bouncy-dur) var(--spring-bouncy),
     background 200ms,
     border-color 200ms;
 }
@@ -528,16 +528,16 @@
   flex-direction: column;
   gap: 12px;
   margin-top: 28px;
-  animation: q-rise 400ms var(--ease) 260ms backwards;
+  animation: q-rise var(--spring-smooth-dur) var(--spring-smooth) 260ms backwards;
 }
 .q-correct {
   border-radius: var(--radius-item);
   background: var(--ice);
   color: var(--ink);
-  padding: 14px 18px 18px 14px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 .q-total {
   margin-top: auto;
@@ -545,8 +545,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 20px 22px;
-  animation: q-rise 400ms var(--ease) 180ms backwards;
+  padding: 20px 24px;
+  animation: q-rise var(--spring-smooth-dur) var(--spring-smooth) 180ms backwards;
 }
 .q-total__text {
   display: flex;
@@ -562,7 +562,7 @@
   font-weight: 700;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
-  animation: q-pop 560ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  animation: q-pop var(--spring-bouncy-dur) var(--spring-bouncy) backwards;
 }
 .q-rank__label {
   font-family: var(--font-display);
@@ -570,18 +570,18 @@
   font-weight: 650;
 }
 .q-board {
-  margin: 26px 0 0;
+  margin: 24px 0 0;
   padding: 0;
   list-style: none;
-  animation: q-rise 400ms var(--ease) 120ms backwards;
+  animation: q-rise var(--spring-smooth-dur) var(--spring-smooth) 120ms backwards;
 }
 .q-row {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   min-height: 68px;
-  padding: 10px 16px;
+  padding: 8px 16px;
   background: var(--card);
 }
 .q-row + .q-row {
@@ -620,17 +620,17 @@
 }
 /* Overtaking: your row climbs past the one you passed, which drops into your old place. */
 .q-row--climb {
-  animation: q-climb 700ms cubic-bezier(0.34, 1.3, 0.64, 1) 520ms backwards;
+  animation: q-climb var(--spring-bouncy-dur) var(--spring-bouncy) 520ms backwards;
 }
 .q-row--drop {
-  animation: q-drop 700ms cubic-bezier(0.34, 1.3, 0.64, 1) 520ms backwards;
+  animation: q-drop var(--spring-bouncy-dur) var(--spring-bouncy) 520ms backwards;
 }
 
 /* ---- profile editor ---- */
 .pe {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   padding-bottom: 12px;
 }
 .pe-bar {
@@ -656,7 +656,7 @@
 .pe-bar__save {
   justify-self: end;
   min-height: 44px;
-  padding: 0 18px;
+  padding: 0 16px;
   font-size: 1rem;
 }
 .pe-bar__save:disabled {
@@ -671,12 +671,12 @@
   padding: 16px;
   border-radius: 22px;
   background: var(--sheet);
-  animation: q-rise 280ms var(--ease) backwards;
+  animation: q-rise var(--spring-smooth-dur) var(--spring-smooth) backwards;
 }
 .pe-ask__btns {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 .pe-ask__btns .btn {
   min-height: 48px;
@@ -686,17 +686,17 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 .pe-pop {
-  animation: q-pop 460ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  animation: q-pop var(--spring-bouncy-dur) var(--spring-bouncy) backwards;
 }
 .pe-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px;
+  gap: 16px;
   justify-items: center;
-  padding: 0 10px;
+  padding: 0 8px;
 }
 .pe-pick {
   width: 4rem;
@@ -709,7 +709,7 @@
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1.25rem;
-  transition: transform 120ms;
+  transition: transform var(--spring-press-dur) var(--spring-press);
 }
 .pe-pick:active {
   transform: scale(0.92);
@@ -730,7 +730,7 @@
   width: 100%;
   min-height: 56px;
   border-radius: 18px;
-  padding: 0 18px;
+  padding: 0 16px;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.3);
   font-size: 1.0625rem;
@@ -756,13 +756,13 @@
 .pe-lock {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin: 0;
   padding: 0 4px;
 }
 .pe-editbtn {
   min-height: 44px;
-  padding: 0 18px;
+  padding: 0 16px;
   font-size: 1rem;
 }
 
@@ -771,16 +771,16 @@
   position: absolute;
   left: 12px;
   right: 12px;
-  bottom: calc(env(safe-area-inset-bottom) + 14px);
+  bottom: calc(env(safe-area-inset-bottom) + 16px);
   z-index: 5;
   border-radius: 32px;
-  padding: 26px 20px 20px;
+  padding: 24px 20px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   text-align: center;
-  animation: q-sheet 340ms cubic-bezier(0.23, 1, 0.32, 1) backwards;
+  animation: q-sheet var(--spring-smooth-dur) var(--spring-smooth) backwards;
 }
 .scan-miss__badge {
   width: 4rem;
@@ -798,7 +798,7 @@
   margin: 0;
 }
 .scan-miss__body {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   font-size: 1rem;
   line-height: 1.45;
   color: var(--text-2);
@@ -883,8 +883,8 @@
 
 /* The picked answer morphs into the locked card, and the quiz card from joined into the lobby. */
 ::view-transition-group(.q-morph) {
-  animation-duration: 380ms;
-  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation-duration: var(--spring-smooth-dur);
+  animation-timing-function: var(--spring-smooth);
 }
 
 @media (prefers-reduced-motion: reduce) {

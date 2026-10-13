@@ -1,6 +1,7 @@
 "use client";
 
-import { Bell, ChevronRight } from "lucide-react";
+import { CaretRightIcon } from "@phosphor-icons/react";
+import { NotifIcon } from "@/components/app/NotifIcon";
 import Link from "next/link";
 import { formatDate, useNotifs } from "@/lib/app/derived";
 import { useT } from "@/lib/app/i18n";
@@ -13,14 +14,14 @@ export default function Notifications() {
 
   return (
     <main className="screen">
-      <h1 className="large" style={{ marginTop: 14 }}>
+      <h1 className="large" style={{ marginTop: 16 }}>
         {t("notif.title")}
       </h1>
 
       {unread.length > 0 && (
         <button
           className="btn btn--ghost btn--block"
-          style={{ minHeight: 48, fontSize: "0.9375rem", marginBottom: 14 }}
+          style={{ minHeight: 48, fontSize: "0.9375rem", marginBottom: 16 }}
           onClick={() => actions.markAllRead(items.map((n) => n.id))}
         >
           {t("notif.markAll")}
@@ -37,7 +38,7 @@ export default function Notifications() {
             <li key={n.id}>
               <Link href={`/app/notifications/${n.id}`} className={`item${n.unread ? " item--unread" : ""}`}>
                 <span className="item__icon">
-                  <Bell size={22} strokeWidth={2} aria-hidden="true" />
+                  <NotifIcon n={n} />
                 </span>
                 <span className="grow">
                   <span className="item__title" style={{ display: "block" }}>
@@ -45,14 +46,14 @@ export default function Notifications() {
                       ? t("notif.checkin.title", { subject: t(`subj.${n.subject}`) })
                       : t(`notif.${n.id as "n-math"}.title`)}
                   </span>
-                  <span className="t-cap" style={{ display: "flex", flexWrap: "wrap", columnGap: 10, marginTop: 2 }}>
+                  <span className="t-cap" style={{ display: "flex", flexWrap: "wrap", columnGap: 8, marginTop: 4 }}>
                     {formatDate(n.when, locale)}
                     <span className="dot-unread" data-on={n.unread} aria-hidden={!n.unread}>
                       {t("notif.unread")}
                     </span>
                   </span>
                 </span>
-                <ChevronRight size={22} strokeWidth={2} aria-hidden="true" />
+                <CaretRightIcon size={22} aria-hidden="true" />
               </Link>
             </li>
           ))}

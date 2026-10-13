@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Check, Hourglass, Lock, Minus, Pencil, Users, X } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, CheckIcon, HourglassIcon, LockIcon, MinusIcon, PencilSimpleIcon, UsersIcon, XIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useState, useSyncExternalStore, ViewTransition, type CSSProperties } from "react";
 import { Avatar } from "@/components/app/Avatar";
@@ -120,7 +120,7 @@ function Lobby({ subject, run, onLeave }: { subject: Subject; run: QuizRun; onLe
             <span className="q-me__name">{me.name}</span>
             <span className="t-cap">{t("q.you")}</span>
           </span>
-          <Pencil size={22} strokeWidth={2} aria-hidden="true" />
+          <PencilSimpleIcon size={22} aria-hidden="true" />
         </button>
         <section className="card q-joined" aria-label={`${run.joined} ${t("q.joinedCount")}`}>
           <div className="row row--between" style={{ alignItems: "flex-end" }}>
@@ -130,7 +130,7 @@ function Lobby({ subject, run, onLeave }: { subject: Subject; run: QuizRun; onLe
               </span>
               <span className="t-label muted">{t("q.joinedCount")}</span>
             </div>
-            <Users size={30} strokeWidth={2} aria-hidden="true" />
+            <UsersIcon size={30} aria-hidden="true" />
           </div>
           <div className="q-faces" aria-hidden="true">
             {run.joinedRecent.map((i) => (
@@ -144,7 +144,7 @@ function Lobby({ subject, run, onLeave }: { subject: Subject; run: QuizRun; onLe
       </div>
       <div className="q-foot q-status" role="status">
         <span className="q-status__line">
-          <Hourglass size={22} strokeWidth={2} color="var(--yellow)" aria-hidden="true" />
+          <HourglassIcon size={22} color="var(--yellow)" aria-hidden="true" />
           {t("q.waitTeacher")}
         </span>
         <span className="t-cap q-cap">{t("q.keepOpen")}</span>
@@ -201,7 +201,7 @@ function Question({ run, onLeave }: { run: QuizRun; onLeave: () => void }) {
                 {[0, 1].map((i) => (
                   <ViewTransition key={i} name={`q-pick-${i}`} share="q-morph" default="none">
                     <button className="q-tf__btn" style={{ "--i": i } as CSSProperties} onClick={() => pick(i)}>
-                      <span className="q-tf__icon">{i === 0 ? <Check size={38} strokeWidth={2.4} aria-hidden="true" /> : <X size={38} strokeWidth={2.4} aria-hidden="true" />}</span>
+                      <span className="q-tf__icon">{i === 0 ? <CheckIcon size={38} weight="bold" aria-hidden="true" /> : <XIcon size={38} weight="bold" aria-hidden="true" />}</span>
                       <span className="q-tf__label">{label(i)}</span>
                     </button>
                   </ViewTransition>
@@ -217,12 +217,12 @@ function Question({ run, onLeave }: { run: QuizRun; onLeave: () => void }) {
             <ViewTransition name={`q-pick-${run.picked}`} share="q-morph" default="none">
               <div className="q-locked">
                 <span className="t-label q-locked__head">
-                  <Lock size={18} strokeWidth={2.2} aria-hidden="true" />
+                  <LockIcon size={18} weight="bold" aria-hidden="true" />
                   {t("q.locked")}
                 </span>
                 <span className="q-answer">
                   <span className="q-letter q-letter--ink">
-                    {q.kind === "tf" ? run.picked === 0 ? <Check size={22} strokeWidth={2.6} aria-hidden="true" /> : <X size={22} strokeWidth={2.6} aria-hidden="true" /> : letters[run.picked]}
+                    {q.kind === "tf" ? run.picked === 0 ? <CheckIcon size={22} weight="bold" aria-hidden="true" /> : <XIcon size={22} weight="bold" aria-hidden="true" /> : letters[run.picked]}
                   </span>
                   {label(run.picked)}
                 </span>
@@ -255,7 +255,7 @@ function Reveal({ run }: { run: QuizRun }) {
   const letters = LETTERS[locale];
   const label = (i: number) => (q.kind === "tf" ? t(i === 0 ? "q.true" : "q.false") : q.options[i][locale]);
   const mark = (i: number) =>
-    q.kind === "tf" ? i === 0 ? <Check size={22} strokeWidth={2.6} aria-hidden="true" /> : <X size={22} strokeWidth={2.6} aria-hidden="true" /> : letters[i];
+    q.kind === "tf" ? i === 0 ? <CheckIcon size={22} weight="bold" aria-hidden="true" /> : <XIcon size={22} weight="bold" aria-hidden="true" /> : letters[i];
   const gain = useCountUp(run.gain, 0, 700);
   const total = useCountUp(run.points, run.points - run.gain, 1000);
 
@@ -289,7 +289,7 @@ function Reveal({ run }: { run: QuizRun }) {
           <div className="q-mid">
             <div className="q-correct">
               <span className="t-label q-locked__head">
-                <Check size={18} strokeWidth={2.6} aria-hidden="true" />
+                <CheckIcon size={18} weight="bold" aria-hidden="true" />
                 {t("q.correctAnswer")}
               </span>
               <span className="q-answer">
@@ -298,7 +298,7 @@ function Reveal({ run }: { run: QuizRun }) {
               </span>
             </div>
             {run.picked !== null && (
-              <p className="t-cap q-cap" style={{ margin: "0 6px" }}>
+              <p className="t-cap q-cap" style={{ margin: "0 8px" }}>
                 {q.kind === "tf"
                   ? t("q.yourAnswerTf", { text: label(run.picked) })
                   : t("q.yourAnswer", { letter: letters[run.picked], text: label(run.picked) })}
@@ -313,7 +313,7 @@ function Reveal({ run }: { run: QuizRun }) {
           <span className="q-big">{total}</span>
         </div>
         <span className="q-chip">
-          {run.gain > 0 && <ArrowUp size={18} strokeWidth={2.4} aria-hidden="true" />}
+          {run.gain > 0 && <ArrowUpIcon size={18} weight="bold" aria-hidden="true" />}
           {run.gain > 0 ? run.gain : "+0"}
         </span>
       </section>
@@ -342,11 +342,11 @@ function Between({ run, onLeave, onHome }: { run: QuizRun; onLeave: () => void; 
         <span className="q-rank__label">{t("q.place")}</span>
         <span className="q-chip">
           {moved > 0 ? (
-            <ArrowUp size={18} strokeWidth={2.4} color="var(--yellow)" aria-hidden="true" />
+            <ArrowUpIcon size={18} weight="bold" color="var(--yellow)" aria-hidden="true" />
           ) : moved < 0 ? (
-            <ArrowDown size={18} strokeWidth={2.4} aria-hidden="true" />
+            <ArrowDownIcon size={18} weight="bold" aria-hidden="true" />
           ) : (
-            <Minus size={18} strokeWidth={2.4} aria-hidden="true" />
+            <MinusIcon size={18} weight="bold" aria-hidden="true" />
           )}
           {moved === 1
             ? t("q.up1")
@@ -385,14 +385,14 @@ function Between({ run, onLeave, onHome }: { run: QuizRun; onLeave: () => void; 
           <>
             <span className="q-status__line">{t("q.last")}</span>
             <span className="t-cap q-cap">{t("q.lastNote")}</span>
-            <button className="btn btn--primary btn--block" style={{ marginTop: 14 }} onClick={onHome}>
+            <button className="btn btn--primary btn--block" style={{ marginTop: 16 }} onClick={onHome}>
               {t("q.home")}
             </button>
           </>
         ) : (
           <>
             <span className="q-status__line">
-              <Hourglass size={22} strokeWidth={2} color="var(--yellow)" aria-hidden="true" />
+              <HourglassIcon size={22} color="var(--yellow)" aria-hidden="true" />
               {t("q.next")}
             </span>
             <span className="t-cap q-cap">{t("q.nextNote")}</span>

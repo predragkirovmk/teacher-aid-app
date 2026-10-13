@@ -23,6 +23,8 @@ const csp = [
 const nextConfig: NextConfig = {
   experimental: {
     globalNotFound: true,
+    // Phosphor ships thousands of icons from one entry; only the ones imported are compiled.
+    optimizePackageImports: ["@phosphor-icons/react"],
   },
   async redirects() {
     return [

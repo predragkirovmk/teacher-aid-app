@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ViewTransition } from "react";
-import { ChevronRight } from "lucide-react";
+import { CaretRightIcon } from "@phosphor-icons/react";
 import type { Subject } from "@/lib/app/data";
 import { useT } from "@/lib/app/i18n";
 
@@ -22,7 +22,7 @@ export function SubjectCard({ subject, hero = false }: { subject: Subject; hero?
           {subject.initials}
         </span>
         <span className="grow">{t(`teacher.${subject.id}`)}</span>
-        <ChevronRight size={22} strokeWidth={2} aria-hidden="true" />
+        <CaretRightIcon size={22} aria-hidden="true" />
       </span>
     </Link>
   );

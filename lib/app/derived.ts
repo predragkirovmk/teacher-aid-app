@@ -117,6 +117,11 @@ export function formatDate(ms: number, locale: "mk" | "en") {
   return `${d.getDate()} ${MONTHS[locale][d.getMonth()]}`;
 }
 
+/** Thousands grouped the local way (1.480 in Macedonian, 1,480 in English), by hand for the same reason. */
+export function formatPoints(n: number, locale: "mk" | "en") {
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, locale === "mk" ? "." : ",");
+}
+
 export function formatTime(ms: number) {
   const d = new Date(ms);
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;

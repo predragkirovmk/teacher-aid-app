@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, ImageUp, QrCode, TriangleAlert, X } from "lucide-react";
+import { CameraIcon, ImageIcon, QrCodeIcon, WarningIcon, XIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useT } from "@/lib/app/i18n";
@@ -166,7 +166,7 @@ export default function Scan() {
         <div className="scan__top">
           {/* The scanner works like a modal: Back returns to the screen it was opened from. */}
           <button className="round" aria-label={t("close")} style={{ background: "rgba(3,12,30,0.5)" }} onClick={() => leave(router)}>
-            <X size={24} strokeWidth={2} />
+            <XIcon size={24} />
           </button>
           <h1 className="top__title" style={{ margin: 0 }}>
             {t("scan.title")}
@@ -183,7 +183,7 @@ export default function Scan() {
           </div>
         )}
         <p className={`scan__msg${failed ? " scan__msg--block" : ""}`} role="status">
-          {failed && <TriangleAlert size={32} strokeWidth={2} color="var(--yellow)" style={{ display: "block", margin: "0 auto 12px" }} aria-hidden="true" />}
+          {failed && <WarningIcon size={32} color="var(--yellow)" style={{ display: "block", margin: "0 auto 12px" }} aria-hidden="true" />}
           {message}
         </p>
       </div>
@@ -222,7 +222,7 @@ export default function Scan() {
           }}
         />
         <button className="btn btn--ghost span2" onClick={() => fileRef.current?.click()}>
-          <ImageUp size={20} strokeWidth={2} aria-hidden="true" />
+          <ImageIcon size={20} aria-hidden="true" />
           {t("scan.upload")}
         </button>
       </div>
@@ -230,7 +230,7 @@ export default function Scan() {
       {needIntro && (
         <div className="scan-intro">
           <span className="badge badge--quiet" style={{ width: 96, height: 96 }}>
-            <Camera size={44} strokeWidth={2} aria-hidden="true" />
+            <CameraIcon size={44} aria-hidden="true" />
           </span>
           <h2 className="t-title">{t("scan.intro.title")}</h2>
           <p className="t-body muted" style={{ margin: 0, maxWidth: 320 }}>
@@ -238,7 +238,7 @@ export default function Scan() {
           </p>
           <button
             className="btn btn--primary btn--block"
-            style={{ marginTop: 18, maxWidth: 320 }}
+            style={{ marginTop: 16, maxWidth: 320 }}
             onClick={() => {
               try {
                 window.localStorage.setItem(INTRO_KEY, "1");
@@ -250,8 +250,8 @@ export default function Scan() {
           >
             {t("scan.intro.cta")}
           </button>
-          <button className="sr" onClick={() => leave(router)}>
-            {t("back")}
+          <button className="btn btn--plain" style={{ maxWidth: 320 }} onClick={() => leave(router)}>
+            {t("scan.intro.later")}
           </button>
         </div>
       )}
@@ -259,7 +259,7 @@ export default function Scan() {
       {result && (
         <section className="scan-miss glass" role="alert">
           <span className="scan-miss__badge" aria-hidden="true">
-            <QrCode size={32} strokeWidth={2} color="var(--yellow)" />
+            <QrCodeIcon size={32} color="var(--yellow)" />
           </span>
           <h2 className="scan-miss__title">{qt("q.unknown.title")}</h2>
           <p className="scan-miss__body">{qt("q.unknown.body")}</p>

@@ -55,15 +55,16 @@ export const NOTIFS: { id: NotifId; subject: SubjectId; when: string; link: stri
   { id: "n-late", subject: "physics", when: "2026-10-08T08:12", link: "/app/attendance" },
 ];
 
-export const LEADERBOARD: { name: string; points: number; me?: boolean }[] = [
-  { name: "Ana Georgievska", points: 1480 },
-  { name: "Luka Stojanovski", points: 1415 },
-  { name: "Mila Jovanova", points: 1360 },
-  { name: "Marko Trajkovski", points: 1310, me: true },
-  { name: "Nina Popovska", points: 1265 },
-  { name: "Viktor Ilievski", points: 1190 },
-  { name: "Sara Nikolova", points: 1120 },
-  { name: "Filip Angelov", points: 1075 },
+/** Classmates in both scripts, like the teachers; the student's own row shows their profile name. */
+export const LEADERBOARD: { id: string; name: Record<Locale, string>; points: number; me?: boolean }[] = [
+  { id: "ana", name: { mk: "Ана Георгиевска", en: "Ana Georgievska" }, points: 1480 },
+  { id: "luka", name: { mk: "Лука Стојановски", en: "Luka Stojanovski" }, points: 1415 },
+  { id: "mila", name: { mk: "Мила Јованова", en: "Mila Jovanova" }, points: 1360 },
+  { id: "me", name: { mk: "Марко Трајковски", en: "Marko Trajkovski" }, points: 1310, me: true },
+  { id: "nina", name: { mk: "Нина Поповска", en: "Nina Popovska" }, points: 1265 },
+  { id: "viktor", name: { mk: "Виктор Илиевски", en: "Viktor Ilievski" }, points: 1190 },
+  { id: "sara", name: { mk: "Сара Николова", en: "Sara Nikolova" }, points: 1120 },
+  { id: "filip", name: { mk: "Филип Ангелов", en: "Filip Angelov" }, points: 1075 },
 ];
 
 /** Last maths lesson: 4 of 5 correct. */

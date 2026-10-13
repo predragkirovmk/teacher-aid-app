@@ -1,6 +1,6 @@
 "use client";
 
-import { Languages, QrCode, RotateCcw } from "lucide-react";
+import { ArrowCounterClockwiseIcon, QrCodeIcon, TranslateIcon } from "@phosphor-icons/react";
 import { Row } from "@/components/app/Row";
 import { Top } from "@/components/app/Top";
 import { useUI } from "@/components/app/ui";
@@ -16,7 +16,7 @@ export default function SettingsPage() {
     <main className="screen">
       <Top title={t("settings.title")} />
       <div className="list">
-        <Row icon={Languages} label={t("settings.language")} value={t("profile.langValue")} onClick={openLang} />
+        <Row icon={TranslateIcon} label={t("settings.language")} value={t("profile.langValue")} onClick={openLang} />
 
         <div className="item">
           <span className="grow">
@@ -52,7 +52,7 @@ export default function SettingsPage() {
           }
         >
           <span className="item__icon">
-            <RotateCcw size={22} strokeWidth={2} aria-hidden="true" />
+            <ArrowCounterClockwiseIcon size={22} aria-hidden="true" />
           </span>
           <span className="grow">
             <span className="item__title" style={{ display: "block" }}>
@@ -61,9 +61,9 @@ export default function SettingsPage() {
             <span className="t-cap">{t("settings.resetHint")}</span>
           </span>
         </button>
-        <Row icon={QrCode} label={t("scan.kit")} href="/app/qr-kit" />
+        <Row icon={QrCodeIcon} label={t("scan.kit")} href="/app/qr-kit" />
       </div>
-      <p className="t-cap" style={{ textAlign: "center", marginTop: 26 }}>
+      <p className="t-cap" style={{ textAlign: "center", marginTop: 24 }}>
         {t("settings.about")}
       </p>
     </main>

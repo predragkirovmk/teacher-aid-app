@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, type LucideIcon } from "lucide-react";
+import { CaretRightIcon, type Icon } from "@phosphor-icons/react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -13,7 +13,7 @@ export function Row({
   onClick,
   chevron = true,
 }: {
-  icon: LucideIcon;
+  icon: Icon;
   label: string;
   value?: ReactNode;
   href?: string;
@@ -23,14 +23,14 @@ export function Row({
   const body = (
     <>
       <span className="item__icon">
-        <Icon size={22} strokeWidth={2} aria-hidden="true" />
+        <Icon size={22} aria-hidden="true" />
       </span>
       {/* At large text sizes the value wraps under the label instead of colliding with it. */}
       <span className="grow item__main">
         <span className="item__title">{label}</span>
         {value && <span className="t-cap">{value}</span>}
       </span>
-      {chevron && <ChevronRight size={22} strokeWidth={2} aria-hidden="true" />}
+      {chevron && <CaretRightIcon size={22} aria-hidden="true" />}
     </>
   );
   return href ? (

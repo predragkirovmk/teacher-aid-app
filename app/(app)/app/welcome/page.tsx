@@ -42,7 +42,7 @@ export default function Welcome() {
         <button className="btn btn--primary btn--block" style={{ marginTop: 28 }} onClick={() => actions.setSignedIn(true)}>
           {t("welcome.cta")}
         </button>
-        <div className="row" style={{ gap: 10, marginTop: 8 }}>
+        <div className="row" style={{ gap: 8, marginTop: 8 }}>
           <button className="pill" onClick={() => actions.setLocale("mk")}>
             МК
           </button>

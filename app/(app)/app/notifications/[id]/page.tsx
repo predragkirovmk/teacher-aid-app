@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell } from "lucide-react";
+import { NotifIcon } from "@/components/app/NotifIcon";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect } from "react";
@@ -38,17 +38,17 @@ export default function NotificationDetail() {
       <Top title={t("notif.title")} />
       <div className="card" style={{ padding: 24 }}>
         <span className="item__icon" style={{ marginBottom: 16 }}>
-          <Bell size={22} strokeWidth={2} />
+          <NotifIcon n={n} />
         </span>
         <h2 className="t-title">{title}</h2>
-        <p className="t-cap" style={{ margin: "6px 0 16px" }}>
+        <p className="t-cap" style={{ margin: "8px 0 16px" }}>
           {formatDate(n.when, locale)}, {formatTime(n.when)}
         </p>
         <p className="t-body" style={{ margin: 0 }}>
           {body}
         </p>
       </div>
-      <Link href={n.link} className="btn btn--primary btn--block" style={{ marginTop: 18 }}>
+      <Link href={n.link} className="btn btn--primary btn--block" style={{ marginTop: 16 }}>
         {t("notif.open")}
       </Link>
     </main>

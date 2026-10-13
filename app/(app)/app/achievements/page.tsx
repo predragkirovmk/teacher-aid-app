@@ -1,6 +1,6 @@
 "use client";
 
-import { Award, Flame, Hand, Lock, Star, type LucideIcon } from "lucide-react";
+import { FlameIcon, HandIcon, LockIcon, MedalIcon, StarIcon, type Icon } from "@phosphor-icons/react";
 import { useEffect, useSyncExternalStore } from "react";
 import { Top } from "@/components/app/Top";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/app/data";
@@ -18,7 +18,7 @@ const readSeen = () => {
   }
 };
 
-const ICON: Record<AchievementId, LucideIcon> = { answer: Hand, ontime: Award, streak: Flame, perfect: Star };
+const ICON: Record<AchievementId, Icon> = { answer: HandIcon, ontime: MedalIcon, streak: FlameIcon, perfect: StarIcon };
 
 export default function Achievements() {
   const { t } = useT();
@@ -50,7 +50,7 @@ export default function Achievements() {
           return (
             <li key={a} className="item" style={{ minHeight: 84 }}>
               <span className={`item__icon${fresh(a) ? " unlock" : ""}`} style={on ? { background: "var(--yellow)", color: "var(--ink)" } : undefined}>
-                {on ? <Icon size={22} strokeWidth={2} /> : <Lock size={22} strokeWidth={2} />}
+                {on ? <Icon size={22} /> : <LockIcon size={22} />}
               </span>
               <span className="grow item__main">
                 <span className="item__text">

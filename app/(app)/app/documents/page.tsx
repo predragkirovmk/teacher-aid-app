@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileText } from "lucide-react";
+import { DownloadSimpleIcon, FileIcon } from "@phosphor-icons/react";
 import { Top } from "@/components/app/Top";
 import { useUI } from "@/components/app/ui";
 import { DOCS } from "@/lib/app/data";
@@ -18,7 +18,7 @@ export default function Documents() {
           <li key={d}>
             <button className="item" onClick={() => toast(t("doc.demo"))}>
               <span className="item__icon">
-                <FileText size={22} strokeWidth={2} />
+                <FileIcon size={22} />
               </span>
               <span className="grow">
                 <span className="item__title" style={{ display: "block" }}>
@@ -26,7 +26,7 @@ export default function Documents() {
                 </span>
                 <span className="t-cap">{t("doc.pdf")}</span>
               </span>
-              <Download size={22} strokeWidth={2} aria-hidden="true" />
+              <DownloadSimpleIcon size={22} aria-hidden="true" />
             </button>
           </li>
         ))}

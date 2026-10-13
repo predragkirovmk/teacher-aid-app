@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Search } from "lucide-react";
+import { CaretRightIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useSyncExternalStore, ViewTransition } from "react";
@@ -91,14 +91,14 @@ export default function Home() {
           aria-label={t("home.search")}
           enterKeyHint="search"
         />
-        <Search size={22} strokeWidth={2} aria-hidden="true" />
+        <MagnifyingGlassIcon size={22} aria-hidden="true" />
         {q.trim() && (
           <div className="results glass" role="listbox">
             {results.length === 0 && <div className="result muted">{t("home.noResults")}</div>}
             {results.map(([href, label]) => (
               <button key={href} className="result" role="option" aria-selected="false" onClick={() => router.push(href)}>
                 <span className="grow">{label}</span>
-                <ChevronRight size={20} strokeWidth={2} aria-hidden="true" />
+                <CaretRightIcon size={20} aria-hidden="true" />
               </button>
             ))}
           </div>
@@ -122,7 +122,7 @@ export default function Home() {
               {nextSubject.initials}
             </span>
             <span className="grow">{t(`teacher.${nextSubject.id}`)}</span>
-            <ChevronRight size={22} strokeWidth={2} aria-hidden="true" />
+            <CaretRightIcon size={22} aria-hidden="true" />
           </div>
         </Link>
         </ViewTransition>
@@ -153,13 +153,13 @@ export default function Home() {
         <div className="grid2">
           <Link href="/app/attendance" className="card" style={{ padding: 16 }}>
             <div className="t-label">{t("home.attendance")}</div>
-            <div className={`tile-big${att.counting ? " counting" : ""}`} style={{ marginTop: 10 }}>
+            <div className={`tile-big${att.counting ? " counting" : ""}`} style={{ marginTop: 8 }}>
               {att.value}%
             </div>
           </Link>
           <Link href="/app/summary" className="card" style={{ padding: 16 }}>
             <div className="t-label">{t("home.summary")}</div>
-            <div className="tile-big" style={{ marginTop: 10 }}>
+            <div className="tile-big" style={{ marginTop: 8 }}>
               4/5
             </div>
             <div className="t-cap" style={{ marginTop: 4 }}>
@@ -169,7 +169,7 @@ export default function Home() {
         </div>
         </div>
 
-        <h2 className="section-h" style={{ margin: "10px 4px 0" }}>
+        <h2 className="section-h" style={{ margin: "8px 4px 0" }}>
           {t("home.subjects")}
         </h2>
         <div {...rise(3)}>

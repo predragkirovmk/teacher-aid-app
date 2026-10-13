@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft } from "lucide-react";
+import { CaretLeftIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useT } from "@/lib/app/i18n";
@@ -20,7 +20,7 @@ export function Top({ title, right, onBack }: { title: string; right?: ReactNode
           else router.push("/app");
         }}
       >
-        <ChevronLeft size={26} strokeWidth={2} />
+        <CaretLeftIcon size={26} />
       </button>
       <h1 className="top__title" style={{ margin: 0 }}>
         {title}

@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { XIcon } from "@phosphor-icons/react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { Subject } from "@/lib/app/data";
 import { useT } from "@/lib/app/i18n";
@@ -51,7 +51,7 @@ export function QuizTop({
   return (
     <header className="q-top">
       <button className="round" aria-label={t("q.leave")} onClick={onLeave}>
-        <X size={24} strokeWidth={2} aria-hidden="true" />
+        <XIcon size={24} aria-hidden="true" />
       </button>
       <div className="q-top__mid">
         {label && <span className="q-top__label">{label}</span>}

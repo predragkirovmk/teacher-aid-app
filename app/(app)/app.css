@@ -16,7 +16,18 @@
   --radius-item: 24px;
   --radius-tile: 22px;
   --tab-h: 68px;
-  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+  /* Springs as SwiftUI defines them, spring(duration:bounce:), sampled into linear() by
+     scratch tooling; each duration is the settle time, the perceived duration is shorter.
+     press 0.25/0 for touch feedback, snappy 0.3/0.15 for small state changes,
+     smooth 0.4/0 for sheets, morphs and arrivals, bouncy 0.5/0.3 for rare rewards. */
+  --spring-press: linear(0, 0.069, 0.2109, 0.3667, 0.5096, 0.6296, 0.7255, 0.7995, 0.8552, 0.8964, 0.9265, 0.9481, 0.9636, 0.9746, 0.9824, 0.9878, 0.9916, 0.9942, 0.996, 0.9973, 1);
+  --spring-press-dur: 340ms;
+  --spring-snappy: linear(0, 0.0361, 0.1222, 0.2332, 0.3519, 0.4673, 0.5731, 0.666, 0.7448, 0.8098, 0.862, 0.9031, 0.9345, 0.958, 0.9751, 0.9872, 0.9954, 1.0007, 1.0039, 1.0056, 1.0062, 1.0062, 1.0058, 1.0051, 1.0044, 1.0037, 1.003, 1.0023, 1);
+  --spring-snappy-dur: 390ms;
+  --spring-smooth: linear(0, 0.0495, 0.1582, 0.2864, 0.4129, 0.5273, 0.6256, 0.7073, 0.7736, 0.8263, 0.8677, 0.8998, 0.9246, 0.9435, 0.9578, 0.9686, 0.9767, 0.9828, 0.9873, 0.9906, 0.9931, 0.995, 0.9963, 0.9973, 1);
+  --spring-smooth-dur: 540ms;
+  --spring-bouncy: linear(0, 0.0236, 0.0844, 0.1696, 0.2685, 0.3731, 0.477, 0.5758, 0.6665, 0.7472, 0.817, 0.8759, 0.9242, 0.9626, 0.9921, 1.0139, 1.0291, 1.0388, 1.0441, 1.0459, 1.0452, 1.0427, 1.039, 1.0345, 1.0297, 1.0249, 1.0203, 1.0161, 1.0123, 1.009, 1.0062, 1.0039, 1.002, 1.0006, 0.9995, 0.9988, 0.9983, 0.998, 0.9979, 0.9979, 1);
+  --spring-bouncy-dur: 730ms;
   --font: system-ui, -apple-system, "SF Pro Text", "Segoe UI", sans-serif;
   --font-display: var(--font-golos), system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: dark;
@@ -96,7 +107,7 @@ a {
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
-  padding: calc(env(safe-area-inset-top) + 18px) 20px calc(var(--tab-h) + env(safe-area-inset-bottom) + 48px);
+  padding: calc(env(safe-area-inset-top) + 16px) 20px calc(var(--tab-h) + env(safe-area-inset-bottom) + 48px);
   scrollbar-width: none;
 }
 .screen::-webkit-scrollbar {
@@ -161,7 +172,7 @@ a {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr) 48px;
   align-items: center;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
   min-height: 48px;
 }
 .top__title {
@@ -179,7 +190,7 @@ a {
   place-items: center;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid var(--line);
-  transition: transform 120ms;
+  transition: transform var(--spring-press-dur) var(--spring-press);
 }
 .round:active {
   transform: scale(0.94);
@@ -191,7 +202,7 @@ a {
   align-items: center;
   gap: 8px;
   padding-top: 4px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 .brand__name {
   font-weight: 650;
@@ -213,8 +224,8 @@ a {
   border-radius: var(--radius-card);
   padding: 20px;
   transition:
-    transform 120ms,
-    background 120ms;
+    transform var(--spring-press-dur) var(--spring-press),
+    background var(--spring-press-dur) var(--spring-press);
 }
 a.card:active,
 button.card:active {
@@ -228,18 +239,18 @@ button.card:active {
 .stack {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 /* Two columns while they fit; one once larger text needs the width (rem grows with the text size). */
 .grid2 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
-  gap: 14px;
+  gap: 16px;
 }
 .row {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
 }
 .row--between {
   justify-content: space-between;
@@ -262,15 +273,15 @@ button.card:active {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   min-height: 56px;
-  padding: 0 26px;
+  padding: 0 24px;
   border-radius: 999px;
   font-weight: 650;
   font-size: 1.0625rem;
   transition:
-    transform 120ms,
-    background 120ms;
+    transform var(--spring-press-dur) var(--spring-press),
+    background var(--spring-press-dur) var(--spring-press);
 }
 .btn:active {
   transform: scale(0.97);
@@ -289,11 +300,19 @@ button.card:active {
 .btn--block {
   width: 100%;
 }
+/* Borderless: the third level, for a way out beside a primary action. */
+.btn--plain {
+  min-height: 48px;
+  color: var(--text-2);
+}
+.btn--plain:active {
+  color: var(--text);
+}
 
 /* ---- search ---- */
 .search {
   position: relative;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 .search input {
   width: 100%;
@@ -301,7 +320,7 @@ button.card:active {
   border-radius: 999px;
   border: 1px solid var(--line);
   background: var(--card);
-  padding: 0 56px 0 22px;
+  padding: 0 56px 0 24px;
   font-size: 1rem;
   outline: none;
 }
@@ -323,7 +342,7 @@ button.card:active {
   z-index: 5;
   left: 0;
   right: 0;
-  top: 62px;
+  top: 64px;
   border-radius: 24px;
   padding: 8px;
 }
@@ -333,7 +352,7 @@ button.card:active {
   gap: 12px;
   width: 100%;
   min-height: 52px;
-  padding: 0 14px;
+  padding: 0 16px;
   border-radius: 16px;
   text-align: left;
 }
@@ -345,7 +364,7 @@ button.card:active {
 .week {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  gap: 8px;
   text-align: center;
 }
 .week b {
@@ -358,7 +377,7 @@ button.card:active {
   font-style: normal;
   font-size: 1.625rem;
   font-weight: 700;
-  margin: 2px 0;
+  margin: 4px 0;
   font-variant-numeric: tabular-nums;
 }
 .week span {
@@ -372,13 +391,13 @@ button.card:active {
   width: calc(100% - 28px);
   min-height: 190px;
   border-radius: var(--radius-card);
-  padding: 22px;
+  padding: 24px;
   overflow: hidden;
   scroll-snap-align: start;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: transform 120ms;
+  transition: transform var(--spring-press-dur) var(--spring-press);
 }
 .subject:active {
   transform: scale(0.985);
@@ -389,8 +408,8 @@ button.card:active {
 }
 .subject__glyphs {
   position: absolute;
-  right: -10px;
-  top: 6px;
+  right: -8px;
+  top: 8px;
   font-size: 88px;
   font-weight: 800;
   line-height: 1;
@@ -483,8 +502,8 @@ button.card:active {
   right: 12px;
   bottom: calc(env(safe-area-inset-bottom) + 12px);
   border-radius: 32px;
-  padding: 14px 14px 18px;
-  animation: slide-up 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  padding: 16px;
+  animation: slide-up var(--spring-smooth-dur) var(--spring-smooth);
 }
 @keyframes slide-up {
   from {
@@ -496,7 +515,7 @@ button.card:active {
   display: block;
   width: 100%;
   height: 44px;
-  margin: -14px 0 0;
+  margin: -16px 0 0;
   touch-action: none;
   cursor: grab;
   display: grid;
@@ -516,10 +535,10 @@ button.card:active {
   text-align: center;
   font-size: 1.0625rem;
   font-weight: 650;
-  padding: 0 12px 14px;
+  padding: 0 12px 16px;
 }
 .sheet .btn + .btn {
-  margin-top: 10px;
+  margin-top: 8px;
 }
 .opt {
   display: flex;
@@ -527,7 +546,7 @@ button.card:active {
   justify-content: space-between;
   width: 100%;
   min-height: 64px;
-  padding: 0 18px;
+  padding: 0 16px;
   border-radius: 22px;
   font-size: 1.25rem;
   font-weight: 600;
@@ -543,13 +562,13 @@ button.card:active {
   font-size: 0.8125rem;
   font-weight: 650;
   color: var(--text-2);
-  margin-left: 10px;
+  margin-left: 8px;
 }
 .check {
   color: #fff;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 0.875rem;
   font-weight: 650;
 }
@@ -571,10 +590,10 @@ button.card:active {
 .item {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   width: 100%;
   min-height: 64px;
-  padding: 12px 18px;
+  padding: 12px 16px;
   border-radius: 0;
   background: transparent;
   text-align: left;
@@ -617,7 +636,7 @@ button.item:active {
 .dot-unread {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 0.8125rem;
   font-weight: 650;
   color: #fff;
@@ -633,7 +652,7 @@ button.item:active {
 .status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 0.875rem;
   font-weight: 650;
   white-space: nowrap;
@@ -645,8 +664,8 @@ button.item:active {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 6px;
-  margin-bottom: 26px;
+  gap: 8px;
+  margin-bottom: 24px;
 }
 .profile__name {
   font-family: var(--font-display);
@@ -780,8 +799,8 @@ button.item:active {
 }
 .frame b {
   position: absolute;
-  left: 10px;
-  right: 10px;
+  left: 8px;
+  right: 8px;
   height: 3px;
   border-radius: 2px;
   background: var(--yellow);
@@ -801,7 +820,7 @@ button.item:active {
   z-index: 3;
   left: 24px;
   right: 24px;
-  bottom: 22px;
+  bottom: 24px;
   text-align: center;
   font-size: 1rem;
   font-weight: 550;
@@ -822,7 +841,7 @@ button.item:active {
 }
 .scan__tools .btn {
   min-height: 52px;
-  padding: 0 14px;
+  padding: 0 16px;
   font-size: 0.9375rem;
 }
 .scan__tools .span2 {
@@ -849,7 +868,7 @@ button.item:active {
   place-items: center;
   background: var(--yellow);
   color: var(--ink);
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 .badge--quiet {
   background: rgba(255, 255, 255, 0.14);
@@ -859,14 +878,14 @@ button.item:active {
 .kit {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
-  gap: 14px;
+  gap: 16px;
 }
 .kit figure {
   margin: 0;
   background: #fff;
   color: var(--ink);
   border-radius: 24px;
-  padding: 14px 14px 12px;
+  padding: 16px 16px 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -896,7 +915,7 @@ button.item:active {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.25);
   flex: none;
-  transition: background 160ms;
+  transition: background var(--spring-snappy-dur) var(--spring-snappy);
 }
 .switch::after {
   content: "";
@@ -907,7 +926,7 @@ button.item:active {
   height: 26px;
   border-radius: 50%;
   background: #fff;
-  transition: transform 160ms;
+  transition: transform var(--spring-snappy-dur) var(--spring-snappy);
 }
 .switch::before {
   content: "";
@@ -939,14 +958,14 @@ details.faq summary::-webkit-details-marker {
   display: none;
 }
 details.faq summary svg {
-  transition: transform 160ms;
+  transition: transform var(--spring-snappy-dur) var(--spring-snappy);
   flex: none;
 }
 details.faq[open] summary svg {
   transform: rotate(90deg);
 }
 details.faq p {
-  margin: 0 0 18px;
+  margin: 0 0 16px;
 }
 .section-h {
   font-size: 0.875rem;
@@ -954,10 +973,10 @@ details.faq p {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-2);
-  margin: 26px 4px 12px;
+  margin: 24px 4px 12px;
 }
 .sub {
-  margin: 4px 0 22px;
+  margin: 4px 0 24px;
 }
 .welcome {
   min-height: 100%;
@@ -966,13 +985,13 @@ details.faq p {
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 14px;
+  gap: 16px;
 }
 .pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: 8px;
+  padding: 8px 12px;
   border-radius: 999px;
   font-size: 0.8125rem;
   font-weight: 650;
@@ -980,7 +999,7 @@ details.faq p {
 }
 button.pill {
   min-height: 44px;
-  padding: 0 18px;
+  padding: 0 16px;
 }
 .pill--yellow {
   background: var(--yellow);
@@ -1001,11 +1020,11 @@ button.pill {
   top: calc(env(safe-area-inset-top) + 16px);
   transform: translateX(-50%);
   max-width: 88%;
-  padding: 12px 18px;
+  padding: 12px 16px;
   border-radius: 999px;
   font-size: 0.875rem;
   font-weight: 650;
-  animation: enter 220ms;
+  animation: enter var(--spring-snappy-dur) var(--spring-snappy);
   cursor: pointer;
 }
 
@@ -1044,7 +1063,7 @@ button.pill {
   z-index: 20;
   left: 12px;
   right: 12px;
-  bottom: calc(env(safe-area-inset-bottom) + 10px);
+  bottom: calc(env(safe-area-inset-bottom) + 8px);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1056,7 +1075,7 @@ button.pill {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   align-items: center;
-  padding: 4px 6px;
+  padding: 4px 8px;
 }
 .tab {
   display: flex;
@@ -1085,13 +1104,13 @@ button.pill {
   position: absolute;
   top: 4px;
   bottom: 4px;
-  left: 6px;
-  width: calc((100% - 12px) / 3);
+  left: 8px;
+  width: calc((100% - 16px) / 3);
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.16);
   pointer-events: none;
   transition:
-    transform 240ms var(--ease),
+    transform var(--spring-snappy-dur) var(--spring-snappy),
     opacity 160ms;
 }
 .tab:active {
@@ -1122,7 +1141,7 @@ button.pill {
   background: var(--yellow);
   color: var(--ink);
   box-shadow: 0 8px 22px rgba(2, 8, 24, 0.4);
-  transition: transform 120ms;
+  transition: transform var(--spring-press-dur) var(--spring-press);
 }
 .scan-fab:active {
   transform: scale(0.94);
@@ -1147,7 +1166,7 @@ button.pill {
   line-height: 1.08;
   font-weight: 700;
   letter-spacing: -0.02em;
-  margin: 0 0 18px;
+  margin: 0 0 16px;
 }
 /* A title row: its trailing control wraps under the title when large text needs the width. */
 .home-bar {
@@ -1157,7 +1176,7 @@ button.pill {
   justify-content: space-between;
   gap: 8px 12px;
   min-height: 48px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 /* ---- home ---- */
@@ -1166,11 +1185,11 @@ button.pill {
   position: relative;
   overflow: hidden;
   border-radius: var(--radius-card);
-  padding: 22px;
+  padding: 24px;
   background: var(--yellow);
   color: var(--ink);
   min-height: 176px;
-  transition: transform 120ms;
+  transition: transform var(--spring-press-dur) var(--spring-press);
 }
 .next:active {
   transform: scale(0.985);
@@ -1181,7 +1200,7 @@ button.pill {
 .next__eyebrow {
   font-size: 0.875rem;
   font-weight: 650;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 .next__name {
   font-family: var(--font-display);
@@ -1197,7 +1216,7 @@ button.pill {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 22px;
+  margin-top: 24px;
   font-size: 1.0625rem;
   font-weight: 500;
 }
@@ -1208,17 +1227,17 @@ button.pill {
 .subjects {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
-  gap: 14px;
+  gap: 16px;
 }
 .stile {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
   background: var(--card);
   border-radius: var(--radius-card);
   padding: 16px;
   min-height: 132px;
-  transition: transform 120ms;
+  transition: transform var(--spring-press-dur) var(--spring-press);
 }
 .stile:active {
   transform: scale(0.985);
@@ -1309,23 +1328,9 @@ button.pill {
   font-size: 16px;
 }
 
-/* ---- motion: one ease, short durations, transform and opacity only ---- */
-.card,
-.btn,
-.round,
-.item,
-.stile,
-.next,
-.scan-fab,
-.switch,
-.switch::after,
-.opt {
-  transition-timing-function: var(--ease);
-}
-
 /* Home cards rise in once per session, not on every visit (frequent screens stay still). */
 .rise {
-  animation: rise 280ms var(--ease) both;
+  animation: rise var(--spring-smooth-dur) var(--spring-smooth) both;
   animation-delay: calc(var(--i, 0) * 45ms);
 }
 @keyframes rise {
@@ -1338,8 +1343,8 @@ button.pill {
 /* Scan: the frame tightens around the code, then the result takes over. */
 .frame {
   transition:
-    transform 200ms var(--ease),
-    box-shadow 200ms var(--ease);
+    transform var(--spring-snappy-dur) var(--spring-snappy),
+    box-shadow var(--spring-snappy-dur) var(--spring-snappy);
 }
 .frame--locked {
   transform: translate(-50%, -50%) scale(0.93);
@@ -1353,7 +1358,7 @@ button.pill {
 
 /* The camera intro badge pops in. */
 .badge {
-  animation: pop 380ms var(--ease);
+  animation: pop var(--spring-bouncy-dur) var(--spring-bouncy);
 }
 @keyframes pop {
   from {
@@ -1374,7 +1379,7 @@ button.pill {
 
 /* A figure that is still counting turns yellow (large text, 3.6:1 on a card passes the 3:1 bar). */
 .tile-big {
-  transition: color 300ms var(--ease);
+  transition: color 300ms var(--spring-smooth);
 }
 .tile-big.counting {
   color: var(--yellow);
@@ -1382,8 +1387,8 @@ button.pill {
 
 /* Shared-element morph between a subject card and its screen. */
 ::view-transition-group(.morph) {
-  animation-duration: 380ms;
-  animation-timing-function: var(--ease);
+  animation-duration: var(--spring-smooth-dur);
+  animation-timing-function: var(--spring-smooth);
 }
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),
@@ -1405,7 +1410,7 @@ button.pill {
 /* Alerts badge: ticks when the count changes, shrinks away at zero. */
 .tab__badge {
   transition:
-    transform 200ms var(--ease),
+    transform var(--spring-snappy-dur) var(--spring-snappy),
     opacity 160ms;
 }
 .tab__badge[data-on="false"] {
@@ -1414,7 +1419,7 @@ button.pill {
 }
 .tab__count {
   display: block;
-  animation: tick 260ms var(--ease);
+  animation: tick var(--spring-snappy-dur) var(--spring-snappy);
 }
 @keyframes tick {
   from {
@@ -1426,8 +1431,8 @@ button.pill {
 /* Unread marker eases out instead of vanishing. */
 .dot-unread {
   transition:
-    opacity 220ms var(--ease),
-    max-width 260ms var(--ease);
+    opacity var(--spring-smooth-dur) var(--spring-smooth),
+    max-width var(--spring-smooth-dur) var(--spring-smooth);
   max-width: 12em;
   overflow: hidden;
   white-space: nowrap;
@@ -1442,7 +1447,7 @@ button.pill {
 
 /* Search results and toast: short in, short out. */
 .results {
-  animation: pop-in 150ms var(--ease);
+  animation: pop-in var(--spring-press-dur) var(--spring-press);
   transform-origin: top center;
 }
 @keyframes pop-in {
@@ -1453,8 +1458,8 @@ button.pill {
 }
 .toast {
   transition:
-    opacity 180ms var(--ease),
-    transform 180ms var(--ease);
+    opacity 180ms ease-in,
+    transform 180ms ease-in;
 }
 .toast--out {
   opacity: 0;
@@ -1470,8 +1475,8 @@ button.pill {
     block-size: 0;
     overflow: hidden;
     transition:
-      block-size 260ms var(--ease),
-      content-visibility 260ms allow-discrete;
+      block-size var(--spring-smooth-dur) var(--spring-smooth),
+      content-visibility var(--spring-smooth-dur) allow-discrete;
   }
   details.faq[open]::details-content {
     block-size: auto;
@@ -1481,7 +1486,7 @@ button.pill {
 /* A new achievement pops, with one ring that fades out. */
 .unlock {
   position: relative;
-  animation: unlock-pop 520ms var(--ease) 250ms both;
+  animation: unlock-pop var(--spring-bouncy-dur) var(--spring-bouncy) 250ms both;
 }
 .unlock::after {
   content: "";
@@ -1489,16 +1494,13 @@ button.pill {
   inset: 0;
   border-radius: 50%;
   border: 2px solid var(--yellow);
-  animation: unlock-ring 700ms var(--ease) 350ms both;
+  animation: unlock-ring var(--spring-smooth-dur) var(--spring-smooth) 350ms both;
   pointer-events: none;
 }
 @keyframes unlock-pop {
   from {
     transform: scale(0.5);
     opacity: 0.2;
-  }
-  60% {
-    transform: scale(1.12);
   }
 }
 @keyframes unlock-ring {

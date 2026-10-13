@@ -1,6 +1,6 @@
 "use client";
 
-import { Printer } from "lucide-react";
+import { PrinterIcon } from "@phosphor-icons/react";
 import { QRCodeSVG } from "qrcode.react";
 import { useSyncExternalStore } from "react";
 import { Top } from "@/components/app/Top";
@@ -45,8 +45,8 @@ export default function QrKit() {
           </figure>
         </div>
       )}
-      <button className="btn btn--ghost btn--block" style={{ marginTop: 22 }} onClick={() => window.print()}>
-        <Printer size={20} strokeWidth={2} aria-hidden="true" />
+      <button className="btn btn--ghost btn--block" style={{ marginTop: 24 }} onClick={() => window.print()}>
+        <PrinterIcon size={20} aria-hidden="true" />
         {t("kit.print")}
       </button>
     </main>

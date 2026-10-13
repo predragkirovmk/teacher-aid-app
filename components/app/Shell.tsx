@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Check, House, QrCode, User, type LucideIcon } from "lucide-react";
+import { BellSimpleIcon, CheckIcon, HouseSimpleIcon, ScanIcon, UserIcon, type Icon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -125,10 +125,11 @@ function Dock({ pathname }: { pathname: string }) {
   const [lastCount, setLastCount] = useState(unread);
   if (unread > 0 && unread !== lastCount) setLastCount(unread);
 
-  const tab = (href: string, label: string, Icon: LucideIcon, active: boolean, badge?: number) => (
+  const tab = (href: string, label: string, Icon: Icon, active: boolean, badge?: number) => (
     // Switching tabs replaces the history entry, so Back leaves the section instead of replaying tabs.
     <Link href={href} replace className="tab" aria-current={active ? "page" : undefined}>
-      <Icon size={24} strokeWidth={2} aria-hidden="true" />
+      {/* The selected tab shows the filled glyph, as a tab bar does on iOS. */}
+      <Icon size={24} weight={active ? "fill" : "regular"} aria-hidden="true" />
       {label}
       {badge !== undefined && (
         <>
@@ -153,17 +154,19 @@ function Dock({ pathname }: { pathname: string }) {
           aria-hidden="true"
           style={{ transform: `translateX(${Math.max(index, 0) * 100}%)`, opacity: index < 0 ? 0 : 1 }}
         />
-        {tab("/app", t("nav.home"), House, pathname === "/app")}
-        {tab("/app/notifications", t("nav.alerts"), Bell, pathname.startsWith("/app/notifications"), unread)}
-        {tab("/app/profile", t("nav.profile"), User, pathname === "/app/profile")}
+        {tab("/app", t("nav.home"), HouseSimpleIcon, pathname === "/app")}
+        {tab("/app/notifications", t("nav.alerts"), BellSimpleIcon, pathname.startsWith("/app/notifications"), unread)}
+        {tab("/app/profile", t("nav.profile"), UserIcon, pathname === "/app/profile")}
       </nav>
       {/* The scan is an action, not a section, so it sits beside the tab bar instead of in it. */}
       <Link href="/app/scan" className="scan-fab" aria-label={t("nav.scan")}>
-        <QrCode size={32} strokeWidth={2} aria-hidden="true" />
+        <ScanIcon size={32} aria-hidden="true" />
       </Link>
     </div>
   );
 }
+
+const SHEET_EXIT_MS = 230;
 
 /**
  * A bottom sheet with a draggable grabber. It follows the finger, resists a pull upwards, and on
@@ -184,13 +187,20 @@ export function Sheet({
   const drag = useRef<{ y0: number; y: number; t: number; v: number; moved: boolean } | null>(null);
   const [dy, setDy] = useState(0);
   const [phase, setPhase] = useState<"in" | "drag" | "settle" | "out">("in");
+  /** How the sheet leaves: an accelerating exit, or the speed of the flick that threw it. */
+  const [exit, setExit] = useState({ ms: SHEET_EXIT_MS, flung: false });
 
-  const close = useCallback(() => {
-    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (calm) return onClose();
-    setPhase("out");
-    setTimeout(onClose, 230);
-  }, [onClose]);
+  const leave = useCallback(
+    (ms: number, flung: boolean) => {
+      const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (calm) return onClose();
+      setExit({ ms, flung });
+      setPhase("out");
+      setTimeout(onClose, ms);
+    },
+    [onClose],
+  );
+  const close = useCallback(() => leave(SHEET_EXIT_MS, false), [leave]);
 
   // The latest close, for the Escape key, without setting the sheet up again on every render.
   const closeRef = useRef(close);
@@ -226,9 +236,13 @@ export function Sheet({
     phase === "drag"
       ? { transform: `translateY(${dy}px)`, transition: "none", animation: "none" }
       : phase === "settle"
-        ? { transform: "translateY(0)", transition: "transform 420ms cubic-bezier(0.34, 1.45, 0.64, 1)", animation: "none" }
+        ? { transform: "translateY(0)", transition: "transform var(--spring-snappy-dur) var(--spring-snappy)", animation: "none" }
         : phase === "out"
-          ? { transform: "translateY(120%)", transition: "transform 230ms cubic-bezier(0.4, 0, 1, 1)", animation: "none" }
+          ? {
+              transform: "translateY(120%)",
+              transition: `transform ${exit.ms}ms ${exit.flung ? "linear" : "cubic-bezier(0.4, 0, 1, 1)"}`,
+              animation: "none",
+            }
           : undefined;
 
   return (
@@ -236,7 +250,7 @@ export function Sheet({
       <div
         className="scrim"
         onClick={close}
-        style={phase === "out" ? { opacity: 0, transition: "opacity 230ms", animation: "none" } : undefined}
+        style={phase === "out" ? { opacity: 0, transition: `opacity ${exit.ms}ms`, animation: "none" } : undefined}
       />
       <div className="sheet glass" role="dialog" aria-modal="true" aria-label={label} ref={ref} style={style}>
         <button
@@ -266,8 +280,12 @@ export function Sheet({
           onPointerUp={() => {
             const d = drag.current;
             if (!d?.moved) return;
-            if (dy > 90 || d.v > 0.6) close();
-            else {
+            if (dy > 90 || d.v > 0.6) {
+              // A flick keeps its speed instead of starting the exit again from rest.
+              const left = (ref.current?.offsetHeight ?? 0) * 1.2 - dy;
+              const flung = d.v > 0 && left / d.v < SHEET_EXIT_MS;
+              leave(flung ? Math.max(120, Math.round(left / d.v)) : SHEET_EXIT_MS, flung);
+            } else {
               setPhase("settle");
               setDy(0);
             }
@@ -315,7 +333,7 @@ function LangOptions({ onDone }: { onDone: () => void }) {
           </span>
           {locale === o.id && (
             <span className="check">
-              <Check size={22} strokeWidth={2.5} color="var(--yellow)" aria-hidden="true" />
+              <CheckIcon size={22} weight="bold" color="var(--yellow)" aria-hidden="true" />
               <span className="sr">{t("lang.title")}</span>
             </span>
           )}

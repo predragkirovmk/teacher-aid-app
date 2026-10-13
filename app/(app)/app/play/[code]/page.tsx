@@ -1,6 +1,6 @@
 "use client";
 
-import { QrCode, X } from "lucide-react";
+import { QrCodeIcon, XIcon } from "@phosphor-icons/react";
 import { useParams, useRouter } from "next/navigation";
 import { Play } from "@/components/app/quiz/Play";
 import { subjectByCode } from "@/lib/app/data";
@@ -25,12 +25,12 @@ function NotRecognized() {
       <div className="q__col">
         <header className="q-top">
           <button className="round" aria-label={t("close")} onClick={() => leave(router)}>
-            <X size={24} strokeWidth={2} aria-hidden="true" />
+            <XIcon size={24} aria-hidden="true" />
           </button>
         </header>
         <div className="q-body q-body--center" role="alert">
           <span className="q-badge q-badge--no">
-            <QrCode size={52} strokeWidth={2} color="var(--yellow)" aria-hidden="true" />
+            <QrCodeIcon size={52} color="var(--yellow)" aria-hidden="true" />
           </span>
           <h1 className="q-hero" style={{ fontSize: "1.875rem" }}>
             {qt("q.unknown.title")}

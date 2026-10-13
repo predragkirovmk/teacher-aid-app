@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheck, CircleX, Clock, QrCode } from "lucide-react";
+import { CheckCircleIcon, ClockIcon, ScanIcon, XCircleIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { Top } from "@/components/app/Top";
 import type { AttendanceStatus } from "@/lib/app/data";
@@ -8,14 +8,14 @@ import { formatDate, useAttendance } from "@/lib/app/derived";
 import { useT } from "@/lib/app/i18n";
 import { useTween } from "@/lib/app/tween";
 
-const ICON = { present: CircleCheck, late: Clock, absent: CircleX } as const;
+const ICON = { present: CheckCircleIcon, late: ClockIcon, absent: XCircleIcon } as const;
 
 function StatusBadge({ status }: { status: AttendanceStatus }) {
   const { t } = useT();
   const Icon = ICON[status];
   return (
     <span className="status">
-      <Icon size={20} strokeWidth={2} aria-hidden="true" />
+      <Icon size={20} aria-hidden="true" />
       {t(`att.status.${status}`)}
     </span>
   );
@@ -52,12 +52,12 @@ export default function Attendance() {
           </span>
         </div>
       </div>
-      <p className="t-cap" style={{ textAlign: "center", margin: "0 0 22px" }}>
+      <p className="t-cap" style={{ textAlign: "center", margin: "0 0 24px" }}>
         {t("att.attended", { a: attended, t: total })}
       </p>
 
-      <Link href="/app/scan" className="btn btn--primary btn--block">
-        <QrCode size={22} strokeWidth={2} aria-hidden="true" />
+      <Link href="/app/scan" className="btn btn--ghost btn--block">
+        <ScanIcon size={22} aria-hidden="true" />
         {t("att.scanCta")}
       </Link>
 
