@@ -683,7 +683,8 @@ button.item:active {
   border-radius: 999px;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, 0.14);
+  /* An ink tint, not a white one: white text on a white tint over a card is only 4.2:1. */
+  background: rgba(7, 22, 47, 0.3);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   flex: none;
@@ -975,7 +976,7 @@ details.faq p {
   border-radius: 999px;
   font-size: 0.8125rem;
   font-weight: 650;
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(7, 22, 47, 0.3);
 }
 button.pill {
   min-height: 44px;
