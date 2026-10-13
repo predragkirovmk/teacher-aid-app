@@ -30,10 +30,10 @@ export default function Welcome() {
     <main className="screen screen--bare">
       <div className="welcome">
         <Mark size={96} />
-        <span className="brand__name" style={{ fontSize: 20 }}>
+        <span className="brand__name" style={{ fontSize: "var(--fs-title3)" }}>
           Teacher Aid
         </span>
-        <h1 className="t-display" style={{ fontSize: 28, marginTop: 24 }}>
+        <h1 className="t-display" style={{ fontSize: "var(--fs-title1)", marginTop: 24 }}>
           {t("welcome.title")}
         </h1>
         <p className="muted" style={{ margin: 0 }}>

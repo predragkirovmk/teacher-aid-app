@@ -16,6 +16,18 @@
   --radius-item: 24px;
   --radius-tile: 22px;
   --tab-h: 68px;
+  /* Type scale, after the iOS text styles. In rem so it follows the phone's text size; 13 is the
+     floor. Fixed px is kept only inside fixed circles and the tab bar. */
+  --fs-caption: 0.8125rem; /* 13 */
+  --fs-label: 0.875rem; /* 14 */
+  --fs-callout: 1rem; /* 16 */
+  --fs-body: 1.0625rem; /* 17 */
+  --fs-title3: 1.25rem; /* 20 */
+  --fs-title: 1.375rem; /* 22 */
+  --fs-title1: 1.75rem; /* 28 */
+  --fs-display: 2.125rem; /* 34 */
+  --fs-num: 2.875rem; /* 46 */
+  --fs-hero: 4.5rem; /* 72 */
   /* Springs as SwiftUI defines them, spring(duration:bounce:), sampled into linear() by
      scratch tooling; each duration is the settle time, the perceived duration is shorter.
      press 0.25/0 for touch feedback, snappy 0.3/0.15 for small state changes,
@@ -127,7 +139,7 @@ a {
 /* ---- type ---- */
 .t-display {
   font-family: var(--font-display);
-  font-size: 2.125rem;
+  font-size: var(--fs-display);
   line-height: 1.08;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -135,7 +147,7 @@ a {
 }
 .t-title {
   font-family: var(--font-display);
-  font-size: 1.375rem;
+  font-size: var(--fs-title);
   line-height: 1.2;
   font-weight: 650;
   letter-spacing: -0.01em;
@@ -143,23 +155,23 @@ a {
 }
 .t-num {
   font-family: var(--font-display);
-  font-size: 2.875rem;
+  font-size: var(--fs-num);
   line-height: 1;
   font-weight: 700;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 .t-body {
-  font-size: 1.0625rem;
+  font-size: var(--fs-body);
   line-height: 1.45;
 }
 .t-label {
-  font-size: 0.875rem;
+  font-size: var(--fs-label);
   line-height: 1.3;
   font-weight: 600;
 }
 .t-cap {
-  font-size: 0.8125rem;
+  font-size: var(--fs-caption);
   line-height: 1.35;
   color: var(--text-2);
 }
@@ -179,7 +191,7 @@ a {
   font-family: var(--font-display);
   text-align: center;
   overflow-wrap: break-word;
-  font-size: 1.125rem;
+  font-size: var(--fs-body);
   font-weight: 650;
 }
 .round {
@@ -206,7 +218,7 @@ a {
 }
 .brand__name {
   font-weight: 650;
-  font-size: 1rem;
+  font-size: var(--fs-callout);
   letter-spacing: 0.01em;
 }
 .home-top {
@@ -278,7 +290,7 @@ button.card:active {
   padding: 0 24px;
   border-radius: 999px;
   font-weight: 650;
-  font-size: 1.0625rem;
+  font-size: var(--fs-body);
   transition:
     transform var(--spring-press-dur) var(--spring-press),
     background var(--spring-press-dur) var(--spring-press);
@@ -321,7 +333,7 @@ button.card:active {
   border: 1px solid var(--line);
   background: var(--card);
   padding: 0 56px 0 24px;
-  font-size: 1rem;
+  font-size: var(--fs-callout);
   outline: none;
 }
 .search input::placeholder {
@@ -369,19 +381,19 @@ button.card:active {
 }
 .week b {
   display: block;
-  font-size: 0.9375rem;
+  font-size: var(--fs-label);
   font-weight: 650;
 }
 .week i {
   display: block;
   font-style: normal;
-  font-size: 1.625rem;
+  font-size: var(--fs-title1);
   font-weight: 700;
   margin: 4px 0;
   font-variant-numeric: tabular-nums;
 }
 .week span {
-  font-size: 0.75rem;
+  font-size: var(--fs-caption);
   color: var(--text-2);
 }
 /* ---- subject cards ---- */
@@ -421,7 +433,7 @@ button.card:active {
 .subject__name {
   font-family: var(--font-display);
   position: relative;
-  font-size: 1.875rem;
+  font-size: var(--fs-title1);
   line-height: 1.05;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -434,7 +446,7 @@ button.card:active {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 1.0625rem;
+  font-size: var(--fs-body);
   font-weight: 500;
 }
 .monogram {
@@ -533,7 +545,7 @@ button.card:active {
 }
 .sheet__title {
   text-align: center;
-  font-size: 1.0625rem;
+  font-size: var(--fs-body);
   font-weight: 650;
   padding: 0 12px 16px;
 }
@@ -548,7 +560,7 @@ button.card:active {
   min-height: 64px;
   padding: 0 16px;
   border-radius: 22px;
-  font-size: 1.25rem;
+  font-size: var(--fs-title3);
   font-weight: 600;
 }
 .opt:active {
@@ -559,7 +571,7 @@ button.card:active {
   box-shadow: inset 0 0 0 2px var(--yellow);
 }
 .opt small {
-  font-size: 0.8125rem;
+  font-size: var(--fs-caption);
   font-weight: 650;
   color: var(--text-2);
   margin-left: 8px;
@@ -569,7 +581,7 @@ button.card:active {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.875rem;
+  font-size: var(--fs-label);
   font-weight: 650;
 }
 
@@ -615,7 +627,7 @@ button.item:active {
   font-weight: 700;
 }
 .item__title {
-  font-size: 1rem;
+  font-size: var(--fs-callout);
   font-weight: 650;
   line-height: 1.25;
   overflow-wrap: break-word;
@@ -637,7 +649,7 @@ button.item:active {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.8125rem;
+  font-size: var(--fs-caption);
   font-weight: 650;
   color: #fff;
 }
@@ -653,7 +665,7 @@ button.item:active {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.875rem;
+  font-size: var(--fs-label);
   font-weight: 650;
   white-space: nowrap;
 }
@@ -672,7 +684,7 @@ button.item:active {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 1.5rem;
+  font-size: var(--fs-title1);
   font-weight: 700;
   margin-top: 12px;
 }
@@ -822,7 +834,7 @@ button.item:active {
   right: 24px;
   bottom: 24px;
   text-align: center;
-  font-size: 1rem;
+  font-size: var(--fs-callout);
   font-weight: 550;
   line-height: 1.4;
 }
@@ -842,7 +854,7 @@ button.item:active {
 .scan__tools .btn {
   min-height: 52px;
   padding: 0 16px;
-  font-size: 0.9375rem;
+  font-size: var(--fs-callout);
 }
 .scan__tools .span2 {
   grid-column: 1 / -1;
@@ -852,7 +864,7 @@ button.item:active {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-size: 0.875rem;
+  font-size: var(--fs-label);
   font-weight: 600;
   grid-column: 1 / -1;
   color: var(--yellow);
@@ -897,14 +909,15 @@ button.item:active {
   height: auto;
 }
 .kit figcaption {
-  font-size: 0.875rem;
+  font-size: var(--fs-label);
   font-weight: 650;
   line-height: 1.25;
 }
 .kit figcaption small {
   display: block;
   font-weight: 500;
-  opacity: 0.75;
+  /* Ink at 75 % on the white card, as a solid colour so the text stays crisp. */
+  color: #455063;
 }
 
 /* ---- misc ---- */
@@ -951,7 +964,7 @@ details.faq summary {
   gap: 12px;
   min-height: 64px;
   font-weight: 650;
-  font-size: 1rem;
+  font-size: var(--fs-callout);
   cursor: pointer;
 }
 details.faq summary::-webkit-details-marker {
@@ -968,7 +981,7 @@ details.faq p {
   margin: 0 0 16px;
 }
 .section-h {
-  font-size: 0.875rem;
+  font-size: var(--fs-label);
   font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -993,7 +1006,7 @@ details.faq p {
   gap: 8px;
   padding: 8px 12px;
   border-radius: 999px;
-  font-size: 0.8125rem;
+  font-size: var(--fs-caption);
   font-weight: 650;
   background: rgba(7, 22, 47, 0.3);
 }
@@ -1022,7 +1035,7 @@ button.pill {
   max-width: 88%;
   padding: 12px 16px;
   border-radius: 999px;
-  font-size: 0.875rem;
+  font-size: var(--fs-label);
   font-weight: 650;
   animation: enter var(--spring-snappy-dur) var(--spring-snappy);
   cursor: pointer;
@@ -1118,15 +1131,17 @@ button.pill {
 }
 .tab__badge {
   position: absolute;
-  top: 3px;
+  top: 2px;
   left: calc(50% + 6px);
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 9px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
   background: var(--yellow);
   color: var(--ink);
-  font-size: 0.6875rem;
+  /* Px like the tab labels: the bar keeps its size at large text. 13 is the floor. */
+  font-size: 13px;
+  line-height: 1;
   font-weight: 700;
   display: grid;
   place-items: center;
@@ -1162,7 +1177,7 @@ button.pill {
 /* ---- large title (tab roots) ---- */
 .large {
   font-family: var(--font-display);
-  font-size: 2.125rem;
+  font-size: var(--fs-display);
   line-height: 1.08;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -1198,13 +1213,13 @@ button.pill {
   color: rgba(7, 22, 47, 0.1);
 }
 .next__eyebrow {
-  font-size: 0.875rem;
+  font-size: var(--fs-label);
   font-weight: 650;
   margin-bottom: 8px;
 }
 .next__name {
   font-family: var(--font-display);
-  font-size: 1.875rem;
+  font-size: var(--fs-title1);
   line-height: 1.05;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -1217,7 +1232,7 @@ button.pill {
   align-items: center;
   gap: 12px;
   margin-top: 24px;
-  font-size: 1.0625rem;
+  font-size: var(--fs-body);
   font-weight: 500;
 }
 .next .monogram {
@@ -1232,9 +1247,7 @@ button.pill {
 .stile {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  background: var(--card);
-  border-radius: var(--radius-card);
+  gap: 8px;
   padding: 16px;
   min-height: 132px;
   transition: transform var(--spring-press-dur) var(--spring-press);
@@ -1255,7 +1268,7 @@ button.pill {
 }
 .tile-big {
   font-family: var(--font-display);
-  font-size: 2.75rem;
+  font-size: var(--fs-num);
   line-height: 1;
   font-weight: 700;
   letter-spacing: -0.02em;

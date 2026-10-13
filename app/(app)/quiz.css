@@ -23,7 +23,7 @@
   text-align: center;
 }
 .q-top__label {
-  font-size: 0.9375rem;
+  font-size: var(--fs-callout);
   font-weight: 600;
   line-height: 1.25;
 }
@@ -84,11 +84,11 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 1.0625rem;
+  font-size: var(--fs-body);
   font-weight: 600;
 }
 .q-cap {
-  font-size: 0.875rem;
+  font-size: var(--fs-label);
   margin: 0;
 }
 .q-center {
@@ -96,12 +96,12 @@
 }
 .q-strong {
   margin: 0;
-  font-size: 1.0625rem;
+  font-size: var(--fs-body);
   font-weight: 600;
 }
 .q-hero {
   font-family: var(--font-display);
-  font-size: 2.625rem;
+  font-size: var(--fs-num);
   line-height: 1.05;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -109,7 +109,7 @@
 }
 .q-big {
   font-family: var(--font-display);
-  font-size: 2.875rem;
+  font-size: var(--fs-num);
   line-height: 1;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -122,7 +122,7 @@
   padding: 8px 16px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.14);
-  font-size: 1rem;
+  font-size: var(--fs-callout);
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
@@ -187,7 +187,7 @@
 }
 .q-gain {
   font-family: var(--font-display);
-  font-size: 4.5rem;
+  font-size: var(--fs-hero);
   line-height: 1;
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -257,7 +257,7 @@
   gap: 4px;
 }
 .q-me__name {
-  font-size: 1.0625rem;
+  font-size: var(--fs-body);
   font-weight: 600;
   line-height: 1.25;
   overflow-wrap: anywhere;
@@ -290,7 +290,7 @@
   flex: none;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 0.9375rem;
+  font-size: var(--fs-label);
 }
 .q-faces .q-face {
   box-shadow: 0 0 0 3px var(--card);
@@ -309,7 +309,7 @@
 }
 .q-faces__more {
   margin-left: 12px;
-  font-size: 1rem;
+  font-size: var(--fs-callout);
   font-weight: 600;
 }
 
@@ -320,7 +320,7 @@
 }
 .q-question {
   font-family: var(--font-display);
-  font-size: 1.6875rem;
+  font-size: var(--fs-title1);
   line-height: 1.22;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -329,7 +329,7 @@
 }
 .q-question--small {
   font-family: var(--font);
-  font-size: 1.0625rem;
+  font-size: var(--fs-body);
   line-height: 1.4;
   font-weight: 600;
   color: var(--text-2);
@@ -351,7 +351,7 @@
   background: var(--card);
   color: #fff;
   text-align: left;
-  font-size: 1.0625rem;
+  font-size: var(--fs-body);
   font-weight: 600;
   line-height: 1.3;
   transition:
@@ -374,7 +374,7 @@
   background: rgba(255, 255, 255, 0.14);
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.125rem;
+  font-size: var(--fs-body);
 }
 .q-letter--ink {
   background: var(--ink);
@@ -420,7 +420,7 @@
 }
 .q-tf__label {
   font-family: var(--font-display);
-  font-size: 1.5rem;
+  font-size: var(--fs-title);
   font-weight: 700;
 }
 
@@ -457,7 +457,7 @@
   place-items: center;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.3125rem;
+  font-size: var(--fs-title3);
   font-variant-numeric: tabular-nums;
 }
 .q-ring[data-low="true"] .q-ring__num {
@@ -485,7 +485,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  font-size: 1.125rem;
+  font-size: var(--fs-body);
   line-height: 1.3;
   font-weight: 650;
 }
@@ -566,7 +566,7 @@
 }
 .q-rank__label {
   font-family: var(--font-display);
-  font-size: 1.375rem;
+  font-size: var(--fs-title);
   font-weight: 650;
 }
 .q-board {
@@ -595,7 +595,7 @@
   width: 1.5rem;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.125rem;
+  font-size: var(--fs-body);
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
 }
@@ -605,7 +605,7 @@
 .q-row__name {
   flex: 1;
   min-width: 0;
-  font-size: 1.0625rem;
+  font-size: var(--fs-body);
   font-weight: 500;
   overflow-wrap: anywhere;
 }
@@ -615,7 +615,7 @@
 .q-row__pts {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.125rem;
+  font-size: var(--fs-body);
   font-variant-numeric: tabular-nums;
 }
 /* Overtaking: your row climbs past the one you passed, which drops into your old place. */
@@ -644,11 +644,11 @@
   justify-self: start;
   min-height: 44px;
   padding: 0 8px;
-  font-size: 1.0625rem;
+  font-size: var(--fs-body);
 }
 .pe-bar__title {
   font-family: var(--font-display);
-  font-size: 1.125rem;
+  font-size: var(--fs-body);
   font-weight: 650;
   margin: 0;
   text-align: center;
@@ -657,7 +657,7 @@
   justify-self: end;
   min-height: 44px;
   padding: 0 16px;
-  font-size: 1rem;
+  font-size: var(--fs-callout);
 }
 .pe-bar__save:disabled {
   background: rgba(255, 255, 255, 0.12);
@@ -708,7 +708,7 @@
   color: var(--ink);
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.25rem;
+  font-size: var(--fs-title3);
   transition: transform var(--spring-press-dur) var(--spring-press);
 }
 .pe-pick:active {
@@ -733,7 +733,7 @@
   padding: 0 16px;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  font-size: 1.0625rem;
+  font-size: var(--fs-body);
 }
 .pe-input[aria-invalid="true"] {
   border: 2px solid #fff;
@@ -749,7 +749,7 @@
   display: inline-flex;
   align-items: flex-start;
   gap: 8px;
-  font-size: 0.9375rem;
+  font-size: var(--fs-label);
   line-height: 1.35;
   font-weight: 600;
 }
@@ -763,7 +763,7 @@
 .pe-editbtn {
   min-height: 44px;
   padding: 0 16px;
-  font-size: 1rem;
+  font-size: var(--fs-callout);
 }
 
 /* ---- scanner: a code that is not a class QR ---- */
@@ -792,14 +792,14 @@
 }
 .scan-miss__title {
   font-family: var(--font-display);
-  font-size: 1.5rem;
+  font-size: var(--fs-title1);
   line-height: 1.15;
   font-weight: 700;
   margin: 0;
 }
 .scan-miss__body {
   margin: 0 0 8px;
-  font-size: 1rem;
+  font-size: var(--fs-callout);
   line-height: 1.45;
   color: var(--text-2);
 }

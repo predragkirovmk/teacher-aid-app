@@ -16,7 +16,7 @@ export default function AppError({ retry }: { error: Error & { digest?: string }
         <main className="screen screen--bare">
           <div className="welcome">
             <Mark size={72} />
-            <h1 className="t-display" style={{ fontSize: 28, marginTop: 16 }}>
+            <h1 className="t-display" style={{ fontSize: "var(--fs-title1)", marginTop: 16 }}>
               {t("error.title")}
             </h1>
             <p className="muted" style={{ margin: 0 }}>

@@ -14,7 +14,7 @@ export default function Summary() {
       <Top title={t("sum.title")} />
       <div className="card" style={{ padding: 24, marginBottom: 16 }}>
         <div className="t-label">{t("sum.lesson")}</div>
-        <div className="t-num" style={{ margin: "8px 0", fontSize: 56 }}>
+        <div className="t-num" style={{ margin: "8px 0" }}>
           {right}/5
         </div>
         <div className="t-cap">{t("sum.sub", { n: right })}</div>

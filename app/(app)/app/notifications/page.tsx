@@ -21,7 +21,7 @@ export default function Notifications() {
       {unread.length > 0 && (
         <button
           className="btn btn--ghost btn--block"
-          style={{ minHeight: 48, fontSize: "0.9375rem", marginBottom: 16 }}
+          style={{ minHeight: 48, fontSize: "var(--fs-callout)", marginBottom: 16 }}
           onClick={() => actions.markAllRead(items.map((n) => n.id))}
         >
           {t("notif.markAll")}

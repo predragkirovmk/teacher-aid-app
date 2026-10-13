@@ -41,7 +41,7 @@ export default function SubjectPage() {
         {done ? (
           <div className="card row">
             <CheckCircleIcon size={26} color="var(--yellow)" aria-hidden="true" />
-            <span className="t-label" style={{ fontSize: 17 }}>
+            <span className="t-label" style={{ fontSize: "var(--fs-body)" }}>
               {t("subject.checkedIn")}
             </span>
           </div>

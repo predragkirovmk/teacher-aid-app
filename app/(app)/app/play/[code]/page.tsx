@@ -32,7 +32,7 @@ function NotRecognized() {
           <span className="q-badge q-badge--no">
             <QrCodeIcon size={52} color="var(--yellow)" aria-hidden="true" />
           </span>
-          <h1 className="q-hero" style={{ fontSize: "1.875rem" }}>
+          <h1 className="q-hero" style={{ fontSize: "var(--fs-title1)" }}>
             {qt("q.unknown.title")}
           </h1>
           <p className="t-body muted" style={{ margin: 0 }}>

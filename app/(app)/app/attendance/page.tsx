@@ -47,7 +47,7 @@ export default function Attendance() {
           />
         </svg>
         <div className="ring__val">
-          <span className="t-num" style={{ fontSize: 52 }}>
+          <span className="t-num">
             {tween.value}%
           </span>
         </div>
