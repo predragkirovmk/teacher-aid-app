@@ -60,17 +60,20 @@ export function Shell({ children }: { children: ReactNode }) {
     document.documentElement.lang = locale;
   }, [locale]);
 
+  // Logged out: show nothing behind the welcome screen, and carry the screen that was asked for
+  // (a check-in link, say) through it, so Continue lands there instead of on Home.
+  const gated = !signedIn && pathname !== "/app/welcome";
   useEffect(() => {
-    if (!signedIn && pathname !== "/app/welcome") router.replace("/app/welcome");
-  }, [signedIn, pathname, router]);
+    if (gated) router.replace(`/app/welcome?next=${encodeURIComponent(pathname)}`);
+  }, [gated, pathname, router]);
 
-  const showTabs = !NO_TABS.includes(pathname) && !pathname.startsWith("/app/checkin");
+  const showTabs = !gated && !NO_TABS.includes(pathname) && !pathname.startsWith("/app/checkin");
 
   return (
     <UIContext.Provider value={ui}>
       <div className="stage">
         <div className="phone">
-          <Pager pathname={pathname}>{children}</Pager>
+          <Pager pathname={pathname}>{gated ? null : children}</Pager>
           {showTabs && (
             <>
               <div className="edge" aria-hidden="true" />

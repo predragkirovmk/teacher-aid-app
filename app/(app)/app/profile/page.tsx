@@ -2,7 +2,6 @@
 
 import { ChevronRight, FileText, Languages, LogOut, Settings, ShieldCheck, Trophy, CircleHelp } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Row } from "@/components/app/Row";
 import { useUI } from "@/components/app/ui";
 import { useAttendance } from "@/lib/app/derived";
@@ -11,7 +10,6 @@ import { actions } from "@/lib/app/store";
 
 export default function Profile() {
   const { t } = useT();
-  const router = useRouter();
   const { openLang, confirm } = useUI();
   const { percent } = useAttendance();
 
@@ -69,10 +67,8 @@ export default function Profile() {
               confirm({
                 title: t("confirm.logout"),
                 confirmLabel: t("drawer.logout"),
-                onConfirm: () => {
-                  actions.setSignedIn(false);
-                  router.push("/app/welcome");
-                },
+                // The shell replaces this screen with the welcome screen once signed out.
+                onConfirm: () => actions.setSignedIn(false),
               })
             }
           />

@@ -10,13 +10,14 @@ import { actions, useApp } from "@/lib/app/store";
 export default function CheckinLink() {
   const { code } = useParams<{ code: string }>();
   const router = useRouter();
-  const { checkins } = useApp();
+  const { checkins, signedIn } = useApp();
   const scan = useMemo(() => interpretCode(`TA:${code}`), [code]);
   const subjectId = scan.kind === "class" ? scan.subject.id : null;
 
+  // Logged out, the shell sends this link through the welcome screen first; record it on return.
   useEffect(() => {
-    if (subjectId) actions.checkIn(subjectId);
-  }, [subjectId]);
+    if (subjectId && signedIn) actions.checkIn(subjectId);
+  }, [subjectId, signedIn]);
 
   const entry = subjectId ? (checkins.find((c) => c.subject === subjectId) ?? null) : null;
   if (scan.kind === "class" && !entry) return null;

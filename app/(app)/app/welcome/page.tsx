@@ -1,13 +1,31 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useEffect, useSyncExternalStore } from "react";
 import { Mark } from "@/components/app/Mark";
 import { useT } from "@/lib/app/i18n";
-import { actions } from "@/lib/app/store";
+import { actions, useApp } from "@/lib/app/store";
+
+const noop = () => () => {};
+
+/** Where to go after signing in: the screen that was asked for, if it is a screen of this app. */
+function nextPath() {
+  const next = new URLSearchParams(window.location.search).get("next");
+  return next && /^\/app(\/[\w-]+)*$/.test(next) && next !== "/app/welcome" ? next : "/app";
+}
 
 export default function Welcome() {
   const { t } = useT();
   const router = useRouter();
+  const { signedIn } = useApp();
+  // False while hydrating, when signedIn is still the server default rather than the saved value.
+  const hydrated = useSyncExternalStore(noop, () => true, () => false);
+
+  // Signing in, or arriving here already signed in, replaces this screen, so Back never shows it again.
+  useEffect(() => {
+    if (hydrated && signedIn) router.replace(nextPath());
+  }, [hydrated, signedIn, router]);
+
   return (
     <main className="screen screen--bare">
       <div className="welcome">
@@ -21,14 +39,7 @@ export default function Welcome() {
         <p className="muted" style={{ margin: 0 }}>
           {t("welcome.sub")}
         </p>
-        <button
-          className="btn btn--primary btn--block"
-          style={{ marginTop: 28 }}
-          onClick={() => {
-            actions.setSignedIn(true);
-            router.push("/app");
-          }}
-        >
+        <button className="btn btn--primary btn--block" style={{ marginTop: 28 }} onClick={() => actions.setSignedIn(true)}>
           {t("welcome.cta")}
         </button>
         <div className="row" style={{ gap: 10, marginTop: 8 }}>
