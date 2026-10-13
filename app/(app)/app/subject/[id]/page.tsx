@@ -18,7 +18,8 @@ export default function SubjectPage() {
   if (!subject) notFound();
 
   const next = WEEK.flatMap((d) => d.slots.map((s) => ({ ...s, day: d.day }))).find((s) => s.subject === subject.id);
-  const done = checkins.some((c) => c.subject === subject.id);
+  const today = new Date().toDateString();
+  const done = checkins.some((c) => c.subject === subject.id && new Date(c.at).toDateString() === today);
 
   return (
     <main className="screen">
