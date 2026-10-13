@@ -75,7 +75,7 @@ export default function Home() {
     <main className="screen">
       <div className="home-bar">
         <Mark size={32} />
-        <Link href="/app/profile" className="avatar avatar--sm" aria-label={t("nav.profile")}>
+        <Link href="/app/profile" replace className="avatar avatar--sm" aria-label={t("nav.profile")}>
           МТ
         </Link>
       </div>

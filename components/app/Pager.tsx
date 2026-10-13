@@ -139,7 +139,8 @@ export function Pager({ pathname, children }: { pathname: string; children: Reac
         busy.current = true;
         incoming.current = dir;
         const go = () => {
-          router.push(TAB_ORDER[next]);
+          // Sections are tabs, not pages: switching replaces the history entry instead of adding one.
+          router.replace(TAB_ORDER[next]);
           // If the route never changes (slow network, cancelled navigation), do not leave a blank screen.
           timers.current.dog = setTimeout(() => {
             if (pathRef.current !== from) return;

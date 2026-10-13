@@ -125,7 +125,8 @@ function Dock({ pathname }: { pathname: string }) {
   if (unread > 0 && unread !== lastCount) setLastCount(unread);
 
   const tab = (href: string, label: string, Icon: LucideIcon, active: boolean, badge?: number) => (
-    <Link href={href} className="tab" aria-current={active ? "page" : undefined}>
+    // Switching tabs replaces the history entry, so Back leaves the section instead of replaying tabs.
+    <Link href={href} replace className="tab" aria-current={active ? "page" : undefined}>
       <Icon size={24} strokeWidth={2} aria-hidden="true" />
       {label}
       {badge !== undefined && (
