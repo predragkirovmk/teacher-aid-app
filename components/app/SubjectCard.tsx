@@ -28,28 +28,29 @@ export function SubjectCard({ subject, hero = false }: { subject: Subject; hero?
   );
 }
 
-/** Compact subject entry for a grid: a flat card with the subject's tone on its monogram. */
-export function SubjectTile({ subject, shared = true }: { subject: Subject; shared?: boolean }) {
+/** A subject in Home's grouped list: the subject's tone on its monogram, the teacher underneath. */
+export function SubjectRow({ subject, shared = true }: { subject: Subject; shared?: boolean }) {
   const { t } = useT();
-  const card = (
-    <Link href={`/app/subject/${subject.id}`} className="stile">
+  const row = (
+    <Link href={`/app/subject/${subject.id}`} className="item">
       <span className={`monogram tone-${subject.tone}`} aria-hidden="true">
         {subject.initials}
       </span>
-      <span>
-        <span className="stile__name" style={{ display: "block" }}>
+      <span className="grow">
+        <span className="item__title" style={{ display: "block" }}>
           {t(`subj.${subject.id}`)}
         </span>
-        <span className="stile__teacher">{t(`teacher.${subject.id}`)}</span>
+        <span className="t-cap">{t(`teacher.${subject.id}`)}</span>
       </span>
+      <CaretRightIcon size={22} aria-hidden="true" />
     </Link>
   );
   // A view-transition name must be unique on the page: the next-lesson card owns this subject's name.
   return shared ? (
     <ViewTransition name={`subject-${subject.id}`} share="morph" default="none">
-      {card}
+      {row}
     </ViewTransition>
   ) : (
-    card
+    row
   );
 }

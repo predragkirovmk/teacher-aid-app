@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useSyncExternalStore, ViewTransition } from "react";
 import { Mark } from "@/components/app/Mark";
-import { SubjectTile } from "@/components/app/SubjectCard";
+import { SubjectRow } from "@/components/app/SubjectCard";
 import { SUBJECTS, WEEK, subjectById } from "@/lib/app/data";
 import { useAttendance, useStandings } from "@/lib/app/derived";
 import { useTween } from "@/lib/app/tween";
@@ -36,7 +36,7 @@ const PAGES: [string, Key][] = [
 export default function Home() {
   const { t } = useT();
   const router = useRouter();
-  const { percent } = useAttendance();
+  const { percent, attended, total } = useAttendance();
   const att = useTween(percent, "teacheraid-shown-attendance");
   const [q, setQ] = useState("");
   const seen = useSyncExternalStore(noop, riseSeen, () => true);
@@ -130,7 +130,7 @@ export default function Home() {
 
         <div {...rise(1)}>
         <div className="grid2">
-          <Link href="/app/schedule" className="card" style={{ padding: 16 }}>
+          <Link href="/app/schedule" className="card tile">
             <div className="week">
               {WEEK.slice(0, 3).map((d) => (
                 <div key={d.day}>
@@ -141,7 +141,7 @@ export default function Home() {
               ))}
             </div>
           </Link>
-          <Link href="/app/leaderboard" className="card" style={{ padding: 16, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 8 }}>
+          <Link href="/app/leaderboard" className="card tile">
             <span className="t-label">{t("home.leaderboard")}</span>
             <span className="tile-big">#{rank}</span>
             <span className="t-cap">{t("home.rankCaption")}</span>
@@ -151,33 +151,31 @@ export default function Home() {
 
         <div {...rise(2)}>
         <div className="grid2">
-          <Link href="/app/attendance" className="card" style={{ padding: 16 }}>
-            <div className="t-label">{t("home.attendance")}</div>
-            <div className={`tile-big${att.counting ? " counting" : ""}`} style={{ marginTop: 8 }}>
-              {att.value}%
-            </div>
+          <Link href="/app/attendance" className="card tile">
+            <span className="t-label">{t("home.attendance")}</span>
+            <span className={`tile-big${att.counting ? " counting" : ""}`}>{att.value}%</span>
+            <span className="t-cap">{t("home.attCaption", { a: attended, t: total })}</span>
           </Link>
-          <Link href="/app/summary" className="card" style={{ padding: 16 }}>
-            <div className="t-label">{t("home.summary")}</div>
-            <div className="tile-big" style={{ marginTop: 8 }}>
-              4/5
-            </div>
-            <div className="t-cap" style={{ marginTop: 4 }}>
-              {t("home.correct")}
-            </div>
+          <Link href="/app/summary" className="card tile">
+            <span className="t-label">{t("home.summary")}</span>
+            <span className="tile-big">4/5</span>
+            <span className="t-cap">{t("home.correct")}</span>
           </Link>
         </div>
         </div>
 
-        <h2 className="section-h" style={{ margin: "8px 4px 0" }}>
-          {t("home.subjects")}
-        </h2>
         <div {...rise(3)}>
-          <div className="subjects">
+          {/* The stack's gap already separates it, so less margin above than elsewhere. */}
+          <h2 className="section-h" style={{ marginTop: 16 }}>
+            {t("home.subjects")}
+          </h2>
+          <ul className="list">
             {SUBJECTS.map((s) => (
-              <SubjectTile key={s.id} subject={s} shared={s.id !== nextSubject.id} />
+              <li key={s.id}>
+                <SubjectRow subject={s} shared={s.id !== nextSubject.id} />
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </div>
     </main>
