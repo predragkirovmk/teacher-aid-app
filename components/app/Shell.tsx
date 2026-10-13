@@ -153,7 +153,7 @@ function Dock({ pathname }: { pathname: string }) {
 
   return (
     <div className="dock">
-      <nav className="tabbar glass" aria-label="Main">
+      <nav className="tabbar glass" aria-label={t("nav.main")}>
         <span
           className="tab-ind"
           aria-hidden="true"

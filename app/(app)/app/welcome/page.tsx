@@ -15,7 +15,7 @@ function nextPath() {
 }
 
 export default function Welcome() {
-  const { t } = useT();
+  const { t, locale } = useT();
   const router = useRouter();
   const { signedIn } = useApp();
   // False while hydrating, when signedIn is still the server default rather than the saved value.
@@ -43,10 +43,10 @@ export default function Welcome() {
           {t("welcome.cta")}
         </button>
         <div className="row" style={{ gap: 8, marginTop: 8 }}>
-          <button className="pill" onClick={() => actions.setLocale("mk")}>
+          <button className="pill" lang="mk" aria-label="Македонски" aria-pressed={locale === "mk"} onClick={() => actions.setLocale("mk")}>
             МК
           </button>
-          <button className="pill" onClick={() => actions.setLocale("en")}>
+          <button className="pill" lang="en" aria-label="English" aria-pressed={locale === "en"} onClick={() => actions.setLocale("en")}>
             EN
           </button>
         </div>

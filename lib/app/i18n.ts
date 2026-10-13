@@ -12,6 +12,7 @@ const en = {
   "nav.more": "More",
   "back": "Back",
   "close": "Close",
+  "nav.main": "Sections",
 
   "user.name": "Marko Trajkovski",
   "user.role": "Student",
@@ -222,6 +223,7 @@ const mk: Record<Key, string> = {
   "nav.more": "Повеќе",
   "back": "Назад",
   "close": "Затвори",
+  "nav.main": "Делови",
 
   "user.name": "Марко Трајковски",
   "user.role": "Ученик",

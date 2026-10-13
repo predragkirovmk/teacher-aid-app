@@ -4,12 +4,14 @@ import { CaretRightIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useSyncExternalStore, ViewTransition } from "react";
+import { Avatar } from "@/components/app/Avatar";
 import { Mark } from "@/components/app/Mark";
 import { SubjectRow } from "@/components/app/SubjectCard";
 import { SUBJECTS, WEEK, subjectById } from "@/lib/app/data";
 import { useAttendance, useStandings } from "@/lib/app/derived";
 import { useTween } from "@/lib/app/tween";
 import { translate, useT, type Key } from "@/lib/app/i18n";
+import { useMe } from "@/lib/app/profile";
 
 const noop = () => () => {};
 const RISE_KEY = "teacheraid-home-rise";
@@ -35,6 +37,7 @@ const PAGES: [string, Key][] = [
 
 export default function Home() {
   const { t } = useT();
+  const me = useMe();
   const router = useRouter();
   const { percent, attended, total } = useAttendance();
   const att = useTween(percent, "teacheraid-shown-attendance");
@@ -75,8 +78,8 @@ export default function Home() {
     <main className="screen">
       <div className="home-bar">
         <Mark size={32} />
-        <Link href="/app/profile" replace className="avatar avatar--sm" aria-label={t("nav.profile")}>
-          МТ
+        <Link href="/app/profile" replace aria-label={t("nav.profile")} style={{ display: "block", borderRadius: "50%" }}>
+          <Avatar avatar={me.avatar} initials={me.initials} size={48} />
         </Link>
       </div>
 
