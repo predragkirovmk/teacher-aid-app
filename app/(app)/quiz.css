@@ -873,13 +873,42 @@
   animation-timing-function: var(--spring-smooth);
 }
 
+/* Reduced motion: stages and badges fade in place, rank rows and the timer beat stay still, and the
+   confetti is gone. The timer ring still drains; it is the time left, not decoration. */
 @media (prefers-reduced-motion: reduce) {
-  .q *:not(.q-ring__arc),
-  .pe,
-  .pe *,
-  .scan-miss {
-    animation: none !important;
-    transition: none !important;
+  @keyframes q-rise {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes q-pop {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes q-face {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes q-tick {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes q-sheet {
+    from {
+      opacity: 0;
+    }
+  }
+  .q-row--climb,
+  .q-row--drop,
+  .q-ring[data-low="true"] .q-ring__num {
+    animation: none;
+  }
+  .q-dots i {
+    transform: none;
+    transition-property: background, border-color;
   }
   .q-burst {
     display: none;

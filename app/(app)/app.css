@@ -1067,15 +1067,9 @@ button.pill {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 1ms !important;
-    transition-duration: 1ms !important;
-  }
   .frame b {
     animation: none;
-    top: 50%;
+    transform: translateY(50cqh);
   }
 }
 
@@ -1402,10 +1396,6 @@ button.pill {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rise,
-  .badge {
-    animation: none;
-  }
   .frame--locked {
     transform: translate(-50%, -50%);
   }
@@ -1540,12 +1530,54 @@ button.pill {
     opacity: 0;
   }
 }
+/* Reduced motion means gentler, not none: entrances fade in place instead of travelling, and
+   decorative movement stops. Press feedback and the switch stay; they answer a touch. */
 @media (prefers-reduced-motion: reduce) {
-  .unlock,
-  .unlock::after,
-  .tab__count,
-  .results {
+  @keyframes rise {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes pop {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes tick {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes unlock-pop {
+    from {
+      opacity: 0;
+    }
+  }
+  .unlock::after {
     animation: none;
+  }
+  .tab-ind {
+    transition: opacity 160ms;
+  }
+  .tab__badge[data-on="false"] {
+    transform: none;
+  }
+  .toast,
+  .toast--out {
+    transform: translateX(-50%);
+    @starting-style {
+      transform: translateX(-50%);
+    }
   }
 }
 
