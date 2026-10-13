@@ -1148,10 +1148,13 @@ button.pill {
   letter-spacing: -0.02em;
   margin: 0 0 18px;
 }
+/* A title row: its trailing control wraps under the title when large text needs the width. */
 .home-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 8px 12px;
   min-height: 48px;
   margin-bottom: 14px;
 }
