@@ -278,7 +278,8 @@
 }
 .q-faces .q-face {
   box-shadow: 0 0 0 3px var(--card);
-  animation: q-face var(--spring-bouncy-dur) var(--spring-bouncy) backwards;
+  /* Classmates arrive several a second: no overshoot. */
+  animation: q-face var(--spring-snappy-dur) var(--spring-snappy) backwards;
 }
 .q-faces .q-face + .q-face {
   margin-left: -8px;
@@ -449,8 +450,9 @@
   font-size: var(--fs-title3);
   font-variant-numeric: tabular-nums;
 }
+/* The last five seconds tick once a second: a short beat, no overshoot. */
 .q-ring[data-low="true"] .q-ring__num {
-  animation: q-beat var(--spring-bouncy-dur) var(--spring-bouncy);
+  animation: q-beat var(--spring-snappy-dur) var(--spring-snappy);
 }
 
 /* ---- locked and waiting ---- */
@@ -501,7 +503,7 @@
   border: 2px solid rgba(255, 255, 255, 0.35);
   transform: scale(0.82);
   transition:
-    transform var(--spring-bouncy-dur) var(--spring-bouncy),
+    transform var(--spring-snappy-dur) var(--spring-snappy),
     background 200ms,
     border-color 200ms;
 }
@@ -797,7 +799,7 @@
 @keyframes q-rise {
   from {
     opacity: 0;
-    transform: translateY(14px);
+    transform: translateY(8px);
   }
 }
 @keyframes q-pop {
@@ -845,7 +847,7 @@
 }
 @keyframes q-beat {
   from {
-    transform: scale(1.35);
+    transform: scale(1.2);
   }
 }
 @keyframes q-climb {
