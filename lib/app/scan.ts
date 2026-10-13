@@ -41,13 +41,18 @@ function native(): Detector | null {
   return nativeDetector;
 }
 
-/** Decode one QR from a canvas. Native BarcodeDetector first, jsQR everywhere else (iOS Safari, Firefox). */
-export async function decodeCanvas(canvas: HTMLCanvasElement): Promise<string | null> {
+/**
+ * Decode one QR from a canvas: the native BarcodeDetector where there is one, jsQR everywhere else
+ * (iOS Safari, Firefox) or if it fails. Camera frames arrive ten times a second, so a native miss
+ * is final there; `thorough` (a photo, decoded once) also gives jsQR a try after a native miss.
+ */
+export async function decodeCanvas(canvas: HTMLCanvasElement, thorough = false): Promise<string | null> {
   const det = native();
   if (det) {
     try {
       const found = await det.detect(canvas);
       if (found[0]?.rawValue) return found[0].rawValue;
+      if (!thorough) return null;
     } catch {
       // fall through to jsQR
     }
@@ -67,5 +72,5 @@ export async function decodeImageFile(file: File): Promise<string | null> {
   canvas.height = Math.round(bitmap.height * scale);
   canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
-  return decodeCanvas(canvas);
+  return decodeCanvas(canvas, true);
 }
