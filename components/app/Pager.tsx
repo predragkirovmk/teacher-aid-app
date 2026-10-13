@@ -156,12 +156,12 @@ export function Pager({ pathname, children }: { pathname: string; children: Reac
           return;
         }
         // A flick keeps its speed: the section leaves at the release velocity instead of starting
-        // again from rest. A slow drag past the threshold still accelerates away.
+        // again from rest. A slow drag past the threshold leaves on the drawer curve (fast, then easing).
         const left = el.clientWidth - Math.abs(dx);
         const speed = Math.max(0, -dir * s.v);
         const flung = speed > 0 && left / speed < EXIT_MS;
         const ms = flung ? Math.max(100, Math.round(left / speed)) : EXIT_MS;
-        el.style.transition = `transform ${ms}ms ${flung ? "linear" : "cubic-bezier(0.4, 0, 1, 1)"}`;
+        el.style.transition = `transform ${ms}ms ${flung ? "linear" : "cubic-bezier(0.32, 0.72, 0, 1)"}`;
         el.style.transform = `translateX(${-dir * 100}%)`;
         timers.current.push = setTimeout(go, ms - 15);
       }}

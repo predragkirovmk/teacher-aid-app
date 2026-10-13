@@ -187,7 +187,7 @@ export function Sheet({
   const drag = useRef<{ y0: number; y: number; t: number; v: number; moved: boolean } | null>(null);
   const [dy, setDy] = useState(0);
   const [phase, setPhase] = useState<"in" | "drag" | "settle" | "out">("in");
-  /** How the sheet leaves: an accelerating exit, or the speed of the flick that threw it. */
+  /** How the sheet leaves: on the drawer curve, or at the speed of the flick that threw it. */
   const [exit, setExit] = useState({ ms: SHEET_EXIT_MS, flung: false });
 
   const leave = useCallback(
@@ -240,7 +240,7 @@ export function Sheet({
         : phase === "out"
           ? {
               transform: "translateY(120%)",
-              transition: `transform ${exit.ms}ms ${exit.flung ? "linear" : "cubic-bezier(0.4, 0, 1, 1)"}`,
+              transition: `transform ${exit.ms}ms ${exit.flung ? "linear" : "cubic-bezier(0.32, 0.72, 0, 1)"}`,
               animation: "none",
             }
           : undefined;
