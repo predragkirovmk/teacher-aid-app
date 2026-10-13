@@ -16,6 +16,8 @@ export type AppState = {
   profile: Profile;
   /** Points earned in live quizzes, added to the class leaderboard (spec 13.1). */
   quizPoints: number;
+  /** Whether a whole live quiz was answered right, which unlocks the Perfect quiz achievement. */
+  perfectQuiz: boolean;
 };
 
 const KEY = "teacheraid-app-v1";
@@ -28,6 +30,7 @@ const DEFAULT: AppState = {
   checkins: [],
   profile: DEFAULT_PROFILE,
   quizPoints: 0,
+  perfectQuiz: false,
 };
 
 const LOCALES: readonly Locale[] = ["mk", "en"];
@@ -55,6 +58,7 @@ function sanitize(saved: unknown): AppState {
       typeof s.quizPoints === "number" && Number.isFinite(s.quizPoints) && s.quizPoints >= 0
         ? Math.floor(s.quizPoints)
         : DEFAULT.quizPoints,
+    perfectQuiz: typeof s.perfectQuiz === "boolean" ? s.perfectQuiz : DEFAULT.perfectQuiz,
   };
 }
 
@@ -160,6 +164,10 @@ export const actions = {
   addQuizPoints: (points: number) => {
     load();
     set({ quizPoints: state.quizPoints + Math.max(0, Math.round(points)) });
+  },
+  markPerfectQuiz: () => {
+    load();
+    if (!state.perfectQuiz) set({ perfectQuiz: true });
   },
   reset: () => {
     for (const key of ["teacheraid-shown-attendance", "teacheraid-achievements-seen"]) {

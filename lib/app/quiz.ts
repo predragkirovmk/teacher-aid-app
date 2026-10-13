@@ -264,6 +264,8 @@ type State = {
   /** Running points: mine and each classmate's, for the in-quiz ranking. */
   mine: number;
   theirs: number[];
+  /** How many questions I have answered right so far. */
+  right: number;
   gain: number;
   bonus: number;
   correct: boolean;
@@ -328,6 +330,7 @@ function closeQuestion(s: State, quiz: Quiz, now: number): State {
     rankBefore: rankOf(s.mine, s.theirs),
     mine: s.mine + gain,
     theirs,
+    right: s.right + (correct ? 1 : 0),
     gain,
     bonus,
     correct,
@@ -381,6 +384,7 @@ function initial(): State {
     pickedAt: null,
     mine: 0,
     theirs: CLASSMATES.map(() => 0),
+    right: 0,
     gain: 0,
     bonus: 0,
     correct: false,
@@ -452,6 +456,7 @@ export function useQuiz(quiz: Quiz, onPoints?: (points: number) => void) {
     gain: s.gain,
     bonus: s.bonus,
     correct: s.correct,
+    right: s.right,
     rank,
     rankBefore: s.rankBefore,
     theirs: s.theirs,

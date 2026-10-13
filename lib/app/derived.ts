@@ -2,10 +2,13 @@
 
 import { useMemo } from "react";
 import {
+  ACHIEVEMENTS,
   BASE_ATTENDED,
   BASE_LOG,
   BASE_TOTAL,
+  LEADERBOARD,
   NOTIFS,
+  type AchievementId,
   type AttendanceStatus,
   type SubjectId,
 } from "./data";
@@ -72,11 +75,34 @@ export function useAttendance() {
 }
 
 export function useAchievements() {
-  const { checkins } = useApp();
+  const { checkins, perfectQuiz } = useApp();
   return useMemo(
-    () => ({ first: checkins.length > 0, ontime: true, streak: false, perfect: false }),
-    [checkins],
+    () => ({ first: checkins.length > 0, ontime: true, streak: false, perfect: perfectQuiz }),
+    [checkins, perfectQuiz],
   );
+}
+
+/** Points per achievement. Proposed, like the scoring values of spec 13.1. */
+export const BADGE_POINTS = 20;
+/** Achievements the demo starts with; their points are already in the starting totals. */
+const STARTING_BADGES: readonly AchievementId[] = ["ontime"];
+
+/**
+ * The class leaderboard. Points come only from quizzes and achievements (decided 13 Oct 2026);
+ * checking in to a lesson records attendance and earns nothing.
+ */
+export function useStandings() {
+  const { quizPoints } = useApp();
+  const got = useAchievements();
+  return useMemo(() => {
+    const badges = ACHIEVEMENTS.filter((a) => got[a] && !STARTING_BADGES.includes(a)).length;
+    // A tie goes to the student, so reaching a classmate's points is enough to pass them.
+    const rows = LEADERBOARD.map((l) => (l.me ? { ...l, points: l.points + quizPoints + badges * BADGE_POINTS } : l)).sort(
+      (a, b) => b.points - a.points || Number(!!b.me) - Number(!!a.me),
+    );
+    const index = rows.findIndex((r) => r.me);
+    return { rows, rank: index + 1, me: rows[index], above: index > 0 ? rows[index - 1] : null };
+  }, [quizPoints, got]);
 }
 
 const MONTHS = {

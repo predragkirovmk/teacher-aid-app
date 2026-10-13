@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useSyncExternalStore, ViewTransition } from "react";
 import { Mark } from "@/components/app/Mark";
 import { SubjectTile } from "@/components/app/SubjectCard";
-import { LEADERBOARD, SUBJECTS, WEEK, subjectById } from "@/lib/app/data";
-import { useAttendance } from "@/lib/app/derived";
+import { SUBJECTS, WEEK, subjectById } from "@/lib/app/data";
+import { useAttendance, useStandings } from "@/lib/app/derived";
 import { useTween } from "@/lib/app/tween";
 import { translate, useT, type Key } from "@/lib/app/i18n";
 
@@ -55,7 +55,7 @@ export default function Home() {
 
   const next = WEEK[0].slots[0];
   const nextSubject = subjectById(next.subject)!;
-  const rank = LEADERBOARD.findIndex((l) => l.me) + 1;
+  const { rank } = useStandings();
 
   // Match in both languages, so typing "math" finds Математика and the other way round.
   const results = useMemo(() => {

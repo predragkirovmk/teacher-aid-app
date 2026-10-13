@@ -1,23 +1,24 @@
 "use client";
 
 import { Top } from "@/components/app/Top";
-import { LEADERBOARD } from "@/lib/app/data";
+import { useStandings } from "@/lib/app/derived";
 import { useT } from "@/lib/app/i18n";
 
 export default function Leaderboard() {
   const { t } = useT();
-  const [, , third] = LEADERBOARD;
-  const me = LEADERBOARD.find((l) => l.me)!;
+  const { rows, rank, me, above } = useStandings();
 
   return (
     <main className="screen">
       <Top title={t("lb.title")} />
-      <p className="t-cap sub">{t("lb.sub")}</p>
+      <p className="t-cap sub">
+        {t("lb.sub")}. {t("lb.how")}
+      </p>
       <p className="t-label" style={{ margin: "0 4px 14px" }}>
-        {t("lb.gap", { n: third.points - me.points })}
+        {above ? t("lb.gap", { n: above.points - me.points, rank: rank - 1 }) : t("lb.top")}
       </p>
       <ol className="list">
-        {LEADERBOARD.map((l, i) => (
+        {rows.map((l, i) => (
           <li key={l.name} className={`item${l.me ? " item--me" : ""}`} style={{ minHeight: 64 }}>
             <span className="rank">{i + 1}</span>
             <span className="grow item__main">

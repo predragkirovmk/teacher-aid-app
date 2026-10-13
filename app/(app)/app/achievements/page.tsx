@@ -4,7 +4,7 @@ import { Award, Flame, Lock, ScanLine, Star, type LucideIcon } from "lucide-reac
 import { useEffect, useSyncExternalStore } from "react";
 import { Top } from "@/components/app/Top";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/app/data";
-import { useAchievements } from "@/lib/app/derived";
+import { BADGE_POINTS, useAchievements } from "@/lib/app/derived";
 import { useT } from "@/lib/app/i18n";
 
 const noop = () => () => {};
@@ -57,7 +57,9 @@ export default function Achievements() {
                   <span className="item__title" style={{ display: "block" }}>
                     {t(`ach.${a}.title`)}
                   </span>
-                  <span className="t-cap">{t(`ach.${a}.body`)}</span>
+                  <span className="t-cap">
+                    {t(`ach.${a}.body`)} {t("ach.points", { n: BADGE_POINTS })}
+                  </span>
                 </span>
                 <span className="status">{on ? t("ach.unlocked") : t("ach.locked")}</span>
               </span>

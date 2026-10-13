@@ -91,7 +91,9 @@ const en = {
   "lb.sub": "Class 7B, this month",
   "lb.you": "You",
   "lb.points": "{n} pts",
-  "lb.gap": "{n} points to reach #3",
+  "lb.gap": "{n} points to reach #{rank}",
+  "lb.top": "You are first in the class",
+  "lb.how": "Points come only from quizzes and achievements",
 
   "sch.title": "Schedule",
   "sch.sub": "Week of 12 October",
@@ -159,6 +161,7 @@ const en = {
   "ach.streak.body": "Attend every lesson for five days.",
   "ach.perfect.title": "Perfect quiz",
   "ach.perfect.body": "Answer all 5 questions right.",
+  "ach.points": "+{n} points",
 
   "faq.title": "FAQ",
   "faq.f1.q": "How do I check in to a lesson?",
@@ -290,7 +293,9 @@ const mk: Record<Key, string> = {
   "lb.sub": "Клас 7Б, овој месец",
   "lb.you": "Ти",
   "lb.points": "{n} поени",
-  "lb.gap": "{n} поени до #3",
+  "lb.gap": "{n} поени до #{rank}",
+  "lb.top": "Прв си во класот",
+  "lb.how": "Поените доаѓаат само од квизови и достигнувања",
 
   "sch.title": "Распоред",
   "sch.sub": "Недела од 12 октомври",
@@ -358,6 +363,7 @@ const mk: Record<Key, string> = {
   "ach.streak.body": "Присуствувај на сите часови пет дена по ред.",
   "ach.perfect.title": "Совршен куиз",
   "ach.perfect.body": "Одговори точно на сите 5 прашања.",
+  "ach.points": "+{n} поени",
 
   "faq.title": "Прашања",
   "faq.f1.q": "Како да се пријавам на час?",
