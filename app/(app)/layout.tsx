@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Golos_Text } from "next/font/google";
 import "./app.css";
+import "./quiz.css";
 
 const golos = Golos_Text({
   variable: "--font-golos",

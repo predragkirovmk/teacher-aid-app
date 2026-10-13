@@ -67,7 +67,8 @@ export function Shell({ children }: { children: ReactNode }) {
     if (gated) router.replace(`/app/welcome?next=${encodeURIComponent(pathname)}`);
   }, [gated, pathname, router]);
 
-  const showTabs = !gated && !NO_TABS.includes(pathname) && !pathname.startsWith("/app/checkin");
+  const showTabs =
+    !gated && !NO_TABS.includes(pathname) && !pathname.startsWith("/app/checkin") && !pathname.startsWith("/app/play");
 
   return (
     <UIContext.Provider value={ui}>
@@ -169,7 +170,7 @@ function Dock({ pathname }: { pathname: string }) {
  * release either flies off (far enough, or fast enough) or springs back. Tapping the grabber,
  * the scrim or Escape closes it with the same exit.
  */
-function Sheet({
+export function Sheet({
   label,
   onClose,
   children,
