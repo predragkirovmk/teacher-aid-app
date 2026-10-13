@@ -25,8 +25,11 @@ export function Row({
       <span className="item__icon">
         <Icon size={22} strokeWidth={2} aria-hidden="true" />
       </span>
-      <span className="grow item__title">{label}</span>
-      {value && <span className="t-cap">{value}</span>}
+      {/* At large text sizes the value wraps under the label instead of colliding with it. */}
+      <span className="grow item__main">
+        <span className="item__title">{label}</span>
+        {value && <span className="t-cap">{value}</span>}
+      </span>
       {chevron && <ChevronRight size={22} strokeWidth={2} aria-hidden="true" />}
     </>
   );

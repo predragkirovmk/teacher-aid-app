@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronRight, Languages, RotateCcw } from "lucide-react";
+import { Languages, RotateCcw } from "lucide-react";
+import { Row } from "@/components/app/Row";
 import { Top } from "@/components/app/Top";
 import { useUI } from "@/components/app/ui";
 import { useT } from "@/lib/app/i18n";
@@ -15,14 +16,7 @@ export default function SettingsPage() {
     <main className="screen">
       <Top title={t("settings.title")} />
       <div className="list">
-        <button className="item" onClick={openLang}>
-          <span className="item__icon">
-            <Languages size={22} strokeWidth={2} aria-hidden="true" />
-          </span>
-          <span className="grow item__title">{t("settings.language")}</span>
-          <span className="t-cap">{t("profile.langValue")}</span>
-          <ChevronRight size={22} strokeWidth={2} aria-hidden="true" />
-        </button>
+        <Row icon={Languages} label={t("settings.language")} value={t("profile.langValue")} onClick={openLang} />
 
         <div className="item">
           <span className="grow">

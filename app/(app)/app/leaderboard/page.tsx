@@ -20,11 +20,11 @@ export default function Leaderboard() {
         {LEADERBOARD.map((l, i) => (
           <li key={l.name} className={`item${l.me ? " item--me" : ""}`} style={{ minHeight: 64 }}>
             <span className="rank">{i + 1}</span>
-            <span className="grow item__title">
-              {l.me ? `${t("lb.you")}, ${l.name.split(" ")[0]}` : l.name}
-            </span>
-            <span className="t-cap" style={{ fontWeight: 650, color: l.me ? undefined : "#fff" }}>
-              {t("lb.points", { n: l.points.toLocaleString("en-US") })}
+            <span className="grow item__main">
+              <span className="item__title">{l.me ? `${t("lb.you")}, ${l.name.split(" ")[0]}` : l.name}</span>
+              <span className="t-cap" style={{ fontWeight: 650, color: l.me ? undefined : "#fff" }}>
+                {t("lb.points", { n: l.points.toLocaleString("en-US") })}
+              </span>
             </span>
           </li>
         ))}

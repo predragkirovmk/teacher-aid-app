@@ -229,9 +229,10 @@ button.card:active {
   flex-direction: column;
   gap: 14px;
 }
+/* Two columns while they fit; one once larger text needs the width (rem grows with the text size). */
 .grid2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
   gap: 14px;
 }
 .row {
@@ -389,7 +390,7 @@ button.card:active {
   position: absolute;
   right: -10px;
   top: 6px;
-  font-size: 5.5rem;
+  font-size: 88px;
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.04em;
@@ -405,6 +406,8 @@ button.card:active {
   font-weight: 700;
   letter-spacing: -0.02em;
   max-width: 78%;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 .subject__foot {
   position: relative;
@@ -421,7 +424,7 @@ button.card:active {
   display: grid;
   place-items: center;
   font-weight: 700;
-  font-size: 0.9375rem;
+  font-size: 15px;
   flex: none;
 }
 .tone-yellow {
@@ -595,6 +598,15 @@ button.item:active {
   font-size: 1rem;
   font-weight: 650;
   line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.item__main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: 12px;
+  row-gap: 2px;
 }
 .dot-unread {
   display: inline-flex;
@@ -659,9 +671,10 @@ button.item:active {
 
 /* ---- leaderboard ---- */
 .rank {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+  min-width: 2.25em;
+  height: 2.25em;
+  padding: 0 0.4em;
+  border-radius: 999px;
   display: grid;
   place-items: center;
   background: rgba(255, 255, 255, 0.14);
@@ -1186,11 +1199,6 @@ button.pill {
   min-height: 48px;
   margin-bottom: 14px;
 }
-.avatar--sm {
-  width: 48px;
-  height: 48px;
-  font-size: 1rem;
-}
 
 /* ---- home ---- */
 .next {
@@ -1222,6 +1230,8 @@ button.pill {
   font-weight: 700;
   letter-spacing: -0.02em;
   max-width: 80%;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 .next__foot {
   display: flex;
@@ -1237,7 +1247,7 @@ button.pill {
 }
 .subjects {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
   gap: 14px;
 }
 .stile {
@@ -1325,18 +1335,18 @@ button.pill {
   place-items: center;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.375rem;
+  font-size: 22px;
   flex: none;
 }
 .avatar--xl {
   width: 112px;
   height: 112px;
-  font-size: 2.375rem;
+  font-size: 38px;
 }
 .avatar--sm {
   width: 48px;
   height: 48px;
-  font-size: 1rem;
+  font-size: 16px;
 }
 
 /* ---- motion: one ease, short durations, transform and opacity only ---- */
