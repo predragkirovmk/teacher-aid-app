@@ -26,19 +26,19 @@ export const subjectByCode = (code: string) =>
 export type DayId = "mon" | "tue" | "wed" | "thu" | "fri";
 export type SlotKind = "lesson" | "test" | "pop";
 
-export const WEEK: { day: DayId; slots: { time: string; subject: SubjectId; kind: SlotKind }[] }[] = [
-  { day: "mon", slots: [{ time: "08:00", subject: "math", kind: "lesson" }, { time: "09:00", subject: "mkd", kind: "lesson" }] },
-  { day: "tue", slots: [{ time: "08:00", subject: "physics", kind: "test" }, { time: "10:00", subject: "english", kind: "lesson" }] },
-  { day: "wed", slots: [{ time: "09:00", subject: "math", kind: "pop" }, { time: "11:00", subject: "physics", kind: "lesson" }] },
-  { day: "thu", slots: [{ time: "08:00", subject: "english", kind: "lesson" }, { time: "09:00", subject: "mkd", kind: "lesson" }] },
-  { day: "fri", slots: [{ time: "08:00", subject: "math", kind: "lesson" }, { time: "10:00", subject: "physics", kind: "lesson" }] },
+export const WEEK: { day: DayId; date: number; slots: { time: string; subject: SubjectId; kind: SlotKind }[] }[] = [
+  { day: "mon", date: 12, slots: [{ time: "08:00", subject: "math", kind: "lesson" }, { time: "09:00", subject: "mkd", kind: "lesson" }] },
+  { day: "tue", date: 13, slots: [{ time: "08:00", subject: "physics", kind: "test" }, { time: "10:00", subject: "english", kind: "lesson" }] },
+  { day: "wed", date: 14, slots: [{ time: "09:00", subject: "math", kind: "pop" }, { time: "11:00", subject: "physics", kind: "lesson" }] },
+  { day: "thu", date: 15, slots: [{ time: "08:00", subject: "english", kind: "lesson" }, { time: "09:00", subject: "mkd", kind: "lesson" }] },
+  { day: "fri", date: 16, slots: [{ time: "08:00", subject: "math", kind: "lesson" }, { time: "10:00", subject: "physics", kind: "lesson" }] },
 ];
 
 export type AttendanceStatus = "present" | "late" | "absent";
 
-/** Lessons before the demo starts: 26 attended of 30, which is the 87 % on the home screen. */
-export const BASE_ATTENDED = 26;
-export const BASE_TOTAL = 30;
+/** Lessons before the demo starts: 20 attended of 23 is 87 %, and one check-in makes it 21 of 24, which is 88 %. */
+export const BASE_ATTENDED = 20;
+export const BASE_TOTAL = 23;
 export const BASE_LOG: { id: string; subject: SubjectId; date: string; status: AttendanceStatus }[] = [
   { id: "b1", subject: "math", date: "2026-10-09", status: "present" },
   { id: "b2", subject: "mkd", date: "2026-10-08", status: "present" },

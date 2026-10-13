@@ -81,5 +81,14 @@ export const actions = {
     set({ checkins: [entry, ...state.checkins] });
     return entry;
   },
-  reset: () => set({ ...DEFAULT }),
+  reset: () => {
+    for (const key of ["teacheraid-shown-attendance", "teacheraid-achievements-seen"]) {
+      try {
+        window.localStorage.removeItem(key);
+      } catch {
+        // ignore
+      }
+    }
+    set({ ...DEFAULT });
+  },
 };
