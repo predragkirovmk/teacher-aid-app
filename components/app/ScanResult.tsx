@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheck, QrCode, ScanLine, TriangleAlert } from "lucide-react";
+import { QrCode, ScanLine, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import type { ScanResult } from "@/lib/app/scan";
 import type { Checkin } from "@/lib/app/store";
@@ -24,7 +24,9 @@ export function ScanResultView({
     return (
       <div className="result-screen" role="status" aria-live="polite">
         <span className="badge">
-          <CircleCheck size={60} strokeWidth={2} aria-hidden="true" />
+          <svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
+            <path className="draw" pathLength="1" d="M16 34 L28 46 L49 21" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </span>
         <h1 className="t-display">{t("res.ok.title")}</h1>
         <p className="t-body" style={{ margin: 0, fontWeight: 600 }}>
