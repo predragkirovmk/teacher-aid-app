@@ -78,5 +78,5 @@ export const QUIZ = [
 export const DOCS = ["d1", "d2", "d3", "d4"] as const;
 export const FAQ_IDS = ["f1", "f2", "f3", "f4"] as const;
 
-export const ACHIEVEMENTS = ["first", "ontime", "streak", "perfect"] as const;
+export const ACHIEVEMENTS = ["answer", "ontime", "streak", "perfect"] as const;
 export type AchievementId = (typeof ACHIEVEMENTS)[number];

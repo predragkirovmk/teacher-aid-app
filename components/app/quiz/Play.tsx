@@ -43,10 +43,12 @@ export function Play({ subject }: { subject: Subject }) {
     if (hydrated && signedIn) actions.checkIn(subject.id);
   }, [hydrated, signedIn, subject.id]);
 
-  // Every question of the quiz answered right unlocks the Perfect quiz achievement.
+  // Achievements come from quiz play: a first answer, right or wrong, and a whole quiz answered right.
   useEffect(() => {
-    if (run.stage === "reveal" && run.last && run.right === run.total) actions.markPerfectQuiz();
-  }, [run.stage, run.last, run.right, run.total]);
+    if (run.stage !== "reveal") return;
+    if (run.picked !== null) actions.markQuizAnswered();
+    if (run.last && run.right === run.total) actions.markPerfectQuiz();
+  }, [run.stage, run.picked, run.last, run.right, run.total]);
 
   // A short buzz for each verdict, where the phone supports it.
   useEffect(() => {

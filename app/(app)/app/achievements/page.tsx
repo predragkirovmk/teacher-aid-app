@@ -1,6 +1,6 @@
 "use client";
 
-import { Award, Flame, Lock, ScanLine, Star, type LucideIcon } from "lucide-react";
+import { Award, Flame, Hand, Lock, Star, type LucideIcon } from "lucide-react";
 import { useEffect, useSyncExternalStore } from "react";
 import { Top } from "@/components/app/Top";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/app/data";
@@ -18,7 +18,7 @@ const readSeen = () => {
   }
 };
 
-const ICON: Record<AchievementId, LucideIcon> = { first: ScanLine, ontime: Award, streak: Flame, perfect: Star };
+const ICON: Record<AchievementId, LucideIcon> = { answer: Hand, ontime: Award, streak: Flame, perfect: Star };
 
 export default function Achievements() {
   const { t } = useT();

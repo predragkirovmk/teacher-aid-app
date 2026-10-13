@@ -16,6 +16,8 @@ export type AppState = {
   profile: Profile;
   /** Points earned in live quizzes, added to the class leaderboard (spec 13.1). */
   quizPoints: number;
+  /** Whether the student has answered a question in a live quiz (the First answer achievement). */
+  quizAnswered: boolean;
   /** Whether a whole live quiz was answered right, which unlocks the Perfect quiz achievement. */
   perfectQuiz: boolean;
 };
@@ -30,6 +32,7 @@ const DEFAULT: AppState = {
   checkins: [],
   profile: DEFAULT_PROFILE,
   quizPoints: 0,
+  quizAnswered: false,
   perfectQuiz: false,
 };
 
@@ -58,6 +61,7 @@ function sanitize(saved: unknown): AppState {
       typeof s.quizPoints === "number" && Number.isFinite(s.quizPoints) && s.quizPoints >= 0
         ? Math.floor(s.quizPoints)
         : DEFAULT.quizPoints,
+    quizAnswered: typeof s.quizAnswered === "boolean" ? s.quizAnswered : DEFAULT.quizAnswered,
     perfectQuiz: typeof s.perfectQuiz === "boolean" ? s.perfectQuiz : DEFAULT.perfectQuiz,
   };
 }
@@ -164,6 +168,10 @@ export const actions = {
   addQuizPoints: (points: number) => {
     load();
     set({ quizPoints: state.quizPoints + Math.max(0, Math.round(points)) });
+  },
+  markQuizAnswered: () => {
+    load();
+    if (!state.quizAnswered) set({ quizAnswered: true });
   },
   markPerfectQuiz: () => {
     load();

@@ -75,10 +75,10 @@ export function useAttendance() {
 }
 
 export function useAchievements() {
-  const { checkins, perfectQuiz } = useApp();
+  const { quizAnswered, perfectQuiz } = useApp();
   return useMemo(
-    () => ({ first: checkins.length > 0, ontime: true, streak: false, perfect: perfectQuiz }),
-    [checkins, perfectQuiz],
+    () => ({ answer: quizAnswered, ontime: true, streak: false, perfect: perfectQuiz }),
+    [quizAnswered, perfectQuiz],
   );
 }
 
