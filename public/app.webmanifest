@@ -1,6 +1,6 @@
 {
-  "name": "Teacher Aid",
-  "short_name": "Teacher Aid",
+  "name": "TeacherAid",
+  "short_name": "TeacherAid",
   "description": "TeacherAid student app demo.",
   "lang": "mk",
   "start_url": "/app",

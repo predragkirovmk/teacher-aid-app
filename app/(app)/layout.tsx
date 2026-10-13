@@ -10,11 +10,11 @@ const golos = Golos_Text({
 });
 
 export const metadata: Metadata = {
-  title: "Teacher Aid",
+  title: "TeacherAid",
   description: "TeacherAid student app demo.",
-  applicationName: "Teacher Aid",
+  applicationName: "TeacherAid",
   manifest: "/app.webmanifest",
-  appleWebApp: { capable: true, title: "Teacher Aid", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "TeacherAid", statusBarStyle: "black-translucent" },
   robots: { index: false, follow: false },
 };
 

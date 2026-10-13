@@ -31,7 +31,7 @@ export default function Welcome() {
       <div className="welcome">
         <Mark size={96} />
         <span className="brand__name" style={{ fontSize: "var(--fs-title3)" }}>
-          Teacher Aid
+          TeacherAid
         </span>
         <h1 className="t-display" style={{ fontSize: "var(--fs-title1)", marginTop: 24 }}>
           {t("welcome.title")}

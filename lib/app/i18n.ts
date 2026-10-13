@@ -201,7 +201,7 @@ const en = {
   "scan.intro.cta": "Continue",
   "scan.intro.later": "Not now",
   "confirm.cancel": "Cancel",
-  "confirm.logout": "Log out of Teacher Aid?",
+  "confirm.logout": "Log out of TeacherAid?",
   "confirm.reset": "Reset the demo data?",
 
   "res.unknown.title": "Not one of your classes",
@@ -412,7 +412,7 @@ const mk: Record<Key, string> = {
   "scan.intro.cta": "Продолжи",
   "scan.intro.later": "Не сега",
   "confirm.cancel": "Откажи",
-  "confirm.logout": "Одјава од Teacher Aid?",
+  "confirm.logout": "Одјава од TeacherAid?",
   "confirm.reset": "Да ги ресетирам демо податоците?",
 
   "res.unknown.title": "Не е еден од твоите класови",
