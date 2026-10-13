@@ -8,7 +8,7 @@ import { leave } from "@/lib/app/nav";
 import { useQT } from "@/lib/app/quiz-copy";
 import { decodeCanvas, decodeImageFile, interpretCode, type ScanResult } from "@/lib/app/scan";
 
-type Phase = "starting" | "scanning" | "denied" | "unavailable" | "error";
+type Phase = "starting" | "scanning" | "denied" | "unavailable" | "error" | "stopped";
 
 const noop = () => () => {};
 const INTRO_KEY = "teacheraid-camera-intro";
@@ -20,6 +20,11 @@ const introSeen = () => {
   }
 };
 const cameraBlocked = () => !window.isSecureContext || !navigator.mediaDevices?.getUserMedia;
+const onVisibility = (cb: () => void) => {
+  document.addEventListener("visibilitychange", cb);
+  return () => document.removeEventListener("visibilitychange", cb);
+};
+const pageVisible = () => document.visibilityState === "visible";
 
 export default function Scan() {
   const { t } = useT();
@@ -31,6 +36,9 @@ export default function Scan() {
   const handled = useRef(false);
 
   const insecure = useSyncExternalStore(noop, cameraBlocked, () => false);
+  // The camera runs only while the page is on screen: it stops when the student switches apps
+  // (iPhone ends the stream then anyway) and starts again on return.
+  const visible = useSyncExternalStore(onVisibility, pageVisible, () => true);
   const seen = useSyncExternalStore(noop, introSeen, () => true);
   const [introOk, setIntroOk] = useState(false);
   const needIntro = !seen && !introOk;
@@ -65,7 +73,7 @@ export default function Scan() {
   useEffect(() => () => clearTimeout(lockTimer.current), []);
 
   useEffect(() => {
-    if (result || needIntro) return;
+    if (result || needIntro || !visible) return;
     handled.current = false;
     let stopped = false;
     let raf = 0;
@@ -96,6 +104,12 @@ export default function Scan() {
         stream.getTracks().forEach((tr) => tr.stop());
         return;
       }
+      // Another app taking the camera ends the track: say so and offer Try again, instead of
+      // reading the last frame forever.
+      const track = stream.getVideoTracks()[0];
+      track?.addEventListener("ended", () => {
+        if (!stopped) setPhase("stopped");
+      });
       video.srcObject = stream;
       await video.play().catch(() => {});
       setPhase("scanning");
@@ -103,7 +117,7 @@ export default function Scan() {
       let busy = false;
       let last = 0;
       const tick = async (now: number) => {
-        if (stopped || handled.current) return;
+        if (stopped || handled.current || track?.readyState === "ended") return;
         raf = requestAnimationFrame(tick);
         if (busy || now - last < 110 || video.readyState < 2 || !video.videoWidth) return;
         busy = true;
@@ -126,7 +140,7 @@ export default function Scan() {
       stream?.getTracks().forEach((tr) => tr.stop());
       video.srcObject = null;
     };
-  }, [attempt, result, handle, needIntro]);
+  }, [attempt, result, handle, needIntro, visible]);
 
   const message =
     phase === "starting"
@@ -139,8 +153,10 @@ export default function Scan() {
             ? t("scan.unavailable")
             : phase === "error"
               ? t("scan.error")
-              : t("scan.hint");
-  const failed = phase === "denied" || phase === "insecure" || phase === "unavailable" || phase === "error";
+              : phase === "stopped"
+                ? t("scan.stopped")
+                : t("scan.hint");
+  const failed = phase === "denied" || phase === "insecure" || phase === "unavailable" || phase === "error" || phase === "stopped";
 
   return (
     <main className="scan">
