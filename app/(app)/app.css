@@ -1456,21 +1456,17 @@ button.pill {
   }
 }
 
-/* Unread marker eases out instead of vanishing. */
+/* Unread marker fades out, then leaves the layout (no width animation). The title's weight
+   changes at once: animating font-weight reflows the text every frame. */
 .dot-unread {
-  transition:
-    opacity var(--spring-smooth-dur) var(--spring-smooth),
-    max-width var(--spring-smooth-dur) var(--spring-smooth);
-  max-width: 12em;
-  overflow: hidden;
   white-space: nowrap;
+  transition:
+    opacity 200ms cubic-bezier(0.23, 1, 0.32, 1),
+    display 200ms allow-discrete;
 }
 .dot-unread[data-on="false"] {
   opacity: 0;
-  max-width: 0;
-}
-.item__title {
-  transition: font-weight 200ms;
+  display: none;
 }
 
 /* Search results and toast: short in, short out. */
