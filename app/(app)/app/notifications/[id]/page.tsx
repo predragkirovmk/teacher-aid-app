@@ -22,7 +22,10 @@ export default function NotificationDetail() {
     return (
       <main className="screen screen--bare">
         <Top title={t("notif.title")} />
-        <p className="muted">{t("notif.empty")}</p>
+        <p className="muted">{t("notif.missing")}</p>
+        <Link href="/app/notifications" replace className="btn btn--ghost btn--block" style={{ marginTop: 16 }}>
+          {t("notif.all")}
+        </Link>
       </main>
     );
   }
