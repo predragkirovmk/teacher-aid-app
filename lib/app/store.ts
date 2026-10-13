@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { DEFAULT_PROFILE, isAvatar, type Profile } from "./avatars";
 import { SUBJECTS, type Locale, type SubjectId } from "./data";
 
 export type Checkin = { id: string; subject: SubjectId; at: number };
@@ -11,11 +12,23 @@ export type AppState = {
   notificationsOn: boolean;
   read: string[];
   checkins: Checkin[];
+  /** The display name and avatar the student chose; null name means the school account's. */
+  profile: Profile;
+  /** Points earned in live quizzes, added to the class leaderboard (spec 13.1). */
+  quizPoints: number;
 };
 
 const KEY = "teacheraid-app-v1";
 
-const DEFAULT: AppState = { locale: "mk", signedIn: true, notificationsOn: true, read: [], checkins: [] };
+const DEFAULT: AppState = {
+  locale: "mk",
+  signedIn: true,
+  notificationsOn: true,
+  read: [],
+  checkins: [],
+  profile: DEFAULT_PROFILE,
+  quizPoints: 0,
+};
 
 const LOCALES: readonly Locale[] = ["mk", "en"];
 
@@ -37,7 +50,18 @@ function sanitize(saved: unknown): AppState {
     notificationsOn: typeof s.notificationsOn === "boolean" ? s.notificationsOn : DEFAULT.notificationsOn,
     read: Array.isArray(s.read) ? s.read.filter((id): id is string => typeof id === "string") : DEFAULT.read,
     checkins: Array.isArray(s.checkins) ? s.checkins.filter(isCheckin) : DEFAULT.checkins,
+    profile: sanitizeProfile(s.profile),
+    quizPoints:
+      typeof s.quizPoints === "number" && Number.isFinite(s.quizPoints) && s.quizPoints >= 0
+        ? Math.floor(s.quizPoints)
+        : DEFAULT.quizPoints,
   };
+}
+
+function sanitizeProfile(saved: unknown): Profile {
+  const p = saved && typeof saved === "object" ? (saved as Record<string, unknown>) : {};
+  const name = typeof p.name === "string" && p.name.trim() ? p.name.trim().slice(0, 40) : null;
+  return { name, avatar: isAvatar(p.avatar) ? p.avatar : DEFAULT_PROFILE.avatar };
 }
 
 let state: AppState = DEFAULT;
@@ -131,6 +155,11 @@ export const actions = {
     const entry = { id: `c-${Date.now()}`, subject, at: Date.now() };
     set({ checkins: [entry, ...state.checkins] });
     return entry;
+  },
+  setProfile: (profile: Profile) => set({ profile }),
+  addQuizPoints: (points: number) => {
+    load();
+    set({ quizPoints: state.quizPoints + Math.max(0, Math.round(points)) });
   },
   reset: () => {
     for (const key of ["teacheraid-shown-attendance", "teacheraid-achievements-seen"]) {
