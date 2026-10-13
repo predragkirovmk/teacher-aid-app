@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import type { Locale, SubjectId } from "./data";
+import { SUBJECTS, type Locale, type SubjectId } from "./data";
 
 export type Checkin = { id: string; subject: SubjectId; at: number };
 
@@ -17,6 +17,29 @@ const KEY = "teacheraid-app-v1";
 
 const DEFAULT: AppState = { locale: "mk", signedIn: true, notificationsOn: true, read: [], checkins: [] };
 
+const LOCALES: readonly Locale[] = ["mk", "en"];
+
+const isCheckin = (c: unknown): c is Checkin => {
+  const x = c as Partial<Checkin> | null;
+  return !!x && typeof x.id === "string" && SUBJECTS.some((s) => s.id === x.subject) && Number.isFinite(x.at);
+};
+
+/**
+ * Rebuild the state field by field from whatever was saved. A save from an older build, or one
+ * edited by hand, keeps its good fields and falls back to the defaults for the rest, so it can
+ * never crash a screen.
+ */
+function sanitize(saved: unknown): AppState {
+  const s = saved && typeof saved === "object" ? (saved as Record<string, unknown>) : {};
+  return {
+    locale: LOCALES.includes(s.locale as Locale) ? (s.locale as Locale) : DEFAULT.locale,
+    signedIn: typeof s.signedIn === "boolean" ? s.signedIn : DEFAULT.signedIn,
+    notificationsOn: typeof s.notificationsOn === "boolean" ? s.notificationsOn : DEFAULT.notificationsOn,
+    read: Array.isArray(s.read) ? s.read.filter((id): id is string => typeof id === "string") : DEFAULT.read,
+    checkins: Array.isArray(s.checkins) ? s.checkins.filter(isCheckin) : DEFAULT.checkins,
+  };
+}
+
 let state: AppState = DEFAULT;
 let loaded = false;
 const listeners = new Set<() => void>();
@@ -26,7 +49,7 @@ function load() {
   loaded = true;
   try {
     const raw = window.localStorage.getItem(KEY);
-    if (raw) state = { ...DEFAULT, ...(JSON.parse(raw) as Partial<AppState>) };
+    if (raw) state = sanitize(JSON.parse(raw));
   } catch {
     // Private mode or blocked storage: the demo still works for the session.
   }

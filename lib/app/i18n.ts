@@ -130,6 +130,10 @@ const en = {
   "settings.resetHint": "Clears check-ins and read notifications",
   "settings.about": "Demo build. Not the final app.",
 
+  "error.title": "Something went wrong",
+  "error.body": "This screen could not be shown. Try again. If it happens again, reset the demo data.",
+  "error.retry": "Try again",
+
   "lang.title": "Language",
   "lang.en": "English",
   "lang.mk": "Македонски",
@@ -337,6 +341,10 @@ const mk: Record<Key, string> = {
   "settings.reset": "Ресетирај ги демо податоците",
   "settings.resetHint": "Ги брише пријавите и прочитаните известувања",
   "settings.about": "Демо верзија. Не е финалната апликација.",
+
+  "error.title": "Нешто не е во ред",
+  "error.body": "Овој екран не можеше да се прикаже. Обиди се повторно. Ако се случи пак, ресетирај ги демо податоците.",
+  "error.retry": "Обиди се повторно",
 
   "lang.title": "Јазик",
   "lang.en": "English",
