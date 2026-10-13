@@ -107,10 +107,15 @@ export function Shell({ children }: { children: ReactNode }) {
               )}
             </Sheet>
           )}
+          {/* A live region that is always present announces the toast; one that appears together
+              with its text is often not read. The visible toast is for the eyes and a tap. */}
+          <p className="sr" role="status">
+            {toastMsg ?? ""}
+          </p>
           {toastMsg && (
-            <button className={`toast glass${toastOut ? " toast--out" : ""}`} role="status" onClick={dismissToast}>
+            <div className={`toast glass${toastOut ? " toast--out" : ""}`} aria-hidden="true" onClick={dismissToast}>
               {toastMsg}
-            </button>
+            </div>
           )}
         </div>
       </div>
@@ -218,6 +223,8 @@ export function Sheet({
     for (let node: Element | null = sheet; node?.parentElement && node !== document.body; node = node.parentElement) {
       for (const sib of Array.from(node.parentElement.children)) {
         if (sib === node || sib.classList.contains("scrim") || !(sib instanceof HTMLElement) || sib.inert) continue;
+        // A live region stays live, so a toast sent as the sheet closes is still read out.
+        if (sib.getAttribute("role") === "status") continue;
         sib.inert = true;
         behind.push(sib);
       }
