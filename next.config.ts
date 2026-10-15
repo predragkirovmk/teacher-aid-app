@@ -21,6 +21,10 @@ const csp = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  env: {
+    // Which build this is. The student app compares it with /app/build to notice a new deploy.
+    NEXT_PUBLIC_APP_BUILD: process.env.VERCEL_DEPLOYMENT_ID ?? process.env.VERCEL_GIT_COMMIT_SHA ?? `local-${Date.now()}`,
+  },
   experimental: {
     globalNotFound: true,
     // Phosphor ships thousands of icons from one entry; only the ones imported are compiled.
