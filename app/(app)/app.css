@@ -1355,6 +1355,9 @@ button.pill {
     transform: translateY(10px);
   }
 }
+[data-rise-seen] .rise {
+  animation: none;
+}
 
 /* Scan: the frame tightens around the code, then the result takes over. The extra dimming and the
    glow are a second layer that fades in, so the lock animates opacity instead of a screen-sized shadow. */

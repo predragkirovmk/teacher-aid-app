@@ -26,9 +26,16 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
+/** Before the first paint: skip the Home intro if it already played this session (see app/page). */
+const RISE_SEEN = `try{if(sessionStorage.getItem("teacheraid-home-rise")==="1")document.documentElement.setAttribute("data-rise-seen","")}catch(e){}`;
+
 export default function AppRootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="mk" className={golos.variable}>
+    // The inline script may add data-rise-seen to <html> before React hydrates it.
+    <html lang="mk" className={golos.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: RISE_SEEN }} />
+      </head>
       <body>{children}</body>
     </html>
   );

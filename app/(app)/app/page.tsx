@@ -3,7 +3,7 @@
 import { CaretRightIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useSyncExternalStore, ViewTransition } from "react";
+import { useEffect, useMemo, useState, ViewTransition } from "react";
 import { Avatar } from "@/components/app/Avatar";
 import { Mark } from "@/components/app/Mark";
 import { SubjectRow } from "@/components/app/SubjectCard";
@@ -13,15 +13,8 @@ import { useTween } from "@/lib/app/tween";
 import { translate, useT, type Key } from "@/lib/app/i18n";
 import { useMe } from "@/lib/app/profile";
 
-const noop = () => () => {};
+/** Set once the intro has played this session; the root layout reads it before the first paint. */
 const RISE_KEY = "teacheraid-home-rise";
-const riseSeen = () => {
-  try {
-    return window.sessionStorage.getItem(RISE_KEY) === "1";
-  } catch {
-    return true;
-  }
-};
 
 const PAGES: [string, Key][] = [
   ["/app/attendance", "att.title"],
@@ -42,10 +35,12 @@ export default function Home() {
   const { percent, attended, total } = useAttendance();
   const att = useTween(percent, "teacheraid-shown-attendance");
   const [q, setQ] = useState("");
-  const seen = useSyncExternalStore(noop, riseSeen, () => true);
-  // Mark the intro as played only after it has run, so the first render still sees it unplayed.
+  // The cards always carry the intro, server and client alike, so nothing renders twice: CSS plays it
+  // from the first paint, and skips it once [data-rise-seen] is on <html>, which the layout's inline
+  // script sets before paint on later loads and this effect sets after the intro has run.
   useEffect(() => {
     const id = setTimeout(() => {
+      document.documentElement.setAttribute("data-rise-seen", "");
       try {
         window.sessionStorage.setItem(RISE_KEY, "1");
       } catch {
@@ -54,7 +49,7 @@ export default function Home() {
     }, 1200);
     return () => clearTimeout(id);
   }, []);
-  const rise = (i: number) => (seen ? {} : { className: "rise", style: { "--i": i } as React.CSSProperties });
+  const rise = (i: number) => ({ className: "rise", style: { "--i": i } as React.CSSProperties });
 
   const next = WEEK[0].slots[0];
   const nextSubject = subjectById(next.subject)!;
