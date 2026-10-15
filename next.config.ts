@@ -57,6 +57,11 @@ const nextConfig: NextConfig = {
           { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(), browsing-topics=()" },
         ],
       },
+      {
+        // The student app's offline worker: a new one must reach phones on their next visit.
+        source: "/app-sw.js",
+        headers: [{ key: "Cache-Control", value: "no-cache" }],
+      },
     ];
   },
 };

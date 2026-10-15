@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Golos_Text } from "next/font/google";
+import { ServiceWorker } from "@/components/app/ServiceWorker";
 import "./app.css";
 import "./quiz.css";
 
@@ -36,7 +37,10 @@ export default function AppRootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: RISE_SEEN }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <ServiceWorker />
+      </body>
     </html>
   );
 }
