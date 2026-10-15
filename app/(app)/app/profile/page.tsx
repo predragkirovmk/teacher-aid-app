@@ -1,6 +1,6 @@
 "use client";
 
-import { CaretRightIcon, FileIcon, GearSixIcon, QuestionIcon, ShieldCheckIcon, SignOutIcon, TranslateIcon, TrophyIcon } from "@phosphor-icons/react";
+import { CaretRightIcon, DownloadSimpleIcon, FileIcon, GearSixIcon, QuestionIcon, ShieldCheckIcon, SignOutIcon, TranslateIcon, TrophyIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useState } from "react";
 import { Avatar } from "@/components/app/Avatar";
@@ -8,6 +8,7 @@ import { ProfileEditor } from "@/components/app/ProfileEditor";
 import { Row } from "@/components/app/Row";
 import { useUI } from "@/components/app/ui";
 import { useAttendance } from "@/lib/app/derived";
+import { promptInstall, useInstall } from "@/lib/app/install";
 import { useT } from "@/lib/app/i18n";
 import { useMe } from "@/lib/app/profile";
 import { useQT } from "@/lib/app/quiz-copy";
@@ -15,7 +16,8 @@ import { actions } from "@/lib/app/store";
 
 export default function Profile() {
   const { t } = useT();
-  const { openLang, confirm } = useUI();
+  const { openLang, confirm, openInstall, toast } = useUI();
+  const install = useInstall();
   const { percent } = useAttendance();
   const { t: qt } = useQT();
   const me = useMe();
@@ -73,6 +75,22 @@ export default function Profile() {
       </div>
 
       <div className="stack" style={{ gap: 16 }}>
+        {/* Gone once the app runs from the Home Screen. */}
+        {install !== "installed" && (
+          <div className="list">
+            <Row
+              icon={DownloadSimpleIcon}
+              label={t("install.row")}
+              value={t("install.rowHint")}
+              onClick={async () => {
+                if (install !== "prompt") return openInstall(install);
+                const outcome = await promptInstall();
+                if (outcome === "accepted") toast(t("install.added"));
+                else if (outcome === "unavailable") openInstall("manual");
+              }}
+            />
+          </div>
+        )}
         <div className="list">
           <Row icon={FileIcon} label={t("drawer.documents")} href="/app/documents" />
           <Row icon={TrophyIcon} label={t("drawer.achievements")} href="/app/achievements" />

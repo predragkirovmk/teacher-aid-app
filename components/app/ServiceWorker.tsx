@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 import { NOTIFS, SUBJECTS } from "@/lib/app/data";
+// Loaded with every screen so the browser's install offer is caught whenever it comes.
+import "@/lib/app/install";
 
 /** Every screen, so the offline worker (public/app-sw.js) can cache them all on the first visit. */
 const ROUTES = [

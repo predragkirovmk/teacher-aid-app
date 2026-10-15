@@ -216,6 +216,17 @@ const en = {
   "kit.other": "Not a class",
   "kit.otherHint": "Scanning this shows that the code is not recognized.",
   "kit.print": "Print",
+
+  "install.row": "Install the app",
+  "install.rowHint": "Opens full screen and works without signal",
+  "install.title": "Add TeacherAid to your Home Screen",
+  "install.ios.share": "Tap Share in Safari",
+  "install.ios.add": "Choose “Add to Home Screen”",
+  "install.ios.confirm": "Tap “Add”",
+  "install.ios.safari": "Opened it from Instagram or another app? Open the page in Safari first.",
+  "install.other": "Open your browser’s menu and choose “Install app” or “Add to Home screen”.",
+  "install.ok": "Done",
+  "install.added": "TeacherAid is on your Home Screen",
 } as const;
 
 export type Key = keyof typeof en;
@@ -432,6 +443,17 @@ const mk: Record<Key, string> = {
   "kit.other": "Не е час",
   "kit.otherHint": "Скенирањето покажува дека кодот не е препознаен.",
   "kit.print": "Печати",
+
+  "install.row": "Инсталирај ја апликацијата",
+  "install.rowHint": "Се отвора на цел екран и работи без сигнал",
+  "install.title": "Додај го TeacherAid на почетниот екран",
+  "install.ios.share": "Во Safari допри „Share“",
+  "install.ios.add": "Избери „Add to Home Screen“",
+  "install.ios.confirm": "Допри „Add“",
+  "install.ios.safari": "Ја отвори од Instagram или друга апликација? Прво отвори ја страницата во Safari.",
+  "install.other": "Отвори го менито на прелистувачот и избери „Install app“ или „Add to Home screen“.",
+  "install.ok": "Готово",
+  "install.added": "TeacherAid е на почетниот екран",
 };
 
 export const dictionaries: Record<Locale, Record<Key, string>> = { en, mk };

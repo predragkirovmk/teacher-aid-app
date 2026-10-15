@@ -1,6 +1,6 @@
 "use client";
 
-import { BellSimpleIcon, CheckIcon, HouseSimpleIcon, ScanIcon, UserIcon, type Icon } from "@phosphor-icons/react";
+import { BellSimpleIcon, CheckIcon, ExportIcon, HouseSimpleIcon, PlusSquareIcon, ScanIcon, UserIcon, type Icon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -21,11 +21,13 @@ export function Shell({ children }: { children: ReactNode }) {
   // Remember the path an overlay was opened on, so navigating closes it without an effect.
   const [langAt, setLangAt] = useState<string | null>(null);
   const [confirmState, setConfirmState] = useState<{ at: string; options: ConfirmOptions } | null>(null);
+  const [installState, setInstallState] = useState<{ at: string; how: "ios" | "manual" } | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [toastOut, setToastOut] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lang = langAt === pathname;
   const confirmOptions = confirmState?.at === pathname ? confirmState.options : null;
+  const installHow = installState?.at === pathname ? installState.how : null;
 
   // Time-boxed UI is hard for some people, so the toast stays long and a tap dismisses it.
   const dismissToast = useCallback(() => {
@@ -52,6 +54,7 @@ export function Shell({ children }: { children: ReactNode }) {
       openLang: () => setLangAt(pathname),
       confirm: (options: ConfirmOptions) => setConfirmState({ at: pathname, options }),
       toast,
+      openInstall: (how: "ios" | "manual") => setInstallState({ at: pathname, how }),
     }),
     [toast, pathname],
   );
@@ -102,6 +105,30 @@ export function Shell({ children }: { children: ReactNode }) {
                   </button>
                   <button className="btn btn--primary btn--block" onClick={close}>
                     {t("confirm.cancel")}
+                  </button>
+                </>
+              )}
+            </Sheet>
+          )}
+          {installHow && (
+            <Sheet label={t("install.title")} onClose={() => setInstallState(null)}>
+              {(close) => (
+                <>
+                  <p className="sheet__title">{t("install.title")}</p>
+                  {installHow === "ios" ? (
+                    <>
+                      <ol className="steps">
+                        <InstallStep icon={ExportIcon} text={t("install.ios.share")} />
+                        <InstallStep icon={PlusSquareIcon} text={t("install.ios.add")} />
+                        <InstallStep icon={CheckIcon} text={t("install.ios.confirm")} />
+                      </ol>
+                      <p className="t-cap steps__note">{t("install.ios.safari")}</p>
+                    </>
+                  ) : (
+                    <p className="t-body steps__note">{t("install.other")}</p>
+                  )}
+                  <button className="btn btn--primary btn--block" onClick={close}>
+                    {t("install.ok")}
                   </button>
                 </>
               )}
@@ -312,6 +339,17 @@ export function Sheet({
         {children(close)}
       </div>
     </>
+  );
+}
+
+function InstallStep({ icon: Icon, text }: { icon: Icon; text: string }) {
+  return (
+    <li>
+      <span className="item__icon">
+        <Icon size={22} aria-hidden="true" />
+      </span>
+      {text}
+    </li>
   );
 }
 

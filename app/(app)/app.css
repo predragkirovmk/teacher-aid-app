@@ -561,6 +561,23 @@ button.card:active {
 .sheet .btn + .btn {
   margin-top: 8px;
 }
+/* Install steps in a sheet: the icon is what the student looks for on their own screen. */
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0 4px;
+}
+.steps li {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 56px;
+  font-size: var(--fs-body);
+}
+.steps__note {
+  margin: 8px 4px 16px;
+  color: var(--text-2);
+}
 .opt {
   display: flex;
   align-items: center;
