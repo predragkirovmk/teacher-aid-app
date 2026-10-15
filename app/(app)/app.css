@@ -363,6 +363,8 @@ button.card:active {
   pointer-events: none;
 }
 .results {
+  list-style: none;
+  margin: 0;
   position: absolute;
   z-index: 5;
   left: 0;

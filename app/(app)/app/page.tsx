@@ -2,8 +2,7 @@
 
 import { CaretRightIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, ViewTransition } from "react";
+import { useEffect, useMemo, useRef, useState, ViewTransition, type KeyboardEvent } from "react";
 import { Avatar } from "@/components/app/Avatar";
 import { Mark } from "@/components/app/Mark";
 import { SubjectRow } from "@/components/app/SubjectCard";
@@ -31,10 +30,10 @@ const PAGES: [string, Key][] = [
 export default function Home() {
   const { t } = useT();
   const me = useMe();
-  const router = useRouter();
   const { percent, attended, total } = useAttendance();
   const att = useTween(percent, "teacheraid-shown-attendance");
   const [q, setQ] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   // The cards always carry the intro, server and client alike, so nothing renders twice: CSS plays it
   // from the first paint, and skips it once [data-rise-seen] is on <html>, which the layout's inline
   // script sets before paint on later loads and this effect sets after the intro has run.
@@ -69,6 +68,28 @@ export default function Home() {
       .map(({ href, key }): [string, string] => [href, t(key)]);
   }, [q, t]);
 
+  // Arrow keys move between the results and back up to the field; Escape clears the search.
+  const onResultsKey = (e: KeyboardEvent<HTMLUListElement>) => {
+    const links = Array.from(e.currentTarget.querySelectorAll("a"));
+    const at = links.indexOf(document.activeElement as HTMLAnchorElement);
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const to = at + (e.key === "ArrowDown" ? 1 : -1);
+      if (to < 0) inputRef.current?.focus();
+      else links[Math.min(to, links.length - 1)]?.focus();
+    } else if (e.key === "Escape") {
+      setQ("");
+      inputRef.current?.focus();
+    }
+  };
+  const found = !q.trim()
+    ? ""
+    : results.length === 0
+      ? t("home.noResults")
+      : results.length === 1
+        ? t("home.results.one")
+        : t("home.results.other", { n: results.length });
+
   return (
     <main className="screen">
       <div className="home-bar">
@@ -82,24 +103,39 @@ export default function Home() {
 
       <div className="search">
         <input
+          ref={inputRef}
           type="search"
           value={q}
+          aria-controls={q.trim() ? "home-results" : undefined}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown" && results.length) {
+              e.preventDefault();
+              document.querySelector<HTMLAnchorElement>("#home-results a")?.focus();
+            }
+          }}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t("home.search")}
           aria-label={t("home.search")}
           enterKeyHint="search"
         />
         <MagnifyingGlassIcon size={22} aria-hidden="true" />
+        {/* A plain list of links, announced by count: the listbox roles it had promised arrow-key
+            selection that never worked. */}
+        <p className="sr" role="status">
+          {found}
+        </p>
         {q.trim() && (
-          <div className="results glass" role="listbox">
-            {results.length === 0 && <div className="result muted">{t("home.noResults")}</div>}
+          <ul id="home-results" className="results glass" aria-label={t("home.search")} onKeyDown={onResultsKey}>
+            {results.length === 0 && <li className="result muted">{t("home.noResults")}</li>}
             {results.map(([href, label]) => (
-              <button key={href} className="result" role="option" aria-selected="false" onClick={() => router.push(href)}>
-                <span className="grow">{label}</span>
-                <CaretRightIcon size={20} aria-hidden="true" />
-              </button>
+              <li key={href}>
+                <Link href={href} className="result">
+                  <span className="grow">{label}</span>
+                  <CaretRightIcon size={20} aria-hidden="true" />
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </div>
 
