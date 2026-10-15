@@ -1,7 +1,8 @@
 {
+  "id": "/app",
   "name": "TeacherAid",
   "short_name": "TeacherAid",
-  "description": "TeacherAid student app demo.",
+  "description": "Скенирај го кодот на часот, пријави се и играј го квизот во живо.",
   "lang": "mk",
   "start_url": "/app",
   "scope": "/app",
@@ -10,8 +11,8 @@
   "background_color": "#1a5dae",
   "theme_color": "#1a5dae",
   "icons": [
-    { "src": "/site/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/site/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/site/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/app-icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/app-icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/app-icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

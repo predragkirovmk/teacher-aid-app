@@ -11,7 +11,7 @@ const golos = Golos_Text({
 
 export const metadata: Metadata = {
   title: "TeacherAid",
-  description: "TeacherAid student app demo.",
+  description: "Скенирај го кодот на часот, пријави се и играј го квизот во живо.",
   applicationName: "TeacherAid",
   manifest: "/app.webmanifest",
   appleWebApp: { capable: true, title: "TeacherAid", statusBarStyle: "black-translucent" },
