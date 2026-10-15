@@ -1321,6 +1321,60 @@ button.pill {
     outline: 1px solid rgba(255, 255, 255, 0.5);
   }
 }
+/* Forced colours (Windows high contrast) replace every fill and drop shadows: surfaces get an
+   edge, and each state that was only a fill or a shadow is drawn in system colours. */
+@media (forced-colors: active) {
+  .card,
+  .list,
+  .tile,
+  .next,
+  .subject,
+  .avatar,
+  .monogram,
+  .glass,
+  .toast,
+  .btn,
+  .round,
+  .scan-fab {
+    border: 1px solid CanvasText;
+  }
+  /* Decoration only, and its text backplate would cover the card's title. */
+  .subject__glyphs {
+    display: none;
+  }
+  .tab-ind {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+  .tab[aria-current="page"] {
+    forced-color-adjust: none;
+    color: HighlightText;
+  }
+  .opt[aria-checked="true"] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+  .switch {
+    forced-color-adjust: none;
+    background: Canvas;
+    border: 2px solid ButtonText;
+  }
+  .switch::after {
+    top: 1px;
+    left: 1px;
+    background: ButtonText;
+  }
+  .switch[aria-checked="true"] {
+    background: Highlight;
+  }
+  .switch[aria-checked="true"]::after {
+    background: HighlightText;
+  }
+  .dot-unread::before {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+}
 
 .avatar {
   width: 64px;

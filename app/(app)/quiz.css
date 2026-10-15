@@ -921,3 +921,20 @@
     animation: none !important;
   }
 }
+
+/* Forced colours: answer cards keep an edge, and progress marks stay readable when fills go. */
+@media (forced-colors: active) {
+  .q-opt,
+  .q-tf__btn,
+  .q-locked {
+    border: 1px solid ButtonText;
+  }
+  .q-steps i {
+    border: 1px solid CanvasText;
+  }
+  :is(.q-steps, .q-dots) i[data-on="true"] {
+    forced-color-adjust: none;
+    background: CanvasText;
+    border-color: CanvasText;
+  }
+}
