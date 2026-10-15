@@ -143,6 +143,9 @@ const en = {
   "settings.resetDone": "Demo data reset",
   "settings.resetHint": "Clears check-ins and read notifications",
   "settings.about": "Demo build. Not the final app.",
+  "settings.installed": "Installed on your Home Screen",
+  "settings.inBrowser": "Open in the browser",
+  "settings.version": "version {v}",
 
   "error.title": "Something went wrong",
   "error.body": "This screen could not be shown. Try again. If it happens again, reset the demo data.",
@@ -370,6 +373,9 @@ const mk: Record<Key, string> = {
   "settings.resetDone": "Демо податоците се ресетирани",
   "settings.resetHint": "Ги брише пријавите и прочитаните известувања",
   "settings.about": "Демо верзија. Не е финалната апликација.",
+  "settings.installed": "Инсталирана на почетниот екран",
+  "settings.inBrowser": "Отворена во прелистувач",
+  "settings.version": "верзија {v}",
 
   "error.title": "Нешто не е во ред",
   "error.body": "Овој екран не можеше да се прикаже. Обиди се повторно. Ако се случи пак, ресетирај ги демо податоците.",

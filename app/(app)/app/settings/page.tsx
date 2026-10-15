@@ -5,12 +5,17 @@ import { Row } from "@/components/app/Row";
 import { Top } from "@/components/app/Top";
 import { useUI } from "@/components/app/ui";
 import { useT } from "@/lib/app/i18n";
+import { useInstall } from "@/lib/app/install";
 import { actions, useApp } from "@/lib/app/store";
+
+/** The build, short: enough to tell two deploys apart when checking that a phone has the latest. */
+const VERSION = (process.env.NEXT_PUBLIC_APP_BUILD ?? "").replace(/^dpl_/, "").slice(0, 7);
 
 export default function SettingsPage() {
   const { t, locale } = useT();
   const { openLang, toast, confirm } = useUI();
   const { notificationsOn } = useApp();
+  const install = useInstall();
 
   return (
     <main className="screen">
@@ -65,6 +70,9 @@ export default function SettingsPage() {
       </div>
       <p className="t-cap" style={{ textAlign: "center", marginTop: 24 }}>
         {t("settings.about")}
+      </p>
+      <p className="t-cap" style={{ textAlign: "center", marginTop: 4 }}>
+        {t(install === "installed" ? "settings.installed" : "settings.inBrowser")} · {t("settings.version", { v: VERSION })}
       </p>
     </main>
   );
