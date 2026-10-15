@@ -25,3 +25,38 @@ export function leave(router: { back(): void; replace(href: string): void }) {
   if (backStaysInApp()) router.back();
   else router.replace("/app");
 }
+
+/**
+ * Back from a screen whose card morphed in (a subject): the card shrinks back into its row on the
+ * screen below. React leaves history traversals unanimated on purpose, since a browser's own swipe
+ * back has its animation, so the in-app Back button runs this one transition itself. Only the card
+ * being left and its row get the shared name, and only while the transition runs.
+ */
+export function backWithMorph(router: { back(): void }) {
+  const name = document.querySelector<HTMLElement>("[data-morph]")?.dataset.morph;
+  const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!name || calm || !("startViewTransition" in document)) return router.back();
+  const mark = (on: boolean) =>
+    document.querySelectorAll<HTMLElement>(`[data-morph="${name}"]`).forEach((el) => {
+      el.style.setProperty("view-transition-name", on ? name : null);
+      el.style.setProperty("view-transition-class", on ? "morph" : null);
+    });
+  mark(true);
+  const transition = document.startViewTransition(
+    () =>
+      new Promise<void>((resolve) => {
+        // The restored screen renders during popstate; a timeout covers a Back that never lands.
+        const done = () => {
+          clearTimeout(timer);
+          window.removeEventListener("popstate", landed);
+          mark(true);
+          resolve();
+        };
+        const landed = () => setTimeout(done, 0);
+        const timer = setTimeout(done, 600);
+        window.addEventListener("popstate", landed);
+        router.back();
+      }),
+  );
+  void transition.finished.finally(() => mark(false));
+}

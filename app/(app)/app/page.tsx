@@ -143,7 +143,7 @@ export default function Home() {
         {/* What matters first: the next lesson, which is also where you check in. */}
         <div {...rise(0)}>
         <ViewTransition name={`subject-${nextSubject.id}`} share="morph" default="none">
-        <Link href={`/app/subject/${nextSubject.id}`} className="next">
+        <Link href={`/app/subject/${nextSubject.id}`} className="next" data-morph={`subject-${nextSubject.id}`}>
           <span className="subject__glyphs" aria-hidden="true">
             {nextSubject.glyphs}
           </span>

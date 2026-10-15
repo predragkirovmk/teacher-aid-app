@@ -13,7 +13,7 @@ import { useT } from "@/lib/app/i18n";
 export function SubjectCard({ subject }: { subject: Subject }) {
   const { t } = useT();
   return (
-    <div className={`subject tone-${subject.tone}`}>
+    <div className={`subject tone-${subject.tone}`} data-morph={`subject-${subject.id}`}>
       <span className="subject__glyphs" aria-hidden="true">
         {subject.glyphs}
       </span>
@@ -34,7 +34,7 @@ export function SubjectCard({ subject }: { subject: Subject }) {
 export function SubjectRow({ subject, shared = true }: { subject: Subject; shared?: boolean }) {
   const { t } = useT();
   const row = (
-    <Link href={`/app/subject/${subject.id}`} className="item">
+    <Link href={`/app/subject/${subject.id}`} className="item" data-morph={shared ? `subject-${subject.id}` : undefined}>
       <span className={`monogram tone-${subject.tone}`} aria-hidden="true">
         {subject.initials}
       </span>

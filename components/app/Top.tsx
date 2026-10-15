@@ -4,6 +4,7 @@ import { CaretLeftIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useT } from "@/lib/app/i18n";
+import { backWithMorph } from "@/lib/app/nav";
 
 /**
  * Back button, centred title, optional trailing action. `quiet` keeps the title for screen readers
@@ -29,7 +30,7 @@ export function Top({
         aria-label={t("back")}
         onClick={() => {
           if (onBack) onBack();
-          else if (window.history.length > 1) router.back();
+          else if (window.history.length > 1) backWithMorph(router);
           else router.push("/app");
         }}
       >
