@@ -12,6 +12,8 @@ const IN = `transform ${IN_MS}ms cubic-bezier(0.23, 1, 0.32, 1)`;
 /** The snappy spring from app.css, so a cancelled swipe settles like every other small state change. */
 const SPRING_MS = 390;
 const SPRING = `transform ${SPRING_MS}ms var(--spring-snappy)`;
+/** Swipes that start this close to a screen edge belong to the system's back and forward gestures. */
+const EDGE = 24;
 /** If the next section has not rendered this long after the exit, bring the old one back. */
 const WATCHDOG_MS = 900;
 
@@ -21,7 +23,8 @@ type Gesture = { id: number; x0: number; y0: number; x: number; t: number; v: nu
  * Swipe sideways to move between the tab roots, like the sections of a pager. The screen follows
  * the finger, resists at either end, and on release either slides off (far or fast enough) and
  * the next section slides in from the other side, or springs back. Vertical scrolling is
- * untouched, and a swipe that starts at the very left edge is left to the system back gesture.
+ * untouched, and a swipe that starts at either edge is left to the system: Android takes back from
+ * both sides, Safari takes back from the left and forward from the right.
  *
  * The section being swiped away is gone once the route changes, so every path that can leave the
  * screen off to one side has a way back: a watchdog if navigation stalls, a guard against a second
@@ -92,7 +95,8 @@ export function Pager({ pathname, children }: { pathname: string; children: Reac
       className="pager"
       onPointerDown={(e) => {
         const target = e.target as HTMLElement;
-        if (busy.current || index < 0 || e.clientX < 24 || target.closest("input, textarea, [role=slider]")) return;
+        const atEdge = e.clientX < EDGE || e.clientX > window.innerWidth - EDGE;
+        if (busy.current || index < 0 || atEdge || target.closest("input, textarea, [role=slider]")) return;
         g.current = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, t: e.timeStamp, v: 0, lock: null };
       }}
       onPointerMove={(e) => {
