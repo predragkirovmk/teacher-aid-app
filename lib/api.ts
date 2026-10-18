@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export const HOST_KEY = process.env.HOST_KEY ?? "bitola";
+export const HOST_KEY = process.env.HOST_KEY || "bitola";
 
 export function json(data: unknown, status = 200) {
   return NextResponse.json(data, { status, headers: { "Cache-Control": "no-store" } });
