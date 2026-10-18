@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Browser__read_console_messages",
+      "mcp__Apify__get-dataset-items",
+      "mcp__36c3b0ba-3bf4-4c32-bcc1-c086530b3703__read-design",
+      "mcp__Claude_Browser__read_network_requests",
+      "mcp__claude-in-chrome__find",
+      "mcp__Claude_Browser__read_page",
+      "mcp__Apify__fetch-actor-details",
+      "Bash(ffprobe *)",
+      "mcp__Claude_Browser__tabs_context",
+      "mcp__Claude_Browser__get_page_text",
+      "Bash(pnpm lint)",
+      "Bash(flutter analyze)",
+      "Bash(flutter analyze *)",
+      "mcp__Claude_Browser__find",
+      "mcp__Claude_Browser__preview_list",
+      "mcp__e614e510-648a-4a45-bb36-0c195258e812__search_threads"
+    ]
+  }
+}
