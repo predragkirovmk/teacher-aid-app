@@ -33,7 +33,8 @@ export function useNotifs(): NotifItem[] {
       kind: "checkin",
       when: c.at,
       link: `/app/subject/${c.subject}`,
-      unread: !read.includes(c.id),
+      // A record of the student's own scan: listed, but never news, so it does not raise the badge.
+      unread: false,
     }));
     const fromStatic: NotifItem[] = NOTIFS.map((n) => ({
       id: n.id,
