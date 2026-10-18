@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowCounterClockwiseIcon, QrCodeIcon, TranslateIcon } from "@phosphor-icons/react";
+import { ClockOptions } from "@/components/app/ClockOptions";
 import { Row } from "@/components/app/Row";
 import { Top } from "@/components/app/Top";
 import { useUI } from "@/components/app/ui";
@@ -68,6 +69,13 @@ export default function SettingsPage() {
         </button>
         <Row icon={QrCodeIcon} label={t("scan.kit")} href="/app/qr-kit" />
       </div>
+
+      {/* For a walkthrough: Home before, during and after school, whatever the real time is. */}
+      <h2 className="section-h">{t("settings.clock")}</h2>
+      <ClockOptions />
+      <p className="t-cap" style={{ margin: "8px 4px 0" }}>
+        {t("settings.clockHint")}
+      </p>
       <p className="t-cap" style={{ textAlign: "center", marginTop: 24 }}>
         {t("settings.about")}
       </p>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { NOTIFS, SUBJECTS } from "@/lib/app/data";
+import { CLASS_SUBJECTS, NOTIFS, SUBJECTS } from "@/lib/app/data";
 // Loaded with every screen so the browser's install offer is caught whenever it comes.
 import "@/lib/app/install";
 
@@ -21,7 +21,9 @@ const ROUTES = [
   "/app/faq",
   "/app/welcome",
   "/app/qr-kit",
-  ...SUBJECTS.flatMap((s) => [`/app/subject/${s.id}`, `/app/play/${s.code}`, `/app/checkin/${s.code}`]),
+  "/app/subjects",
+  ...SUBJECTS.map((s) => `/app/subject/${s.id}`),
+  ...CLASS_SUBJECTS.flatMap((s) => [`/app/play/${s.code}`, `/app/checkin/${s.code}`]),
   ...NOTIFS.map((n) => `/app/notifications/${n.id}`),
 ];
 

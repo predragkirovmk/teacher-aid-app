@@ -5,7 +5,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import type { Subject } from "@/lib/app/data";
 import { useT } from "@/lib/app/i18n";
 import { useQT } from "@/lib/app/quiz-copy";
-import type { Quiz } from "@/lib/app/quiz";
+import { initials, type Quiz } from "@/lib/app/quiz";
 
 const noop = () => () => {};
 const calmNow = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -112,7 +112,7 @@ export function QuizCard({ subject, quiz, live = true }: { subject: Subject; qui
       <h2 className="subject__name q-quizcard__name">{quiz.title[locale]}</h2>
       <div className="subject__foot">
         <span className="monogram" aria-hidden="true">
-          {subject.initials}
+          {initials(tt(`teacher.${subject.id}`))}
         </span>
         <span>{t("q.meta", { teacher: tt(`teacher.${subject.id}`), n: quiz.questions.length })}</span>
       </div>

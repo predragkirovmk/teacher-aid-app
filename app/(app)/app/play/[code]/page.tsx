@@ -6,14 +6,16 @@ import { Play } from "@/components/app/quiz/Play";
 import { subjectByCode } from "@/lib/app/data";
 import { useT } from "@/lib/app/i18n";
 import { leave } from "@/lib/app/nav";
+import { QUIZZES } from "@/lib/app/quiz";
 import { useQT } from "@/lib/app/quiz-copy";
 
 /** The live quiz a class QR opens: /app/play/<class code>. */
 export default function PlayPage() {
   const { code } = useParams<{ code: string }>();
   const subject = subjectByCode(decodeURIComponent(code));
-  if (!subject) return <NotRecognized />;
-  return <Play key={subject.id} subject={subject} />;
+  const quiz = subject && QUIZZES[subject.id];
+  if (!subject || !quiz) return <NotRecognized />;
+  return <Play key={subject.id} subject={subject} quiz={quiz} />;
 }
 
 function NotRecognized() {

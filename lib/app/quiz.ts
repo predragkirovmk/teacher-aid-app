@@ -21,7 +21,8 @@ export type Quiz = { subject: SubjectId; title: Text; questions: Question[] };
 
 const t = (mk: string, en: string): Text => ({ mk, en });
 
-export const QUIZZES: Record<SubjectId, Quiz> = {
+/** The live quizzes, one for each subject with a class QR. */
+export const QUIZZES: Partial<Record<SubjectId, Quiz>> = {
   physics: {
     subject: "physics",
     title: t("Њутнови закони", "Newton's laws"),

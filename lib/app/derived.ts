@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
+import { demoTime } from "./clock";
 import {
   ACHIEVEMENTS,
   BASE_ATTENDED,
   BASE_LOG,
   BASE_TOTAL,
+  LAST_WEEK_ATTENDED,
+  LAST_WEEK_TOTAL,
   LEADERBOARD,
   NOTIFS,
   type AchievementId,
@@ -71,7 +74,10 @@ export function useAttendance() {
         scanned: false,
       })),
     ];
-    return { attended, total, percent: Math.round((attended / total) * 100), log };
+    const percent = Math.round((attended / total) * 100);
+    // From the rounded figures, so the change always matches the two numbers a student would see.
+    const change = percent - Math.round((LAST_WEEK_ATTENDED / LAST_WEEK_TOTAL) * 100);
+    return { attended, total, percent, change, log };
   }, [checkins]);
 }
 
@@ -104,6 +110,37 @@ export function useStandings() {
     const index = rows.findIndex((r) => r.me);
     return { rows, rank: index + 1, me: rows[index], above: index > 0 ? rows[index - 1] : null };
   }, [quizPoints, got]);
+}
+
+const minute = () => Math.floor(Date.now() / 60_000) * 60_000;
+function tick(cb: () => void) {
+  const id = setInterval(cb, 15_000);
+  document.addEventListener("visibilitychange", cb);
+  return () => {
+    clearInterval(id);
+    document.removeEventListener("visibilitychange", cb);
+  };
+}
+
+/** The phone's time, to the minute. Null while hydrating: the server cannot know the phone's clock. */
+export const useRealNow = () => useSyncExternalStore(tick, minute, () => null);
+
+/** Now as the demo sees it: the phone's time, or the moment picked as demo time. */
+export function useNow(): number | null {
+  const { clock } = useApp();
+  const real = useRealNow();
+  return real === null ? null : demoTime(clock, real);
+}
+
+const MONTHS_LONG = {
+  mk: ["јануари", "февруари", "март", "април", "мај", "јуни", "јули", "август", "септември", "октомври", "ноември", "декември"],
+  en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+};
+
+/** "12 октомври", "12 October": the day and the whole month, by hand like formatDate. */
+export function formatLongDate(ms: number, locale: "mk" | "en") {
+  const d = new Date(ms);
+  return `${d.getDate()} ${MONTHS_LONG[locale][d.getMonth()]}`;
 }
 
 const MONTHS = {

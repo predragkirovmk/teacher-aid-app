@@ -12,7 +12,7 @@ import { formatTime } from "@/lib/app/derived";
 import { useT } from "@/lib/app/i18n";
 import { leave } from "@/lib/app/nav";
 import { useMe } from "@/lib/app/profile";
-import { CLASSMATES, CORRECT_POINTS, LETTERS, QUIZZES, initials, personName, useQuiz, type QuizRun } from "@/lib/app/quiz";
+import { CLASSMATES, CORRECT_POINTS, LETTERS, initials, personName, useQuiz, type Quiz, type QuizRun } from "@/lib/app/quiz";
 import { useQT } from "@/lib/app/quiz-copy";
 import { actions, useApp } from "@/lib/app/store";
 import { Burst, CheckDraw, CrossDraw, QuizCard, QuizTop, TimerRing, useCountUp } from "./parts";
@@ -28,12 +28,11 @@ const buzz = (pattern: number | number[]) => {
 };
 
 /** The live quiz: one screen that moves through joined, lobby, question, result and between. */
-export function Play({ subject }: { subject: Subject }) {
+export function Play({ subject, quiz }: { subject: Subject; quiz: Quiz }) {
   const router = useRouter();
   const { confirm } = useUI();
   const { t } = useQT();
   const { signedIn } = useApp();
-  const quiz = QUIZZES[subject.id];
   const run = useQuiz(quiz, actions.addQuizPoints);
   // False while hydrating, when signedIn is still the server default rather than the saved value.
   const hydrated = useSyncExternalStore(noop, () => true, () => false);
@@ -61,8 +60,8 @@ export function Play({ subject }: { subject: Subject }) {
   return (
     <main className="screen screen--bare q" data-stage={run.stage}>
       <div className="q__col">
-        {run.stage === "joined" && <Joined subject={subject} />}
-        {run.stage === "lobby" && <Lobby subject={subject} run={run} onLeave={onLeave} />}
+        {run.stage === "joined" && <Joined subject={subject} quiz={quiz} />}
+        {run.stage === "lobby" && <Lobby subject={subject} quiz={quiz} run={run} onLeave={onLeave} />}
         {run.stage === "question" && <Question run={run} onLeave={onLeave} />}
         {run.stage === "reveal" && <Reveal key={run.index} run={run} />}
         {run.stage === "between" && <Between key={run.index} run={run} onLeave={onLeave} onHome={() => router.replace("/app")} />}
@@ -71,7 +70,7 @@ export function Play({ subject }: { subject: Subject }) {
   );
 }
 
-function Joined({ subject }: { subject: Subject }) {
+function Joined({ subject, quiz }: { subject: Subject; quiz: Quiz }) {
   const { t } = useQT();
   const { t: tt } = useT();
   const { checkins } = useApp();
@@ -88,7 +87,7 @@ function Joined({ subject }: { subject: Subject }) {
       </div>
       <div className="q-foot">
         <ViewTransition name="q-card" share="q-morph" default="none">
-          <QuizCard subject={subject} quiz={QUIZZES[subject.id]} live={false} />
+          <QuizCard subject={subject} quiz={quiz} live={false} />
         </ViewTransition>
         <p className="t-label muted q-opening">{t("q.opening")}</p>
       </div>
@@ -96,7 +95,7 @@ function Joined({ subject }: { subject: Subject }) {
   );
 }
 
-function Lobby({ subject, run, onLeave }: { subject: Subject; run: QuizRun; onLeave: () => void }) {
+function Lobby({ subject, quiz, run, onLeave }: { subject: Subject; quiz: Quiz; run: QuizRun; onLeave: () => void }) {
   const { t } = useQT();
   const { t: tt } = useT();
   const me = useMe();
@@ -107,7 +106,7 @@ function Lobby({ subject, run, onLeave }: { subject: Subject; run: QuizRun; onLe
       <QuizTop onLeave={onLeave} label={tt(`subj.${subject.id}`)} />
       <div className="q-body q-stack">
         <ViewTransition name="q-card" share="q-morph" default="none">
-          <QuizCard subject={subject} quiz={QUIZZES[subject.id]} />
+          <QuizCard subject={subject} quiz={quiz} />
         </ViewTransition>
         <button className="card q-me" onClick={() => setEditing(true)}>
           <Avatar avatar={me.avatar} initials={me.initials} size={56} />

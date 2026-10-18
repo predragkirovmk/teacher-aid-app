@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { DEFAULT_PROFILE, isAvatar, type Profile } from "./avatars";
+import { CLOCKS, demoTime, type ClockId } from "./clock";
 import { SUBJECTS, type Locale, type SubjectId } from "./data";
 
 export type Checkin = { id: string; subject: SubjectId; at: number };
@@ -20,6 +21,8 @@ export type AppState = {
   quizAnswered: boolean;
   /** Whether a whole live quiz was answered right, which unlocks the Perfect quiz achievement. */
   perfectQuiz: boolean;
+  /** The time the demo runs on: the phone's clock, or a moment picked in Settings. */
+  clock: ClockId;
 };
 
 const KEY = "teacheraid-app-v1";
@@ -34,6 +37,7 @@ const DEFAULT: AppState = {
   quizPoints: 0,
   quizAnswered: false,
   perfectQuiz: false,
+  clock: "real",
 };
 
 const LOCALES: readonly Locale[] = ["mk", "en"];
@@ -63,6 +67,7 @@ function sanitize(saved: unknown): AppState {
         : DEFAULT.quizPoints,
     quizAnswered: typeof s.quizAnswered === "boolean" ? s.quizAnswered : DEFAULT.quizAnswered,
     perfectQuiz: typeof s.perfectQuiz === "boolean" ? s.perfectQuiz : DEFAULT.perfectQuiz,
+    clock: CLOCKS.includes(s.clock as ClockId) ? (s.clock as ClockId) : DEFAULT.clock,
   };
 }
 
@@ -155,16 +160,19 @@ export const actions = {
     load();
     set({ read: Array.from(new Set([...state.read, ...ids])) });
   },
-  /** One check-in per subject per hour, so a double scan or a refresh does not double count. */
+  /** One check-in per subject per hour, so a double scan or a refresh does not double count. Stamped
+      with the demo's time, so a scan at a picked moment lands in that moment's lesson. */
   checkIn: (subject: SubjectId): Checkin => {
     load();
-    const recent = state.checkins.find((c) => c.subject === subject && Date.now() - c.at < 60 * 60 * 1000);
+    const now = demoTime(state.clock, Date.now());
+    const recent = state.checkins.find((c) => c.subject === subject && Math.abs(now - c.at) < 60 * 60 * 1000);
     if (recent) return recent;
-    const entry = { id: `c-${Date.now()}`, subject, at: Date.now() };
+    const entry = { id: `c-${Date.now()}`, subject, at: now };
     set({ checkins: [entry, ...state.checkins] });
     return entry;
   },
   setProfile: (profile: Profile) => set({ profile }),
+  setClock: (clock: ClockId) => set({ clock }),
   addQuizPoints: (points: number) => {
     load();
     set({ quizPoints: state.quizPoints + Math.max(0, Math.round(points)) });

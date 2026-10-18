@@ -1,8 +1,8 @@
 import jsQR from "jsqr";
-import { subjectByCode, type Subject } from "./data";
+import { subjectByCode, type ClassSubject } from "./data";
 
 export type ScanResult =
-  | { kind: "class"; subject: Subject; raw: string }
+  | { kind: "class"; subject: ClassSubject; raw: string }
   | { kind: "unknown-class"; code: string; raw: string }
   | { kind: "other"; raw: string };
 

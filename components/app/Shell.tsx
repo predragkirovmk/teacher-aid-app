@@ -8,6 +8,7 @@ import { useNotifs } from "@/lib/app/derived";
 import { useT } from "@/lib/app/i18n";
 import { actions, useApp } from "@/lib/app/store";
 import type { Locale } from "@/lib/app/data";
+import { ClockOptions } from "./ClockOptions";
 import { Pager } from "./Pager";
 import { UIContext, type ConfirmOptions } from "./ui";
 
@@ -20,12 +21,14 @@ export function Shell({ children }: { children: ReactNode }) {
   const { t } = useT();
   // Remember the path an overlay was opened on, so navigating closes it without an effect.
   const [langAt, setLangAt] = useState<string | null>(null);
+  const [clockAt, setClockAt] = useState<string | null>(null);
   const [confirmState, setConfirmState] = useState<{ at: string; options: ConfirmOptions } | null>(null);
   const [installState, setInstallState] = useState<{ at: string; how: "ios" | "manual" } | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [toastOut, setToastOut] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lang = langAt === pathname;
+  const clockOpen = clockAt === pathname;
   const confirmOptions = confirmState?.at === pathname ? confirmState.options : null;
   const installHow = installState?.at === pathname ? installState.how : null;
 
@@ -55,6 +58,7 @@ export function Shell({ children }: { children: ReactNode }) {
       confirm: (options: ConfirmOptions) => setConfirmState({ at: pathname, options }),
       toast,
       openInstall: (how: "ios" | "manual") => setInstallState({ at: pathname, how }),
+      openClock: () => setClockAt(pathname),
     }),
     [toast, pathname],
   );
@@ -87,6 +91,16 @@ export function Shell({ children }: { children: ReactNode }) {
           {lang && (
             <Sheet label={t("lang.title")} onClose={() => setLangAt(null)}>
               {(close) => <LangOptions onDone={close} />}
+            </Sheet>
+          )}
+          {clockOpen && (
+            <Sheet label={t("settings.clock")} onClose={() => setClockAt(null)}>
+              {(close) => (
+                <>
+                  <p className="sheet__title">{t("settings.clock")}</p>
+                  <ClockOptions onDone={close} />
+                </>
+              )}
             </Sheet>
           )}
           {confirmOptions && (

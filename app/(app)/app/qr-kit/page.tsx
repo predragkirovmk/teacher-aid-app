@@ -4,7 +4,7 @@ import { PrinterIcon } from "@phosphor-icons/react";
 import { QRCodeSVG } from "qrcode.react";
 import { useSyncExternalStore } from "react";
 import { Top } from "@/components/app/Top";
-import { SUBJECTS } from "@/lib/app/data";
+import { CLASS_SUBJECTS } from "@/lib/app/data";
 import { useT } from "@/lib/app/i18n";
 import { checkinLink } from "@/lib/app/scan";
 
@@ -20,7 +20,7 @@ export default function QrKit() {
       <p className="t-cap sub">{t("kit.sub")}</p>
       {origin && (
         <div className="kit">
-          {SUBJECTS.map((s) => (
+          {CLASS_SUBJECTS.map((s) => (
             <figure key={s.id}>
               <QRCodeSVG value={checkinLink(origin, s.code)} level="M" marginSize={1} fgColor="#07162f" bgColor="#ffffff" title={s.code} />
               <figcaption>
