@@ -233,11 +233,20 @@ section:focus {
 }
 
 .wordmark {
+  display: inline-flex;
+  align-items: center;
   font-size: 1.1875rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--white);
   text-decoration: none;
+}
+
+.wordmark svg {
+  flex: none;
+  width: 1.15em;
+  height: 1.15em;
+  margin-right: 0.4em;
 }
 
 .wordmark span {

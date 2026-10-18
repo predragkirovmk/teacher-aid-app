@@ -1,3 +1,4 @@
+import { Mark } from "@/components/app/Mark";
 import { EarlyAccessForm } from "./EarlyAccessForm";
 
 export default function EarlyAccessPage() {
@@ -10,6 +11,7 @@ export default function EarlyAccessPage() {
       </div>
 
       <p className="ea-mark">
+        <Mark />
         Teacher<span>Aid</span>
       </p>
 

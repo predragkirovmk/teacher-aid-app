@@ -94,10 +94,19 @@ body {
 
 .ea-mark {
   position: relative;
+  display: inline-flex;
+  align-items: center;
   margin: 0;
   font-size: 1.1875rem;
   font-weight: 600;
   letter-spacing: -0.02em;
+}
+
+.ea-mark svg {
+  flex: none;
+  width: 1.15em;
+  height: 1.15em;
+  margin-right: 0.4em;
 }
 
 .ea-mark span {

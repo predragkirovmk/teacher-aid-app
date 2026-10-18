@@ -1,3 +1,4 @@
+import { Mark } from "@/components/app/Mark";
 import type { SiteDict } from "@/content/site/types";
 import { CopyEmail } from "./CopyEmail";
 
@@ -46,6 +47,7 @@ export function Footer({ t, contact, nav }: { t: SiteDict["footer"]; contact: Si
     <footer className="footer">
       <div className="wrap footer__grid">
         <p className="wordmark footer__mark">
+          <Mark />
           Teacher<span>Aid</span>
         </p>
         <p className="footer__line">{t.line}</p>

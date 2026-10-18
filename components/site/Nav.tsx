@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Mark } from "@/components/app/Mark";
 import type { SiteDict } from "@/content/site/types";
 import { getLenis } from "@/lib/site/lenis";
 
@@ -37,6 +38,7 @@ export function Nav({ t, contactHref }: { t: SiteDict["nav"]; contactHref: strin
       <header className="nav" data-nav data-open={open || undefined}>
         <div className="nav__bar">
           <a className="wordmark nav__mark" href="#top" aria-label={t.home}>
+            <Mark />
             Teacher<span>Aid</span>
           </a>
           <nav className="nav__links" aria-label={t.menu}>
