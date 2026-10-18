@@ -91,9 +91,11 @@ export function Motion({ children }: { children: React.ReactNode }) {
           motion: "(prefers-reduced-motion: no-preference)",
           desktop: "(min-width: 960px)",
           fine: "(hover: hover) and (pointer: fine)",
+          // Phones and tablets: same query as the phone block in app/site.css.
+          lite: "(max-width: 959px), (hover: none) and (pointer: coarse)",
         },
         (ctx) => {
-          const { motion, desktop, fine } = ctx.conditions as Record<string, boolean>;
+          const { motion, desktop, fine, lite } = ctx.conditions as Record<string, boolean>;
           if (!motion) {
             html.classList.remove("motion");
             return;
@@ -103,16 +105,24 @@ export function Motion({ children }: { children: React.ReactNode }) {
 
           ScrollTrigger.config({ ignoreMobileResize: true });
 
-          // Smooth scroll, driven by GSAP's ticker so ScrollTrigger and Lenis share one clock.
-          const lenis = new Lenis({
-            duration: 1.15,
-            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-          });
-          setLenis(lenis);
-          lenis.on("scroll", ScrollTrigger.update);
-          const raf = (time: number) => lenis.raf(time * 1000);
-          gsap.ticker.add(raf);
-          gsap.ticker.lagSmoothing(0);
+          // Smooth wheel scrolling, driven by GSAP's ticker so ScrollTrigger and Lenis share one
+          // clock. Touch scrolling is native either way, so touch screens skip Lenis: ScrollTrigger
+          // then updates straight from the scroll events, and GSAP's ticker sleeps at rest.
+          const lenis = fine
+            ? new Lenis({ duration: 1.15, easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)) })
+            : null;
+          const raf = (time: number) => lenis?.raf(time * 1000);
+          if (lenis) {
+            setLenis(lenis);
+            lenis.on("scroll", ScrollTrigger.update);
+            gsap.ticker.add(raf);
+            gsap.ticker.lagSmoothing(0);
+          }
+          const scrollToY = (y: number, duration: number) => {
+            if (!lenis) return window.scrollTo({ top: y, behavior: "smooth" });
+            lenis.start();
+            lenis.scrollTo(y, { duration });
+          };
 
           const onAnchor = (e: MouseEvent) => {
             const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href^="#"]');
@@ -121,18 +131,20 @@ export function Motion({ children }: { children: React.ReactNode }) {
             const target = id === "#top" ? 0 : document.querySelector<HTMLElement>(id);
             if (target === null) return;
             e.preventDefault();
-            lenis.start();
-            lenis.scrollTo(target, { offset: id === "#top" ? 0 : -24, duration: 1.4 });
+            scrollToY(target === 0 ? 0 : target.getBoundingClientRect().top + window.scrollY - 24, 1.4);
             if (target !== 0) window.setTimeout(() => target.focus({ preventScroll: true }), 900);
           };
           document.addEventListener("click", onAnchor);
 
-          /* The moving field: its blooms drift on CSS, and rise slowly with the page. */
-          gsap.to("[data-field-blooms]", {
-            yPercent: -14,
-            ease: "none",
-            scrollTrigger: { start: 0, end: "max", scrub: true },
-          });
+          /* The moving field: its blooms drift on CSS, and rise slowly with the page. On phones
+             the field stays one still layer, so the page is not drawn over three moving ones. */
+          if (!lite) {
+            gsap.to("[data-field-blooms]", {
+              yPercent: -14,
+              ease: "none",
+              scrollTrigger: { start: 0, end: "max", scrub: true },
+            });
+          }
 
           /* Nav picks up its glass once the page moves. */
           const nav = document.querySelector("[data-nav]");
@@ -340,6 +352,8 @@ export function Motion({ children }: { children: React.ReactNode }) {
                   if (i !== active) {
                     active = i;
                     markTick(i);
+                    // The class only wakes the step's loops; the timeline owns what is visible.
+                    screens.forEach((s, k) => s.classList.toggle("is-active", k === i));
                   }
                 },
               },
@@ -382,8 +396,7 @@ export function Motion({ children }: { children: React.ReactNode }) {
             const st = tl.scrollTrigger!;
             scrollToStep = (i: number) => {
               const time = i === 0 ? 0 : i + 0.1;
-              const y = st.start + (st.end - st.start) * (time / tl.duration());
-              lenis.scrollTo(y, { duration: 1.3 });
+              scrollToY(st.start + (st.end - st.start) * (time / tl.duration()), 1.3);
             };
             ctx.add(() => () => {
               scrollToStep = null;
@@ -398,7 +411,14 @@ export function Motion({ children }: { children: React.ReactNode }) {
               {
                 clipPath: "inset(0% 0% 0% 0% round 0px)",
                 ease: "none",
-                scrollTrigger: { trigger: sheet, start: "top bottom", end: "top 12%", scrub: true },
+                scrollTrigger: {
+                  trigger: sheet,
+                  start: "top bottom",
+                  end: "top 12%",
+                  scrub: true,
+                  // Fully open, the sheet drops the clip so it is not drawn through a mask.
+                  onLeave: () => (sheet.style.clipPath = ""),
+                },
               },
             );
           });
@@ -509,7 +529,7 @@ export function Motion({ children }: { children: React.ReactNode }) {
           return () => {
             document.removeEventListener("click", onAnchor);
             gsap.ticker.remove(raf);
-            lenis.destroy();
+            lenis?.destroy();
             setLenis(null);
           };
         },

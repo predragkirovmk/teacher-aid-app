@@ -13,6 +13,8 @@ export function Nav({ t, contactHref }: { t: SiteDict["nav"]; contactHref: strin
 
   useEffect(() => {
     const lenis = getLenis();
+    // Lenis only exists for wheel scrolling; the class holds touch scrolling still.
+    document.documentElement.classList.toggle("menu-open", open);
     if (open) {
       lenis?.stop();
       sheet.current?.querySelector<HTMLAnchorElement>("a")?.focus();

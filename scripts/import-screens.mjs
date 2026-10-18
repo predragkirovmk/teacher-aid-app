@@ -49,6 +49,13 @@ function clean(src) {
       .replace(/ (id|for|rows|maxlength|inputmode|role|aria-label|aria-current)="[^"]*"/g, "")
       // The site loads Golos Text under a hashed family name; inherit it.
       .replace(/font-family: 'Golos Text', system-ui, sans-serif/g, "font-family: inherit")
+      // Hooks for the phone stylesheet, which stills the ambient loops and the glass blur on
+      // phones: data-loop names the keyframes, data-glass marks a backdrop blur.
+      .replace(/<([a-z]+)((?:\s[^>]*?)?)\sstyle="([^"]*)"/g, (tag, name, attrs, style) => {
+        const loop = style.match(/animation: (ta-(?:drift-[abc]|sheen|scan))\b/);
+        const glass = style.includes("backdrop-filter:");
+        return `<${name}${attrs}${loop ? ` data-loop="${loop[1]}"` : ""}${glass ? " data-glass" : ""} style="${style}"`;
+      })
   );
 }
 

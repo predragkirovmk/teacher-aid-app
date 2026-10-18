@@ -757,6 +757,11 @@ html:not(.motion) .nav__bar::before {
   transition: opacity 0.24s var(--ease-standard);
 }
 
+/* The page stays put behind the open menu. */
+html.menu-open {
+  overflow: hidden;
+}
+
 .menu__links {
   list-style: none;
   display: grid;
@@ -1256,6 +1261,12 @@ html:not(.motion) .lesson__caption:not(.is-active) {
 .lesson__icon:not(.is-active) {
   opacity: 0;
   visibility: hidden;
+}
+
+/* Hidden artboards cannot animate on the compositor, so their loops would cost a style pass on
+   every frame. They wait until their step comes up. */
+.lesson .phone__screen:not(.is-active) * {
+  animation-play-state: paused !important;
 }
 
 .lesson__icons {
@@ -2274,6 +2285,62 @@ html:not(.motion) .lesson__caption:not(.is-active) {
 
   .btn--lg {
     width: 100%;
+  }
+}
+
+/* ---------- Phones and tablets: the same picture, drawn for a phone's GPU ---------- */
+
+/* Same query as `lite` in components/site/Motion.tsx. */
+@media (max-width: 959px), (hover: none) and (pointer: coarse) {
+  /* The field and the mockups hold their first frame. A loop that never stops under glass makes
+     the phone re-blur and re-composite the screen on every frame, and turns everything painted
+     after it into a layer of its own. */
+  .field__bloom,
+  .field__sheen,
+  .sheet__bloom,
+  .phone__screen [data-loop] {
+    animation: none !important;
+  }
+
+  .field__bloom--navy,
+  .phone__screen [data-loop="ta-drift-c"] {
+    transform: scale(1.1);
+  }
+
+  .field__sheen,
+  .phone__screen [data-loop="ta-sheen"] {
+    transform: translateX(-30%);
+  }
+
+  /* Glass that only ever sits on the soft field has nothing sharp for the blur to soften, so a
+     tint stands in for the saturation it added. The nav, the hero chips and the report stack keep
+     the real blur: text and pages pass behind them. */
+  .glass.card,
+  .glass.trust__item,
+  .seg {
+    background: var(--glass-fill), rgba(0, 40, 160, 0.16);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .phone__screen [data-glass] {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Scrubbed layers keep their tiles while they move, instead of being repainted to the nearest
+     pixel on every frame. */
+  [data-depth],
+  [data-drift],
+  [data-hero-title],
+  .hero__copy,
+  .hero__phone,
+  [data-why-point],
+  [data-report-current],
+  [data-report-prev],
+  [data-report-back],
+  [data-contact-bloom] {
+    will-change: transform;
   }
 }
 
