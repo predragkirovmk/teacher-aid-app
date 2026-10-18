@@ -1,0 +1,7 @@
+@font-face{font-family:Golos;src:local("Golos Text"),url("file:///Users/pedza/Library/Fonts/GolosText-VariableFont_wght.ttf");font-weight:400 900}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1920px;height:1080px;overflow:hidden;background:#fff}
+body{font-family:Golos,sans-serif;color:#111;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;padding:120px 140px;position:relative}
+h1{font-weight:500;font-size:64px;letter-spacing:-.02em}
+.sub{font-size:30px;color:#777;margin-top:14px}
+.src{position:absolute;left:140px;bottom:80px;font-size:22px;color:#999}
