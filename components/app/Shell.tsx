@@ -4,11 +4,9 @@ import { BellSimpleIcon, CheckIcon, ExportIcon, HouseSimpleIcon, PlusSquareIcon,
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useNotifications } from "@/lib/app/api/hooks";
+import { useAuth, useNotifications, useSettings } from "@/lib/app/api/hooks";
 import { useT } from "@/lib/app/i18n";
 import type { Locale } from "@/lib/app/api/types";
-import { setLocale } from "@/lib/app/locale";
-import { useApp } from "@/lib/app/store";
 import { ClockOptions } from "./ClockOptions";
 import { Pager } from "./Pager";
 import { UIContext, type ConfirmOptions } from "./ui";
@@ -18,7 +16,7 @@ const NO_TABS = ["/app/scan", "/app/welcome"];
 export function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { signedIn } = useApp();
+  const { status } = useAuth();
   const { t, locale } = useT();
   // Remember the path an overlay was opened on, so navigating closes it without an effect.
   const [langAt, setLangAt] = useState<string | null>(null);
@@ -70,7 +68,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
   // Logged out: show nothing behind the welcome screen, and carry the screen that was asked for
   // (a check-in link, say) through it, so Continue lands there instead of on Home.
-  const gated = !signedIn && pathname !== "/app/welcome";
+  const gated = status === "signedOut" && pathname !== "/app/welcome";
   useEffect(() => {
     if (gated) router.replace(`/app/welcome?next=${encodeURIComponent(pathname)}`);
   }, [gated, pathname, router]);
@@ -370,6 +368,7 @@ function InstallStep({ icon: Icon, text }: { icon: Icon; text: string }) {
 
 function LangOptions({ onDone }: { onDone: () => void }) {
   const { t, locale } = useT();
+  const { setLocale } = useSettings();
   const opts: { id: Locale; label: string; code: string }[] = [
     { id: "en", label: "English", code: "EN" },
     { id: "mk", label: "Македонски", code: "МК" },

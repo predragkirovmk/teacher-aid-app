@@ -207,6 +207,7 @@ const en = {
 
   "error.title": "Something went wrong",
   "error.body": "This screen could not be shown. Try again. If it happens again, reset the demo data.",
+  "error.bodyLive": "This screen could not be shown. Try again.",
   "error.retry": "Try again",
 
   "lang.title": "Language",
@@ -513,6 +514,7 @@ const mk: Record<Key, string> = {
 
   "error.title": "Нешто не е во ред",
   "error.body": "Овој екран не можеше да се прикаже. Обиди се повторно. Ако се случи пак, ресетирај ги демо податоците.",
+  "error.bodyLive": "Овој екран не можеше да се прикаже. Обиди се повторно.",
   "error.retry": "Обиди се повторно",
 
   "lang.title": "Јазик",

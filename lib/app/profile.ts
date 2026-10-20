@@ -5,6 +5,9 @@ import { useT } from "./i18n";
 import { initials, personName } from "./quiz";
 import { useApp } from "./store";
 
+/** The photo the API takes: a JPEG of up to 200 KB (spec 3.2). */
+export const PHOTO_MAX_BYTES = 200 * 1024;
+
 export const NAME_MIN = 2;
 export const NAME_MAX = 24;
 

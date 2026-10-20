@@ -4,13 +4,16 @@ import { CameraIcon, LockIcon, TrashIcon, WarningCircleIcon } from "@phosphor-ic
 import { useId, useRef, useState } from "react";
 import { Avatar } from "@/components/app/Avatar";
 import { useUI } from "@/components/app/ui";
-import { cleanName, NAME_MAX, nameError, useMe } from "@/lib/app/profile";
+import { saveProfile } from "@/lib/app/api/hooks";
+import { toApiError } from "@/lib/app/api/errors";
+import type { PhotoUpload } from "@/lib/app/api/types";
+import { errorKey, useT } from "@/lib/app/i18n";
+import { cleanName, NAME_MAX, nameError, PHOTO_MAX_BYTES, useSelf } from "@/lib/app/profile";
 import { initials } from "@/lib/app/quiz";
 import { useQT } from "@/lib/app/quiz-copy";
-import { actions } from "@/lib/app/store";
 
-/** Centre-crop to a square and shrink to a small JPEG so it fits in local storage. */
-async function toPhoto(file: File, size = 256): Promise<string> {
+/** Centre-crop to a square and shrink to a small JPEG: the file the API takes, and a preview to show at once. */
+async function toPhoto(file: File, size = 256): Promise<PhotoUpload> {
   const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
   const side = Math.min(bmp.width, bmp.height);
   const canvas = document.createElement("canvas");
@@ -21,7 +24,9 @@ async function toPhoto(file: File, size = 256): Promise<string> {
   ctx.fillRect(0, 0, size, size);
   ctx.drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, size, size);
   bmp.close();
-  return canvas.toDataURL("image/jpeg", 0.85);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+  if (!blob || blob.size > PHOTO_MAX_BYTES) throw new Error("photo too large");
+  return { blob, preview: canvas.toDataURL("image/jpeg", 0.85) };
 }
 
 /**
@@ -31,35 +36,50 @@ async function toPhoto(file: File, size = 256): Promise<string> {
  */
 export function ProfileEditor({ onDone }: { onDone: () => void }) {
   const { t } = useQT();
+  const { t: tt } = useT();
   const { toast } = useUI();
-  const me = useMe();
+  const me = useSelf();
   const id = useId();
   const [name, setName] = useState(me.name);
-  const [photo, setPhoto] = useState<string | null>(me.photo);
+  // undefined keeps the photo the student has, null removes it, an upload replaces it.
+  const [picked, setPicked] = useState<PhotoUpload | null | undefined>(undefined);
+  const photo = picked === undefined ? me.photo : (picked?.preview ?? null);
   const [photoError, setPhotoError] = useState(false);
+  const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [touched, setTouched] = useState(false);
   const [asking, setAsking] = useState(false);
 
   const error = nameError(name);
   const changed = cleanName(name) !== me.name || photo !== me.photo;
-  const canSave = changed && !error;
+  const canSave = changed && !error && !saving;
   const showError = touched && error;
   const shown = initials(cleanName(name) || me.name);
 
   const pickPhoto = async (file: File | undefined) => {
     if (!file) return;
     try {
-      setPhoto(await toPhoto(file));
+      setPicked(await toPhoto(file));
       setPhotoError(false);
     } catch {
       setPhotoError(true);
     }
   };
 
-  const save = () => {
+  const save = async () => {
     if (!canSave) return;
-    actions.setProfile({ name: cleanName(name), photo });
+    setSaving(true);
+    try {
+      await saveProfile({
+        // Only what changed goes to the API.
+        displayName: cleanName(name) !== me.name ? cleanName(name) : undefined,
+        photo: photo !== me.photo ? (picked ?? null) : undefined,
+      });
+    } catch (e) {
+      toast(tt(errorKey(toApiError(e).code)));
+      setSaving(false);
+      return;
+    }
     toast(t("p.saved"));
     onDone();
   };
@@ -69,7 +89,7 @@ export function ProfileEditor({ onDone }: { onDone: () => void }) {
       className="pe"
       onSubmit={(e) => {
         e.preventDefault();
-        save();
+        void save();
       }}
     >
       <div className="pe-bar">
@@ -118,7 +138,7 @@ export function ProfileEditor({ onDone }: { onDone: () => void }) {
           {photo ? t("p.photoChange") : t("p.photo")}
         </button>
         {photo && (
-          <button type="button" className="btn btn--ghost" onClick={() => setPhoto(null)}>
+          <button type="button" className="btn btn--ghost" onClick={() => setPicked(null)}>
             <TrashIcon size={20} aria-hidden="true" />
             {t("p.photoRemove")}
           </button>

@@ -1,8 +1,9 @@
 "use client";
 
 import { Mark } from "@/components/app/Mark";
+import { demoOnly } from "@/lib/app/api";
+import { resetDemo } from "@/lib/app/demo";
 import { useT } from "@/lib/app/i18n";
-import { actions } from "@/lib/app/store";
 
 /**
  * Shown instead of the app shell when a screen fails to render, so a tester gets a way back
@@ -20,20 +21,22 @@ export default function AppError({ retry }: { error: Error & { digest?: string }
               {t("error.title")}
             </h1>
             <p className="muted" style={{ margin: 0 }}>
-              {t("error.body")}
+              {t(demoOnly ? "error.body" : "error.bodyLive")}
             </p>
             <button className="btn btn--primary btn--block" style={{ marginTop: 28 }} onClick={retry}>
               {t("error.retry")}
             </button>
-            <button
-              className="btn btn--ghost btn--block"
-              onClick={() => {
-                actions.reset();
-                retry();
-              }}
-            >
-              {t("settings.reset")}
-            </button>
+            {demoOnly && (
+              <button
+                className="btn btn--ghost btn--block"
+                onClick={() => {
+                  resetDemo();
+                  retry();
+                }}
+              >
+                {t("settings.reset")}
+              </button>
+            )}
           </div>
         </main>
       </div>

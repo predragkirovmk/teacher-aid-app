@@ -3,9 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
 import { Mark } from "@/components/app/Mark";
-import { useT } from "@/lib/app/i18n";
-import { setLocale } from "@/lib/app/locale";
-import { actions, useApp } from "@/lib/app/store";
+import { useUI } from "@/components/app/ui";
+import { signIn, useAuth, useSettings } from "@/lib/app/api/hooks";
+import { toApiError } from "@/lib/app/api/errors";
+import { errorKey, useT } from "@/lib/app/i18n";
 
 const noop = () => () => {};
 
@@ -17,8 +18,11 @@ function nextPath() {
 
 export default function Welcome() {
   const { t, locale } = useT();
+  const { setLocale } = useSettings();
+  const { toast } = useUI();
   const router = useRouter();
-  const { signedIn } = useApp();
+  const { status } = useAuth();
+  const signedIn = status === "signedIn";
   // False while hydrating, when signedIn is still the server default rather than the saved value.
   const hydrated = useSyncExternalStore(noop, () => true, () => false);
 
@@ -40,7 +44,7 @@ export default function Welcome() {
         <p className="muted" style={{ margin: 0 }}>
           {t("welcome.sub")}
         </p>
-        <button className="btn btn--primary btn--block" style={{ marginTop: 28 }} onClick={() => actions.setSignedIn(true)}>
+        <button className="btn btn--primary btn--block" style={{ marginTop: 28 }} onClick={() => signIn().catch((e) => toast(t(errorKey(toApiError(e).code))))}>
           {t("welcome.cta")}
         </button>
         <div className="row" style={{ gap: 8, marginTop: 8 }}>

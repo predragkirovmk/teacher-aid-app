@@ -5,17 +5,20 @@ import { ClockOptions } from "@/components/app/ClockOptions";
 import { Row } from "@/components/app/Row";
 import { Top } from "@/components/app/Top";
 import { useUI } from "@/components/app/ui";
-import { useT } from "@/lib/app/i18n";
+import { demoOnly } from "@/lib/app/api";
+import { toApiError } from "@/lib/app/api/errors";
+import { useSettings } from "@/lib/app/api/hooks";
+import { resetDemo } from "@/lib/app/demo";
+import { errorKey, useT } from "@/lib/app/i18n";
 import { useInstall } from "@/lib/app/install";
-import { actions, useApp } from "@/lib/app/store";
 
 /** The build, short: enough to tell two deploys apart when checking that a phone has the latest. */
 const VERSION = (process.env.NEXT_PUBLIC_APP_BUILD ?? "").replace(/^dpl_/, "").slice(0, 7);
 
 export default function SettingsPage() {
   const { t } = useT();
-  const { openLang, toast, confirm } = useUI();
-  const { notificationsOn } = useApp();
+  const { openLang, toast } = useUI();
+  const { notificationsOn, setNotificationsOn } = useSettings();
   const install = useInstall();
 
   return (
@@ -36,11 +39,25 @@ export default function SettingsPage() {
             role="switch"
             aria-checked={notificationsOn}
             aria-label={t("settings.notifications")}
-            onClick={() => actions.setNotificationsOn(!notificationsOn)}
+            onClick={() => setNotificationsOn(!notificationsOn).catch((e) => toast(t(errorKey(toApiError(e).code))))}
           />
         </div>
       </div>
 
+      {demoOnly && <DemoSection />}
+      <p className="t-cap" style={{ textAlign: "center", marginTop: demoOnly ? 4 : 24 }}>
+        {t(install === "installed" ? "settings.installed" : "settings.inBrowser")} · {t("settings.version", { v: VERSION })}
+      </p>
+    </main>
+  );
+}
+
+/** What only the demo has: resetting its data, the test QR codes and the demo clock. */
+function DemoSection() {
+  const { t } = useT();
+  const { toast, confirm } = useUI();
+  return (
+    <>
       <h2 className="section-h">{t("settings.demo")}</h2>
       <div className="list">
         <button
@@ -50,7 +67,7 @@ export default function SettingsPage() {
               title: t("confirm.reset"),
               confirmLabel: t("settings.reset"),
               onConfirm: () => {
-                actions.reset();
+                resetDemo();
                 toast(t("settings.resetDone"));
               },
             })
@@ -78,9 +95,6 @@ export default function SettingsPage() {
       <p className="t-cap" style={{ textAlign: "center", marginTop: 24 }}>
         {t("settings.about")}
       </p>
-      <p className="t-cap" style={{ textAlign: "center", marginTop: 4 }}>
-        {t(install === "installed" ? "settings.installed" : "settings.inBrowser")} · {t("settings.version", { v: VERSION })}
-      </p>
-    </main>
+    </>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
-import { useApp } from "@/lib/app/store";
+import { useAuth } from "@/lib/app/api/hooks";
 
 const noop = () => () => {};
 
@@ -13,7 +13,7 @@ const noop = () => () => {};
 export default function CheckinLink() {
   const { code } = useParams<{ code: string }>();
   const router = useRouter();
-  const { signedIn } = useApp();
+  const signedIn = useAuth().status === "signedIn";
   // False while hydrating, when signedIn is still the server default rather than the saved value.
   const hydrated = useSyncExternalStore(noop, () => true, () => false);
 

@@ -5,22 +5,45 @@ import Link from "next/link";
 import { useState } from "react";
 import { Avatar } from "@/components/app/Avatar";
 import { ProfileEditor } from "@/components/app/ProfileEditor";
+import { Gate } from "@/components/app/QueryState";
 import { Row } from "@/components/app/Row";
 import { useUI } from "@/components/app/ui";
-import { useAttendance } from "@/lib/app/derived";
+import { demoOnly } from "@/lib/app/api";
+import { signOut, useAttendance, useLatestResult, useMe } from "@/lib/app/api/hooks";
+import type { Student } from "@/lib/app/api/types";
 import { promptInstall, useInstall } from "@/lib/app/install";
 import { useT } from "@/lib/app/i18n";
-import { useMe } from "@/lib/app/profile";
+import { useSelf } from "@/lib/app/profile";
 import { useQT } from "@/lib/app/quiz-copy";
-import { actions } from "@/lib/app/store";
+import { personName } from "@/lib/app/quiz";
 
 export default function Profile() {
-  const { t } = useT();
+  const { t: qt } = useQT();
+  const student = useMe();
+  return (
+    <Gate
+      query={student}
+      header={
+        <div className="home-bar">
+          <h1 className="large" style={{ margin: 0 }}>
+            {qt("p.title")}
+          </h1>
+        </div>
+      }
+    >
+      {(s) => <ProfileView student={s} />}
+    </Gate>
+  );
+}
+
+function ProfileView({ student }: { student: Student }) {
+  const { t, locale } = useT();
   const { openLang, confirm, openInstall, toast } = useUI();
   const install = useInstall();
-  const { percent } = useAttendance();
+  const attendance = useAttendance();
+  const latest = useLatestResult();
   const { t: qt } = useQT();
-  const me = useMe();
+  const me = useSelf();
   const [editing, setEditing] = useState(false);
 
   if (editing) {
@@ -49,7 +72,7 @@ export default function Profile() {
         </p>
         <div className="t-cap">{qt("p.seen")}</div>
         <div className="t-cap">
-          {t("user.role")} · {t("user.school")}
+          {t("user.role")} · {personName(student.school.name, locale)}
         </div>
       </div>
 
@@ -59,14 +82,14 @@ export default function Profile() {
             {t("home.attendance")}
             <CaretRightIcon size={20} aria-hidden="true" />
           </span>
-          <span className="tile-big">{percent}%</span>
+          <span className="tile-big">{attendance.data ? `${attendance.data.percent}%` : "–"}</span>
         </Link>
         <Link href="/app/summary" className="card tile">
           <span className="tile__head t-label">
             {t("home.summary")}
             <CaretRightIcon size={20} aria-hidden="true" />
           </span>
-          <span className="tile-big">4/5</span>
+          <span className="tile-big">{latest.data ? `${latest.data.right}/${latest.data.total}` : "–"}</span>
         </Link>
       </div>
 
@@ -88,7 +111,7 @@ export default function Profile() {
           </div>
         )}
         <div className="list">
-          <Row icon={FileIcon} label={t("drawer.documents")} href="/app/documents" />
+          {demoOnly && <Row icon={FileIcon} label={t("drawer.documents")} href="/app/documents" />}
           <Row icon={TrophyIcon} label={t("drawer.achievements")} href="/app/achievements" />
         </div>
         <div className="list">
@@ -106,7 +129,7 @@ export default function Profile() {
                 title: t("confirm.logout"),
                 confirmLabel: t("drawer.logout"),
                 // The shell replaces this screen with the welcome screen once signed out.
-                onConfirm: () => actions.setSignedIn(false),
+                onConfirm: () => void signOut(),
               })
             }
           />
