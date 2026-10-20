@@ -2,33 +2,63 @@
 
 import { CheckCircleIcon, XCircleIcon } from "@phosphor-icons/react";
 import { useEffect } from "react";
+import { Gate } from "@/components/app/QueryState";
 import { Top } from "@/components/app/Top";
-import { QUIZ } from "@/lib/app/data";
+import { markNotificationsRead, useLatestResult, useNotifications } from "@/lib/app/api/hooks";
+import type { SessionResult } from "@/lib/app/api/types";
 import { useT } from "@/lib/app/i18n";
-import { actions } from "@/lib/app/store";
 
 export default function Summary() {
   const { t } = useT();
-  const right = QUIZ.filter((q) => q.correct).length;
+  const latest = useLatestResult();
+  return (
+    <Gate query={latest} header={<Top title={t("sum.title")} />}>
+      {(result) => (result ? <Result result={result} /> : <Empty />)}
+    </Gate>
+  );
+}
+
+function Empty() {
+  const { t } = useT();
+  return (
+    <main className="screen">
+      <Top title={t("sum.title")} />
+      <p className="muted" style={{ textAlign: "center", marginTop: 60 }}>
+        {t("sum.empty")}
+      </p>
+    </main>
+  );
+}
+
+function Result({ result }: { result: SessionResult }) {
+  const { t } = useT();
+  const { data: notifications } = useNotifications();
+  const announcement = notifications?.find(
+    (n) => n.kind === "result_ready" && n.payload.sessionId === result.sessionId && n.readAt === null,
+  );
   // Seeing the summary is reading the alert that announced it, so Home stops calling it new.
-  useEffect(() => actions.markRead("n-math"), []);
+  useEffect(() => {
+    if (announcement) void markNotificationsRead([announcement.id]);
+  }, [announcement]);
 
   return (
     <main className="screen">
       <Top title={t("sum.title")} />
       <div className="card tile" style={{ marginBottom: 16 }}>
-        <span className="t-label">{t("sum.lesson")}</span>
-        <span className="tile-big">{right}/5</span>
+        <span className="t-label">{result.lessonTitle}</span>
+        <span className="tile-big">
+          {result.right}/{result.total}
+        </span>
         <span className="t-cap">{t("sum.sub")}</span>
       </div>
 
       <ol className="list">
-        {QUIZ.map((q, i) => (
+        {result.questions.map((q, i) => (
           <li key={q.id} className="item" style={{ alignItems: "flex-start" }}>
             <span className="rank">{i + 1}</span>
             <span className="grow">
               <span className="item__title" style={{ display: "block" }}>
-                {t(`q.${q.id}`)}
+                {q.prompt}
               </span>
               <span className="status" style={{ marginTop: 8 }}>
                 {q.correct ? (
@@ -40,7 +70,7 @@ export default function Summary() {
               </span>
               {!q.correct && (
                 <span className="t-cap" style={{ display: "block", marginTop: 4 }}>
-                  {t("sum.answer", { a: t(`a.${q.id}`) })}
+                  {t("sum.answer", { a: q.correctAnswer })}
                 </span>
               )}
             </span>

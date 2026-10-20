@@ -1,7 +1,8 @@
 "use client";
 
+import { useMe as useStudent } from "./api/hooks";
 import { useT } from "./i18n";
-import { initials } from "./quiz";
+import { initials, personName } from "./quiz";
 import { useApp } from "./store";
 
 export const NAME_MIN = 2;
@@ -32,5 +33,22 @@ export function useMe() {
     initials: initials(name),
     photo: profile.photo,
     custom: profile.name !== null,
+  };
+}
+
+/**
+ * The signed-in student as classmates see them: the display name if they chose one, else the school
+ * account's name (in Latin letters for the English interface). Empty until the API has answered.
+ */
+export function useSelf() {
+  const { data: student } = useStudent();
+  const { locale } = useT();
+  const name = student ? (student.displayName ?? personName(student.fullName, locale)) : "";
+  return {
+    loaded: !!student,
+    name,
+    first: name.split(" ")[0],
+    initials: initials(name),
+    photo: student?.photoUrl ?? null,
   };
 }

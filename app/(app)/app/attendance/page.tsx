@@ -2,28 +2,43 @@
 
 import { CheckCircleIcon, ClockIcon, ScanIcon, XCircleIcon } from "@phosphor-icons/react";
 import Link from "next/link";
+import { Gate } from "@/components/app/QueryState";
 import { Top } from "@/components/app/Top";
-import type { AttendanceStatus } from "@/lib/app/data";
-import { formatDate, useAttendance } from "@/lib/app/derived";
+import { useAttendanceView } from "@/lib/app/api/hooks";
+import type { AttendanceStatus, AttendanceSummary } from "@/lib/app/api/types";
+import { formatDate } from "@/lib/app/format";
 import { useT } from "@/lib/app/i18n";
+import { subjectLabel } from "@/lib/app/subjects";
 import { useTween } from "@/lib/app/tween";
 
 const ICON = { present: CheckCircleIcon, late: ClockIcon, absent: XCircleIcon } as const;
 
 function StatusBadge({ status }: { status: AttendanceStatus }) {
   const { t } = useT();
-  const Icon = ICON[status];
+  // A student without a working phone is present, never absent (BR-ATT-01).
+  const shown = status === "present_no_device" ? "present" : status;
+  const Icon = ICON[shown];
   return (
     <span className="status">
       <Icon size={20} aria-hidden="true" />
-      {t(`att.status.${status}`)}
+      {t(`att.status.${shown}`)}
     </span>
   );
 }
 
 export default function Attendance() {
+  const { t } = useT();
+  const attendance = useAttendanceView();
+  return (
+    <Gate query={attendance} header={<Top title={t("att.title")} />}>
+      {(a) => <AttendanceView a={a} />}
+    </Gate>
+  );
+}
+
+function AttendanceView({ a }: { a: AttendanceSummary }) {
   const { t, locale } = useT();
-  const { attended, total, percent, log } = useAttendance();
+  const { attended, total, percent, log } = a;
   const tween = useTween(percent, "teacheraid-shown-attendance-ring", true);
   const r = 86;
   const c = 2 * Math.PI * r;
@@ -70,11 +85,11 @@ export default function Attendance() {
             <span className="grow item__main">
               <span className="item__text">
                 <span className="item__title" style={{ display: "block" }}>
-                  {t(`subj.${l.subject}`)}
+                  {subjectLabel(t, l.subjectId, l.subjectName)}
                 </span>
                 <span className="t-cap">
-                  {formatDate(l.when, locale)}
-                  {l.scanned ? `, ${t("att.scanned")}` : ""}
+                  {formatDate(l.date, locale)}
+                  {l.joinedAt !== null ? `, ${t("att.scanned")}` : ""}
                 </span>
               </span>
               <StatusBadge status={l.status} />

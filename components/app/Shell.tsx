@@ -4,7 +4,7 @@ import { BellSimpleIcon, CheckIcon, ExportIcon, HouseSimpleIcon, PlusSquareIcon,
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useNotifs } from "@/lib/app/derived";
+import { useNotifications } from "@/lib/app/api/hooks";
 import { useT } from "@/lib/app/i18n";
 import type { Locale } from "@/lib/app/api/types";
 import { setLocale } from "@/lib/app/locale";
@@ -167,7 +167,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
 function Dock({ pathname }: { pathname: string }) {
   const { t } = useT();
-  const unread = useNotifs().filter((n) => n.unread).length;
+  const unread = (useNotifications().data ?? []).filter((n) => n.readAt === null).length;
   // Keep the last non-zero count so the badge can shrink away showing it, instead of vanishing.
   const [lastCount, setLastCount] = useState(unread);
   if (unread > 0 && unread !== lastCount) setLastCount(unread);

@@ -1,21 +1,33 @@
 "use client";
 
 import { NotifIcon } from "@/components/app/NotifIcon";
+import { Gate } from "@/components/app/QueryState";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect } from "react";
 import { Top } from "@/components/app/Top";
-import { formatDate, formatTime, useNotifs } from "@/lib/app/derived";
+import { markNotificationsRead } from "@/lib/app/api/hooks";
+import { alertCopy, useAlerts, type AlertItem } from "@/lib/app/alerts";
+import { formatDate, formatTime } from "@/lib/app/format";
 import { useT } from "@/lib/app/i18n";
-import { actions } from "@/lib/app/store";
 
 export default function NotificationDetail() {
   const { id } = useParams<{ id: string }>();
-  const { t, locale } = useT();
-  const n = useNotifs().find((x) => x.id === id);
+  const { t } = useT();
+  const alerts = useAlerts();
+  return (
+    <Gate query={alerts} header={<Top title={t("notif.title")} />}>
+      {(items) => <Detail n={items.find((x) => x.id === id)} />}
+    </Gate>
+  );
+}
 
+function Detail({ n }: { n: AlertItem | undefined }) {
+  const { t, locale } = useT();
+
+  // Opening an alert is reading it. A check-in is only a record, and has nothing to mark.
   useEffect(() => {
-    if (n) actions.markRead(n.id);
+    if (n?.unread) void markNotificationsRead([n.id]);
   }, [n?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!n) {
@@ -30,18 +42,7 @@ export default function NotificationDetail() {
     );
   }
 
-  const title =
-    n.kind === "checkin"
-      ? t("notif.checkin.title", { subject: t(`subj.${n.subject}`) })
-      : t(`notif.${n.id as "n-math"}.title`);
-  const body = n.kind === "checkin" ? t("notif.checkin.body") : t(`notif.${n.id as "n-math"}.body`);
-  // The button names where it goes instead of a bare "Open".
-  const action =
-    n.link === "/app/summary"
-      ? t("notif.open.summary")
-      : n.link === "/app/attendance"
-        ? t("notif.open.attendance")
-        : t("notif.open.subject", { subject: t(`subj.${n.subject}`) });
+  const { title, body, link, action } = alertCopy(t, locale, n);
 
   return (
     <main className="screen screen--bare">
@@ -58,7 +59,7 @@ export default function NotificationDetail() {
           {body}
         </p>
       </div>
-      <Link href={n.link} className="btn btn--ghost btn--block" style={{ marginTop: 16 }}>
+      <Link href={link} className="btn btn--ghost btn--block" style={{ marginTop: 16 }}>
         {action}
       </Link>
     </main>
