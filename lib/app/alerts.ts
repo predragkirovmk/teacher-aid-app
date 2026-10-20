@@ -5,7 +5,7 @@ import { demoOnly } from "./api";
 import { useAttendance, useNotifications, type Query } from "./api/hooks";
 import type { NotificationKind, NotificationPayload } from "./api/types";
 import { formatLongDate } from "./format";
-import type { Key } from "./i18n";
+import type { TFn } from "./i18n";
 import { subjectLabel } from "./subjects";
 import type { Locale } from "./api/types";
 
@@ -62,10 +62,8 @@ export function useAlerts(): Query<AlertItem[]> {
 
 export type AlertCopy = { title: string; body: string; link: string; action: string };
 
-type T = (key: Key, vars?: Record<string, string | number>) => string;
-
 /** The words and the destination of an alert, by what it is about. */
-export function alertCopy(t: T, locale: Locale, n: AlertItem): AlertCopy {
+export function alertCopy(t: TFn, locale: Locale, n: AlertItem): AlertCopy {
   const subject = n.subjectId ? subjectLabel(t, n.subjectId, n.subjectName ?? "") : "";
   const toSubject = n.courseId ? `/app/subject/${n.courseId}` : "/app/notifications";
   // The button names where it goes instead of a bare "Open".

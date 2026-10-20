@@ -3,9 +3,9 @@ import { apiMode } from "./config";
 import { createLiveClient } from "./live";
 import { mockClient, mockServerClient } from "./mock";
 
-export { apiBase, apiMode, demoOnly, type ApiMode } from "./config";
+export { apiMode, demoOnly, type ApiMode } from "./config";
 export type { ApiClient } from "./client";
-export { ApiError, isApiError, type ApiErrorCode } from "./errors";
+export { ApiError, type ApiErrorCode } from "./errors";
 export * from "./types";
 
 /** The adapter the app talks to, chosen by NEXT_PUBLIC_API_MODE when it is built. */

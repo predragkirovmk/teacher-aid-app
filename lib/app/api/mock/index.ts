@@ -221,14 +221,6 @@ function buildNotifications(state: AppState, locale: Locale): Notification[] {
   });
 }
 
-const safeDecode = (code: string) => {
-  try {
-    return decodeURIComponent(code);
-  } catch {
-    return code;
-  }
-};
-
 /** The live quiz a class code opens, or null for a code that is not one. */
 function lessonFor(subject: ClassSubject | undefined) {
   const quiz = subject && QUIZZES[subject.id];
@@ -296,7 +288,7 @@ export function createMockClient(source: MockSource): ApiClient {
         write((): JoinResult => {
           if (!state().signedIn) throw new ApiError("unauthenticated");
           const code = "token" in input ? input.token : input.shortCode;
-          const found = lessonFor(subjectByCode(safeDecode(code)));
+          const found = lessonFor(subjectByCode(code));
           // An unknown code is, to the server, a token it never issued or has already retired.
           if (!found) throw new ApiError("token_expired");
           const { subject, quiz } = found;

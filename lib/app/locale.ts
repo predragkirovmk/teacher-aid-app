@@ -33,8 +33,6 @@ function load() {
   current = read();
 }
 
-export const isLocale = (v: unknown): v is Locale => LOCALES.includes(v as Locale);
-
 export function getLocale(): Locale {
   load();
   return current;

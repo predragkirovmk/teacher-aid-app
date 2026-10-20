@@ -3,7 +3,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import { demoOnly } from "../api";
 import { useAttendance } from "../api/hooks";
-import type { Key } from "../i18n";
+import type { TFn } from "../i18n";
 import { CLASS_SUBJECTS, DOCS, NOTIFS, SUBJECTS } from "../api/mock/data";
 import { actions, useApp } from "../api/mock/store";
 import { ROOMS, demoTime, type ClockId, type Scan } from "./schedule";
@@ -51,7 +51,7 @@ export function useScans(): Scan[] {
 }
 
 /** Where a subject is taught: its room, or the gym. */
-export const roomLabel = (t: (key: Key, vars?: Record<string, string | number>) => string, subjectId: string) => {
+export const roomLabel = (t: TFn, subjectId: string) => {
   const room = ROOMS[subjectId];
   return room === "gym" ? t("home.gym") : t("home.room", { n: room });
 };

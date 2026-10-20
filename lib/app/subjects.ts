@@ -1,4 +1,4 @@
-import { dictionaries, type Key } from "./i18n";
+import { hasKey, type TFn } from "./i18n";
 
 export type Tone = "yellow" | "ice" | "deep";
 
@@ -38,7 +38,7 @@ export function subjectStyle(subjectId: string, subjectName: string): SubjectSty
 }
 
 /** The subject's name in the app's own words where it has them, else as the school wrote it. */
-export function subjectLabel(t: (key: Key) => string, subjectId: string, subjectName: string): string {
+export function subjectLabel(t: TFn, subjectId: string, subjectName: string): string {
   const key = `subj.${subjectId}`;
-  return key in dictionaries.en ? t(key as Key) : subjectName;
+  return hasKey(key) ? t(key) : subjectName;
 }

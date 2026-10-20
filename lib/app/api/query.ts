@@ -175,6 +175,11 @@ export type Query<T> = {
   refetch: () => void;
 };
 
+/** The same query with its data turned into something else; loading and error pass through. */
+export function mapQuery<T, U>(q: Query<T>, fn: (data: T) => U): Query<U> {
+  return { ...q, data: q.data === undefined ? undefined : fn(q.data) };
+}
+
 const OFF: Entry<never> = LOADING;
 
 /**

@@ -7,7 +7,7 @@ import { client, demoOnly } from "./index";
 import { useMockQuizRun } from "./mock/quiz";
 import type { SettledPromise } from "./client";
 import { ApiError, toApiError } from "./errors";
-import { change, invalidate, resetQueries, seed, useQuery, type Query } from "./query";
+import { change, invalidate, mapQuery, resetQueries, seed, useQuery, type Query } from "./query";
 import type {
   AttendanceSummary,
   Badge,
@@ -20,11 +20,9 @@ import type {
   Locale,
   Notification,
   PhotoUpload,
-  PracticeSet,
   SessionResult,
   Student,
   StudentSignIn,
-  TopicProgress,
 } from "./types";
 
 export type { Query } from "./query";
@@ -44,13 +42,9 @@ export const useAttendance = (enabled = true): Query<AttendanceSummary> =>
 export const useResults = (courseId?: Id): Query<SessionResult[]> =>
   useQuery(courseId ? `results:${courseId}` : "results", (c) => c.listResults(courseId));
 
-export const useTopics = (): Query<TopicProgress[]> => useQuery("topics", (c) => c.listTopics());
-
 export const useBadges = (): Query<Badge[]> => useQuery("badges", (c) => c.listBadges());
 
 export const useNotifications = (): Query<Notification[]> => useQuery("notifications", (c) => c.listNotifications());
-
-export const usePracticeSets = (): Query<PracticeSet[]> => useQuery("practice-sets", (c) => c.listPracticeSets());
 
 export const useLeaderboard = (scope: LeaderboardScope = "class"): Query<Leaderboard> =>
   useQuery(`leaderboard:${scope}`, (c) => c.getLeaderboard(scope));
@@ -60,13 +54,13 @@ export const useLeaderboard = (scope: LeaderboardScope = "class"): Query<Leaderb
 /** One course, from the list of the student's courses. */
 export function useCourse(id: Id): Query<Course | null> {
   const q = useCourses();
-  return useMemo(() => ({ ...q, data: q.data && (q.data.find((c) => c.id === id) ?? null) }), [q, id]);
+  return useMemo(() => mapQuery(q, (all) => all.find((c) => c.id === id) ?? null), [q, id]);
 }
 
 /** The newest finished session, or null when there is none yet. */
 export function useLatestResult(): Query<SessionResult | null> {
   const q = useResults();
-  return useMemo(() => ({ ...q, data: q.data && (q.data[0] ?? null) }), [q]);
+  return useMemo(() => mapQuery(q, (all) => all[0] ?? null), [q]);
 }
 
 export type Standings = {
@@ -75,30 +69,28 @@ export type Standings = {
   rank: number;
   /** The student just above, or null at the top. */
   above: LeaderboardRow | null;
-  seasonPoints: number;
 };
 
 /** The class leaderboard with the student's own place picked out. */
 export function useStandings(): Query<Standings | null> {
   const q = useLeaderboard("class");
-  return useMemo(() => {
-    const board = q.data;
-    if (!board) return { ...q, data: undefined };
-    const index = board.rows.findIndex((r) => r.isMe);
-    if (index < 0) return { ...q, data: null };
-    const me = board.rows[index];
-    return { ...q, data: { rows: board.rows, me, rank: me.rank, above: index > 0 ? board.rows[index - 1] : null, seasonPoints: me.points } };
-  }, [q]);
+  return useMemo(
+    () =>
+      mapQuery(q, (board): Standings | null => {
+        const index = board.rows.findIndex((r) => r.isMe);
+        if (index < 0) return null;
+        const me = board.rows[index];
+        return { rows: board.rows, me, rank: me.rank, above: index > 0 ? board.rows[index - 1] : null };
+      }),
+    [q],
+  );
 }
 
 /** Attendance with the change since a week ago, from the rounded figures a student would see. */
 export function useAttendanceView(enabled = true): Query<AttendanceSummary & { change: number | null }> {
   const q = useAttendance(enabled);
   return useMemo(
-    () => ({
-      ...q,
-      data: q.data && { ...q.data, change: q.data.percentWeekAgo === null ? null : q.data.percent - q.data.percentWeekAgo },
-    }),
+    () => mapQuery(q, (a) => ({ ...a, change: a.percentWeekAgo === null ? null : a.percent - a.percentWeekAgo })),
     [q],
   );
 }

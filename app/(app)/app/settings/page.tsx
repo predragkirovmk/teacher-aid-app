@@ -6,10 +6,9 @@ import { Row } from "@/components/app/Row";
 import { Top } from "@/components/app/Top";
 import { useUI } from "@/components/app/ui";
 import { demoOnly } from "@/lib/app/api";
-import { toApiError } from "@/lib/app/api/errors";
 import { useSettings } from "@/lib/app/api/hooks";
 import { resetDemo } from "@/lib/app/demo";
-import { errorKey, useT } from "@/lib/app/i18n";
+import { errorCopy, useT } from "@/lib/app/i18n";
 import { useInstall } from "@/lib/app/install";
 
 /** The build, short: enough to tell two deploys apart when checking that a phone has the latest. */
@@ -39,7 +38,7 @@ export default function SettingsPage() {
             role="switch"
             aria-checked={notificationsOn}
             aria-label={t("settings.notifications")}
-            onClick={() => setNotificationsOn(!notificationsOn).catch((e) => toast(t(errorKey(toApiError(e).code))))}
+            onClick={() => setNotificationsOn(!notificationsOn).catch((e) => toast(errorCopy(t, e)))}
           />
         </div>
       </div>

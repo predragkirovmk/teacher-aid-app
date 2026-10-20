@@ -5,8 +5,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import { Mark } from "@/components/app/Mark";
 import { useUI } from "@/components/app/ui";
 import { signIn, useAuth, useSettings } from "@/lib/app/api/hooks";
-import { toApiError } from "@/lib/app/api/errors";
-import { errorKey, useT } from "@/lib/app/i18n";
+import { errorCopy, useT } from "@/lib/app/i18n";
 
 const noop = () => () => {};
 
@@ -44,7 +43,7 @@ export default function Welcome() {
         <p className="muted" style={{ margin: 0 }}>
           {t("welcome.sub")}
         </p>
-        <button className="btn btn--primary btn--block" style={{ marginTop: 28 }} onClick={() => signIn().catch((e) => toast(t(errorKey(toApiError(e).code))))}>
+        <button className="btn btn--primary btn--block" style={{ marginTop: 28 }} onClick={() => signIn().catch((e) => toast(errorCopy(t, e)))}>
           {t("welcome.cta")}
         </button>
         <div className="row" style={{ gap: 8, marginTop: 8 }}>

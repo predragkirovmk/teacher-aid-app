@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { Query } from "@/lib/app/api/hooks";
-import { errorKey, useT } from "@/lib/app/i18n";
+import { errorCopy, useT } from "@/lib/app/i18n";
 
 /** What a screen shows in place of its content while the API has not answered, or has refused. */
 export function QueryState({ query }: { query: Pick<Query<unknown>, "status" | "error" | "refetch"> }) {
@@ -11,7 +11,7 @@ export function QueryState({ query }: { query: Pick<Query<unknown>, "status" | "
     return (
       <div role="alert" style={{ textAlign: "center", marginTop: 60 }}>
         <p className="muted" style={{ margin: "0 0 16px" }}>
-          {t(errorKey(query.error?.code ?? "unknown"))}
+          {errorCopy(t, query.error)}
         </p>
         <button className="btn btn--ghost btn--block" onClick={query.refetch}>
           {t("state.retry")}

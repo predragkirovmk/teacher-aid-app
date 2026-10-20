@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import type { ApiErrorCode } from "./api/errors";
+import { toApiError, type ApiErrorCode } from "./api/errors";
 import type { Locale } from "./api/types";
 import { useLocale } from "./locale";
 
@@ -627,8 +627,17 @@ export function translate(locale: Locale, key: Key, vars?: Record<string, string
   return out;
 }
 
+/** The translate function `useT` returns. */
+export type TFn = (key: Key, vars?: Record<string, string | number>) => string;
+
+/** Whether the app has its own copy under this key, for keys built from data the API names (a subject code, a badge code). */
+export const hasKey = (key: string): key is Key => key in en;
+
 /** The copy for an API error code, so a screen only ever says what went wrong in the student's language. */
 export const errorKey = (code: ApiErrorCode): Key => `err.${code}`;
+
+/** What to tell the student about anything a call threw. */
+export const errorCopy = (t: TFn, e: unknown): string => t(errorKey(toApiError(e).code));
 
 export function useT() {
   const locale = useLocale();

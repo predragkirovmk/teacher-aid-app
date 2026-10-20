@@ -5,9 +5,8 @@ import { useId, useRef, useState } from "react";
 import { Avatar } from "@/components/app/Avatar";
 import { useUI } from "@/components/app/ui";
 import { saveProfile } from "@/lib/app/api/hooks";
-import { toApiError } from "@/lib/app/api/errors";
 import type { PhotoUpload } from "@/lib/app/api/types";
-import { errorKey, useT } from "@/lib/app/i18n";
+import { errorCopy, useT } from "@/lib/app/i18n";
 import { cleanName, NAME_MAX, nameError, PHOTO_MAX_BYTES, useSelf } from "@/lib/app/profile";
 import { initials } from "@/lib/app/quiz";
 import { useQT } from "@/lib/app/quiz-copy";
@@ -76,7 +75,7 @@ export function ProfileEditor({ onDone }: { onDone: () => void }) {
         photo: photo !== me.photo ? (picked ?? null) : undefined,
       });
     } catch (e) {
-      toast(tt(errorKey(toApiError(e).code)));
+      toast(errorCopy(tt, e));
       setSaving(false);
       return;
     }

@@ -9,7 +9,7 @@ import { Top } from "@/components/app/Top";
 import { demoOnly } from "@/lib/app/api";
 import { useCourses } from "@/lib/app/api/hooks";
 import type { Course } from "@/lib/app/api/types";
-import { dictionaries, translate, useT, type Key } from "@/lib/app/i18n";
+import { hasKey, translate, useT, type Key } from "@/lib/app/i18n";
 import { personName } from "@/lib/app/quiz";
 
 const PAGES: [string, Key][] = [
@@ -31,7 +31,7 @@ const PAGES: [string, Key][] = [
 /** Everything a course can be found by, in both languages: the subject's names, the teacher's and Latin spellings. */
 function terms(course: Course): string[] {
   const key = `subj.${course.subjectId}`;
-  const known = key in dictionaries.en ? (["en", "mk"] as const).map((l) => translate(l, key as Key)) : [];
+  const known = hasKey(key) ? (["en", "mk"] as const).map((l) => translate(l, key)) : [];
   return [...known, course.subjectName, course.teacherName, personName(course.teacherName, "en"), ...(course.searchTerms ?? [])].map((s) =>
     s.toLowerCase(),
   );
