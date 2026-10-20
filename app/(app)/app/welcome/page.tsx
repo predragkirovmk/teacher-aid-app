@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
 import { Mark } from "@/components/app/Mark";
 import { useT } from "@/lib/app/i18n";
+import { setLocale } from "@/lib/app/locale";
 import { actions, useApp } from "@/lib/app/store";
 
 const noop = () => () => {};
@@ -43,10 +44,10 @@ export default function Welcome() {
           {t("welcome.cta")}
         </button>
         <div className="row" style={{ gap: 8, marginTop: 8 }}>
-          <button className="pill" lang="mk" aria-label="Македонски" aria-pressed={locale === "mk"} onClick={() => actions.setLocale("mk")}>
+          <button className="pill" lang="mk" aria-label="Македонски" aria-pressed={locale === "mk"} onClick={() => setLocale("mk")}>
             МК
           </button>
-          <button className="pill" lang="en" aria-label="English" aria-pressed={locale === "en"} onClick={() => actions.setLocale("en")}>
+          <button className="pill" lang="en" aria-label="English" aria-pressed={locale === "en"} onClick={() => setLocale("en")}>
             EN
           </button>
         </div>

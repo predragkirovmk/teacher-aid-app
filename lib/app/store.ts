@@ -3,12 +3,11 @@
 import { useSyncExternalStore } from "react";
 import { DEFAULT_PROFILE, isPhoto, type Profile } from "./avatars";
 import { CLOCKS, demoTime, type ClockId } from "./clock";
-import { SUBJECTS, type Locale, type SubjectId } from "./data";
+import { SUBJECTS, type SubjectId } from "./data";
 
 export type Checkin = { id: string; subject: SubjectId; at: number };
 
 export type AppState = {
-  locale: Locale;
   signedIn: boolean;
   notificationsOn: boolean;
   read: string[];
@@ -28,7 +27,6 @@ export type AppState = {
 const KEY = "teacheraid-app-v1";
 
 const DEFAULT: AppState = {
-  locale: "mk",
   signedIn: true,
   notificationsOn: true,
   read: [],
@@ -39,8 +37,6 @@ const DEFAULT: AppState = {
   perfectQuiz: false,
   clock: "real",
 };
-
-const LOCALES: readonly Locale[] = ["mk", "en"];
 
 const isCheckin = (c: unknown): c is Checkin => {
   const x = c as Partial<Checkin> | null;
@@ -55,7 +51,6 @@ const isCheckin = (c: unknown): c is Checkin => {
 function sanitize(saved: unknown): AppState {
   const s = saved && typeof saved === "object" ? (saved as Record<string, unknown>) : {};
   return {
-    locale: LOCALES.includes(s.locale as Locale) ? (s.locale as Locale) : DEFAULT.locale,
     signedIn: typeof s.signedIn === "boolean" ? s.signedIn : DEFAULT.signedIn,
     notificationsOn: typeof s.notificationsOn === "boolean" ? s.notificationsOn : DEFAULT.notificationsOn,
     read: Array.isArray(s.read) ? s.read.filter((id): id is string => typeof id === "string") : DEFAULT.read,
@@ -149,7 +144,6 @@ export function useApp(): AppState {
 }
 
 export const actions = {
-  setLocale: (locale: Locale) => set({ locale }),
   setSignedIn: (signedIn: boolean) => set({ signedIn }),
   setNotificationsOn: (notificationsOn: boolean) => set({ notificationsOn }),
   markRead: (id: string) => {

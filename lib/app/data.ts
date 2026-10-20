@@ -1,4 +1,4 @@
-export type Locale = "mk" | "en";
+import type { Locale } from "./api/types";
 
 export type SubjectId =
   | "mkd"

@@ -13,7 +13,7 @@ import { actions, useApp } from "@/lib/app/store";
 const VERSION = (process.env.NEXT_PUBLIC_APP_BUILD ?? "").replace(/^dpl_/, "").slice(0, 7);
 
 export default function SettingsPage() {
-  const { t, locale } = useT();
+  const { t } = useT();
   const { openLang, toast, confirm } = useUI();
   const { notificationsOn } = useApp();
   const install = useInstall();
@@ -51,7 +51,6 @@ export default function SettingsPage() {
               confirmLabel: t("settings.reset"),
               onConfirm: () => {
                 actions.reset();
-                actions.setLocale(locale);
                 toast(t("settings.resetDone"));
               },
             })

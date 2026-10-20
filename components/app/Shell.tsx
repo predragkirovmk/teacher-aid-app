@@ -6,8 +6,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNotifs } from "@/lib/app/derived";
 import { useT } from "@/lib/app/i18n";
-import { actions, useApp } from "@/lib/app/store";
-import type { Locale } from "@/lib/app/data";
+import type { Locale } from "@/lib/app/api/types";
+import { setLocale } from "@/lib/app/locale";
+import { useApp } from "@/lib/app/store";
 import { ClockOptions } from "./ClockOptions";
 import { Pager } from "./Pager";
 import { UIContext, type ConfirmOptions } from "./ui";
@@ -17,8 +18,8 @@ const NO_TABS = ["/app/scan", "/app/welcome"];
 export function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { signedIn, locale } = useApp();
-  const { t } = useT();
+  const { signedIn } = useApp();
+  const { t, locale } = useT();
   // Remember the path an overlay was opened on, so navigating closes it without an effect.
   const [langAt, setLangAt] = useState<string | null>(null);
   const [clockAt, setClockAt] = useState<string | null>(null);
@@ -382,7 +383,7 @@ function LangOptions({ onDone }: { onDone: () => void }) {
           aria-checked={locale === o.id}
           className="opt"
           onClick={() => {
-            actions.setLocale(o.id);
+            setLocale(o.id);
             onDone();
           }}
         >

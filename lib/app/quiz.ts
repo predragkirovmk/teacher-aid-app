@@ -1,7 +1,8 @@
 "use client";
 
 import { startTransition, useCallback, useEffect, useMemo, useReducer } from "react";
-import type { Locale, SubjectId } from "./data";
+import type { Locale } from "./api/types";
+import type { SubjectId } from "./data";
 
 /**
  * The live quiz a class QR opens. Version 1 has no backend yet, so this module plays the

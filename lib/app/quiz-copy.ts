@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback } from "react";
-import type { Locale } from "./data";
-import { useApp } from "./store";
+import type { Locale } from "./api/types";
+import { useLocale } from "./locale";
 
 /** Text for the live quiz and the profile editor, kept apart from i18n.ts while that file is in flux. */
 const en = {
@@ -168,7 +168,7 @@ const dictionaries: Record<Locale, Record<Key, string>> = { en, mk };
 export type QKey = Key;
 
 export function useQT() {
-  const { locale } = useApp();
+  const locale = useLocale();
   const t = useCallback(
     (key: Key, vars?: Record<string, string | number>) => {
       let out = dictionaries[locale][key];

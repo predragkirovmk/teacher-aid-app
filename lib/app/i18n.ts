@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback } from "react";
-import { useApp } from "./store";
 import type { ApiErrorCode } from "./api/errors";
-import type { Locale } from "./data";
+import type { Locale } from "./api/types";
+import { useLocale } from "./locale";
 
 const en = {
   "nav.home": "Home",
@@ -615,7 +615,7 @@ export function translate(locale: Locale, key: Key, vars?: Record<string, string
 export const errorKey = (code: ApiErrorCode): Key => `err.${code}`;
 
 export function useT() {
-  const { locale } = useApp();
+  const locale = useLocale();
   const t = useCallback((key: Key, vars?: Record<string, string | number>) => translate(locale, key, vars), [locale]);
   return { t, locale };
 }
