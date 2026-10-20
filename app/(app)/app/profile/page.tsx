@@ -12,7 +12,7 @@ import { demoOnly } from "@/lib/app/api";
 import { signOut, useAttendance, useLatestResult, useMe } from "@/lib/app/api/hooks";
 import type { Student } from "@/lib/app/api/types";
 import { promptInstall, useInstall } from "@/lib/app/install";
-import { useT } from "@/lib/app/i18n";
+import { errorCopy, useT } from "@/lib/app/i18n";
 import { useSelf } from "@/lib/app/profile";
 import { useQT } from "@/lib/app/quiz-copy";
 import { personName } from "@/lib/app/quiz";
@@ -128,8 +128,9 @@ function ProfileView({ student }: { student: Student }) {
               confirm({
                 title: t("confirm.logout"),
                 confirmLabel: t("drawer.logout"),
-                // The shell replaces this screen with the welcome screen once signed out.
-                onConfirm: () => void signOut(),
+                // The shell replaces this screen with the welcome screen once signed out; a sign-out
+                // the server could not be reached for leaves the student signed in, and says why.
+                onConfirm: () => signOut().catch((e) => toast(errorCopy(t, e))),
               })
             }
           />

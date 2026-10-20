@@ -3,21 +3,29 @@
 import { BellSimpleIcon, CheckIcon, ExportIcon, HouseSimpleIcon, PlusSquareIcon, ScanIcon, UserIcon, type Icon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { invalidate } from "@/lib/app/api/query";
 import { useAuth, useNotifications, useSettings } from "@/lib/app/api/hooks";
 import { useT } from "@/lib/app/i18n";
+import { welcomeUrl } from "@/lib/app/signin";
 import type { Locale } from "@/lib/app/api/types";
 import { ClockOptions } from "./ClockOptions";
 import { Pager } from "./Pager";
+import { SignedElsewhere, Splash, Unreachable } from "./SessionScreens";
 import { UIContext, type ConfirmOptions } from "./ui";
 
 const NO_TABS = ["/app/scan", "/app/welcome"];
+const WELCOME = "/app/welcome";
+
+const noop = () => () => {};
 
 export function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { status } = useAuth();
+  const { status, reason, me } = useAuth();
   const { t, locale } = useT();
+  // False while the server renders and the first client render hydrates it, when the saved session is not known yet.
+  const hydrated = useSyncExternalStore(noop, () => true, () => false);
   // Remember the path an overlay was opened on, so navigating closes it without an effect.
   const [langAt, setLangAt] = useState<string | null>(null);
   const [clockAt, setClockAt] = useState<string | null>(null);
@@ -66,21 +74,50 @@ export function Shell({ children }: { children: ReactNode }) {
     document.documentElement.lang = locale;
   }, [locale]);
 
-  // Logged out: show nothing behind the welcome screen, and carry the screen that was asked for
-  // (a check-in link, say) through it, so Continue lands there instead of on Home.
-  const gated = status === "signedOut" && pathname !== "/app/welcome";
+  // The route guard. Every screen but the welcome screen is shown only to a signed-in student: until the
+  // session is known there is the launch picture, and a signed-out student is sent to sign in (carrying
+  // the screen that was asked for, a check-in link say, so signing in continues to it) without any
+  // signed-in screen being drawn first. Signing out by choice carries nothing: the next student starts at Home.
+  const onWelcome = pathname === WELCOME;
+  const view = onWelcome
+    ? "screen"
+    : !hydrated || status === "loading"
+      ? "splash"
+      : status === "signedIn"
+        ? "screen"
+        : status === "error"
+          ? "unreachable"
+          : reason === "signed_in_elsewhere"
+            ? "elsewhere"
+            : "redirect";
   useEffect(() => {
-    if (gated) router.replace(`/app/welcome?next=${encodeURIComponent(pathname)}`);
-  }, [gated, pathname, router]);
+    if (view === "redirect") router.replace(reason === "signed_out" ? welcomeUrl() : welcomeUrl(pathname));
+  }, [view, reason, pathname, router]);
 
-  const showTabs =
-    !gated && !NO_TABS.includes(pathname) && !pathname.startsWith("/app/checkin") && !pathname.startsWith("/app/play");
+  // A page the browser brings back from its cache (Back after signing out) is as old as when it was left.
+  useEffect(() => {
+    const show = (e: PageTransitionEvent) => e.persisted && invalidate("me");
+    window.addEventListener("pageshow", show);
+    return () => window.removeEventListener("pageshow", show);
+  }, []);
+
+  const showTabs = view === "screen" && !NO_TABS.includes(pathname) && !pathname.startsWith("/app/checkin") && !pathname.startsWith("/app/play");
+  const content =
+    view === "screen" ? (
+      children
+    ) : view === "elsewhere" ? (
+      <SignedElsewhere onSignIn={() => router.replace(welcomeUrl(pathname))} />
+    ) : view === "unreachable" ? (
+      <Unreachable error={me.error} onRetry={me.refetch} />
+    ) : (
+      <Splash />
+    );
 
   return (
     <UIContext.Provider value={ui}>
       <div className="stage">
         <div className="phone">
-          <Pager pathname={pathname}>{gated ? null : children}</Pager>
+          <Pager pathname={pathname}>{content}</Pager>
           {showTabs && (
             <>
               <div className="edge" aria-hidden="true" />

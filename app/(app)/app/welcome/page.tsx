@@ -3,58 +3,52 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
 import { Mark } from "@/components/app/Mark";
-import { useUI } from "@/components/app/ui";
-import { signIn, useAuth, useSettings } from "@/lib/app/api/hooks";
-import { errorCopy, useT } from "@/lib/app/i18n";
+import { SignIn } from "@/components/app/SignIn";
+import { useAuth, useSettings } from "@/lib/app/api/hooks";
+import { useT } from "@/lib/app/i18n";
+import { safeNext } from "@/lib/app/signin";
 
 const noop = () => () => {};
 
 /** Where to go after signing in: the screen that was asked for, if it is a screen of this app. */
-function nextPath() {
-  const next = new URLSearchParams(window.location.search).get("next");
-  return next && /^\/app(\/[\w-]+)*$/.test(next) && next !== "/app/welcome" ? next : "/app";
-}
+const nextPath = () => safeNext(new URLSearchParams(window.location.search).get("next"));
 
+/** The first screen a student sees: sign in with the school email, then carry on to whatever was asked for. */
 export default function Welcome() {
-  const { t, locale } = useT();
+  const { locale } = useT();
   const { setLocale } = useSettings();
-  const { toast } = useUI();
   const router = useRouter();
-  const { status } = useAuth();
-  const signedIn = status === "signedIn";
+  const signedIn = useAuth().status === "signedIn";
   // False while hydrating, when signedIn is still the server default rather than the saved value.
   const hydrated = useSyncExternalStore(noop, () => true, () => false);
+  const arriving = hydrated && signedIn;
 
   // Signing in, or arriving here already signed in, replaces this screen, so Back never shows it again.
   useEffect(() => {
-    if (hydrated && signedIn) router.replace(nextPath());
-  }, [hydrated, signedIn, router]);
+    if (arriving) router.replace(nextPath() ?? "/app");
+  }, [arriving, router]);
 
   return (
     <main className="screen screen--bare">
-      <div className="welcome">
-        <Mark size={96} />
-        <span className="brand__name" style={{ fontSize: "var(--fs-title3)" }}>
-          TeacherAid
-        </span>
-        <h1 className="t-display" style={{ fontSize: "var(--fs-title1)", marginTop: 24 }}>
-          {t("welcome.title")}
-        </h1>
-        <p className="muted" style={{ margin: 0 }}>
-          {t("welcome.sub")}
-        </p>
-        <button className="btn btn--primary btn--block" style={{ marginTop: 28 }} onClick={() => signIn().catch((e) => toast(errorCopy(t, e)))}>
-          {t("welcome.cta")}
-        </button>
-        <div className="row" style={{ gap: 8, marginTop: 8 }}>
-          <button className="pill" lang="mk" aria-label="Македонски" aria-pressed={locale === "mk"} onClick={() => setLocale("mk")}>
-            МК
-          </button>
-          <button className="pill" lang="en" aria-label="English" aria-pressed={locale === "en"} onClick={() => setLocale("en")}>
-            EN
-          </button>
+      {!arriving && (
+        <div className="signin">
+          <header className="signin__top">
+            <span className="signin__brand">
+              <Mark size={44} />
+              <span className="brand__name">TeacherAid</span>
+            </span>
+            <div className="row" style={{ gap: 8 }}>
+              <button className="pill" lang="mk" aria-label="Македонски" aria-pressed={locale === "mk"} onClick={() => setLocale("mk")}>
+                МК
+              </button>
+              <button className="pill" lang="en" aria-label="English" aria-pressed={locale === "en"} onClick={() => setLocale("en")}>
+                EN
+              </button>
+            </div>
+          </header>
+          <SignIn next={nextPath} />
         </div>
-      </div>
+      )}
     </main>
   );
 }

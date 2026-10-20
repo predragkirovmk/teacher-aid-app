@@ -1000,14 +1000,167 @@ details.faq p {
 .sub {
   margin: 4px 0 24px;
 }
-.welcome {
+/* ---- sign-in (the welcome screen) and the screens that tell a student their session ended ---- */
+.signin {
   min-height: 100%;
   display: flex;
   flex-direction: column;
+  gap: clamp(32px, 9dvh, 72px);
+}
+.signin__top {
+  display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+}
+.signin__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.signin__stage {
+  display: flex;
+  flex-direction: column;
+}
+/* Only a stage the student moved to arrives with movement; a page that opens on one just shows it. */
+.signin__stage--moved {
+  animation: signin-in var(--spring-snappy-dur) var(--spring-snappy) backwards;
+}
+.signin__form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.signin__intro {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.signin__title {
+  font-size: var(--fs-display);
+}
+.signin__sub {
+  margin: 0;
+  max-width: 34ch;
+}
+/* The field's message sits where the next thing would otherwise be, so an error moves nothing. */
+.signin__email {
+  display: block;
+  margin-top: 4px;
+  color: var(--text);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.signin__help {
+  min-height: 1.25rem;
+}
+.signin__form .btn--primary {
+  margin-top: -8px;
+}
+.signin__err,
+.signin__sent {
+  animation: signin-err var(--spring-snappy-dur) var(--spring-snappy) backwards;
+}
+.signin__code {
   text-align: center;
+  font-family: var(--font-display);
+  font-size: var(--fs-title1);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.4em;
+  /* The spacing trails the last digit; pad it back so the digits sit in the middle. */
+  padding-left: calc(16px + 0.4em);
+}
+.signin__code::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.4em;
+}
+.signin__code:disabled {
+  opacity: 0.55;
+}
+.signin__more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+/* Waiting, not broken: the countdown stays readable (about 5:1 on the blue). */
+.signin__more .btn[aria-disabled="true"] {
+  color: rgba(255, 255, 255, 0.8);
+}
+.signin__demo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 8px 8px 16px;
+  border-radius: 999px;
+  background: rgba(7, 22, 47, 0.3);
+}
+.signin__demo .t-cap {
+  min-width: 0;
+}
+/* The email is longer than the hint beside it, so it takes a line of its own under both. */
+.signin__demo--email {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "hint use"
+    "email email";
+  align-items: center;
+  border-radius: 24px;
+  row-gap: 2px;
+}
+.signin__demo--email .t-cap {
+  grid-area: hint;
+}
+.signin__demo--email .signin__demo-email {
+  grid-area: email;
+  overflow-wrap: anywhere;
+}
+.signin__demo--email .pill {
+  grid-area: use;
+}
+.signin__demo .pill {
+  flex: none;
+  background: rgba(255, 255, 255, 0.14);
+}
+.signin--center {
+  justify-content: center;
+  align-items: flex-start;
   gap: 16px;
+}
+.signin__badge {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(7, 22, 47, 0.3);
+  margin-bottom: 8px;
+}
+.signin__cta {
+  margin-top: 16px;
+}
+@keyframes signin-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+@keyframes signin-err {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+/* The launch picture: the mark on the blue ground, where the shell has no screen to show yet. */
+.splash {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--yellow);
 }
 .pill {
   display: inline-flex;
@@ -1801,6 +1954,16 @@ button.pill {
     }
   }
   @keyframes tick {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes signin-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes signin-err {
     from {
       opacity: 0;
     }

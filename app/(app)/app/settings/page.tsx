@@ -1,13 +1,13 @@
 "use client";
 
-import { ArrowCounterClockwiseIcon, QrCodeIcon, TranslateIcon } from "@phosphor-icons/react";
+import { ArrowCounterClockwiseIcon, DevicesIcon, QrCodeIcon, TranslateIcon } from "@phosphor-icons/react";
 import { ClockOptions } from "@/components/app/ClockOptions";
 import { Row } from "@/components/app/Row";
 import { Top } from "@/components/app/Top";
 import { useUI } from "@/components/app/ui";
 import { demoOnly } from "@/lib/app/api";
 import { useSettings } from "@/lib/app/api/hooks";
-import { resetDemo } from "@/lib/app/demo";
+import { resetDemo, signInElsewhere } from "@/lib/app/demo";
 import { errorCopy, useT } from "@/lib/app/i18n";
 import { useInstall } from "@/lib/app/install";
 
@@ -80,6 +80,17 @@ function DemoSection() {
               {t("settings.reset")}
             </span>
             <span className="t-cap">{t("settings.resetHint")}</span>
+          </span>
+        </button>
+        <button className="item" onClick={signInElsewhere}>
+          <span className="item__icon">
+            <DevicesIcon size={22} aria-hidden="true" />
+          </span>
+          <span className="grow">
+            <span className="item__title" style={{ display: "block" }}>
+              {t("settings.simElsewhere")}
+            </span>
+            <span className="t-cap">{t("settings.simElsewhereHint")}</span>
           </span>
         </button>
         <Row icon={QrCodeIcon} label={t("scan.kit")} href="/app/qr-kit" />
