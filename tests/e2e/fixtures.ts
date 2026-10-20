@@ -46,8 +46,11 @@ export async function start(page: Page, seed: Seed) {
 }
 
 export const test = base.extend<{ allowConsoleErrors: RegExp[] }>({
-  /** Console errors a test expects, such as the 404 of a page it opens on purpose. */
-  allowConsoleErrors: [[], { option: true }],
+  /**
+   * Console errors a test expects, such as the 404 of a page it opens on purpose. A Vercel preview
+   * injects its feedback toolbar, which the app's CSP blocks; that is the preview's, not the app's.
+   */
+  allowConsoleErrors: [[/https:\/\/vercel\.live\//], { option: true }],
 
   // Every test fails on an uncaught error or a console error: a smoke test should notice both.
   page: async ({ page, allowConsoleErrors }, run) => {
