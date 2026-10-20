@@ -29,6 +29,10 @@ const eslintConfig = defineConfig([
     // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
+    // Build and test output.
+    ".next-live/**",
+    "playwright-report/**",
+    "test-results/**",
     "build/**",
     "next-env.d.ts",
   ]),
