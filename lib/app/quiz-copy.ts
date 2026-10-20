@@ -55,9 +55,35 @@ const en = {
   "q.last": "That was the last question",
   "q.lastNote": "The teacher closes the quiz. Your points are saved.",
   "q.home": "Back to Home",
-  "q.unknown.title": "Code not recognized",
-  "q.unknown.body": "This is not your class QR, or the code has expired. Scan the code on the board now.",
-  "q.unknown.cta": "Scan again",
+  "q.fail.expired.title": "That code has expired",
+  "q.fail.expired.body": "The code on the board changes every 30 seconds. Scan the new one, or ask your teacher to show it again.",
+  "q.fail.class.title": "This isn't your class",
+  "q.fail.class.body":
+    "Your school account isn't on this class's list. Check that you're scanning the code for your own lesson. If you think this is a mistake, tell your teacher.",
+  "q.fail.ended.title": "This lesson has ended",
+  "q.fail.ended.body": "The teacher has closed this quiz, so you can't join any more. If you were in the room, tell your teacher.",
+  "q.fail.network.title": "No connection",
+  "q.fail.network.body": "We couldn't reach the school server, so nothing has been recorded yet. Check your internet and try again.",
+  "q.fail.unknown.title": "Code not recognized",
+  "q.fail.unknown.body": "We don't know this code. Check it, or scan the code on the board.",
+  "q.fail.scan": "Scan again",
+  "q.fail.scanOther": "Scan another code",
+  "q.fail.retry": "Try again",
+  "q.load.title": "We can't open the quiz",
+  "q.connecting": "Connecting to the lesson…",
+  "q.conn": "Connection lost. Reconnecting…",
+  "q.late.note": "You're marked late. You can still answer the open question and all the ones to come.",
+  "q.joined.timeLate": "Marked late at {time}",
+  "q.sending": "Sending your answer…",
+  "q.checking": "Checking the answers…",
+  "q.tooLate": "Your answer arrived after time was up.",
+  "q.waitReveal": "Your teacher will show the right answer on the board.",
+  "q.skipped": "This question was skipped and doesn't count.",
+  "q.unsupported.title": "This kind of question isn't in the app yet",
+  "q.unsupported.body": "Follow it on the board.",
+  "q.ended.title": "Quiz finished",
+  "q.ended.right": "{right} of {total} right",
+  "q.ended.summary": "See your summary",
   "q.pts": "{n} pts",
 
   "p.title": "Profile",
@@ -136,9 +162,35 @@ const mk: Record<Key, string> = {
   "q.last": "Тоа беше последното прашање",
   "q.lastNote": "Наставникот го затвора квизот. Поените се зачувани.",
   "q.home": "Назад на почетна",
-  "q.unknown.title": "Кодот не е препознаен",
-  "q.unknown.body": "Ова не е QR кодот на часот, или кодот истекол. Скенирај го кодот што е на таблата сега.",
-  "q.unknown.cta": "Скенирај пак",
+  "q.fail.expired.title": "Кодот истече",
+  "q.fail.expired.body": "Кодот на таблата се менува на секои 30 секунди. Скенирај го новиот или замоли го наставникот да го покаже повторно.",
+  "q.fail.class.title": "Ова не е твојот клас",
+  "q.fail.class.body":
+    "Твојата сметка не е на списокот на овој клас. Провери дали го скенираш кодот од твојот час. Ако мислиш дека е грешка, кажи му на наставникот.",
+  "q.fail.ended.title": "Часот заврши",
+  "q.fail.ended.body": "Наставникот го затвори квизот, па не можеш повеќе да влезеш. Ако си бил во училница, кажи му на наставникот.",
+  "q.fail.network.title": "Нема врска",
+  "q.fail.network.body": "Не можевме да стигнеме до училишниот сервер, па сè уште ништо не е запишано. Провери го интернетот и обиди се повторно.",
+  "q.fail.unknown.title": "Кодот не е препознаен",
+  "q.fail.unknown.body": "Не го знаеме овој код. Провери го или скенирај го кодот од таблата.",
+  "q.fail.scan": "Скенирај пак",
+  "q.fail.scanOther": "Скенирај друг код",
+  "q.fail.retry": "Обиди се повторно",
+  "q.load.title": "Не можеме да го отвориме квизот",
+  "q.connecting": "Се поврзуваме со часот…",
+  "q.conn": "Врската падна. Се поврзуваме повторно…",
+  "q.late.note": "Означен си како задоцнет. Можеш да одговараш на отвореното прашање и на сите што следат.",
+  "q.joined.timeLate": "Означен си како задоцнет во {time}",
+  "q.sending": "Одговорот се испраќа…",
+  "q.checking": "Ги проверуваме одговорите…",
+  "q.tooLate": "Одговорот стигна откако времето истече.",
+  "q.waitReveal": "Наставникот ќе го покаже точниот одговор на таблата.",
+  "q.skipped": "Ова прашање е прескокнато и не се брои.",
+  "q.unsupported.title": "Овој вид прашање сè уште не е во апликацијата",
+  "q.unsupported.body": "Следи го на таблата.",
+  "q.ended.title": "Квизот заврши",
+  "q.ended.right": "{right} од {total} точни",
+  "q.ended.summary": "Види го прегледот",
   "q.pts": "{n} поени",
 
   "p.title": "Профил",
@@ -184,15 +236,54 @@ export function useQT() {
   return { t, locale };
 }
 
-/** Codes that mean "this is not a code that opens your class's quiz". */
-const NOT_A_CODE: readonly ApiErrorCode[] = ["token_expired", "not_found", "not_enrolled"];
+export type JoinFailure = {
+  /** Which picture the screen draws. */
+  kind: "expired" | "class" | "ended" | "offline" | "unknown" | "generic";
+  title: string;
+  body: string;
+  /** What the main button says, and what it does: scan again, go home, or ask the API again. */
+  cta: string;
+  action: "scan" | "home" | "retry";
+  /** A quieter way out, when the main button is not the only sensible one. */
+  secondary?: { label: string; action: "scan" | "home" };
+};
 
-/** The title and body for a join that failed: the code-not-recognized page, or what went wrong. */
+/**
+ * What a student is told when a join fails: each reason the API gives has a screen of its own with
+ * the one thing worth doing next (EC-JOIN-01, EC-JOIN-02, EC-JOIN-07).
+ */
 export function useJoinFailureCopy() {
   const { t } = useQT();
   const { t: tt } = useT();
-  return (code?: ApiErrorCode) =>
-    !code || NOT_A_CODE.includes(code)
-      ? { title: t("q.unknown.title"), body: t("q.unknown.body"), cta: t("q.unknown.cta") }
-      : { title: tt("error.title"), body: tt(errorKey(code)), cta: t("q.unknown.cta") };
+  return (code?: ApiErrorCode): JoinFailure => {
+    switch (code) {
+      case "token_expired":
+        return { kind: "expired", title: t("q.fail.expired.title"), body: t("q.fail.expired.body"), cta: t("q.fail.scan"), action: "scan" };
+      case "not_enrolled":
+        return {
+          kind: "class",
+          title: t("q.fail.class.title"),
+          body: t("q.fail.class.body"),
+          cta: t("q.home"),
+          action: "home",
+          secondary: { label: t("q.fail.scanOther"), action: "scan" },
+        };
+      case "session_ended":
+        return { kind: "ended", title: t("q.fail.ended.title"), body: t("q.fail.ended.body"), cta: t("q.home"), action: "home" };
+      case "network":
+        return {
+          kind: "offline",
+          title: t("q.fail.network.title"),
+          body: t("q.fail.network.body"),
+          cta: t("q.fail.retry"),
+          action: "retry",
+          secondary: { label: t("q.home"), action: "home" },
+        };
+      case undefined:
+      case "not_found":
+        return { kind: "unknown", title: t("q.fail.unknown.title"), body: t("q.fail.unknown.body"), cta: t("q.fail.scan"), action: "scan" };
+      default:
+        return { kind: "generic", title: tt("error.title"), body: tt(errorKey(code)), cta: t("q.fail.retry"), action: "retry", secondary: { label: t("q.home"), action: "home" } };
+    }
+  };
 }

@@ -1,13 +1,14 @@
 "use client";
 
-import { CameraIcon, ImageIcon, QrCodeIcon, WarningIcon, XIcon } from "@phosphor-icons/react";
+import { CameraIcon, ImageIcon, WarningIcon, XIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { FAILURE_ICON } from "@/components/app/quiz/JoinFailure";
 import { startJoin } from "@/lib/app/api/hooks";
 import { toApiError, type ApiErrorCode } from "@/lib/app/api/errors";
 import { useT } from "@/lib/app/i18n";
 import { leave } from "@/lib/app/nav";
-import { useJoinFailureCopy } from "@/lib/app/quiz-copy";
+import { useJoinFailureCopy, useQT } from "@/lib/app/quiz-copy";
 import { decodeCanvas, decodeImageFile, interpretCode, type ScanResult } from "@/lib/app/scan";
 
 type Phase = "starting" | "scanning" | "denied" | "unavailable" | "error" | "stopped";
@@ -30,7 +31,6 @@ const pageVisible = () => document.visibilityState === "visible";
 
 export default function Scan() {
   const { t } = useT();
-  const failure = useJoinFailureCopy();
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -266,26 +266,30 @@ export default function Scan() {
         </div>
       )}
 
-      {result && (
-        <section className="scan-miss glass" role="alert">
-          <span className="scan-miss__badge" aria-hidden="true">
-            <QrCodeIcon size={32} color="var(--yellow)" />
-          </span>
-          <h2 className="scan-miss__title">{failure(result.code).title}</h2>
-          <p className="scan-miss__body">{failure(result.code).body}</p>
-          <button
-            className="btn btn--primary btn--block"
-            autoFocus
-            onClick={() => {
-              setNote(null);
-              setPhase("starting");
-              setResult(null);
-            }}
-          >
-            {failure(result.code).cta}
-          </button>
-        </section>
-      )}
+      {result && <Miss code={result.code} onAgain={() => {
+        setNote(null);
+        setPhase("starting");
+        setResult(null);
+      }} />}
     </main>
+  );
+}
+
+/** A code that did not open a quiz, said where the camera was: the reason, and a way to scan again. */
+function Miss({ code, onAgain }: { code?: ApiErrorCode; onAgain: () => void }) {
+  const failure = useJoinFailureCopy()(code);
+  const { t } = useQT();
+  const Icon = FAILURE_ICON[failure.kind];
+  return (
+    <section className="scan-miss glass" role="alert">
+      <span className="scan-miss__badge" aria-hidden="true">
+        <Icon size={32} color="var(--yellow)" />
+      </span>
+      <h2 className="scan-miss__title">{failure.title}</h2>
+      <p className="scan-miss__body">{failure.body}</p>
+      <button className="btn btn--primary btn--block" autoFocus onClick={onAgain}>
+        {t("q.fail.scan")}
+      </button>
+    </section>
   );
 }

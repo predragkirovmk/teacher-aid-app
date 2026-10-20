@@ -619,6 +619,71 @@
   animation: q-drop var(--spring-bouncy-dur) var(--spring-bouncy) 520ms backwards;
 }
 
+/* ---- the session around the question: late note, lost connection, a question the app cannot show ---- */
+/* A strip above the header, in the flow so it never covers the question; the answers are anchored to
+   the bottom and do not move when it comes or goes. */
+.q-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: var(--fs-label);
+  line-height: 1.35;
+  font-weight: 600;
+  animation: q-rise var(--spring-smooth-dur) var(--spring-smooth) backwards;
+}
+.q-note svg {
+  flex: none;
+}
+.q-late-text {
+  margin: 8px 0 0;
+  max-width: 22rem;
+}
+.q-hero--fail {
+  font-size: var(--fs-title1);
+}
+.q-fail__body {
+  margin: 0;
+  max-width: 24rem;
+}
+.q-locked--none {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--line);
+  color: #fff;
+  box-shadow: none;
+}
+.q-wait {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+}
+
+/* ---- the lesson is over ---- */
+.q-ended {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 24px;
+  margin-top: 24px;
+}
+.q-ended__rank {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.q-rank--small {
+  font-size: 4.5rem;
+}
+.q-ended .q-total {
+  margin-top: 0;
+}
+
 /* ---- profile editor ---- */
 .pe {
   display: flex;
