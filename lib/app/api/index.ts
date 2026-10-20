@@ -1,5 +1,6 @@
 import type { ApiClient } from "./client";
 import { createLiveClient } from "./live";
+import { watchSession } from "./session";
 
 export { apiMode, demoOnly, type ApiMode } from "./config";
 export type { ApiClient } from "./client";
@@ -11,9 +12,13 @@ export * from "./types";
 // are what let the bundler prove the branch dead; an `import` at the top of the file always ships it.
 /* eslint-disable @typescript-eslint/no-require-imports */
 
-/** The adapter the app talks to, chosen by NEXT_PUBLIC_API_MODE when it is built. */
-export const client: ApiClient =
-  process.env.NEXT_PUBLIC_API_MODE === "live" ? createLiveClient() : (require("./mock") as typeof import("./mock")).mockClient;
+/**
+ * The adapter the app talks to, chosen by NEXT_PUBLIC_API_MODE when it is built. Every call is watched
+ * for the API saying the session is over (session.ts).
+ */
+export const client: ApiClient = watchSession(
+  process.env.NEXT_PUBLIC_API_MODE === "live" ? createLiveClient() : (require("./mock") as typeof import("./mock")).mockClient,
+);
 
 /**
  * What the server render, and the render that hydrates it, may know. In mock mode that is the demo's

@@ -19,7 +19,9 @@ import type {
   SettingsUpdate,
   Student,
   StudentSessionState,
+  SignInChallenge,
   StudentSignIn,
+  StudentSignInCode,
   TopicProgress,
 } from "./types";
 
@@ -30,8 +32,17 @@ import type {
  */
 export interface ApiClient {
   // Auth
-  /** POST /auth/student/...: the method depends on OPEN-01. */
-  signInStudent(input?: StudentSignIn): Promise<Student>;
+  /**
+   * POST /auth/student/start: the school email begins a sign-in (F-02). Answers with the next stage,
+   * a code to type or a redirect (OPEN-01). Rejects `unknown_email` for an email on no roster (EC-AUTH-02).
+   */
+  startSignIn(input: StudentSignIn): Promise<SignInChallenge>;
+  /**
+   * POST /auth/student/verify: the code from the mailbox. Signs the student in, ending any other
+   * session of theirs (BR-AUTH-03), and answers with the student. Rejects `invalid_code`,
+   * `code_expired` or `rate_limited`.
+   */
+  completeSignIn(input: StudentSignInCode): Promise<Student>;
   /** POST /auth/logout. */
   signOut(): Promise<void>;
   /** GET /me. Rejects with `unauthenticated` when nobody is signed in. */

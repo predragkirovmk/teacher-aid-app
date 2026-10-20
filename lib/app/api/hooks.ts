@@ -6,6 +6,7 @@ import type { QuizRun } from "../quiz";
 import { client } from "./index";
 import type { SettledPromise } from "./client";
 import { toApiError, type ApiError } from "./errors";
+import { endSession, onSessionEnd, startSession, useSessionEnd, type SessionEnd } from "./session";
 import { change, invalidate, mapQuery, resetQueries, seed, useQuery, type Query } from "./query";
 import type {
   AttendanceSummary,
@@ -21,7 +22,9 @@ import type {
   PhotoUpload,
   SessionResult,
   Student,
+  SignInChallenge,
   StudentSignIn,
+  StudentSignInCode,
 } from "./types";
 
 export type { Query } from "./query";
@@ -98,36 +101,69 @@ export function useAttendanceView(enabled = true): Query<AttendanceSummary & { c
 
 export type AuthStatus = "loading" | "signedIn" | "signedOut" | "error";
 
-/** Signed in or out, as the API says: `GET /me` answers, or refuses with `unauthenticated`. */
+/**
+ * Signed in or out, as the API says: `GET /me` answers, or any call the app makes refuses with
+ * `unauthenticated` or `signed_in_elsewhere` (session.ts watches them all).
+ */
 export function useAuth() {
   const me = useMe();
+  const end = useSessionEnd();
   const code = me.error?.code;
-  const status: AuthStatus =
-    me.status === "ready"
+  const ended: SessionEnd | null = end ?? (code === "unauthenticated" || code === "signed_in_elsewhere" ? code : null);
+  const status: AuthStatus = ended
+    ? "signedOut"
+    : me.status === "ready"
       ? "signedIn"
       : me.status === "loading"
         ? "loading"
-        : code === "unauthenticated" || code === "signed_in_elsewhere"
-          ? "signedOut"
-          : "error";
+        : "error";
   return {
     status,
-    /** Why a signed-out student is signed out, when the API said (EC-AUTH-01). */
-    reason: status === "signedOut" ? code : undefined,
+    /** Why a signed-out student is signed out (EC-AUTH-01): their own choice, another device, or no session. */
+    reason: ended ?? undefined,
     me,
   };
 }
 
-export async function signIn(input?: StudentSignIn): Promise<Student> {
-  const student = await change((c) => c.signInStudent(input));
+/** Per-student things the app keeps on the phone for its own comfort; none of it may meet the next student. */
+function forgetStudent() {
+  try {
+    for (const key of Object.keys(window.localStorage)) {
+      if (key.startsWith("teacheraid-shown-") || key === "teacheraid-achievements-seen") window.localStorage.removeItem(key);
+    }
+    window.sessionStorage.removeItem("teacheraid-home-rise");
+  } catch {
+    // blocked storage: nothing was kept
+  }
+}
+
+// Whatever ends a session, nothing the student saw stays to be shown to the next one.
+onSessionEnd(() => {
+  resetQueries();
+  forgetStudent();
+});
+
+/** F-02, first stage: the school email. Answers with what comes next (a code to type, or a redirect). */
+export const startSignIn = (input: StudentSignIn): Promise<SignInChallenge> => client.startSignIn(input);
+
+/** F-02, last stage: the code from the mailbox. The student is signed in, on a clean cache. */
+export async function completeSignIn(input: StudentSignInCode): Promise<Student> {
+  const student = await change((c) => c.completeSignIn(input));
+  startSession();
+  resetQueries();
   seed("me", student);
   return student;
 }
 
 export async function signOut(): Promise<void> {
-  await change((c) => c.signOut());
-  // Nothing one student saw may be shown to the next.
-  resetQueries();
+  try {
+    await change((c) => c.signOut());
+  } catch (e) {
+    // Already out is what was asked for; a failure to reach the server leaves the student signed in, and says so.
+    const { code } = toApiError(e);
+    if (code !== "unauthenticated" && code !== "signed_in_elsewhere") throw e;
+  }
+  endSession("signed_out");
 }
 
 // ---- Profile and settings -----------------------------------------------------------------------------------

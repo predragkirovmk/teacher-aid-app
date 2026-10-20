@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/app/api/errors";
 import { createMockClient, mockClient, mockServerClient } from "@/lib/app/api/mock";
-import { CLASS_SUBJECTS, LEADERBOARD, NOTIFS, BASE_ATTENDED, BASE_TOTAL } from "@/lib/app/api/mock/data";
+import { CLASS_SUBJECTS, LEADERBOARD, MOCK_CODE, MOCK_ROSTER, NOTIFS, BASE_ATTENDED, BASE_TOTAL } from "@/lib/app/api/mock/data";
+import { CODE_LENGTH, CODE_TTL_MS, LOCK_SECONDS, MAX_WRONG_CODES, RESEND_AFTER_MS } from "@/lib/app/api/mock/signin";
 import { QUIZZES } from "@/lib/app/api/mock/quiz";
 import { actions, getState } from "@/lib/app/api/mock/store";
 import { getLocale, setLocale } from "@/lib/app/locale";
@@ -11,6 +12,7 @@ const MY_START = LEADERBOARD.find((l) => l.me)!.points;
 
 beforeEach(() => {
   window.localStorage.clear();
+  window.sessionStorage.clear();
   setLocale("mk");
   actions.reset();
 });
@@ -26,17 +28,146 @@ describe("every call answers with a settled promise", () => {
   });
 });
 
+const EMAIL = MOCK_ROSTER[0];
+
 describe("sign-in", () => {
+  afterEach(() => vi.useRealTimers());
+
   it("starts signed in, as the demo always has", async () => {
     expect((await mockClient.getMe()).fullName).toBe("Марко Трајковски");
   });
 
-  it("refuses getMe with unauthenticated after sign-out, and signs back in", async () => {
+  it("refuses getMe with unauthenticated after sign-out, and signs back in with the emailed code", async () => {
     await mockClient.signOut();
     await expect(mockClient.getMe()).rejects.toMatchObject({ code: "unauthenticated" });
-    const me = await mockClient.signInStudent();
+    const challenge = await mockClient.startSignIn({ schoolEmail: EMAIL });
+    expect(challenge).toMatchObject({ method: "code", codeLength: CODE_LENGTH });
+    const me = await mockClient.completeSignIn({ schoolEmail: EMAIL, code: MOCK_CODE });
     expect(me.id).toBe("student-marko");
     await expect(mockClient.getMe()).resolves.toMatchObject({ id: "student-marko" });
+  });
+
+  it("takes the email in any case and with spaces round it", async () => {
+    await mockClient.signOut();
+    await expect(mockClient.startSignIn({ schoolEmail: `  ${EMAIL.toUpperCase()} ` })).resolves.toMatchObject({ method: "code" });
+    await expect(mockClient.completeSignIn({ schoolEmail: ` ${EMAIL.toUpperCase()}`, code: " 123 456 " })).resolves.toMatchObject({
+      id: "student-marko",
+    });
+  });
+
+  it("times the code: it can be resent after 30 seconds and stops working after 10 minutes", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-20T08:00:00Z"));
+    const c = await mockClient.startSignIn({ schoolEmail: EMAIL });
+    if (c.method !== "code") throw new Error("expected a code");
+    expect(c.resendAt - Date.now()).toBe(RESEND_AFTER_MS);
+    expect(c.expiresAt - Date.now()).toBe(CODE_TTL_MS);
+    vi.advanceTimersByTime(CODE_TTL_MS + 1);
+    await expect(mockClient.completeSignIn({ schoolEmail: EMAIL, code: MOCK_CODE })).rejects.toMatchObject({ code: "code_expired" });
+  });
+
+  it("refuses an email on no roster, and one that is not an email", async () => {
+    await expect(mockClient.startSignIn({ schoolEmail: "nobody@student.example.mk" })).rejects.toMatchObject({ code: "unknown_email" });
+    await expect(mockClient.startSignIn({ schoolEmail: "not an email" })).rejects.toMatchObject({ code: "validation_failed" });
+  });
+
+  it("refuses a wrong code and a code nobody asked for, and signs nobody in", async () => {
+    await mockClient.signOut();
+    await expect(mockClient.completeSignIn({ schoolEmail: EMAIL, code: MOCK_CODE })).rejects.toMatchObject({ code: "code_expired" });
+    await mockClient.startSignIn({ schoolEmail: EMAIL });
+    await expect(mockClient.completeSignIn({ schoolEmail: EMAIL, code: "000000" })).rejects.toMatchObject({ code: "invalid_code" });
+    await expect(mockClient.getMe()).rejects.toMatchObject({ code: "unauthenticated" });
+  });
+
+  it("locks after too many wrong codes, with how long to wait, even for the right one", async () => {
+    vi.useFakeTimers();
+    await mockClient.signOut();
+    await mockClient.startSignIn({ schoolEmail: EMAIL });
+    for (let i = 1; i < MAX_WRONG_CODES; i++) {
+      await expect(mockClient.completeSignIn({ schoolEmail: EMAIL, code: "000000" })).rejects.toMatchObject({ code: "invalid_code" });
+    }
+    await expect(mockClient.completeSignIn({ schoolEmail: EMAIL, code: "000000" })).rejects.toMatchObject({
+      code: "rate_limited",
+      retryAfter: LOCK_SECONDS,
+    });
+    vi.advanceTimersByTime(10_000);
+    await expect(mockClient.completeSignIn({ schoolEmail: EMAIL, code: MOCK_CODE })).rejects.toMatchObject({
+      code: "rate_limited",
+      retryAfter: LOCK_SECONDS - 10,
+    });
+    vi.advanceTimersByTime(LOCK_SECONDS * 1000);
+    await expect(mockClient.completeSignIn({ schoolEmail: EMAIL, code: MOCK_CODE })).resolves.toMatchObject({ id: "student-marko" });
+  });
+
+  it("spends a code: it works once", async () => {
+    await mockClient.signOut();
+    await mockClient.startSignIn({ schoolEmail: EMAIL });
+    await mockClient.completeSignIn({ schoolEmail: EMAIL, code: MOCK_CODE });
+    await mockClient.signOut();
+    await expect(mockClient.completeSignIn({ schoolEmail: EMAIL, code: MOCK_CODE })).rejects.toMatchObject({ code: "code_expired" });
+  });
+
+  it("needs a connection, as the real one will", async () => {
+    const online = vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
+    await expect(mockClient.startSignIn({ schoolEmail: EMAIL })).rejects.toMatchObject({ code: "network" });
+    await expect(mockClient.completeSignIn({ schoolEmail: EMAIL, code: MOCK_CODE })).rejects.toMatchObject({ code: "network" });
+    online.mockRestore();
+  });
+});
+
+describe("signed in elsewhere (BR-AUTH-03)", () => {
+  it("answers every call with signed_in_elsewhere, until the student signs in again", async () => {
+    actions.signOutElsewhere();
+    const calls: [string, () => Promise<unknown>][] = [
+      ["getMe", () => mockClient.getMe()],
+      ["listCourses", () => mockClient.listCourses()],
+      ["getAttendance", () => mockClient.getAttendance()],
+      ["listResults", () => mockClient.listResults()],
+      ["getLeaderboard", () => mockClient.getLeaderboard()],
+      ["listBadges", () => mockClient.listBadges()],
+      ["listNotifications", () => mockClient.listNotifications()],
+      ["markNotificationsRead", () => mockClient.markNotificationsRead("all")],
+      ["updateProfile", () => mockClient.updateProfile({ displayName: "Ана" })],
+      ["updateSettings", () => mockClient.updateSettings({ notificationsOn: false })],
+      ["joinSession", () => mockClient.joinSession({ token: "MATH-7B" })],
+    ];
+    for (const [name, call] of calls) await expect(call(), name).rejects.toMatchObject({ code: "signed_in_elsewhere" });
+
+    await mockClient.startSignIn({ schoolEmail: EMAIL });
+    await mockClient.completeSignIn({ schoolEmail: EMAIL, code: MOCK_CODE });
+    await expect(mockClient.getMe()).resolves.toMatchObject({ id: "student-marko" });
+    expect(getState().endedElsewhere).toBe(false);
+  });
+
+  it("is not the same as signing out by choice", async () => {
+    await mockClient.signOut();
+    await expect(mockClient.listCourses()).rejects.toMatchObject({ code: "unauthenticated" });
+  });
+
+  it("survives a reload: the saved state still says why", () => {
+    actions.signOutElsewhere();
+    expect(JSON.parse(window.localStorage.getItem("teacheraid-app-v1")!)).toMatchObject({ signedIn: false, endedElsewhere: true });
+  });
+});
+
+describe("the display name (BR-STU-01)", () => {
+  it("saves a name of 2 to 24 characters, tidied", async () => {
+    const me = await mockClient.updateProfile({ displayName: "  Мики   Т " });
+    expect(me.displayName).toBe("Мики Т");
+    expect((await mockClient.updateProfile({ displayName: "А".repeat(24) })).displayName).toBe("А".repeat(24));
+  });
+
+  it("goes back to the school account's name on null", async () => {
+    await mockClient.updateProfile({ displayName: "Мики" });
+    expect((await mockClient.updateProfile({ displayName: null })).displayName).toBeNull();
+  });
+
+  it("refuses an empty, a one-letter, a 25-letter and a symbol name, and keeps the old one", async () => {
+    await mockClient.updateProfile({ displayName: "Мики" });
+    for (const bad of ["", "   ", "М", "А".repeat(25), "Ана1", "😀😀"]) {
+      await expect(mockClient.updateProfile({ displayName: bad }), JSON.stringify(bad)).rejects.toMatchObject({ code: "validation_failed" });
+    }
+    expect((await mockClient.getMe()).displayName).toBe("Мики");
   });
 });
 
@@ -255,5 +386,7 @@ describe("a client over a custom source", () => {
   it("answers from the state it is given", async () => {
     const c = createMockClient({ state: () => ({ ...getState(), signedIn: false }), locale: () => "en", writable: false });
     await expect(c.getMe()).rejects.toMatchObject({ code: "unauthenticated" });
+    const elsewhere = createMockClient({ state: () => ({ ...getState(), signedIn: false, endedElsewhere: true }), locale: () => "en", writable: false });
+    await expect(elsewhere.getMe()).rejects.toMatchObject({ code: "signed_in_elsewhere" });
   });
 });

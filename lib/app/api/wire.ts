@@ -32,12 +32,18 @@ import type {
   SessionSnapshot,
   SessionState,
   SettingsUpdate,
+  SignInChallenge,
   Student,
   StudentSessionState,
   TopicProgress,
 } from "./types";
 
 // ---- Wire types ---------------------------------------------------------------------------------
+
+/** POST /auth/student/start (PROPOSED): what the sign-in does next. */
+export type WireSignInChallenge =
+  | { method: "code"; code_length: number; expires_at: string; resend_at: string }
+  | { method: "redirect"; url: string };
 
 export type WireStudent = {
   id: string;
@@ -207,6 +213,11 @@ export const student = (w: WireStudent): Student => ({
   class: w.class,
   settings: { notificationsOn: w.settings.notifications_on, locale: w.settings.locale },
 });
+
+export const signInChallenge = (w: WireSignInChallenge): SignInChallenge =>
+  w.method === "redirect"
+    ? { method: "redirect", url: w.url }
+    : { method: "code", codeLength: w.code_length, expiresAt: ms(w.expires_at), resendAt: ms(w.resend_at) };
 
 export const course = (w: WireCourse): Course => ({
   id: w.id,

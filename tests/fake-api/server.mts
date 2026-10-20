@@ -6,7 +6,14 @@
  * Control endpoints for a test (not part of the API):
  *   GET  /__control/state          what the server holds, including the calls it received
  *   POST /__control/reset          back to the starting data
- *   POST /__control/signed-out     answer 401 to every call until reset
+ *   POST /__control/signed-out     answer 401 `unauthenticated` to every call until the student signs in
+ *   POST /__control/elsewhere      answer 401 `signed_in_elsewhere` to every call until the student signs in
+ *   POST /__control/redirect       make sign-in answer with a redirect to the school's identity provider
+ *   POST /__control/expire-code    make the emailed code stop working
+ *
+ * Sign-in is the proposed `/auth/student/start` and `/auth/student/verify`: the roster is one email,
+ * the code is CODE, three wrong codes lock it for LOCK_SECONDS, and the session is a flag (the real
+ * one is an httpOnly cookie, which a single test browser does not need to tell apart).
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type {
@@ -20,6 +27,11 @@ import type {
 } from "../../lib/app/api/wire";
 
 const PORT = Number(process.env.FAKE_API_PORT ?? 3101);
+
+const ROSTER = ["live.student@school.example"];
+const CODE = "424242";
+const WRONG_ALLOWED = 3;
+const LOCK_SECONDS = 2;
 
 /** An origin on this machine, which is the only kind a test browser sends. */
 const LOCAL_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
@@ -36,7 +48,13 @@ const COURSES: WireCourse[] = [
 ];
 
 const initial = () => ({
-  signedOut: false,
+  /** Why every call is refused, or null while the student is signed in. */
+  signedOut: null as null | "unauthenticated" | "signed_in_elsewhere",
+  /** What `start` answers: a code to type, or a redirect to an identity provider. */
+  method: "code" as "code" | "redirect",
+  codeExpired: false,
+  wrongCodes: 0,
+  lockedUntil: 0,
   student: {
     id: "st-1",
     full_name: "Live Student",
@@ -154,15 +172,68 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     return send(res, 204);
   }
   if (path === "/__control/signed-out" && method === "POST") {
-    state.signedOut = true;
+    state.signedOut = "unauthenticated";
     return send(res, 204);
+  }
+  if (path === "/__control/elsewhere" && method === "POST") {
+    state.signedOut = "signed_in_elsewhere";
+    return send(res, 204);
+  }
+  if (path === "/__control/redirect" && method === "POST") {
+    state.method = "redirect";
+    return send(res, 204);
+  }
+  if (path === "/__control/expire-code" && method === "POST") {
+    state.codeExpired = true;
+    return send(res, 204);
+  }
+  // The school's identity provider, as far as a browser test needs one: a page to land on.
+  if (path === "/__idp") {
+    res.writeHead(200, { "Content-Type": "text/html" }).end("<!doctype html><title>School sign-in</title><h1>School sign-in</h1>");
+    return;
   }
 
   if (!path.startsWith("/api/v1/")) return fail(res, 404, "not_found");
   const api = path.slice("/api/v1".length);
   state.calls.push(`${method} ${api}`);
 
-  if (state.signedOut) return fail(res, 401, "unauthenticated");
+  if (method === "POST" && api === "/auth/student/start") {
+    const body = (await readJson(req)) as { school_email?: string; return_to?: string } | undefined;
+    state.bodies[`${method} ${api}`] = body;
+    if (!ROSTER.includes((body?.school_email ?? "").toLowerCase())) return fail(res, 404, "unknown_email");
+    if (state.method === "redirect") return send(res, 200, { method: "redirect", url: `http://127.0.0.1:${PORT}/__idp` });
+    state.codeExpired = false;
+    state.wrongCodes = 0;
+    return send(res, 200, {
+      method: "code",
+      code_length: CODE.length,
+      expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
+      resend_at: new Date(Date.now() + 30_000).toISOString(),
+    });
+  }
+
+  if (method === "POST" && api === "/auth/student/verify") {
+    const body = (await readJson(req)) as { school_email?: string; code?: string } | undefined;
+    state.bodies[`${method} ${api}`] = body;
+    if (state.codeExpired) return fail(res, 410, "code_expired");
+    if (Date.now() < state.lockedUntil) {
+      res.setHeader("Retry-After", String(Math.ceil((state.lockedUntil - Date.now()) / 1000)));
+      return fail(res, 429, "rate_limited");
+    }
+    if (body?.code !== CODE) {
+      if (++state.wrongCodes >= WRONG_ALLOWED) {
+        state.wrongCodes = 0;
+        state.lockedUntil = Date.now() + LOCK_SECONDS * 1000;
+        res.setHeader("Retry-After", String(LOCK_SECONDS));
+        return fail(res, 429, "rate_limited");
+      }
+      return fail(res, 400, "invalid_code");
+    }
+    state.signedOut = null;
+    return send(res, 200, state.student);
+  }
+
+  if (state.signedOut) return fail(res, 401, state.signedOut);
 
   if (method === "GET") {
     if (api === "/me") return send(res, 200, state.student);
@@ -203,11 +274,14 @@ async function route(req: IncomingMessage, res: ServerResponse) {
   }
 
   if (method === "POST" && api === "/auth/logout") {
-    state.signedOut = true;
+    state.signedOut = "unauthenticated";
     return send(res, 204);
   }
 
-  if (method === "POST" && api === "/sessions/join") return fail(res, 410, "token_expired");
+  if (method === "POST" && api === "/sessions/join") {
+    state.bodies[`${method} ${api}`] = await readJson(req);
+    return fail(res, 410, "token_expired");
+  }
 
   return fail(res, 404, "not_found");
 }
@@ -220,6 +294,8 @@ createServer((req, res) => {
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept");
+    // A browser hides every response header but a few from another origin; the app reads this one.
+    res.setHeader("Access-Control-Expose-Headers", "Retry-After");
     res.setHeader("Vary", "Origin");
   }
   if (req.method === "OPTIONS") {

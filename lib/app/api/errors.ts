@@ -14,6 +14,8 @@ export const SERVER_ERROR_CODES = [
   // PROPOSED.
   "unauthenticated",
   "unknown_email",
+  "invalid_code",
+  "code_expired",
   "not_found",
   "validation_failed",
   "question_closed",
@@ -35,12 +37,18 @@ export class ApiError extends Error {
   readonly code: ApiErrorCode;
   /** The HTTP status, when the error came from a response. */
   readonly status: number | null;
+  /** Seconds the server asked the client to wait (`Retry-After`), when it did. */
+  readonly retryAfter: number | null;
 
-  constructor(code: ApiErrorCode, options: { status?: number | null; message?: string; cause?: unknown } = {}) {
+  constructor(
+    code: ApiErrorCode,
+    options: { status?: number | null; message?: string; cause?: unknown; retryAfter?: number | null } = {},
+  ) {
     super(options.message ?? code, { cause: options.cause });
     this.name = "ApiError";
     this.code = code;
     this.status = options.status ?? null;
+    this.retryAfter = options.retryAfter ?? null;
   }
 }
 
@@ -63,7 +71,7 @@ function codeForStatus(status: number): ApiErrorCode {
 
 /**
  * Read an error response. The envelope is `{ "error": { "code": "token_expired", "message": "..." } }`
- * (PROPOSED); a bare `{ "code": ... }` is read too. A code the client does not know falls back to
+ * (PROPOSED); a bare `{ "code": ... }` is read too, and so is a `Retry-After` header in seconds. A code the client does not know falls back to
  * the one the HTTP status implies, so new server codes never break a screen.
  */
 export async function parseErrorResponse(res: Response): Promise<ApiError> {
@@ -77,5 +85,8 @@ export async function parseErrorResponse(res: Response): Promise<ApiError> {
   const inner = root.error && typeof root.error === "object" ? (root.error as Record<string, unknown>) : root;
   const code = isApiErrorCode(inner.code) ? inner.code : codeForStatus(res.status);
   const message = typeof inner.message === "string" ? inner.message : undefined;
-  return new ApiError(code, { status: res.status, message });
+  // Only the delay-in-seconds form of Retry-After; an HTTP date is not worth a clock calculation here.
+  const wait = Number(res.headers.get("Retry-After"));
+  const retryAfter = Number.isFinite(wait) && wait > 0 ? Math.ceil(wait) : null;
+  return new ApiError(code, { status: res.status, message, retryAfter });
 }

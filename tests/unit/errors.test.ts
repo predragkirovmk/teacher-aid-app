@@ -10,12 +10,18 @@ import {
   toApiError,
 } from "@/lib/app/api/errors";
 
-const reply = (status: number, body?: unknown, raw?: string) =>
-  new Response(raw ?? (body === undefined ? null : JSON.stringify(body)), { status });
+const reply = (status: number, body?: unknown, raw?: string, headers?: Record<string, string>) =>
+  new Response(raw ?? (body === undefined ? null : JSON.stringify(body)), { status, headers });
 
 describe("error codes", () => {
   it("lists the six codes spec 11 names", () => {
     for (const code of ["token_expired", "not_enrolled", "session_ended", "already_answered", "limit_reached", "signed_in_elsewhere"]) {
+      expect(SERVER_ERROR_CODES).toContain(code);
+    }
+  });
+
+  it("lists the codes sign-in needs", () => {
+    for (const code of ["unknown_email", "invalid_code", "code_expired", "rate_limited", "unauthenticated", "signed_in_elsewhere"]) {
       expect(SERVER_ERROR_CODES).toContain(code);
     }
   });
@@ -46,6 +52,7 @@ describe("ApiError", () => {
 
   it("has no status unless a response gave one", () => {
     expect(new ApiError("network").status).toBeNull();
+    expect(new ApiError("network").retryAfter).toBeNull();
   });
 
   it("toApiError keeps an ApiError and wraps anything else as unknown", () => {
@@ -93,6 +100,26 @@ describe("parseErrorResponse", () => {
     [403, "unknown"],
   ])("maps a bare %i to %s", async (status, code) => {
     expect((await parseErrorResponse(reply(status))).code).toBe(code);
+  });
+
+  it("reads how long to wait from Retry-After, in seconds", async () => {
+    const e = await parseErrorResponse(reply(429, { error: { code: "rate_limited" } }, undefined, { "Retry-After": "45" }));
+    expect(e).toMatchObject({ code: "rate_limited", status: 429, retryAfter: 45 });
+    expect((await parseErrorResponse(reply(429, undefined, undefined, { "Retry-After": "1.2" }))).retryAfter).toBe(2);
+  });
+
+  it("ignores a Retry-After it cannot count in seconds", async () => {
+    for (const value of ["Wed, 21 Oct 2026 07:28:00 GMT", "0", "-5", ""]) {
+      expect((await parseErrorResponse(reply(429, undefined, undefined, { "Retry-After": value }))).retryAfter, value).toBeNull();
+    }
+    expect((await parseErrorResponse(reply(429))).retryAfter).toBeNull();
+  });
+
+  it("reads the sign-in refusals as they come", async () => {
+    expect((await parseErrorResponse(reply(404, { error: { code: "unknown_email" } }))).code).toBe("unknown_email");
+    expect((await parseErrorResponse(reply(400, { error: { code: "invalid_code" } }))).code).toBe("invalid_code");
+    expect((await parseErrorResponse(reply(410, { error: { code: "code_expired" } }))).code).toBe("code_expired");
+    expect((await parseErrorResponse(reply(401, { error: { code: "signed_in_elsewhere" } }))).code).toBe("signed_in_elsewhere");
   });
 
   it("survives a body that is not JSON", async () => {

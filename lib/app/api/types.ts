@@ -38,8 +38,29 @@ export type PhotoUpload = { blob: Blob; preview: string };
 
 export type SettingsUpdate = Partial<StudentSettings>;
 
-/** The sign-in method depends on OPEN-01, so the input is the school email and nothing more for now. */
-export type StudentSignIn = { schoolEmail: string };
+/**
+ * Sign-in is email first (F-02): the school email starts it, and what comes next depends on the method
+ * OPEN-01 lands on. `returnTo` is the app path to come back to after a redirect to an identity provider.
+ */
+export type StudentSignIn = { schoolEmail: string; returnTo?: string };
+
+/**
+ * The next stage of a sign-in, behind one method so the screen does not care which method wins
+ * OPEN-01: a code the student types (emailed to the school mailbox), or a redirect to the school's
+ * identity provider (Google or Microsoft).
+ */
+export type SignInChallenge =
+  | {
+      method: "code";
+      codeLength: number;
+      /** When the code stops working, and when a new one may be asked for. */
+      expiresAt: number;
+      resendAt: number;
+    }
+  | { method: "redirect"; url: string };
+
+/** The code a student typed for the email that asked for it. */
+export type StudentSignInCode = { schoolEmail: string; code: string };
 
 // ---- Courses (class + subject + teacher, OPEN-02) -----------------------------------------------
 

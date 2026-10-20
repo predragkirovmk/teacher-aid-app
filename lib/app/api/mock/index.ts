@@ -40,7 +40,9 @@ import {
 import { translate, type Key } from "../../i18n";
 import { getLocale, setLocale, subscribeLocale } from "../../locale";
 import { QUIZZES } from "./quiz";
+import { startMockSignIn, verifyMockCode } from "./signin";
 import { actions, DEFAULT_STATE, getState, subscribeStore, type AppState } from "./store";
+import { cleanName, nameError } from "../../profile-rules";
 
 /**
  * The mock adapter: the whole backend played in the browser over the demo's local store and
@@ -237,23 +239,49 @@ export function createMockClient(source: MockSource): ApiClient {
     if (!writable) throw new ApiError("unknown", { message: "the mock is read-only here" });
     return fn();
   };
+  /** What the API does with a call from a student who is not signed in (spec 11, FR-AUTH-06). */
+  const needSignIn = () => {
+    if (!state().signedIn) throw new ApiError(state().endedElsewhere ? "signed_in_elsewhere" : "unauthenticated");
+  };
+  /** A call that needs a signed-in student. */
+  const authed = <T>(fn: () => T): SettledPromise<T> =>
+    run(() => {
+      needSignIn();
+      return fn();
+    });
   const me = () => {
-    if (!state().signedIn) throw new ApiError("unauthenticated");
+    needSignIn();
     return buildStudent(state(), locale());
   };
 
   return {
-    signInStudent: () => run(() => write(() => (actions.setSignedIn(true), me()))),
-    signOut: () => run(() => write(() => actions.setSignedIn(false))),
+    startSignIn: ({ schoolEmail }) => run(() => startMockSignIn(schoolEmail)),
+    completeSignIn: ({ schoolEmail, code }) =>
+      run(() =>
+        write(() => {
+          verifyMockCode(schoolEmail, code);
+          actions.signIn();
+          return me();
+        }),
+      ),
+    signOut: () => run(() => write(() => actions.signOut())),
     getMe: () => run(me),
 
     updateProfile: ({ displayName }: ProfileUpdate) =>
-      run(() => write(() => (actions.setProfile({ ...state().profile, name: displayName }), me()))),
+      authed(() =>
+        write(() => {
+          // The API refuses what the editor never lets through (BR-STU-01); null goes back to the school account's name.
+          const name = displayName === null ? null : cleanName(displayName);
+          if (name !== null && nameError(name)) throw new ApiError("validation_failed");
+          actions.setProfile({ ...state().profile, name });
+          return me();
+        }),
+      ),
     setPhoto: ({ preview }: PhotoUpload) =>
-      run(() => write(() => (actions.setProfile({ ...state().profile, photo: preview }), me()))),
-    removePhoto: () => run(() => write(() => (actions.setProfile({ ...state().profile, photo: null }), me()))),
+      authed(() => write(() => (actions.setProfile({ ...state().profile, photo: preview }), me()))),
+    removePhoto: () => authed(() => write(() => (actions.setProfile({ ...state().profile, photo: null }), me()))),
     updateSettings: (update: SettingsUpdate) =>
-      run(() =>
+      authed(() =>
         write(() => {
           if (update.notificationsOn !== undefined) actions.setNotificationsOn(update.notificationsOn);
           if (update.locale !== undefined) setLocale(update.locale);
@@ -261,16 +289,16 @@ export function createMockClient(source: MockSource): ApiClient {
         }),
       ),
 
-    listCourses: () => run(() => buildCourses(locale())),
-    getAttendance: () => run(() => buildAttendance(state(), locale())),
-    listResults: (courseId?: Id) => run(() => buildResults(locale()).filter((r) => !courseId || r.courseId === courseId)),
-    listTopics: () => run(() => []),
-    getLeaderboard: () => run(() => buildLeaderboard(state(), locale())),
-    listBadges: () => run(() => buildBadges(state(), locale())),
+    listCourses: () => authed(() => buildCourses(locale())),
+    getAttendance: () => authed(() => buildAttendance(state(), locale())),
+    listResults: (courseId?: Id) => authed(() => buildResults(locale()).filter((r) => !courseId || r.courseId === courseId)),
+    listTopics: () => authed(() => []),
+    getLeaderboard: () => authed(() => buildLeaderboard(state(), locale())),
+    listBadges: () => authed(() => buildBadges(state(), locale())),
 
-    listNotifications: () => run(() => buildNotifications(state(), locale())),
+    listNotifications: () => authed(() => buildNotifications(state(), locale())),
     markNotificationsRead: (ids) =>
-      run(() =>
+      authed(() =>
         write(() => {
           const all = buildNotifications(state(), locale()).map((n) => n.id);
           const target = ids === "all" ? all : ids;
@@ -280,13 +308,12 @@ export function createMockClient(source: MockSource): ApiClient {
         }),
       ),
 
-    listPracticeSets: () => run(() => []),
+    listPracticeSets: () => authed(() => []),
     submitPracticeAnswers: () => fail(new ApiError("not_found")),
 
     joinSession: (input: JoinInput) =>
-      run(() =>
+      authed(() =>
         write((): JoinResult => {
-          if (!state().signedIn) throw new ApiError("unauthenticated");
           const code = "token" in input ? input.token : input.shortCode;
           const found = lessonFor(subjectByCode(code));
           // An unknown code is, to the server, a token it never issued or has already retired.
@@ -319,7 +346,7 @@ export function createMockClient(source: MockSource): ApiClient {
       ),
 
     getStudentState: (sessionId: Id) =>
-      run((): StudentSessionState => {
+      authed((): StudentSessionState => {
         const id = sessionId.startsWith(SESSION_PREFIX) ? sessionId.slice(SESSION_PREFIX.length) : "";
         const subject = lessonFor(CLASS_SUBJECTS.find((s) => s.id === id));
         if (!subject) throw new ApiError("not_found");
@@ -342,7 +369,7 @@ export function createMockClient(source: MockSource): ApiClient {
       }),
 
     submitAnswer: (sessionId: Id, answer: AnswerInput) =>
-      run((): AnswerReceipt => {
+      authed((): AnswerReceipt => {
         if (!sessionId.startsWith(SESSION_PREFIX)) throw new ApiError("not_found");
         const duplicate = SEEN_ANSWERS.has(answer.idempotencyKey);
         SEEN_ANSWERS.add(answer.idempotencyKey);

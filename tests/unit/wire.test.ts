@@ -228,6 +228,30 @@ describe("wire to domain", () => {
   });
 });
 
+describe("sign-in", () => {
+  it("reads a code challenge, with its times as milliseconds", () => {
+    expect(
+      wire.signInChallenge({ method: "code", code_length: 6, expires_at: "2026-10-20T08:10:00.000Z", resend_at: "2026-10-20T08:00:30.000Z" }),
+    ).toEqual({
+      method: "code",
+      codeLength: 6,
+      expiresAt: Date.parse("2026-10-20T08:10:00.000Z"),
+      resendAt: Date.parse("2026-10-20T08:00:30.000Z"),
+    });
+  });
+
+  it("reads a redirect to the school's identity provider", () => {
+    expect(wire.signInChallenge({ method: "redirect", url: "https://login.example/start" })).toEqual({
+      method: "redirect",
+      url: "https://login.example/start",
+    });
+  });
+
+  it("treats a malformed time as an invalid response", () => {
+    expect(() => wire.signInChallenge({ method: "code", code_length: 6, expires_at: "soon", resend_at: "later" })).toThrow(ApiError);
+  });
+});
+
 describe("domain to wire (request bodies)", () => {
   it("sends only the settings that changed, in snake_case", () => {
     expect(wire.settingsBody({ notificationsOn: false })).toEqual({ notifications_on: false });

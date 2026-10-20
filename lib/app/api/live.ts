@@ -7,11 +7,13 @@ import type { Id, LeaderboardScope } from "./types";
 /**
  * The live adapter: fetch against NEXT_PUBLIC_API_URL under `/api/v1`, errors parsed into stable
  * codes, bodies mapped by wire.ts. The paths are spec 11.1; the response shapes are the PROPOSED
- * ones of spec 11.3. Where the contract is not settled the method throws `not_implemented` instead
- * of guessing: sign-in (OPEN-01).
+ * ones of spec 11.3.
  *
- * How a request proves who sent it is not decided either (OPEN-01), so it goes out with cookies
- * (`credentials: "include"`) and no token header; when the backend picks, that is the one line to change.
+ * Sign-in is email first and the stage after the email is the server's to name (OPEN-01): the
+ * proposed `/auth/student/start` and `/auth/student/verify` of spec 11.1. The session is an httpOnly
+ * cookie the API sets; every request goes out with cookies (`credentials: "include"`) and no token
+ * header, so the app never holds the session token. If OPEN-01 ends in bearer tokens, `request` is the
+ * one place that changes.
  */
 
 const TIMEOUT_MS = 15_000;
@@ -65,7 +67,14 @@ export function createLiveClient(): ApiClient {
   };
 
   return {
-    signInStudent: () => Promise.reject(new ApiError("not_implemented", { message: "student sign-in method is OPEN-01" })),
+    startSignIn: async ({ schoolEmail, returnTo }) =>
+      wire.signInChallenge(
+        await request<wire.WireSignInChallenge>("POST", "/auth/student/start", {
+          body: { school_email: schoolEmail, ...(returnTo ? { return_to: returnTo } : {}) },
+        }),
+      ),
+    completeSignIn: async ({ schoolEmail, code }) =>
+      wire.student(await request<wire.WireStudent>("POST", "/auth/student/verify", { body: { school_email: schoolEmail, code } })),
     signOut: () => request<void>("POST", "/auth/logout"),
     getMe: async () => wire.student(await request<wire.WireStudent>("GET", "/me")),
 

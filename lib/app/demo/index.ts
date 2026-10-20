@@ -4,7 +4,7 @@ import { useMemo, useSyncExternalStore } from "react";
 import { demoOnly } from "../api";
 import { useAttendance } from "../api/hooks";
 import type { TFn } from "../i18n";
-import { CLASS_SUBJECTS, DOCS, NOTIFS, SUBJECTS } from "../api/mock/data";
+import { CLASS_SUBJECTS, DOCS, MOCK_CODE, MOCK_ROSTER, NOTIFS, SUBJECTS } from "../api/mock/data";
 import { actions, useApp } from "../api/mock/store";
 import { ROOMS, demoTime, type ClockId, type Scan } from "./schedule";
 
@@ -58,6 +58,12 @@ export const roomLabel = (t: TFn, subjectId: string) => {
 
 /** Clear the demo's check-ins, read alerts, points and achievements; the language stays. */
 export const resetDemo = () => actions.reset();
+
+/** The demo's stand-in for the same account signing in on another phone (BR-AUTH-03): this one is signed out. */
+export const signInElsewhere = () => actions.signOutElsewhere();
+
+/** What the welcome screen's demo hint offers in place of a school mailbox: a roster email and the code it "receives". */
+export const DEMO_SIGN_IN = { email: MOCK_ROSTER[0], code: MOCK_CODE };
 
 /** The class QR codes the test kit prints, one for each subject that has a live quiz. */
 export const CLASS_CODES = CLASS_SUBJECTS.map((s) => ({ subjectId: s.id, code: s.code }));

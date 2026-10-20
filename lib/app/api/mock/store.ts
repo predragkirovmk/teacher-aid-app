@@ -9,6 +9,8 @@ export type Checkin = { id: string; subject: SubjectId; at: number };
 
 export type AppState = {
   signedIn: boolean;
+  /** Why the student is signed out, when it was not their own doing: another device signed in (BR-AUTH-03). */
+  endedElsewhere: boolean;
   notificationsOn: boolean;
   read: string[];
   checkins: Checkin[];
@@ -28,6 +30,7 @@ const KEY = "teacheraid-app-v1";
 
 const DEFAULT: AppState = {
   signedIn: true,
+  endedElsewhere: false,
   notificationsOn: true,
   read: [],
   checkins: [],
@@ -52,6 +55,7 @@ function sanitize(saved: unknown): AppState {
   const s = saved && typeof saved === "object" ? (saved as Record<string, unknown>) : {};
   return {
     signedIn: typeof s.signedIn === "boolean" ? s.signedIn : DEFAULT.signedIn,
+    endedElsewhere: s.endedElsewhere === true && s.signedIn === false,
     notificationsOn: typeof s.notificationsOn === "boolean" ? s.notificationsOn : DEFAULT.notificationsOn,
     read: Array.isArray(s.read) ? s.read.filter((id): id is string => typeof id === "string") : DEFAULT.read,
     checkins: Array.isArray(s.checkins) ? s.checkins.filter(isCheckin) : DEFAULT.checkins,
@@ -153,7 +157,10 @@ export function useApp(): AppState {
 }
 
 export const actions = {
-  setSignedIn: (signedIn: boolean) => set({ signedIn }),
+  signIn: () => set({ signedIn: true, endedElsewhere: false }),
+  signOut: () => set({ signedIn: false, endedElsewhere: false }),
+  /** The demo's stand-in for the same account signing in on another phone. */
+  signOutElsewhere: () => set({ signedIn: false, endedElsewhere: true }),
   setNotificationsOn: (notificationsOn: boolean) => set({ notificationsOn }),
   markRead: (id: string) => {
     load();
