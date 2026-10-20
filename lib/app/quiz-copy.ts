@@ -63,7 +63,10 @@ const en = {
   "p.editTitle": "Edit profile",
   "p.cancel": "Cancel",
   "p.save": "Save",
-  "p.avatar": "Choose an avatar",
+  "p.photo": "Add your photo",
+  "p.photoChange": "Change photo",
+  "p.photoRemove": "Remove photo",
+  "p.photoErr": "That file is not a photo we can use.",
   "p.name": "Display name",
   "p.nameHint": "Your classmates see this in the quiz.",
   "p.seen": "Your classmates see this name in the quiz",
@@ -78,14 +81,6 @@ const en = {
   "p.discard": "Discard your changes?",
   "p.discardConfirm": "Discard",
   "p.keep": "Keep editing",
-  "p.av.initials": "Initials",
-  "p.av.atom": "Atom",
-  "p.av.rocket": "Rocket",
-  "p.av.telescope": "Telescope",
-  "p.av.zap": "Lightning",
-  "p.av.music": "Music",
-  "p.av.earth": "Earth",
-  "p.av.palette": "Palette",
 };
 
 type Key = keyof typeof en;
@@ -148,7 +143,10 @@ const mk: Record<Key, string> = {
   "p.editTitle": "Уреди профил",
   "p.cancel": "Откажи",
   "p.save": "Зачувај",
-  "p.avatar": "Избери аватар",
+  "p.photo": "Додај своја фотографија",
+  "p.photoChange": "Промени фотографија",
+  "p.photoRemove": "Отстрани фотографија",
+  "p.photoErr": "Оваа датотека не е фотографија што можеме да ја користиме.",
   "p.name": "Прикажано име",
   "p.nameHint": "Ова го гледаат соучениците во квизот.",
   "p.seen": "Ова име го гледаат соучениците во квизот",
@@ -163,14 +161,6 @@ const mk: Record<Key, string> = {
   "p.discard": "Да ги отфрлиш промените?",
   "p.discardConfirm": "Отфрли",
   "p.keep": "Продолжи",
-  "p.av.initials": "Иницијали",
-  "p.av.atom": "Атом",
-  "p.av.rocket": "Ракета",
-  "p.av.telescope": "Телескоп",
-  "p.av.zap": "Молња",
-  "p.av.music": "Музика",
-  "p.av.earth": "Земја",
-  "p.av.palette": "Палета",
 };
 
 const dictionaries: Record<Locale, Record<Key, string>> = { en, mk };

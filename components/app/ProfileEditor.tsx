@@ -1,17 +1,31 @@
 "use client";
 
-import { LockIcon, WarningCircleIcon } from "@phosphor-icons/react";
-import { useId, useState } from "react";
-import { Avatar, AVATAR_ICONS } from "@/components/app/Avatar";
+import { CameraIcon, LockIcon, TrashIcon, WarningCircleIcon } from "@phosphor-icons/react";
+import { useId, useRef, useState } from "react";
+import { Avatar } from "@/components/app/Avatar";
 import { useUI } from "@/components/app/ui";
-import { AVATARS, type AvatarId } from "@/lib/app/avatars";
 import { cleanName, NAME_MAX, nameError, useMe } from "@/lib/app/profile";
 import { initials } from "@/lib/app/quiz";
 import { useQT } from "@/lib/app/quiz-copy";
 import { actions } from "@/lib/app/store";
 
+/** Centre-crop to a square and shrink to a small JPEG so it fits in local storage. */
+async function toPhoto(file: File, size = 256): Promise<string> {
+  const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+  const side = Math.min(bmp.width, bmp.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("no canvas");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, size, size);
+  ctx.drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, size, size);
+  bmp.close();
+  return canvas.toDataURL("image/jpeg", 0.85);
+}
+
 /**
- * Edit the display name and avatar. Save stays off until something changed and the name is
+ * Edit the display name and profile photo. Save stays off until something changed and the name is
  * valid; the name is checked as you type once you have touched it. Cancel with changes asks
  * before throwing them away.
  */
@@ -21,19 +35,31 @@ export function ProfileEditor({ onDone }: { onDone: () => void }) {
   const me = useMe();
   const id = useId();
   const [name, setName] = useState(me.name);
-  const [avatar, setAvatar] = useState<AvatarId>(me.avatar);
+  const [photo, setPhoto] = useState<string | null>(me.photo);
+  const [photoError, setPhotoError] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [touched, setTouched] = useState(false);
   const [asking, setAsking] = useState(false);
 
   const error = nameError(name);
-  const changed = cleanName(name) !== me.name || avatar !== me.avatar;
+  const changed = cleanName(name) !== me.name || photo !== me.photo;
   const canSave = changed && !error;
   const showError = touched && error;
   const shown = initials(cleanName(name) || me.name);
 
+  const pickPhoto = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      setPhoto(await toPhoto(file));
+      setPhotoError(false);
+    } catch {
+      setPhotoError(true);
+    }
+  };
+
   const save = () => {
     if (!canSave) return;
-    actions.setProfile({ name: cleanName(name), avatar });
+    actions.setProfile({ name: cleanName(name), photo });
     toast(t("p.saved"));
     onDone();
   };
@@ -70,30 +96,39 @@ export function ProfileEditor({ onDone }: { onDone: () => void }) {
         </div>
       )}
 
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => {
+          void pickPhoto(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
       <div className="pe-preview">
-        <Avatar key={avatar} avatar={avatar} initials={shown} size={104} className="pe-pop" />
-        <span className="t-label muted" id={`${id}-av`}>
-          {t("p.avatar")}
-        </span>
-      </div>
-
-      <div className="pe-grid" role="radiogroup" aria-labelledby={`${id}-av`}>
-        {AVATARS.map((a) => {
-          const Icon = a === "initials" ? null : AVATAR_ICONS[a];
-          return (
-            <button
-              key={a}
-              type="button"
-              role="radio"
-              aria-checked={avatar === a}
-              aria-label={t(`p.av.${a}`)}
-              className="pe-pick"
-              onClick={() => setAvatar(a)}
-            >
-              {Icon ? <Icon size={30} aria-hidden="true" /> : shown}
-            </button>
-          );
-        })}
+        <button type="button" className="pe-photo-btn" aria-label={photo ? t("p.photoChange") : t("p.photo")} onClick={() => fileRef.current?.click()}>
+          <Avatar key={`${!!photo}`} photo={photo} initials={shown} size={128} className="pe-pop" />
+          <span className="pe-photo-badge" aria-hidden="true">
+            <CameraIcon size={20} weight="fill" />
+          </span>
+        </button>
+        <button type="button" className="btn btn--primary" onClick={() => fileRef.current?.click()}>
+          <CameraIcon size={20} aria-hidden="true" />
+          {photo ? t("p.photoChange") : t("p.photo")}
+        </button>
+        {photo && (
+          <button type="button" className="btn btn--ghost" onClick={() => setPhoto(null)}>
+            <TrashIcon size={20} aria-hidden="true" />
+            {t("p.photoRemove")}
+          </button>
+        )}
+        {photoError && (
+          <span className="pe-err" role="alert">
+            <WarningCircleIcon size={20} color="var(--yellow)" aria-hidden="true" />
+            {t("p.photoErr")}
+          </span>
+        )}
       </div>
 
       <div className="pe-field">

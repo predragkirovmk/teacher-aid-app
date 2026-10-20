@@ -109,7 +109,7 @@ function Lobby({ subject, quiz, run, onLeave }: { subject: Subject; quiz: Quiz; 
           <QuizCard subject={subject} quiz={quiz} />
         </ViewTransition>
         <button className="card q-me" onClick={() => setEditing(true)}>
-          <Avatar avatar={me.avatar} initials={me.initials} size={56} />
+          <Avatar photo={me.photo} initials={me.initials} size={56} />
           <span className="q-me__text">
             <span className="q-me__name">{me.name}</span>
             <span className="t-cap">{t("q.you")}</span>
@@ -360,7 +360,7 @@ function Between({ run, onLeave, onHome }: { run: QuizRun; onLeave: () => void; 
             <li key={r.key} className={`q-row${r.me ? " q-row--me" : ""}${r.me && up ? " q-row--climb" : ""}${below ? " q-row--drop" : ""}`}>
               <span className="q-row__rank">{r.rank}</span>
               {r.me ? (
-                <Avatar avatar={me.avatar} initials={me.initials} size={44} />
+                <Avatar photo={me.photo} initials={me.initials} size={44} />
               ) : (
                 <span className={`q-face ${r.index % 2 ? "q-face--deep" : "q-face--ice"}`} aria-hidden="true">
                   {initials(CLASSMATES[r.index])}

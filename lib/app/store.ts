@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { DEFAULT_PROFILE, isAvatar, type Profile } from "./avatars";
+import { DEFAULT_PROFILE, isPhoto, type Profile } from "./avatars";
 import { CLOCKS, demoTime, type ClockId } from "./clock";
 import { SUBJECTS, type Locale, type SubjectId } from "./data";
 
@@ -13,7 +13,7 @@ export type AppState = {
   notificationsOn: boolean;
   read: string[];
   checkins: Checkin[];
-  /** The display name and avatar the student chose; null name means the school account's. */
+  /** The display name and photo the student chose; null name means the school account's. */
   profile: Profile;
   /** Points earned in live quizzes, added to the class leaderboard (spec 13.1). */
   quizPoints: number;
@@ -74,7 +74,7 @@ function sanitize(saved: unknown): AppState {
 function sanitizeProfile(saved: unknown): Profile {
   const p = saved && typeof saved === "object" ? (saved as Record<string, unknown>) : {};
   const name = typeof p.name === "string" && p.name.trim() ? p.name.trim().slice(0, 40) : null;
-  return { name, avatar: isAvatar(p.avatar) ? p.avatar : DEFAULT_PROFILE.avatar };
+  return { name, photo: isPhoto(p.photo) ? p.photo : null };
 }
 
 let state: AppState = DEFAULT;

@@ -42,7 +42,7 @@ export default function Profile() {
         </button>
       </div>
       <div className="profile">
-        <Avatar key={`${me.avatar}-${me.initials}`} avatar={me.avatar} initials={me.initials} size={112} className="pe-pop" />
+        <Avatar key={`${me.initials}-${!!me.photo}`} photo={me.photo} initials={me.initials} size={112} className="pe-pop" />
         <p className="profile__name" style={{ margin: "12px 0 0" }}>
           {me.name}
           <ShieldCheckIcon size={24} color="var(--yellow)" aria-label={t("user.verified")} />

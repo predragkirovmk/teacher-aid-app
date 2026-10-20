@@ -143,7 +143,7 @@ export default function Home() {
       <div className="home-bar">
         <Mark size={32} />
         <Link href="/app/profile" replace aria-label={t("nav.profile")} style={{ display: "block", borderRadius: "50%" }}>
-          <Avatar avatar={me.avatar} initials={me.initials} size={48} className="avatar--quiet" />
+          <Avatar photo={me.photo} initials={me.initials} size={48} className="avatar--quiet" />
         </Link>
       </div>
 

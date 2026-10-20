@@ -4,8 +4,6 @@ import { useT } from "./i18n";
 import { initials } from "./quiz";
 import { useApp } from "./store";
 
-export { AVATARS, type AvatarId } from "./avatars";
-
 export const NAME_MIN = 2;
 export const NAME_MAX = 24;
 
@@ -32,7 +30,7 @@ export function useMe() {
     name,
     first: name.split(" ")[0],
     initials: initials(name),
-    avatar: profile.avatar,
+    photo: profile.photo,
     custom: profile.name !== null,
   };
 }
