@@ -165,7 +165,7 @@ const mk: Record<Key, string> = {
   "p.keep": "Продолжи",
 };
 
-const dictionaries: Record<Locale, Record<Key, string>> = { en, mk };
+export const dictionaries: Record<Locale, Record<Key, string>> = { en, mk };
 
 export type QKey = Key;
 

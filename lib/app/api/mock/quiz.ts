@@ -203,6 +203,9 @@ const BETWEEN_MS = 4800;
 export const CORRECT_POINTS = 10;
 export const SPEED_POINTS = 5;
 
+/** The speed bonus for an answer given with `leftMs` of `durationMs` still on the clock. */
+export const speedBonus = (leftMs: number, durationMs: number) => Math.round((SPEED_POINTS * leftMs) / durationMs);
+
 /** Classmates in Cyrillic; the English interface shows them transliterated. */
 export const CLASSMATES = [
   "Ана Георгиевска", "Лука Стојановски", "Мила Јованова", "Нина Поповска", "Виктор Илиевски",
@@ -213,7 +216,7 @@ export const CLASSMATES = [
   "Тамара Костовска", "Огнен Тодоровски",
 ];
 
-type State = {
+export type State = {
   stage: Stage;
   index: number;
   /** When the current stage began, and the clock as of the last tick. */
@@ -238,7 +241,7 @@ type State = {
   rankBefore: number;
 };
 
-type Action =
+export type Action =
   | { type: "tick"; now: number }
   | { type: "pick"; option: number; now: number }
   | { type: "advance"; now: number; to: Stage };
@@ -256,7 +259,7 @@ function shuffle(n: number) {
   return a;
 }
 
-const rankOf = (mine: number, theirs: number[]) => 1 + theirs.filter((p) => p > mine).length;
+export const rankOf = (mine: number, theirs: number[]) => 1 + theirs.filter((p) => p > mine).length;
 
 function openQuestion(s: State, quiz: Quiz, index: number, now: number): State {
   const q = quiz.questions[index];
@@ -281,12 +284,12 @@ function closeQuestion(s: State, quiz: Quiz, now: number): State {
   const dur = DURATION[q.kind];
   const correct = s.picked !== null && s.picked === q.answer;
   const left = s.pickedAt === null ? 0 : Math.max(0, dur - (s.pickedAt - s.stageAt));
-  const bonus = correct ? Math.round((SPEED_POINTS * left) / dur) : 0;
+  const bonus = correct ? speedBonus(left, dur) : 0;
   const gain = correct ? CORRECT_POINTS + bonus : 0;
   const theirs = s.theirs.map((p, i) => {
     if (!s.rightness[i]) return p;
     const theirLeft = Math.max(0, dur - Math.min(s.answerAt[i], dur));
-    return p + CORRECT_POINTS + Math.round((SPEED_POINTS * theirLeft) / dur);
+    return p + CORRECT_POINTS + speedBonus(theirLeft, dur);
   });
   return {
     ...s,
@@ -303,7 +306,7 @@ function closeQuestion(s: State, quiz: Quiz, now: number): State {
   };
 }
 
-function reducer(quiz: Quiz) {
+export function reducer(quiz: Quiz) {
   return (s: State, a: Action): State => {
     const q = quiz.questions[s.index];
     switch (a.type) {
@@ -336,7 +339,7 @@ function reducer(quiz: Quiz) {
   };
 }
 
-function initial(): State {
+export function initial(): State {
   return {
     stage: "joined",
     index: 0,
