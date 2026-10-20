@@ -107,7 +107,7 @@ function reload() {
 
 let watching = false;
 
-function subscribe(cb: () => void) {
+export function subscribeStore(cb: () => void) {
   load();
   if (!watching) {
     watching = true;
@@ -132,9 +132,18 @@ function subscribe(cb: () => void) {
   return () => listeners.delete(cb);
 }
 
+/** The saved state as it is now, for code that is not a component. */
+export function getState(): AppState {
+  load();
+  return state;
+}
+
+/** What the server renders and the first hydrating render shows, before the saved state is read. */
+export const DEFAULT_STATE: AppState = DEFAULT;
+
 export function useApp(): AppState {
   return useSyncExternalStore(
-    subscribe,
+    subscribeStore,
     () => {
       load();
       return state;

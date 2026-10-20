@@ -53,7 +53,7 @@ export function setLocale(locale: Locale) {
 
 let watching = false;
 
-function subscribe(cb: () => void) {
+export function subscribeLocale(cb: () => void) {
   load();
   if (!watching) {
     watching = true;
@@ -69,5 +69,5 @@ function subscribe(cb: () => void) {
 }
 
 export function useLocale(): Locale {
-  return useSyncExternalStore(subscribe, getLocale, () => DEFAULT);
+  return useSyncExternalStore(subscribeLocale, getLocale, () => DEFAULT);
 }
