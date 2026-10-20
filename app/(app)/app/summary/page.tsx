@@ -38,7 +38,7 @@ function Result({ result }: { result: SessionResult }) {
   );
   // Seeing the summary is reading the alert that announced it, so Home stops calling it new.
   useEffect(() => {
-    if (announcement) void markNotificationsRead([announcement.id]);
+    if (announcement) markNotificationsRead([announcement.id]).catch(() => {});
   }, [announcement]);
 
   return (

@@ -27,7 +27,8 @@ function Detail({ n }: { n: AlertItem | undefined }) {
 
   // Opening an alert is reading it. A check-in is only a record, and has nothing to mark.
   useEffect(() => {
-    if (n?.unread) void markNotificationsRead([n.id]);
+    // Best effort: whatever the server did not hear, the next look at the list says.
+    if (n?.unread) markNotificationsRead([n.id]).catch(() => {});
   }, [n?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!n) {

@@ -7,7 +7,8 @@ import Link from "next/link";
 import { markNotificationsRead } from "@/lib/app/api/hooks";
 import { alertCopy, useAlerts, type AlertItem } from "@/lib/app/alerts";
 import { formatDate } from "@/lib/app/format";
-import { useT } from "@/lib/app/i18n";
+import { useUI } from "@/components/app/ui";
+import { errorCopy, useT } from "@/lib/app/i18n";
 
 export default function Notifications() {
   const { t } = useT();
@@ -26,6 +27,7 @@ export default function Notifications() {
 
 function List({ items, title }: { items: AlertItem[]; title: React.ReactNode }) {
   const { t, locale } = useT();
+  const { toast } = useUI();
   const unread = items.filter((n) => n.unread);
 
   return (
@@ -36,7 +38,7 @@ function List({ items, title }: { items: AlertItem[]; title: React.ReactNode }) 
         <button
           className="btn btn--ghost btn--block"
           style={{ minHeight: 48, fontSize: "var(--fs-callout)", marginBottom: 16 }}
-          onClick={() => void markNotificationsRead("all")}
+          onClick={() => markNotificationsRead("all").catch((e) => toast(errorCopy(t, e)))}
         >
           {t("notif.markAll")}
         </button>
