@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { useApp } from "./store";
+import type { ApiErrorCode } from "./api/errors";
 import type { Locale } from "./data";
 
 const en = {
@@ -281,6 +282,25 @@ const en = {
   "install.other": "Open your browser’s menu and choose “Install app” or “Add to Home screen”.",
   "install.ok": "Done",
   "install.added": "TeacherAid is on your Home Screen",
+  "state.loading": "Loading",
+  "state.retry": "Try again",
+  "err.token_expired": "This code has expired. Scan the code on the board now.",
+  "err.not_enrolled": "This is not your class. Check that you are scanning your own class's code.",
+  "err.session_ended": "This lesson has ended.",
+  "err.already_answered": "You already answered this question.",
+  "err.limit_reached": "You have reached the limit for this lesson.",
+  "err.signed_in_elsewhere": "You were signed out because you signed in on another device.",
+  "err.unauthenticated": "Sign in to continue.",
+  "err.unknown_email": "This school email is not on a class list. Ask your school.",
+  "err.not_found": "We could not find that.",
+  "err.validation_failed": "Check what you entered and try again.",
+  "err.question_closed": "Time for this question is over.",
+  "err.rate_limited": "Too many tries. Wait a moment and try again.",
+  "err.server_error": "Something went wrong on our side. Try again.",
+  "err.network": "No connection. Check your internet and try again.",
+  "err.invalid_response": "Something went wrong. Try again.",
+  "err.not_implemented": "This is not available yet.",
+  "err.unknown": "Something went wrong. Try again.",
 } as const;
 
 export type Key = keyof typeof en;
@@ -562,6 +582,25 @@ const mk: Record<Key, string> = {
   "install.other": "Отвори го менито на прелистувачот и избери „Install app“ или „Add to Home screen“.",
   "install.ok": "Готово",
   "install.added": "TeacherAid е на почетниот екран",
+  "state.loading": "Се вчитува",
+  "state.retry": "Обиди се повторно",
+  "err.token_expired": "Кодот истече. Скенирај го кодот на таблата сега.",
+  "err.not_enrolled": "Ова не е твојот клас. Провери дали го скенираш кодот на твојот клас.",
+  "err.session_ended": "Овој час заврши.",
+  "err.already_answered": "Веќе одговори на ова прашање.",
+  "err.limit_reached": "Го достигна ограничувањето за овој час.",
+  "err.signed_in_elsewhere": "Те одјавивме бидејќи се најави на друг уред.",
+  "err.unauthenticated": "Најави се за да продолжиш.",
+  "err.unknown_email": "Оваа училишна е-пошта не е на список на класот. Прашај во училиштето.",
+  "err.not_found": "Не го најдовме тоа.",
+  "err.validation_failed": "Провери што внесе и обиди се повторно.",
+  "err.question_closed": "Времето за ова прашање истече.",
+  "err.rate_limited": "Премногу обиди. Почекај малку и обиди се повторно.",
+  "err.server_error": "Нешто тргна наопаку кај нас. Обиди се повторно.",
+  "err.network": "Нема врска. Провери го интернетот и обиди се повторно.",
+  "err.invalid_response": "Нешто тргна наопаку. Обиди се повторно.",
+  "err.not_implemented": "Ова сè уште не е достапно.",
+  "err.unknown": "Нешто тргна наопаку. Обиди се повторно.",
 };
 
 export const dictionaries: Record<Locale, Record<Key, string>> = { en, mk };
@@ -571,6 +610,9 @@ export function translate(locale: Locale, key: Key, vars?: Record<string, string
   if (vars) for (const [k, v] of Object.entries(vars)) out = out.replaceAll(`{${k}}`, String(v));
   return out;
 }
+
+/** The copy for an API error code, so a screen only ever says what went wrong in the student's language. */
+export const errorKey = (code: ApiErrorCode): Key => `err.${code}`;
 
 export function useT() {
   const { locale } = useApp();
