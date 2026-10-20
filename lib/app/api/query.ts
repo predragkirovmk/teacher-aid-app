@@ -136,8 +136,9 @@ class Slot<T> {
     watchClient();
     const first = this.listeners.size === 0;
     this.listeners.add(listener);
-    // Coming back to a slot that has gone quiet: a slow client's answer may be old by now.
-    if (first && this.started && !this.sync && Date.now() - this.fetchedAt > FRESH_MS) this.fetch(true);
+    // Coming back to a slot that has gone quiet: a slow client's answer may be old by now. A slot
+    // that has not been answered yet (fetchedAt 0) has its first request in flight; do not ask twice.
+    if (first && this.started && !this.sync && this.fetchedAt > 0 && Date.now() - this.fetchedAt > FRESH_MS) this.fetch(true);
     return () => {
       this.listeners.delete(listener);
     };
