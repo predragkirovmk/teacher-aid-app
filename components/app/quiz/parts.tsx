@@ -2,10 +2,11 @@
 
 import { XIcon } from "@phosphor-icons/react";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import type { Subject } from "@/lib/app/data";
+import type { Course } from "@/lib/app/api/types";
 import { useT } from "@/lib/app/i18n";
 import { useQT } from "@/lib/app/quiz-copy";
-import { initials, type Quiz } from "@/lib/app/quiz";
+import { initials, personName } from "@/lib/app/quiz";
+import { subjectStyle } from "@/lib/app/subjects";
 
 const noop = () => () => {};
 const calmNow = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -97,24 +98,36 @@ export function TimerRing({ duration, elapsedAtMount, seconds }: { duration: num
 }
 
 /** The quiz as a light subject card: what the QR opened. */
-export function QuizCard({ subject, quiz, live = true }: { subject: Subject; quiz: Quiz; live?: boolean }) {
-  const { t: tt, locale } = useT();
+export function QuizCard({
+  course,
+  title,
+  count,
+  live = true,
+}: {
+  course: Course;
+  /** The lesson's title, and how many questions it has when the API says. */
+  title: string | null;
+  count: number | null;
+  live?: boolean;
+}) {
+  const { locale } = useT();
   const { t } = useQT();
+  const teacher = personName(course.teacherName, locale);
   return (
     <section className="subject tone-ice q-quizcard">
       <span className="subject__glyphs" aria-hidden="true">
-        {subject.glyphs.split("  ")[0]}
+        {subjectStyle(course.subjectId, course.subjectName).glyphs.split("  ")[0]}
       </span>
       <span className="t-label q-live">
         {live && <span className="q-live__dot" aria-hidden="true" />}
         {t("q.live")}
       </span>
-      <h2 className="subject__name q-quizcard__name">{quiz.title[locale]}</h2>
+      <h2 className="subject__name q-quizcard__name">{title}</h2>
       <div className="subject__foot">
         <span className="monogram" aria-hidden="true">
-          {initials(tt(`teacher.${subject.id}`))}
+          {initials(teacher)}
         </span>
-        <span>{t("q.meta", { teacher: tt(`teacher.${subject.id}`), n: quiz.questions.length })}</span>
+        <span>{count === null ? teacher : t("q.meta", { teacher, n: count })}</span>
       </div>
     </section>
   );

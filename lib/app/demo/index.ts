@@ -4,8 +4,8 @@ import { useMemo, useSyncExternalStore } from "react";
 import { demoOnly } from "../api";
 import { useAttendance } from "../api/hooks";
 import type { Key } from "../i18n";
-import { CLASS_SUBJECTS, DOCS, NOTIFS, SUBJECTS } from "../data";
-import { actions, useApp } from "../store";
+import { CLASS_SUBJECTS, DOCS, NOTIFS, SUBJECTS } from "../api/mock/data";
+import { actions, useApp } from "../api/mock/store";
 import { ROOMS, demoTime, type ClockId, type Scan } from "./schedule";
 
 export * from "./schedule";

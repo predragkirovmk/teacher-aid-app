@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { DEFAULT_PROFILE, isPhoto, type Profile } from "./avatars";
-import { CLOCKS, demoTime, type ClockId } from "./clock";
+import { CLOCKS, demoTime, type ClockId } from "../../demo/schedule";
 import { SUBJECTS, type SubjectId } from "./data";
 
 export type Checkin = { id: string; subject: SubjectId; at: number };

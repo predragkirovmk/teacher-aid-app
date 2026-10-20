@@ -1,14 +1,10 @@
 import jsQR from "jsqr";
-import { subjectByCode, type ClassSubject } from "./data";
-
-export type ScanResult =
-  | { kind: "class"; subject: ClassSubject; raw: string }
-  | { kind: "unknown-class"; code: string; raw: string }
-  | { kind: "other"; raw: string };
+export type ScanResult = { kind: "code"; code: string; raw: string } | { kind: "other"; raw: string };
 
 /**
  * A class QR is either a link ending in /app/checkin/<code> (so the phone's own camera app works
- * too), a TA:<code> string, or the bare code typed by hand.
+ * too), a TA:<code> string, or the bare code typed by hand. Whether the code opens a session is for
+ * the API to say (EC-JOIN-03: a QR that is not a TeacherAid code never reaches it).
  */
 export function interpretCode(raw: string): ScanResult {
   const text = raw.trim();
@@ -16,9 +12,7 @@ export function interpretCode(raw: string): ScanResult {
   const tagged = text.match(/^TA:([A-Za-z0-9-]+)$/i);
   const bare = /^[A-Za-z]{2,5}-\d{1,3}[A-Za-z]?$/.test(text) ? text : null;
   const code = link?.[1] ?? tagged?.[1] ?? bare;
-  if (!code) return { kind: "other", raw: text };
-  const subject = subjectByCode(code);
-  return subject ? { kind: "class", subject, raw: text } : { kind: "unknown-class", code, raw: text };
+  return code ? { kind: "code", code, raw: text } : { kind: "other", raw: text };
 }
 
 export function checkinLink(origin: string, code: string) {

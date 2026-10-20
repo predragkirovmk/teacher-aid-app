@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback } from "react";
+import type { ApiErrorCode } from "./api/errors";
 import type { Locale } from "./api/types";
+import { errorKey, useT } from "./i18n";
 import { useLocale } from "./locale";
 
 /** Text for the live quiz and the profile editor, kept apart from i18n.ts while that file is in flux. */
@@ -178,4 +180,17 @@ export function useQT() {
     [locale],
   );
   return { t, locale };
+}
+
+/** Codes that mean "this is not a code that opens your class's quiz". */
+const NOT_A_CODE: readonly ApiErrorCode[] = ["token_expired", "not_found", "not_enrolled"];
+
+/** The title and body for a join that failed: the code-not-recognized page, or what went wrong. */
+export function useJoinFailureCopy() {
+  const { t } = useQT();
+  const { t: tt } = useT();
+  return (code?: ApiErrorCode) =>
+    !code || NOT_A_CODE.includes(code)
+      ? { title: t("q.unknown.title"), body: t("q.unknown.body"), cta: t("q.unknown.cta") }
+      : { title: tt("error.title"), body: tt(errorKey(code)), cta: t("q.unknown.cta") };
 }

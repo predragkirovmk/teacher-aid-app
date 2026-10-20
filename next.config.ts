@@ -2,15 +2,25 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
 
+// The student app's API, when it runs in live mode (NEXT_PUBLIC_API_MODE=live): its origin may be
+// fetched from and may serve profile photos. Empty in mock mode, which needs no server.
+const apiOrigin = (() => {
+  try {
+    return process.env.NEXT_PUBLIC_API_URL ? new URL(process.env.NEXT_PUBLIC_API_URL).origin : "";
+  } catch {
+    return "";
+  }
+})();
+
 // No third-party origins anywhere: fonts are self-hosted by next/font, the demo's QR codes are
-// inline SVG, and Redis is only called from the server.
+// inline SVG, and Redis is only called from the server. The one exception is the API above.
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' blob: data:",
+  `img-src 'self' blob: data:${apiOrigin ? ` ${apiOrigin}` : ""}`,
   "font-src 'self'",
-  "connect-src 'self'",
+  `connect-src 'self'${apiOrigin ? ` ${apiOrigin}` : ""}`,
   "worker-src 'self'",
   "manifest-src 'self'",
   "object-src 'none'",

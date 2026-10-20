@@ -2,22 +2,21 @@
 
 import { ArrowDownIcon, ArrowUpIcon, CheckIcon, HourglassIcon, LockIcon, MinusIcon, PencilSimpleIcon, UsersIcon, XIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
-import { startTransition, useEffect, useState, useSyncExternalStore, ViewTransition, type CSSProperties } from "react";
+import { startTransition, useEffect, useState, ViewTransition, type CSSProperties } from "react";
 import { Avatar } from "@/components/app/Avatar";
 import { ProfileEditor } from "@/components/app/ProfileEditor";
 import { Sheet } from "@/components/app/Shell";
 import { useUI } from "@/components/app/ui";
-import type { Subject } from "@/lib/app/data";
-import { formatTime } from "@/lib/app/derived";
+import { useQuizRun } from "@/lib/app/api/hooks";
+import type { Course, JoinResult } from "@/lib/app/api/types";
+import { formatTime } from "@/lib/app/format";
 import { useT } from "@/lib/app/i18n";
 import { leave } from "@/lib/app/nav";
-import { useMe } from "@/lib/app/profile";
-import { CLASSMATES, CORRECT_POINTS, LETTERS, initials, personName, useQuiz, type Quiz, type QuizRun } from "@/lib/app/quiz";
+import { useSelf } from "@/lib/app/profile";
+import { LETTERS, initials, personName, type QuizRun } from "@/lib/app/quiz";
 import { useQT } from "@/lib/app/quiz-copy";
-import { actions, useApp } from "@/lib/app/store";
+import { subjectLabel } from "@/lib/app/subjects";
 import { Burst, CheckDraw, CrossDraw, QuizCard, QuizTop, TimerRing, useCountUp } from "./parts";
-
-const noop = () => () => {};
 
 const buzz = (pattern: number | number[]) => {
   try {
@@ -28,26 +27,12 @@ const buzz = (pattern: number | number[]) => {
 };
 
 /** The live quiz: one screen that moves through joined, lobby, question, result and between. */
-export function Play({ subject, quiz }: { subject: Subject; quiz: Quiz }) {
+export function Play({ course, join }: { course: Course; join: JoinResult }) {
   const router = useRouter();
   const { confirm } = useUI();
   const { t } = useQT();
-  const { signedIn } = useApp();
-  const run = useQuiz(quiz, actions.addQuizPoints);
-  // False while hydrating, when signedIn is still the server default rather than the saved value.
-  const hydrated = useSyncExternalStore(noop, () => true, () => false);
-
-  // Joining is the check-in (spec 5.4); the store keeps one per subject per hour.
-  useEffect(() => {
-    if (hydrated && signedIn) actions.checkIn(subject.id);
-  }, [hydrated, signedIn, subject.id]);
-
-  // Achievements come from quiz play: a first answer, right or wrong, and a whole quiz answered right.
-  useEffect(() => {
-    if (run.stage !== "reveal") return;
-    if (run.picked !== null) actions.markQuizAnswered();
-    if (run.last && run.right === run.total) actions.markPerfectQuiz();
-  }, [run.stage, run.picked, run.last, run.right, run.total]);
+  // Joining the session was the check-in (spec 5.4); the screen starts from its answer.
+  const run = useQuizRun(join);
 
   // A short buzz for each verdict, where the phone supports it.
   useEffect(() => {
@@ -60,8 +45,8 @@ export function Play({ subject, quiz }: { subject: Subject; quiz: Quiz }) {
   return (
     <main className="screen screen--bare q" data-stage={run.stage}>
       <div className="q__col">
-        {run.stage === "joined" && <Joined subject={subject} quiz={quiz} />}
-        {run.stage === "lobby" && <Lobby subject={subject} quiz={quiz} run={run} onLeave={onLeave} />}
+        {run.stage === "joined" && <Joined course={course} join={join} />}
+        {run.stage === "lobby" && <Lobby course={course} join={join} run={run} onLeave={onLeave} />}
         {run.stage === "question" && <Question run={run} onLeave={onLeave} />}
         {run.stage === "reveal" && <Reveal key={run.index} run={run} />}
         {run.stage === "between" && <Between key={run.index} run={run} onLeave={onLeave} onHome={() => router.replace("/app")} />}
@@ -70,11 +55,10 @@ export function Play({ subject, quiz }: { subject: Subject; quiz: Quiz }) {
   );
 }
 
-function Joined({ subject, quiz }: { subject: Subject; quiz: Quiz }) {
+function Joined({ course, join }: { course: Course; join: JoinResult }) {
   const { t } = useQT();
-  const { t: tt } = useT();
-  const { checkins } = useApp();
-  const entry = checkins.find((c) => c.subject === subject.id);
+  const { t: tt, locale } = useT();
+  const joinedAt = join.attendance.joinedAt;
   return (
     <>
       <div className="q-body q-body--center" role="status">
@@ -82,12 +66,14 @@ function Joined({ subject, quiz }: { subject: Subject; quiz: Quiz }) {
           <CheckDraw size={70} />
         </span>
         <h1 className="q-hero">{t("q.joined.title")}</h1>
-        <p className="q-strong">{t("q.joined.sub", { subject: tt(`subj.${subject.id}`), teacher: tt(`teacher.${subject.id}`) })}</p>
-        {entry && <p className="t-cap q-cap">{t("q.joined.time", { time: formatTime(entry.at) })}</p>}
+        <p className="q-strong">
+          {t("q.joined.sub", { subject: subjectLabel(tt, course.subjectId, course.subjectName), teacher: personName(course.teacherName, locale) })}
+        </p>
+        {joinedAt !== null && <p className="t-cap q-cap">{t("q.joined.time", { time: formatTime(joinedAt) })}</p>}
       </div>
       <div className="q-foot">
         <ViewTransition name="q-card" share="q-morph" default="none">
-          <QuizCard subject={subject} quiz={quiz} live={false} />
+          <QuizCard course={course} title={join.session.lessonTitle} count={join.session.questionCount} live={false} />
         </ViewTransition>
         <p className="t-label muted q-opening">{t("q.opening")}</p>
       </div>
@@ -95,18 +81,18 @@ function Joined({ subject, quiz }: { subject: Subject; quiz: Quiz }) {
   );
 }
 
-function Lobby({ subject, quiz, run, onLeave }: { subject: Subject; quiz: Quiz; run: QuizRun; onLeave: () => void }) {
+function Lobby({ course, join, run, onLeave }: { course: Course; join: JoinResult; run: QuizRun; onLeave: () => void }) {
   const { t } = useQT();
   const { t: tt } = useT();
-  const me = useMe();
+  const me = useSelf();
   const [editing, setEditing] = useState(false);
   const others = run.joined - run.joinedRecent.length;
   return (
     <>
-      <QuizTop onLeave={onLeave} label={tt(`subj.${subject.id}`)} />
+      <QuizTop onLeave={onLeave} label={subjectLabel(tt, course.subjectId, course.subjectName)} />
       <div className="q-body q-stack">
         <ViewTransition name="q-card" share="q-morph" default="none">
-          <QuizCard subject={subject} quiz={quiz} />
+          <QuizCard course={course} title={join.session.lessonTitle} count={join.session.questionCount} />
         </ViewTransition>
         <button className="card q-me" onClick={() => setEditing(true)}>
           <Avatar photo={me.photo} initials={me.initials} size={56} />
@@ -129,7 +115,7 @@ function Lobby({ subject, quiz, run, onLeave }: { subject: Subject; quiz: Quiz; 
           <div className="q-faces" aria-hidden="true">
             {run.joinedRecent.map((i) => (
               <span key={i} className={`q-face ${i % 2 ? "q-face--deep" : "q-face--ice"}`}>
-                {initials(CLASSMATES[i])}
+                {initials(run.classmates[i])}
               </span>
             ))}
             {others > 0 && <span className="q-faces__more">+{others}</span>}
@@ -266,7 +252,7 @@ function Reveal({ run }: { run: QuizRun }) {
           <h1 className="q-hero">{t("q.right")}</h1>
           <span className="q-gain">+{gain}</span>
           <span className="t-cap q-cap">
-            {run.bonus > 0 ? t("q.breakdown", { base: CORRECT_POINTS, bonus: run.bonus }) : t("q.breakdownBase", { base: CORRECT_POINTS })}
+            {run.bonus > 0 ? t("q.breakdown", { base: run.gain - run.bonus, bonus: run.bonus }) : t("q.breakdownBase", { base: run.gain })}
           </span>
         </div>
       ) : (
@@ -317,10 +303,10 @@ function Reveal({ run }: { run: QuizRun }) {
 
 function Between({ run, onLeave, onHome }: { run: QuizRun; onLeave: () => void; onHome: () => void }) {
   const { t, locale } = useQT();
-  const me = useMe();
+  const me = useSelf();
   const rows = [
     { key: "me", me: true, index: -1, points: run.points },
-    ...CLASSMATES.map((_, i) => ({ key: `c${i}`, me: false, index: i, points: run.theirs[i] })),
+    ...run.classmates.map((_, i) => ({ key: `c${i}`, me: false, index: i, points: run.theirs[i] })),
   ].sort((a, b) => b.points - a.points || (a.me ? -1 : b.me ? 1 : a.index - b.index));
   const at = rows.findIndex((r) => r.me);
   const start = Math.max(0, Math.min(at - 1, rows.length - 3));
@@ -363,10 +349,10 @@ function Between({ run, onLeave, onHome }: { run: QuizRun; onLeave: () => void; 
                 <Avatar photo={me.photo} initials={me.initials} size={44} />
               ) : (
                 <span className={`q-face ${r.index % 2 ? "q-face--deep" : "q-face--ice"}`} aria-hidden="true">
-                  {initials(CLASSMATES[r.index])}
+                  {initials(run.classmates[r.index])}
                 </span>
               )}
-              <span className="q-row__name">{r.me ? t("q.me", { name: me.first }) : personName(CLASSMATES[r.index], locale)}</span>
+              <span className="q-row__name">{r.me ? t("q.me", { name: me.first }) : personName(run.classmates[r.index], locale)}</span>
               <span className="q-row__pts" aria-label={t("q.pts", { n: r.points })}>
                 {r.points}
               </span>

@@ -3,7 +3,6 @@
 import { useMe as useStudent } from "./api/hooks";
 import { useT } from "./i18n";
 import { initials, personName } from "./quiz";
-import { useApp } from "./store";
 
 /** The photo the API takes: a JPEG of up to 200 KB (spec 3.2). */
 export const PHOTO_MAX_BYTES = 200 * 1024;
@@ -23,20 +22,6 @@ export function nameError(raw: string): "empty" | "short" | "chars" | null {
   if (Array.from(name).length < NAME_MIN) return "short";
   if (!NAME_RE.test(name)) return "chars";
   return null;
-}
-
-/** The signed-in student as classmates see them. */
-export function useMe() {
-  const { profile } = useApp();
-  const { t } = useT();
-  const name = profile.name ?? t("user.name");
-  return {
-    name,
-    first: name.split(" ")[0],
-    initials: initials(name),
-    photo: profile.photo,
-    custom: profile.name !== null,
-  };
 }
 
 /**

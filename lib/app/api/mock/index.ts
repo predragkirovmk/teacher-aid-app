@@ -36,11 +36,11 @@ import {
   subjectByCode,
   type ClassSubject,
   type SubjectId,
-} from "../../data";
+} from "./data";
 import { translate, type Key } from "../../i18n";
 import { getLocale, setLocale, subscribeLocale } from "../../locale";
-import { QUIZZES } from "../../quiz";
-import { actions, DEFAULT_STATE, getState, subscribeStore, type AppState } from "../../store";
+import { QUIZZES } from "./quiz";
+import { actions, DEFAULT_STATE, getState, subscribeStore, type AppState } from "./store";
 
 /**
  * The mock adapter: the whole backend played in the browser over the demo's local store and
