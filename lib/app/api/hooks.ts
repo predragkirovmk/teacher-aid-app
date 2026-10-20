@@ -4,9 +4,8 @@ import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { setLocale as setLocalLocale, useLocale } from "../locale";
 import type { QuizRun } from "../quiz";
 import { client, demoOnly } from "./index";
-import { useMockQuizRun } from "./mock/quiz";
 import type { SettledPromise } from "./client";
-import { ApiError, toApiError } from "./errors";
+import { toApiError, type ApiError } from "./errors";
 import { change, invalidate, mapQuery, resetQueries, seed, useQuery, type Query } from "./query";
 import type {
   AttendanceSummary,
@@ -245,12 +244,16 @@ export function useJoinSession(code: string, enabled: boolean): JoinState {
   return state;
 }
 
+/* eslint-disable @typescript-eslint/no-require-imports */
+const mockQuiz =
+  process.env.NEXT_PUBLIC_API_MODE === "live" ? null : (require("./mock/quiz") as typeof import("./mock/quiz"));
+
 /**
- * What the quiz screen draws, from the session a join opened. Today only the demo's session driver
- * produces it (the teacher, the timer and the classmates are played in the browser); the live session
- * engine of the next step replaces it with one built from the server's snapshots and events.
+ * What the quiz screen draws, from the session a join opened. Only the demo's session driver
+ * produces it so far (the teacher, the timer and the classmates are played in the browser), so the
+ * quiz screen is only reached in demo mode; the live session engine of the next step replaces this
+ * with one built from the server's snapshots and events.
  */
 export function useQuizRun(join: JoinResult): QuizRun {
-  if (!demoOnly) throw new ApiError("not_implemented", { message: "the live session engine is not built yet" });
-  return useMockQuizRun(join.session.courseId);
+  return mockQuiz!.useMockQuizRun(join.session.courseId);
 }

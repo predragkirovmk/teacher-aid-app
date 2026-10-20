@@ -3,7 +3,8 @@
 import { QrCodeIcon, XIcon } from "@phosphor-icons/react";
 import { useParams, useRouter } from "next/navigation";
 import { Play } from "@/components/app/quiz/Play";
-import { toApiError, type ApiError } from "@/lib/app/api/errors";
+import { demoOnly } from "@/lib/app/api";
+import { ApiError, toApiError } from "@/lib/app/api/errors";
 import { useAuth, useCourse, useJoinSession } from "@/lib/app/api/hooks";
 import type { JoinResult } from "@/lib/app/api/types";
 import { useT } from "@/lib/app/i18n";
@@ -32,6 +33,8 @@ export default function PlayPage() {
 
 function Joined({ join }: { join: JoinResult }) {
   const course = useCourse(join.session.courseId);
+  // The quiz itself needs the live session engine, which is not built yet; joining already counts as the check-in.
+  if (!demoOnly) return <NotRecognized error={new ApiError("not_implemented")} />;
   if (course.status === "error") return <NotRecognized error={toApiError(course.error)} />;
   if (!course.data) return <main className="screen screen--bare q" />;
   return <Play course={course.data} join={join} />;

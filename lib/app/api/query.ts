@@ -23,6 +23,9 @@ type Entry<T> = { readonly data: T | undefined; readonly error: ApiError | null 
 
 const LOADING: Entry<never> = { data: undefined, error: null };
 
+/** Whether two answers are the same data. They are plain JSON-shaped values, so a string compare is exact and cheap. */
+const sameData = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b);
+
 /** How long a loaded answer from a slow client counts as fresh when a screen mounts again. */
 const FRESH_MS = 30_000;
 
@@ -36,6 +39,8 @@ class Slot<T> {
   private fetchedAt = 0;
   private sync = false;
   private seq = 0;
+  /** Something changed while nobody was looking; the next reader asks again. */
+  private stale = false;
 
   constructor(
     readonly key: string,
@@ -48,10 +53,14 @@ class Slot<T> {
     const apply = (s: Settled<T>, announce: boolean) => {
       if (seq !== this.seq) return; // a newer ask has taken over
       this.fetchedAt = Date.now();
-      this.entry = s.ok
+      this.stale = false;
+      const next: Entry<T> = s.ok
         ? { data: s.value, error: null }
         : // an answer that was on screen stays; the failure rides along
           { data: this.entry.data, error: toApiError(s.error) };
+      // The same answer again is not news: keep the object readers already hold, so nothing re-renders.
+      if (s.ok && this.entry.error === null && sameData(this.entry.data, s.value)) return;
+      this.entry = next;
       if (announce) this.emit();
     };
     let p: Promise<T>;
@@ -91,18 +100,24 @@ class Slot<T> {
     this.started = false;
     this.sync = false;
     this.serverEntry = null;
+    this.stale = false;
     this.entry = LOADING;
     this.emit();
   }
 
   /** A fresh look at the client, for when something it knows has changed. */
   refresh = () => {
-    if (this.started) this.fetch(true);
+    if (!this.started) return;
+    // Only a slot someone is reading asks now; the others ask when they are next read.
+    if (this.listeners.size > 0) this.fetch(true);
+    else this.stale = true;
   };
 
   read = (): Entry<T> => {
     if (!this.started) {
       this.started = true;
+      this.fetch(false);
+    } else if (this.stale && this.listeners.size === 0) {
       this.fetch(false);
     }
     return this.entry;
