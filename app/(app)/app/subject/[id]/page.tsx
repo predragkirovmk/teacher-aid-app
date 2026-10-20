@@ -36,14 +36,14 @@ export default function SubjectPage() {
       </ViewTransition>
       <div className="stack" style={{ marginTop: 16 }}>
         {next && (
-          <div className="card">
-            <div className="t-cap">{t("subject.next")}</div>
-            <div className="t-title" style={{ marginTop: 4 }}>
+          <div className="card tile">
+            <span className="t-label">{t("subject.next")}</span>
+            <span className="tile-big" style={{ fontSize: "var(--fs-display)" }}>
               {when(next)}, {next.from}
-            </div>
-            <div className="t-cap" style={{ marginTop: 4 }}>
+            </span>
+            <span className="t-cap">
               {t(`kind.${next.kind}`)} · {roomLabel(t, subject)}
-            </div>
+            </span>
           </div>
         )}
         {done ? (

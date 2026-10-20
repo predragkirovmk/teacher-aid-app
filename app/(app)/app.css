@@ -178,7 +178,7 @@ a {
   color: var(--text-2);
 }
 /* Headings even out their lines; running text avoids a lone last word. */
-:is(.t-display, .t-title, .large, .top__title, .subject__name, .next__name, .profile__name) {
+:is(.t-display, .t-title, .large, .subject__name, .next__name, .profile__name) {
   text-wrap: balance;
 }
 :is(.t-body, .t-cap, .item__title, details.faq summary, details.faq p) {
@@ -187,18 +187,17 @@ a {
 
 /* ---- header ---- */
 .top {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) 48px;
+  display: flex;
   align-items: center;
-  margin-bottom: 16px;
+  justify-content: space-between;
+  margin-bottom: 8px;
   min-height: 48px;
 }
-.top__title {
-  font-family: var(--font-display);
-  text-align: center;
-  overflow-wrap: break-word;
-  font-size: var(--fs-body);
-  font-weight: 650;
+.top + .large {
+  margin-top: 8px;
+}
+.top + .sr {
+  margin: 0;
 }
 .round {
   width: 48px;
@@ -623,7 +622,7 @@ button.item:active {
 .item__icon {
   width: 44px;
   height: 44px;
-  border-radius: 50%;
+  border-radius: 14px;
   display: grid;
   place-items: center;
   background: rgba(255, 255, 255, 0.14);

@@ -16,12 +16,10 @@ export default function Summary() {
   return (
     <main className="screen">
       <Top title={t("sum.title")} />
-      <div className="card" style={{ padding: 24, marginBottom: 16 }}>
-        <div className="t-label">{t("sum.lesson")}</div>
-        <div className="t-num" style={{ margin: "8px 0" }}>
-          {right}/5
-        </div>
-        <div className="t-cap">{t("sum.sub")}</div>
+      <div className="card tile" style={{ marginBottom: 16 }}>
+        <span className="t-label">{t("sum.lesson")}</span>
+        <span className="tile-big">{right}/5</span>
+        <span className="t-cap">{t("sum.sub")}</span>
       </div>
 
       <ol className="list">

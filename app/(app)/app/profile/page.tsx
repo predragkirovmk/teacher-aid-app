@@ -54,23 +54,19 @@ export default function Profile() {
       </div>
 
       <div className="grid2" style={{ marginBottom: 24 }}>
-        <Link href="/app/attendance" className="card" style={{ padding: 16 }}>
-          <div className="row row--between">
-            <span className="t-label">{t("home.attendance")}</span>
-            <CaretRightIcon size={22} aria-hidden="true" />
-          </div>
-          <div className="tile-big" style={{ marginTop: 8 }}>
-            {percent}%
-          </div>
+        <Link href="/app/attendance" className="card tile">
+          <span className="tile__head t-label">
+            {t("home.attendance")}
+            <CaretRightIcon size={20} aria-hidden="true" />
+          </span>
+          <span className="tile-big">{percent}%</span>
         </Link>
-        <Link href="/app/summary" className="card" style={{ padding: 16 }}>
-          <div className="row row--between">
-            <span className="t-label">{t("home.summary")}</span>
-            <CaretRightIcon size={22} aria-hidden="true" />
-          </div>
-          <div className="tile-big" style={{ marginTop: 8 }}>
-            4/5
-          </div>
+        <Link href="/app/summary" className="card tile">
+          <span className="tile__head t-label">
+            {t("home.summary")}
+            <CaretRightIcon size={20} aria-hidden="true" />
+          </span>
+          <span className="tile-big">4/5</span>
         </Link>
       </div>
 

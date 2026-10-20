@@ -31,6 +31,7 @@ export default function Attendance() {
   return (
     <main className="screen">
       <Top title={t("att.title")} />
+      <div className="card" style={{ display: "grid", justifyItems: "center", padding: 24, marginBottom: 16 }}>
       <div className="ring" role="img" aria-label={`${percent}%`}>
         <svg width="200" height="200" viewBox="0 0 200 200" aria-hidden="true">
           <circle cx="100" cy="100" r={r} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="16" />
@@ -52,9 +53,10 @@ export default function Attendance() {
           </span>
         </div>
       </div>
-      <p className="t-cap" style={{ textAlign: "center", margin: "0 0 24px" }}>
+      <p className="t-cap" style={{ margin: "16px 0 0" }}>
         {t("att.attended", { a: attended, t: total })}
       </p>
+      </div>
 
       <Link href="/app/scan" className="btn btn--ghost btn--block">
         <ScanIcon size={22} aria-hidden="true" />
