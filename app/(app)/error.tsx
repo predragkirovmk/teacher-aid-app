@@ -1,16 +1,21 @@
 "use client";
 
+import { useEffect } from "react";
 import { Mark } from "@/components/app/Mark";
 import { demoOnly } from "@/lib/app/api";
 import { resetDemo } from "@/lib/app/demo";
 import { useT } from "@/lib/app/i18n";
+import { reportError } from "@/lib/app/report";
 
 /**
  * Shown instead of the app shell when a screen fails to render, so a tester gets a way back
  * (retry, or reset the demo data) instead of the browser's dead-end error page.
  */
-export default function AppError({ retry }: { error: Error & { digest?: string }; retry: () => void }) {
+export default function AppError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   const { t } = useT();
+  useEffect(() => {
+    reportError(error, { where: "app-error", digest: error.digest });
+  }, [error]);
   return (
     <div className="stage">
       <div className="phone">

@@ -3,7 +3,8 @@
 import { useMemo, useSyncExternalStore } from "react";
 import { client, serverClient } from "./index";
 import type { ApiClient, SettledPromise } from "./client";
-import { toApiError, type ApiError } from "./errors";
+import { toApiError, type ApiError, type ApiErrorCode } from "./errors";
+import { reportError } from "../report";
 
 /**
  * A small cache between the hooks and the client: one slot per query key, shared by every screen
@@ -22,6 +23,9 @@ import { toApiError, type ApiError } from "./errors";
 type Entry<T> = { readonly data: T | undefined; readonly error: ApiError | null };
 
 const LOADING: Entry<never> = { data: undefined, error: null };
+
+/** Failures that are part of normal use (signed out, offline), shown to the student and not worth a report. */
+const EXPECTED: readonly ApiErrorCode[] = ["unauthenticated", "signed_in_elsewhere", "network"];
 
 /** Whether two answers are the same data. They are plain JSON-shaped values, so a string compare is exact and cheap. */
 const sameData = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b);
@@ -54,10 +58,14 @@ class Slot<T> {
       if (seq !== this.seq) return; // a newer ask has taken over
       this.fetchedAt = Date.now();
       this.stale = false;
+      const failure = s.ok ? null : toApiError(s.error);
+      if (failure && !EXPECTED.includes(failure.code)) {
+        reportError(failure, { where: "query", key: this.key, code: failure.code, status: failure.status });
+      }
       const next: Entry<T> = s.ok
         ? { data: s.value, error: null }
         : // an answer that was on screen stays; the failure rides along
-          { data: this.entry.data, error: toApiError(s.error) };
+          { data: this.entry.data, error: failure };
       // The same answer again is not news: keep the object readers already hold, so nothing re-renders.
       if (s.ok && this.entry.error === null && sameData(this.entry.data, s.value)) return;
       this.entry = next;
