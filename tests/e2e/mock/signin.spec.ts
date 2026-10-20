@@ -18,6 +18,16 @@ async function toCodeStage(page: Page) {
   await expect(page.getByRole("heading", { name: mk.t("signin.codeTitle") })).toBeVisible();
 }
 
+test("a phone that has never been used opens on the sign-in screen, whichever address it is opened at", async ({ page }) => {
+  await start(page, { state: {} });
+  await page.goto("/app/welcome");
+  await expect(page.getByRole("heading", { level: 1, name: mk.t("welcome.title") })).toBeVisible();
+  await expect(emailField(page)).toBeVisible();
+
+  await page.goto("/app");
+  await expect(page).toHaveURL(/\/app\/welcome\?next=%2Fapp$/);
+});
+
 test.describe("the email stage", () => {
   test("is the first screen of a student who is signed out, and asks for the school email", async ({ page }) => {
     await signedOut(page);

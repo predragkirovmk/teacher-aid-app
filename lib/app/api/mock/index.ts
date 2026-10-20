@@ -386,5 +386,10 @@ export function createMockClient(source: MockSource): ApiClient {
 /** The client the app uses in the browser, over the saved state. */
 export const mockClient = createMockClient({ state: getState, locale: getLocale, writable: true });
 
-/** The client the server render and the hydrating render use: the defaults, read-only. */
-export const mockServerClient = createMockClient({ state: () => DEFAULT_STATE, locale: () => "mk", writable: false });
+/**
+ * The client the server render and the hydrating render use: the demo's defaults, read-only, as a
+ * student who is in (whether this phone's student is signed in is not known until it hydrates, and the
+ * shell draws no screen until then).
+ */
+const SERVER_STATE: AppState = { ...DEFAULT_STATE, signedIn: true };
+export const mockServerClient = createMockClient({ state: () => SERVER_STATE, locale: () => "mk", writable: false });

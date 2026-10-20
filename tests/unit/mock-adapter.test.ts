@@ -5,7 +5,7 @@ import { createMockClient, mockClient, mockServerClient } from "@/lib/app/api/mo
 import { CLASS_SUBJECTS, LEADERBOARD, MOCK_CODE, MOCK_ROSTER, NOTIFS, BASE_ATTENDED, BASE_TOTAL } from "@/lib/app/api/mock/data";
 import { CODE_LENGTH, CODE_TTL_MS, LOCK_SECONDS, MAX_WRONG_CODES, RESEND_AFTER_MS } from "@/lib/app/api/mock/signin";
 import { QUIZZES } from "@/lib/app/api/mock/quiz";
-import { actions, getState } from "@/lib/app/api/mock/store";
+import { actions, DEFAULT_STATE, getState } from "@/lib/app/api/mock/store";
 import { getLocale, setLocale } from "@/lib/app/locale";
 
 const MY_START = LEADERBOARD.find((l) => l.me)!.points;
@@ -15,6 +15,7 @@ beforeEach(() => {
   window.sessionStorage.clear();
   setLocale("mk");
   actions.reset();
+  actions.signIn(); // the tests below are about a student who is in, unless they say otherwise
 });
 
 const code = (token: string) => ({ token });
@@ -33,8 +34,21 @@ const EMAIL = MOCK_ROSTER[0];
 describe("sign-in", () => {
   afterEach(() => vi.useRealTimers());
 
-  it("starts signed in, as the demo always has", async () => {
+  it("is signed in once the code is typed, as the student the demo plays", async () => {
     expect((await mockClient.getMe()).fullName).toBe("Марко Трајковски");
+  });
+
+  it("starts signed out on a phone that has never been used", () => {
+    expect(DEFAULT_STATE.signedIn).toBe(false);
+  });
+
+  it("does not sign anyone out or in when the demo is started over", () => {
+    actions.signOut();
+    actions.reset();
+    expect(getState().signedIn).toBe(false);
+    actions.signIn();
+    actions.reset();
+    expect(getState().signedIn).toBe(true);
   });
 
   it("refuses getMe with unauthenticated after sign-out, and signs back in with the emailed code", async () => {

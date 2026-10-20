@@ -45,6 +45,7 @@ beforeEach(() => {
   window.localStorage.clear();
   window.sessionStorage.clear();
   actions.reset();
+  actions.signIn(); // the tests below are about a student who is in, unless they say otherwise
   startSession();
 });
 afterEach(() => {

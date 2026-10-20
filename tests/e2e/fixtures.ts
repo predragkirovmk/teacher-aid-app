@@ -22,7 +22,7 @@ export const en = copy("en");
 export const exact = (s: string) => new RegExp(`^${s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
 
 type Seed = {
-  /** Fields of the demo's saved state to start from (signedIn, read, checkins, clock, ...). */
+  /** Fields of the demo's saved state to start from (signedIn, read, checkins, clock, ...). A test that gives none starts signed in. */
   state?: Record<string, unknown>;
   locale?: Locale;
 };
@@ -59,11 +59,14 @@ export const test = base.extend<{ allowConsoleErrors: RegExp[] }>({
     page.on("console", (m) => {
       if (m.type() === "error" && !allowConsoleErrors.some((re) => re.test(m.text()))) problems.push(`console.error: ${m.text()}`);
     });
-    await page.addInitScript(() => {
+    // Every test starts as a student who is signed in, which is what most of them are about; a test about
+    // signing in says `signedIn: false` through `start`. (A phone that has never been used is signed out.)
+    await page.addInitScript((storeKey) => {
       if (sessionStorage.getItem("__e2e_cleared")) return;
       sessionStorage.setItem("__e2e_cleared", "1");
       localStorage.clear();
-    });
+      localStorage.setItem(storeKey, JSON.stringify({ signedIn: true }));
+    }, STORE_KEY);
     // `run`, not `use`: Playwright's name for it trips the React hooks lint rule.
     await run(page);
     expect(problems, "errors in the browser").toEqual([]);

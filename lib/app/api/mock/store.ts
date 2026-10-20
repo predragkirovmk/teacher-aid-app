@@ -29,7 +29,8 @@ export type AppState = {
 const KEY = "teacheraid-app-v1";
 
 const DEFAULT: AppState = {
-  signedIn: true,
+  // A phone that has never been used has to sign in, as a student's will.
+  signedIn: false,
   endedElsewhere: false,
   notificationsOn: true,
   read: [],
@@ -196,6 +197,7 @@ export const actions = {
     if (!state.perfectQuiz) set({ perfectQuiz: true });
   },
   reset: () => {
+    load();
     for (const key of ["teacheraid-shown-attendance", "teacheraid-achievements-seen"]) {
       try {
         window.localStorage.removeItem(key);
@@ -203,6 +205,7 @@ export const actions = {
         // ignore
       }
     }
-    set({ ...DEFAULT });
+    // Starting the demo over is not signing out: whoever is in stays in.
+    set({ ...DEFAULT, signedIn: state.signedIn });
   },
 };
