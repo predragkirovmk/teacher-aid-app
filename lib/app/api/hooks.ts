@@ -3,7 +3,7 @@
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { setLocale as setLocalLocale, useLocale } from "../locale";
 import type { QuizRun } from "../quiz";
-import { client, demoOnly } from "./index";
+import { client } from "./index";
 import type { SettledPromise } from "./client";
 import { toApiError, type ApiError } from "./errors";
 import { change, invalidate, mapQuery, resetQueries, seed, useQuery, type Query } from "./query";
