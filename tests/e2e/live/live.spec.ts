@@ -103,9 +103,9 @@ test.describe("what the live build leaves out or refuses", () => {
     await expect(page.getByText(mk.t("ach.streak.title"))).toHaveCount(0);
   });
 
-  test("a class code the API refuses shows the failure screen", async ({ page }) => {
+  test("a class code the API does not know shows the failure screen", async ({ page }) => {
     await page.goto("/app/checkin/MATH-7B");
-    await expect(page.getByRole("alert").filter({ hasText: mk.q("q.unknown.title") })).toBeVisible();
+    await expect(page.getByRole("alert").filter({ hasText: mk.q("q.fail.unknown.title") })).toBeVisible();
   });
 
   test("a 401 from the API sends the student to the welcome screen", async ({ page, request }) => {
@@ -127,7 +127,7 @@ test.describe("what the live build leaves out or refuses", () => {
     expect(scripts.length).toBeGreaterThan(0);
     // Strings only the mock adapter, its leaderboard and its quiz driver contain. A count rather than
     // the script in the failure message: one chunk is a quarter of a megabyte.
-    for (const needle of ["mock-session-", "student-marko", "Виктор Илиевски", "Њутнови закони", "marko.trajkovski@student", "teacheraid-mock-challenge"]) {
+    for (const needle of ["mock-session-", "flaky-7b", "mock-classmate-", "student-marko", "Виктор Илиевски", "Њутнови закони", "marko.trajkovski@student", "teacheraid-mock-challenge"]) {
       expect(scripts.filter((source) => source.includes(needle)).length, `scripts containing "${needle}"`).toBe(0);
     }
   });
@@ -236,7 +236,7 @@ test.describe("signing in", () => {
     await code(page).fill(CODE);
 
     // The API refuses this fake code, which is not the point: it was asked, once, after the sign-in, with the scanned token.
-    await expect(page.getByRole("alert").filter({ hasText: mk.q("q.unknown.title") })).toBeVisible();
+    await expect(page.getByRole("alert").filter({ hasText: mk.q("q.fail.unknown.title") })).toBeVisible();
     const { calls, bodies } = await serverState(request);
     expect(bodies["POST /sessions/join"]).toEqual({ token: "MATH-7B" });
     expect(calls.filter((c) => c === "POST /sessions/join")).toHaveLength(1);
@@ -300,6 +300,274 @@ test.describe("signing in", () => {
       await context.unroute(`${API}/**`);
       await page.getByRole("button", { name: mk.t("state.retry") }).click();
       await expect(page.getByRole("heading", { level: 1 })).toContainText("Live");
+    });
+  });
+});
+
+/**
+ * A live session against the API: joining, the snapshot, the event stream and the answer, with the test
+ * playing the teacher through the fake API's control endpoints. Nothing moves by itself, so each test
+ * says when a question opens and closes. The server's questions are the fake's: 2x = 10 (right answer
+ * the second option), a true or false (false), and 7 x 8 (second option).
+ */
+test.describe("a live session", () => {
+  test.use({ allowConsoleErrors: [/Failed to load resource: (the server responded with a status of (403|404|410|503)|net::ERR_)/] });
+
+  const OPTION = ".q-opt, .q-tf__btn";
+  const teacher = (request: import("@playwright/test").APIRequestContext, action: string, data: object = {}) =>
+    request.post(`${API}/__control/session/${action}`, { data });
+  const control = (request: import("@playwright/test").APIRequestContext, what: string, data: object = {}) =>
+    request.post(`${API}/__control/${what}`, { data });
+  const timerSeconds = async (page: Page) => Number(((await page.getByRole("timer").getAttribute("aria-label")) ?? "").match(/\d+/)?.[0]);
+
+  /** In the lobby, on the event stream. */
+  async function inLobby(page: Page, request: import("@playwright/test").APIRequestContext) {
+    await page.goto("/app/checkin/LIVE-7B");
+    await expect(page).toHaveURL(/\/app\/play\/LIVE-7B$/);
+    await expect(page.getByText(mk.q("q.waitTeacher"))).toBeVisible();
+    await expect.poll(async () => (await (await request.get(`${API}/__control/state`)).json()).streams).toBeGreaterThan(0);
+  }
+
+  test("joining sends the token, asks for the snapshot and opens the event stream", async ({ page, request }) => {
+    await inLobby(page, request);
+    const { calls, bodies } = await serverState(request);
+    expect(bodies["POST /sessions/join"]).toEqual({ token: "LIVE-7B" });
+    expect(calls).toEqual(expect.arrayContaining(["POST /sessions/join", "GET /sessions/se-live-1/student-state", "GET /realtime"]));
+    // Joining is the attendance, and the lobby shows who else is in.
+    await expect(page.getByText(mk.q("q.joinedCount"))).toBeVisible();
+    await teacher(request, "joined", { count: 21 });
+    await expect(page.locator(".q-joined .q-big")).toHaveText("21");
+    await expect(page.getByText("ВЛ")).toBeVisible(); // initials of the newest to arrive
+  });
+
+  test("a lesson from the lobby to the end: question, answer, result, reveal, ranking, ending", async ({ page, request }) => {
+    await inLobby(page, request);
+
+    // The teacher starts and fires the first question.
+    await teacher(request, "fire", { index: 0, timer: 60 });
+    await expect(page.getByRole("heading", { name: "2x = 10. What is x?" })).toBeVisible();
+    await expect(page.getByRole("timer")).toBeVisible();
+    expect(await timerSeconds(page)).toBeGreaterThanOrEqual(55);
+
+    // Answer B (right). The answer goes with its question, a key and a time.
+    await page.locator(OPTION).nth(1).click();
+    await expect(page.getByText(mk.q("q.locked"))).toBeVisible();
+    await expect.poll(async () => (await serverState(request)).bodies["POST /sessions/se-live-1/answers"]).toBeTruthy();
+    const body = (await serverState(request)).bodies["POST /sessions/se-live-1/answers"] as Record<string, string>;
+    expect(body).toMatchObject({ session_question_id: "fq1", response: "1" });
+    expect(body.idempotency_key).toBeTruthy();
+    expect(Number.isNaN(Date.parse(body.answered_at))).toBe(false);
+
+    // Others answer: the count follows the server.
+    await teacher(request, "progress", { answered: 7 });
+    await expect(page.getByText(/од 13 одговорија/)).toBeVisible();
+
+    // It closes; the student's own result arrives on their channel.
+    await teacher(request, "close");
+    await expect(page.getByRole("heading", { name: mk.q("q.right") })).toBeVisible();
+    await expect(page.locator(".q-gain")).toContainText(/\+1\d/);
+    await teacher(request, "reveal");
+
+    // Then the ranking, until the next question.
+    await expect(page.getByText(mk.q("q.next"))).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(mk.q("q.place"))).toBeVisible();
+    await expect(page.getByRole("list", { name: mk.q("q.board") })).toBeVisible();
+
+    // A true or false: answer false (right).
+    await teacher(request, "fire", { index: 1, timer: 60 });
+    await expect(page.getByText(mk.q("q.tfPrompt"))).toBeVisible();
+    await page.locator(".q-tf__btn").nth(1).click();
+    await expect.poll(async () => ((await serverState(request)).bodies["POST /sessions/se-live-1/answers"] as Record<string, string>)?.response).toBe("false");
+    await teacher(request, "close");
+    await expect(page.getByRole("heading", { name: mk.q("q.right") })).toBeVisible();
+
+    // The teacher ends the session mid-lesson: the ending shows the tally, the place and the points.
+    await teacher(request, "end");
+    const ended = page.getByRole("heading", { name: mk.q("q.ended.title") });
+    await expect(ended).toBeVisible();
+    await expect(page.getByText(/2 од 3 точни/)).toBeVisible();
+    await expect(page.getByText(mk.q("q.place"))).toBeVisible();
+    await expect(page.getByText(mk.q("q.total"))).toBeVisible();
+
+    // The summary is the session's own result, which the API wrote when it ended.
+    await page.getByRole("link", { name: mk.q("q.ended.summary") }).click();
+    await expect(page).toHaveURL(/\/app\/summary\/se-live-1$/);
+    await expect(page.getByText("Linear equations")).toBeVisible();
+    await expect(page.locator(".tile-big")).toHaveText("2/3");
+  });
+
+  test("a wrong answer waits for the teacher to show the right one", async ({ page, request }) => {
+    await inLobby(page, request);
+    await teacher(request, "fire", { index: 0, timer: 60 });
+    await page.locator(OPTION).nth(0).click();
+    await teacher(request, "close");
+    await expect(page.getByRole("heading", { name: mk.q("q.wrong") })).toBeVisible();
+    await expect(page.getByText(mk.q("q.waitReveal"))).toBeVisible();
+    await expect(page.getByText(mk.q("q.correctAnswer"))).toHaveCount(0);
+
+    await teacher(request, "reveal");
+    await expect(page.getByText(mk.q("q.correctAnswer"))).toBeVisible();
+    await expect(page.locator(".q-correct")).toContainText("5");
+    await expect(page.getByText(mk.q("q.waitReveal"))).toHaveCount(0);
+  });
+
+  test("a question nobody answered closes with no points and says the time ran out", async ({ page, request }) => {
+    await inLobby(page, request);
+    await teacher(request, "fire", { index: 0, timer: 60 });
+    await expect(page.locator(OPTION).first()).toBeVisible();
+    await teacher(request, "close");
+    await expect(page.getByRole("heading", { name: mk.q("q.timeout") })).toBeVisible();
+  });
+
+  test("a skipped question disappears and does not count", async ({ page, request }) => {
+    await inLobby(page, request);
+    await teacher(request, "fire", { index: 0, timer: 60 });
+    await page.locator(OPTION).nth(1).click();
+    await expect(page.getByText(mk.q("q.locked"))).toBeVisible();
+    await teacher(request, "skip");
+    await expect(page.getByText(mk.q("q.next"))).toBeVisible();
+    await expect(page.getByText(mk.q("q.locked"))).toHaveCount(0);
+    // Nothing is shown of a verdict, and the next question starts clean.
+    await teacher(request, "fire", { index: 1, timer: 60 });
+    await expect(page.locator(".q-tf__btn").first()).toBeVisible();
+  });
+
+  test("the session ending in the middle of a question goes straight to the ending", async ({ page, request }) => {
+    await inLobby(page, request);
+    await teacher(request, "fire", { index: 0, timer: 60 });
+    await expect(page.locator(OPTION).first()).toBeVisible();
+    await teacher(request, "end");
+    await expect(page.getByRole("heading", { name: mk.q("q.ended.title") })).toBeVisible();
+    await expect(page.locator(OPTION)).toHaveCount(0);
+  });
+
+  test("the countdown runs on the server's clock, two minutes ahead of this machine's, and so does the answer's time", async ({ page, request }) => {
+    await control(request, "skew", { ms: 120_000 });
+    await inLobby(page, request);
+    await teacher(request, "fire", { index: 0, timer: 45 });
+    await expect(page.locator(OPTION).first()).toBeVisible();
+    // Had the app trusted this machine's clock, the question would have ended a minute and a half ago, or read 165.
+    const seconds = await timerSeconds(page);
+    expect(seconds).toBeGreaterThanOrEqual(40);
+    expect(seconds).toBeLessThanOrEqual(45);
+
+    await page.locator(OPTION).nth(1).click();
+    await expect.poll(async () => (await serverState(request)).bodies["POST /sessions/se-live-1/answers"]).toBeTruthy();
+    const { answered_at } = (await serverState(request)).bodies["POST /sessions/se-live-1/answers"] as { answered_at: string };
+    const ahead = Date.parse(answered_at) - Date.now();
+    expect(ahead).toBeGreaterThan(115_000);
+    expect(ahead).toBeLessThan(125_000);
+  });
+
+  test("a connection that drops mid-question is noticed, and the screen catches up with what it missed", async ({ page, request }) => {
+    await inLobby(page, request);
+    await teacher(request, "fire", { index: 0, timer: 60 });
+    await expect(page.locator(OPTION).first()).toBeVisible();
+    const before = (await serverState(request)).calls.filter((c) => c === "GET /sessions/se-live-1/student-state").length;
+
+    // The link goes, and while it is gone the first question closes and the second opens.
+    await control(request, "block-streams", { on: true });
+    await control(request, "drop-streams");
+    await expect(page.getByText(mk.q("q.conn"))).toBeVisible();
+    await teacher(request, "close");
+    await teacher(request, "reveal");
+    await teacher(request, "fire", { index: 1, timer: 60 });
+    await control(request, "block-streams", { on: false });
+
+    // It retries by itself and the snapshot puts the screen where the lesson is.
+    await expect(page.getByText(mk.q("q.conn"))).toBeHidden({ timeout: 15_000 });
+    await expect(page.getByText(mk.q("q.tfPrompt"))).toBeVisible();
+    const after = (await serverState(request)).calls.filter((c) => c === "GET /sessions/se-live-1/student-state").length;
+    expect(after).toBeGreaterThan(before);
+
+    // And the stream works again: the next thing the teacher does reaches the phone.
+    await page.locator(".q-tf__btn").nth(1).click();
+    await teacher(request, "close");
+    await expect(page.getByRole("heading", { name: mk.q("q.right") })).toBeVisible();
+  });
+
+  test("an answer given just as the link drops is kept, and tried again until the server has it", async ({ page, request, context }) => {
+    await inLobby(page, request);
+    await teacher(request, "fire", { index: 0, timer: 60 });
+    await expect(page.locator(OPTION).first()).toBeVisible();
+
+    let refused = 0;
+    await context.route(`${API}/api/v1/sessions/se-live-1/answers`, (route) => (refused++ < 2 ? route.abort() : route.continue()));
+    await page.locator(OPTION).nth(1).click();
+    await expect(page.getByText(mk.q("q.sending"))).toBeVisible();
+    await expect.poll(async () => (await serverState(request)).bodies["POST /sessions/se-live-1/answers"], { timeout: 15_000 }).toBeTruthy();
+    await expect(page.getByText(mk.q("q.sending"))).toBeHidden();
+    await teacher(request, "close");
+    await expect(page.getByRole("heading", { name: mk.q("q.right") })).toBeVisible();
+    expect(refused).toBeGreaterThanOrEqual(3);
+  });
+
+  test("joining after the lobby is a late attendance, and the open question can still be answered", async ({ page, request }) => {
+    await teacher(request, "fire", { index: 0, timer: 60 });
+    await page.goto("/app/checkin/LIVE-7B");
+    await expect(page.getByText(/Означен си како задоцнет во/)).toBeVisible();
+    await expect(page.locator(OPTION).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("status").filter({ hasText: mk.q("q.late.note") })).toBeVisible();
+    await page.locator(OPTION).nth(1).click();
+    await expect(page.getByText(mk.q("q.locked"))).toBeVisible();
+  });
+
+  test("a reload mid-lesson, after the class code has rotated, picks the lesson up where it is", async ({ page, request }) => {
+    await inLobby(page, request);
+    await teacher(request, "fire", { index: 0, timer: 60 });
+    await expect(page.locator(OPTION).first()).toBeVisible();
+
+    await control(request, "expire-token");
+    await page.reload();
+    // The API now calls the code expired; the student is in, so the lesson is read back instead.
+    await expect(page.getByRole("heading", { name: "2x = 10. What is x?" })).toBeVisible();
+    await expect(page.locator("main[data-failure]")).toHaveCount(0);
+
+    // A phone that never joined has no such luck.
+    await page.evaluate(() => sessionStorage.removeItem("teacheraid-session"));
+    await page.reload();
+    await expect(page.locator('main[data-failure="expired"]')).toBeVisible();
+  });
+
+  test("signing in elsewhere, told on the student's channel, shows the full screen", async ({ page, request }) => {
+    await inLobby(page, request);
+    await teacher(request, "elsewhere");
+    await expect(page.getByRole("alert").filter({ hasText: mk.t("elsewhere.title") })).toBeVisible();
+  });
+
+  test.describe("when the join fails", () => {
+    const failure = (page: Page, kind: string) => page.locator(`main[data-failure="${kind}"]`);
+
+    test("each reason has its own screen", async ({ page }) => {
+      const seen: Record<string, string> = {};
+      for (const [code, kind, title] of [
+        ["EXPIRED-7B", "expired", mk.q("q.fail.expired.title")],
+        ["OTHER-8A", "class", mk.q("q.fail.class.title")],
+        ["ENDED-7B", "ended", mk.q("q.fail.ended.title")],
+        ["NOPE-9", "unknown", mk.q("q.fail.unknown.title")],
+      ]) {
+        await page.goto(`/app/checkin/${code}`);
+        await expect(failure(page, kind).getByRole("alert")).toContainText(title);
+        seen[kind] = title;
+      }
+      expect(new Set(Object.values(seen)).size).toBe(4);
+    });
+
+    test("a lesson that has ended refuses the join, and goes home", async ({ page, request }) => {
+      await teacher(request, "end");
+      await page.goto("/app/checkin/LIVE-7B");
+      await failure(page, "ended").getByRole("button", { name: mk.q("q.home") }).click();
+      await expect(page).toHaveURL(/\/app$/);
+    });
+
+    test("no connection says so and tries again, and the join goes through", async ({ page, request, context }) => {
+      await context.route(`${API}/api/v1/sessions/join`, (route) => route.abort());
+      await page.goto("/app/checkin/LIVE-7B");
+      await expect(failure(page, "offline").getByRole("alert")).toContainText(mk.q("q.fail.network.title"));
+      await context.unroute(`${API}/api/v1/sessions/join`);
+      await failure(page, "offline").getByRole("button", { name: mk.q("q.fail.retry") }).click();
+      await expect(page.getByText(mk.q("q.waitTeacher"))).toBeVisible();
+      expect((await serverState(request)).bodies["POST /sessions/join"]).toEqual({ token: "LIVE-7B" });
     });
   });
 });

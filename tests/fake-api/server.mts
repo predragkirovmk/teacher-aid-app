@@ -14,6 +14,25 @@
  * Sign-in is the proposed `/auth/student/start` and `/auth/student/verify`: the roster is one email,
  * the code is CODE, three wrong codes lock it for LOCK_SECONDS, and the session is a flag (the real
  * one is an httpOnly cookie, which a single test browser does not need to tell apart).
+ *
+ * A live session, student side: `POST /sessions/join`, `GET /sessions/{id}/student-state`, `POST
+ * /sessions/{id}/answers` and the PROPOSED event stream `GET /realtime?channels=` (Server-Sent Events,
+ * lib/app/session/sse.ts). The test plays the teacher through the control endpoints; nothing here moves
+ * by itself, so a test decides when a question opens and closes:
+ *   POST /__control/session/state     { state }                lobby | opener | teaching | review | ended
+ *   POST /__control/session/fire      { index, timer? }        open question `index` of the lesson (timer in seconds, default 60)
+ *   POST /__control/session/progress  { answered }             how many have answered
+ *   POST /__control/session/close                              close the open question and send the student's result
+ *   POST /__control/session/reveal                             show the right answer
+ *   POST /__control/session/skip                               skip the open question
+ *   POST /__control/session/end                                end the session: results, rank and the tally
+ *   POST /__control/session/joined    { count }                the class gathering in the lobby
+ *   POST /__control/session/elsewhere                          tell the student's channel they signed in on another device
+ *   POST /__control/skew              { ms }                   the server's clock runs this far ahead of the machine's
+ *   POST /__control/drop-streams                               cut every event stream (the app reconnects)
+ *   POST /__control/block-streams     { on }                   refuse new event streams while on
+ *   POST /__control/expire-token                               the class code now answers token_expired (it rotated)
+ * Class codes: LIVE-7B joins; EXPIRED-7B, OTHER-8A and ENDED-7B are refused as the API would; any other is unknown.
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type {
@@ -46,6 +65,39 @@ const COURSES: WireCourse[] = [
   { id: "c-eng", subject: subject("english", "English"), teacher: { name: "A. Stojanova" }, class: { id: "cl-7b", name: "7B" } },
   { id: "c-phys", subject: subject("physics", "Physics"), teacher: { name: "S. Petrov" }, class: { id: "cl-7b", name: "7B" } },
 ];
+
+
+// ---- A live session ---------------------------------------------------------------------------------
+
+type LessonQuestion = { id: string; kind: "multiple_choice" | "true_false"; prompt: string; options: string[] | null; correct: string };
+const LESSON: LessonQuestion[] = [
+  { id: "fq1", kind: "multiple_choice", prompt: "2x = 10. What is x?", options: ["2", "5", "10", "20"], correct: "1" },
+  { id: "fq2", kind: "true_false", prompt: "A triangle has four sides.", options: null, correct: "false" },
+  { id: "fq3", kind: "multiple_choice", prompt: "What is 7 x 8?", options: ["54", "56", "58", "64"], correct: "1" },
+];
+const SESSION_ID = "se-live-1";
+const STUDENT_ID = "st-1";
+type SessionStateName = "lobby" | "opener" | "teaching" | "review" | "ended";
+
+type Live = { id: string; index: number; status: "open" | "closed" | "revealed" | "skipped"; firedAt: number; closesAt: number; timer: number };
+
+function newSession() {
+  return {
+    state: "lobby" as SessionStateName,
+    joined: 12,
+    joinedStudent: false,
+    joinedLate: false,
+    current: null as Live | null,
+    answers: {} as Record<string, { response: string; key: string; answeredAt: number }>,
+    results: {} as Record<string, { correct: boolean; points: number; speedBonus: number; rank: number }>,
+    revealed: [] as string[],
+    answered: 0,
+    points: 0,
+    rank: 5,
+    right: 0,
+    summary: null as null | { right: number; total: number },
+  };
+}
 
 const initial = () => ({
   /** Why every call is refused, or null while the student is signed in. */
@@ -88,6 +140,14 @@ const initial = () => ({
       read_at: iso(4 * DAY),
     },
   ] as WireNotification[],
+  /** The live session a student joins with LIVE-7B. */
+  session: newSession(),
+  /** Results of live sessions that have ended, ahead of the fixed ones. */
+  endedResults: [] as WireResult[],
+  /** The server's clock runs this far ahead of this machine's. */
+  skewMs: 0,
+  blockStreams: false,
+  tokenExpired: false,
   /** Every request the server saw, as "METHOD path", for a test to look at. */
   calls: [] as string[],
   /** The last body of each write, by "METHOD path". */
@@ -140,6 +200,234 @@ const BADGES: WireBadge[] = [
   { code: "perfect", title: "Perfect quiz", points: 20, earned: false, awarded_at: null },
 ];
 
+
+/** Open event streams, with the channels each asked for. */
+const streams = new Set<{ res: ServerResponse; channels: string[] }>();
+
+const nowMs = () => Date.now() + state.skewMs;
+const nowIso = () => new Date(nowMs()).toISOString();
+const channelOf = (kind: "public" | "student") => (kind === "public" ? `session.${SESSION_ID}.public` : `student.${STUDENT_ID}`);
+
+/** One event to every stream listening to the channel, in the proposed format of lib/app/session/sse.ts. */
+function broadcast(kind: "public" | "student", type: string, data: Record<string, unknown> = {}) {
+  const channel = channelOf(kind);
+  const frame = `event: ${type}\ndata: ${JSON.stringify({ channel, server_now: nowIso(), ...data })}\n\n`;
+  for (const s of streams) if (s.channels.includes(channel)) s.res.write(frame);
+}
+
+const wireSession = () => ({
+  id: SESSION_ID,
+  course_id: "c-math",
+  state: state.session.state,
+  lesson_title: "Linear equations",
+  question_count: LESSON.length,
+  joined_count: state.session.joined,
+});
+
+const wireQuestion = (cur: Live) => {
+  const q = LESSON[cur.index];
+  return {
+    id: q.id,
+    index: cur.index,
+    total: LESSON.length,
+    kind: q.kind,
+    prompt: q.prompt,
+    options: q.options,
+    status: cur.status,
+    timer_seconds: cur.timer,
+    fired_at: new Date(cur.firedAt).toISOString(),
+    closes_at: new Date(cur.closesAt).toISOString(),
+  };
+};
+
+const resultBody = (id: string) => {
+  const r = state.session.results[id];
+  return {
+    session_question_id: id,
+    correct: r.correct,
+    points: r.points,
+    speed_bonus: r.speedBonus,
+    session_rank: r.rank,
+    session_points: state.session.points,
+    correct_answer: state.session.revealed.includes(id) ? LESSON.find((q) => q.id === id)!.correct : null,
+    explanation: null,
+  };
+};
+
+function board() {
+  const rows = [
+    { student_id: "st-9", name: "Ана Георгиевска", points: 30 },
+    { student_id: "st-8", name: "Лука Стојановски", points: 20 },
+    { student_id: STUDENT_ID, name: "Live Student", points: state.session.points },
+    { student_id: "st-7", name: "Мила Јованова", points: 10 },
+  ].sort((a, b) => b.points - a.points || (a.student_id === STUDENT_ID ? -1 : b.student_id === STUDENT_ID ? 1 : 0));
+  return rows.map((r) => ({ ...r, rank: 1 + rows.filter((x) => x.points > r.points).length }));
+}
+
+function snapshot() {
+  const sess = state.session;
+  const cur = sess.current;
+  return {
+    session: wireSession(),
+    server_now: nowIso(),
+    question: cur ? wireQuestion(cur) : null,
+    my_response: cur ? (sess.answers[cur.id]?.response ?? null) : null,
+    result: cur && sess.results[cur.id] ? resultBody(cur.id) : null,
+    session_points: sess.points,
+    session_rank: sess.rank,
+    board: sess.points > 0 || Object.keys(sess.results).length > 0 ? board() : null,
+    progress: cur?.status === "open" ? { answered: sess.answered, joined: sess.joined } : null,
+    summary: sess.summary,
+  };
+}
+
+/** POST /sessions/join, with the codes the tests use. */
+function join(res: ServerResponse, code: string) {
+  const sess = state.session;
+  if (code === "EXPIRED-7B" || (code === "LIVE-7B" && state.tokenExpired)) return fail(res, 410, "token_expired");
+  if (code === "OTHER-8A") return fail(res, 403, "not_enrolled");
+  if (code === "ENDED-7B" || (code === "LIVE-7B" && sess.state === "ended")) return fail(res, 410, "session_ended");
+  if (code !== "LIVE-7B") return fail(res, 404, "not_found");
+  if (!sess.joinedStudent) {
+    sess.joinedStudent = true;
+    sess.joinedLate = sess.state !== "lobby";
+    sess.joined++;
+  }
+  return send(res, 200, {
+    session: wireSession(),
+    attendance: {
+      id: "a-live",
+      course_id: "c-math",
+      subject: subject("math", "Mathematics"),
+      date: nowIso(),
+      status: sess.joinedLate ? "late" : "present",
+      joined_at: nowIso(),
+    },
+    server_now: nowIso(),
+  });
+}
+
+/** POST /sessions/{id}/answers. */
+function answer(res: ServerResponse, body: { session_question_id?: string; response?: string; answered_at?: string; idempotency_key?: string }) {
+  const sess = state.session;
+  const cur = sess.current;
+  if (sess.state === "ended") return fail(res, 410, "session_ended");
+  if (!cur || body.session_question_id !== cur.id) return fail(res, 404, "not_found");
+  const had = sess.answers[cur.id];
+  if (had) return had.key === body.idempotency_key ? send(res, 200, { accepted: true, duplicate: true }) : fail(res, 409, "already_answered");
+  if (cur.status !== "open") return fail(res, 409, "question_closed");
+  const valid = LESSON[cur.index].kind === "multiple_choice" ? ["0", "1", "2", "3"] : ["true", "false"];
+  if (!body.response || !valid.includes(body.response)) return fail(res, 422, "validation_failed");
+  const claimed = Date.parse(body.answered_at ?? "");
+  sess.answers[cur.id] = {
+    response: body.response,
+    key: body.idempotency_key ?? "",
+    // The answer's time is the phone's claim, clamped to the question's window (EC-NET-07).
+    answeredAt: Math.min(cur.closesAt, Math.max(cur.firedAt, Number.isNaN(claimed) ? nowMs() : claimed)),
+  };
+  return send(res, 200, { accepted: true, duplicate: false });
+}
+
+/** GET /realtime?channels=: the event stream. A pinger keeps a quiet lesson from looking dead. */
+function stream(req: IncomingMessage, res: ServerResponse, channels: string) {
+  if (state.blockStreams) return fail(res, 503, "server_error");
+  res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
+  const entry = { res, channels: channels.split(",").filter(Boolean) };
+  streams.add(entry);
+  const ping = () => res.write(`event: ping\ndata: ${JSON.stringify({ server_now: nowIso() })}\n\n`);
+  ping();
+  const beat = setInterval(ping, 15_000);
+  req.on("close", () => {
+    clearInterval(beat);
+    streams.delete(entry);
+  });
+}
+
+/** The test plays the teacher. */
+function teacher(action: string, body: Record<string, unknown>) {
+  const sess = state.session;
+  const cur = sess.current;
+  switch (action) {
+    case "state": {
+      sess.state = body.state as typeof sess.state;
+      return broadcast("public", "state.changed", { state: sess.state });
+    }
+    case "fire": {
+      const index = Number(body.index ?? 0);
+      const timer = Number(body.timer ?? 60);
+      if (sess.state === "lobby") {
+        sess.state = "teaching";
+        broadcast("public", "state.changed", { state: "teaching" });
+      }
+      sess.current = { id: LESSON[index].id, index, status: "open", firedAt: nowMs(), closesAt: nowMs() + timer * 1000, timer };
+      sess.answered = 0;
+      return broadcast("public", "question.opened", { question: wireQuestion(sess.current) });
+    }
+    case "progress": {
+      if (!cur) return;
+      sess.answered = Number(body.answered ?? 0);
+      return broadcast("public", "question.progress", { session_question_id: cur.id, answered: sess.answered, joined: sess.joined });
+    }
+    case "close": {
+      if (!cur || cur.status !== "open") return;
+      cur.status = "closed";
+      const mine = sess.answers[cur.id];
+      const correct = !!mine && mine.response === LESSON[cur.index].correct;
+      const left = mine ? Math.max(0, cur.closesAt - mine.answeredAt) : 0;
+      const speedBonus = correct ? Math.round((5 * left) / (cur.timer * 1000)) : 0;
+      const points = correct ? 10 + speedBonus : 0;
+      sess.points += points;
+      sess.right += correct ? 1 : 0;
+      sess.rank = Math.max(1, 5 - sess.right);
+      sess.results[cur.id] = { correct, points, speedBonus, rank: sess.rank };
+      broadcast("public", "question.closed", { session_question_id: cur.id });
+      broadcast("student", "question.result", resultBody(cur.id));
+      return broadcast("public", "leaderboard.updated", { rows: board() });
+    }
+    case "reveal": {
+      if (!cur || cur.status === "open") return;
+      cur.status = "revealed";
+      sess.revealed.push(cur.id);
+      return broadcast("public", "question.revealed", { session_question_id: cur.id, correct_answer: LESSON[cur.index].correct, explanation: null });
+    }
+    case "skip": {
+      if (!cur) return;
+      cur.status = "skipped";
+      delete sess.answers[cur.id];
+      delete sess.results[cur.id];
+      return broadcast("public", "question.skipped", { session_question_id: cur.id });
+    }
+    case "elsewhere":
+      return broadcast("student", "signed_in_elsewhere");
+    case "end": {
+      sess.state = "ended";
+      sess.summary = { right: sess.right, total: LESSON.length };
+      state.endedResults.unshift({
+        session_id: SESSION_ID,
+        course_id: "c-math",
+        subject: subject("math", "Mathematics"),
+        lesson_title: "Linear equations",
+        ended_at: nowIso(),
+        right: sess.right,
+        total: LESSON.length,
+        questions: LESSON.map((q) => ({
+          id: q.id,
+          prompt: q.prompt,
+          correct: sess.results[q.id]?.correct ?? false,
+          correct_answer: q.options ? q.options[Number(q.correct)] : q.correct,
+          your_answer: sess.answers[q.id]?.response ?? null,
+        })),
+      });
+      broadcast("public", "state.changed", { state: "ended" });
+      return broadcast("student", "session.ended", { session_points: sess.points, session_rank: sess.rank, summary: sess.summary });
+    }
+    case "joined": {
+      sess.joined = Number(body.count ?? sess.joined);
+      return broadcast("public", "joined.count", { joined_count: sess.joined, recent: ["Ана Георгиевска", "Лука Стојановски"] });
+    }
+  }
+}
+
 function send(res: ServerResponse, status: number, body?: unknown) {
   if (body === undefined) {
     res.writeHead(status).end();
@@ -166,8 +454,10 @@ async function route(req: IncomingMessage, res: ServerResponse) {
   const path = url.pathname;
   const method = req.method ?? "GET";
 
-  if (path === "/__control/state") return send(res, 200, state);
+  if (path === "/__control/state") return send(res, 200, { ...state, streams: streams.size });
   if (path === "/__control/reset" && method === "POST") {
+    for (const stream of streams) stream.res.destroy();
+    streams.clear();
     state = initial();
     return send(res, 204);
   }
@@ -185,6 +475,27 @@ async function route(req: IncomingMessage, res: ServerResponse) {
   }
   if (path === "/__control/expire-code" && method === "POST") {
     state.codeExpired = true;
+    return send(res, 204);
+  }
+  if (path === "/__control/skew" && method === "POST") {
+    state.skewMs = Number(((await readJson(req)) as { ms?: number } | undefined)?.ms ?? 0);
+    return send(res, 204);
+  }
+  if (path === "/__control/drop-streams" && method === "POST") {
+    for (const stream of streams) stream.res.destroy();
+    streams.clear();
+    return send(res, 204);
+  }
+  if (path === "/__control/block-streams" && method === "POST") {
+    state.blockStreams = ((await readJson(req)) as { on?: boolean } | undefined)?.on !== false;
+    return send(res, 204);
+  }
+  if (path === "/__control/expire-token" && method === "POST") {
+    state.tokenExpired = true;
+    return send(res, 204);
+  }
+  if (path.startsWith("/__control/session/") && method === "POST") {
+    teacher(path.slice("/__control/session/".length), ((await readJson(req)) as Record<string, unknown> | undefined) ?? {});
     return send(res, 204);
   }
   // The school's identity provider, as far as a browser test needs one: a page to land on.
@@ -239,7 +550,7 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     if (api === "/me") return send(res, 200, state.student);
     if (api === "/me/courses") return send(res, 200, COURSES);
     if (api === "/me/attendance") return send(res, 200, ATTENDANCE);
-    if (api === "/me/results") return send(res, 200, RESULTS);
+    if (api === "/me/results") return send(res, 200, [...state.endedResults, ...RESULTS]);
     if (api === "/me/topics") return send(res, 200, []);
     if (api === "/me/leaderboard") return send(res, 200, LEADERBOARD());
     if (api === "/me/badges") return send(res, 200, BADGES);
@@ -279,9 +590,23 @@ async function route(req: IncomingMessage, res: ServerResponse) {
   }
 
   if (method === "POST" && api === "/sessions/join") {
-    state.bodies[`${method} ${api}`] = await readJson(req);
-    return fail(res, 410, "token_expired");
+    const body = (await readJson(req)) as { token?: string; short_code?: string } | undefined;
+    state.bodies[`${method} ${api}`] = body;
+    return join(res, (body?.token ?? body?.short_code ?? "").trim().toUpperCase());
   }
+
+  const live = /^\/sessions\/([^/]+)\/(student-state|answers)$/.exec(api);
+  if (live) {
+    if (decodeURIComponent(live[1]) !== SESSION_ID) return fail(res, 404, "not_found");
+    if (method === "GET" && live[2] === "student-state") return send(res, 200, snapshot());
+    if (method === "POST" && live[2] === "answers") {
+      const body = (await readJson(req)) as { session_question_id?: string; response?: string; answered_at?: string; idempotency_key?: string } | undefined;
+      state.bodies[`${method} ${api}`] = body;
+      return answer(res, body ?? {});
+    }
+  }
+
+  if (method === "GET" && api === "/realtime") return stream(req, res, url.searchParams.get("channels") ?? "");
 
   return fail(res, 404, "not_found");
 }
