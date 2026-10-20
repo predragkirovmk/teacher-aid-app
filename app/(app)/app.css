@@ -1049,6 +1049,7 @@ details.faq p {
   display: block;
   margin-top: 4px;
   color: var(--text);
+  font-size: var(--fs-callout);
   font-weight: 650;
   overflow-wrap: anywhere;
 }
