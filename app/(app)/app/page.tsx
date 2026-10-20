@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, ViewTransition, type CSSProperties } from "react";
 import { Avatar } from "@/components/app/Avatar";
 import { Mark } from "@/components/app/Mark";
+import { QueryState } from "@/components/app/QueryState";
 import { Row } from "@/components/app/Row";
 import { SubjectMark, SubjectRow } from "@/components/app/SubjectCard";
 import { useUI } from "@/components/app/ui";
@@ -13,6 +14,7 @@ import {
   useAttendanceView,
   useCourses,
   useLatestResult,
+  useMe,
   useNotifications,
   useStandings,
 } from "@/lib/app/api/hooks";
@@ -73,6 +75,7 @@ export default function Home() {
   const { t, locale } = useT();
   const { openClock } = useUI();
   const me = useSelf();
+  const student = useMe();
   const { clock } = useDemoClock();
   const live = useNow();
   const now = live ?? STAND_IN;
@@ -120,7 +123,15 @@ export default function Home() {
         </h1>
       </div>
 
-      <div className="stack">{demoOnly ? <DemoCards now={now} live={live !== null} /> : <LiveCards />}</div>
+      <div className="stack">
+        {demoOnly ? (
+          <DemoCards now={now} live={live !== null} />
+        ) : student.status === "error" ? (
+          <QueryState query={student} />
+        ) : (
+          <LiveCards />
+        )}
+      </div>
     </main>
   );
 }
@@ -228,7 +239,7 @@ function ResultTile({ wide = false }: { wide?: boolean }) {
       </span>
       <span className="tile-big">{result ? `${result.right}/${result.total}` : "–"}</span>
       {!result ? (
-        <span className="t-cap">{t("home.noResult")}</span>
+        <span className="t-cap">{latest.status === "ready" ? t("home.noResult") : null}</span>
       ) : isNew ? (
         <span className="t-cap">
           <b className="tile__new">{t("home.new")}</b> · {subject}
