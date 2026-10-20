@@ -5,7 +5,19 @@ import { DEFAULT_PROFILE, isPhoto, type Profile } from "./avatars";
 import { CLOCKS, demoTime, type ClockId } from "../../demo/schedule";
 import { SUBJECTS, type SubjectId } from "./data";
 
-export type Checkin = { id: string; subject: SubjectId; at: number };
+/** `late`: the student joined after the lobby (attendance `late`, OPEN-05). */
+export type Checkin = { id: string; subject: SubjectId; at: number; late?: boolean };
+
+/** A live session the student finished, as the mock's results list keeps it. */
+export type FinishedSession = {
+  sessionId: string;
+  courseId: SubjectId;
+  lessonTitle: string;
+  endedAt: number;
+  right: number;
+  total: number;
+  questions: { id: string; prompt: string; correct: boolean; correctAnswer: string; yourAnswer: string | null }[];
+};
 
 export type AppState = {
   signedIn: boolean;
@@ -24,6 +36,8 @@ export type AppState = {
   perfectQuiz: boolean;
   /** The time the demo runs on: the phone's clock, or a moment picked in Settings. */
   clock: ClockId;
+  /** Live sessions played to the end, newest first: what the summary and Home's latest result show. */
+  finished: FinishedSession[];
 };
 
 const KEY = "teacheraid-app-v1";
@@ -40,11 +54,27 @@ const DEFAULT: AppState = {
   quizAnswered: false,
   perfectQuiz: false,
   clock: "real",
+  finished: [],
 };
 
 const isCheckin = (c: unknown): c is Checkin => {
   const x = c as Partial<Checkin> | null;
   return !!x && typeof x.id === "string" && SUBJECTS.some((s) => s.id === x.subject) && Number.isFinite(x.at);
+};
+
+const isFinished = (f: unknown): f is FinishedSession => {
+  const x = f as Partial<FinishedSession> | null;
+  return (
+    !!x &&
+    typeof x.sessionId === "string" &&
+    SUBJECTS.some((s) => s.id === x.courseId) &&
+    typeof x.lessonTitle === "string" &&
+    Number.isFinite(x.endedAt) &&
+    Number.isFinite(x.right) &&
+    Number.isFinite(x.total) &&
+    Array.isArray(x.questions) &&
+    x.questions.every((q) => !!q && typeof q.id === "string" && typeof q.prompt === "string" && typeof q.correct === "boolean" && typeof q.correctAnswer === "string")
+  );
 };
 
 /**
@@ -68,6 +98,7 @@ function sanitize(saved: unknown): AppState {
     quizAnswered: typeof s.quizAnswered === "boolean" ? s.quizAnswered : DEFAULT.quizAnswered,
     perfectQuiz: typeof s.perfectQuiz === "boolean" ? s.perfectQuiz : DEFAULT.perfectQuiz,
     clock: CLOCKS.includes(s.clock as ClockId) ? (s.clock as ClockId) : DEFAULT.clock,
+    finished: Array.isArray(s.finished) ? s.finished.filter(isFinished).slice(0, 20) : DEFAULT.finished,
   };
 }
 
@@ -173,12 +204,12 @@ export const actions = {
   },
   /** One check-in per subject per hour, so a double scan or a refresh does not double count. Stamped
       with the demo's time, so a scan at a picked moment lands in that moment's lesson. */
-  checkIn: (subject: SubjectId): Checkin => {
+  checkIn: (subject: SubjectId, late = false): Checkin => {
     load();
     const now = demoTime(state.clock, Date.now());
-    const recent = state.checkins.find((c) => c.subject === subject && Math.abs(now - c.at) < 60 * 60 * 1000);
+    const recent = state.checkins.find((c) => c.subject === subject && !!c.late === late && Math.abs(now - c.at) < 60 * 60 * 1000);
     if (recent) return recent;
-    const entry = { id: `c-${Date.now()}`, subject, at: now };
+    const entry: Checkin = { id: `c-${Date.now()}`, subject, at: now, ...(late && { late }) };
     set({ checkins: [entry, ...state.checkins] });
     return entry;
   },
@@ -195,6 +226,10 @@ export const actions = {
   markPerfectQuiz: () => {
     load();
     if (!state.perfectQuiz) set({ perfectQuiz: true });
+  },
+  finishSession: (record: FinishedSession) => {
+    load();
+    set({ finished: [record, ...state.finished.filter((f) => f.sessionId !== record.sessionId)].slice(0, 20) });
   },
   reset: () => {
     load();

@@ -9,7 +9,6 @@ import type {
   Course,
   Id,
   JoinInput,
-  JoinResult,
   Leaderboard,
   LeaderboardRow,
   Locale,
@@ -26,20 +25,17 @@ import {
   BASE_ATTENDED,
   BASE_LOG,
   BASE_TOTAL,
-  CLASS_SUBJECTS,
   LAST_WEEK_ATTENDED,
   LAST_WEEK_TOTAL,
   LEADERBOARD,
   NOTIFS,
   QUIZ,
   SUBJECTS,
-  subjectByCode,
-  type ClassSubject,
   type SubjectId,
 } from "./data";
 import { translate, type Key } from "../../i18n";
 import { getLocale, setLocale, subscribeLocale } from "../../locale";
-import { QUIZZES } from "./quiz";
+import { joinMock, mockSessionFor } from "./session";
 import { startMockSignIn, verifyMockCode } from "./signin";
 import { actions, DEFAULT_STATE, getState, subscribeStore, type AppState } from "./store";
 import { cleanName, nameError } from "../../profile-rules";
@@ -79,7 +75,6 @@ const run = <T>(fn: () => T): SettledPromise<T> => {
 export type MockSource = { state: () => AppState; locale: () => Locale; writable: boolean };
 
 const CLASS_NAME: Record<Locale, string> = { mk: "7Б", en: "7B" };
-const SESSION_PREFIX = "mock-session-";
 
 const text = (locale: Locale, key: string) => translate(locale, key as Key);
 
@@ -120,7 +115,7 @@ function buildAttendance(state: AppState, locale: Locale): AttendanceSummary {
       subjectId: c.subject,
       subjectName: text(locale, `subj.${c.subject}`),
       date: c.at,
-      status: "present" as const,
+      status: c.late ? ("late" as const) : ("present" as const),
       joinedAt: c.at,
     })),
     ...BASE_LOG.map((l) => ({
@@ -142,9 +137,20 @@ function buildAttendance(state: AppState, locale: Locale): AttendanceSummary {
   };
 }
 
-/** Last maths lesson: 4 of 5 correct. */
-function buildResults(locale: Locale): SessionResult[] {
+/** The live sessions played in the demo, newest first, then the last maths lesson the demo starts with (4 of 5 correct). */
+function buildResults(state: AppState, locale: Locale): SessionResult[] {
   return [
+    ...state.finished.map((f) => ({
+      sessionId: f.sessionId,
+      courseId: f.courseId,
+      subjectId: f.courseId,
+      subjectName: text(locale, `subj.${f.courseId}`),
+      lessonTitle: f.lessonTitle,
+      endedAt: f.endedAt,
+      right: f.right,
+      total: f.total,
+      questions: f.questions,
+    })),
     {
       sessionId: "session-math-1",
       courseId: "math",
@@ -223,15 +229,6 @@ function buildNotifications(state: AppState, locale: Locale): Notification[] {
   });
 }
 
-/** The live quiz a class code opens, or null for a code that is not one. */
-function lessonFor(subject: ClassSubject | undefined) {
-  const quiz = subject && QUIZZES[subject.id];
-  return subject && quiz ? { subject, quiz } : null;
-}
-
-/** Answer keys the mock has seen, so a retry reports `duplicate` as the API will. */
-const SEEN_ANSWERS = new Set<string>();
-
 export function createMockClient(source: MockSource): ApiClient {
   const { state, locale, writable } = source;
   const write = <T>(fn: () => T): T => {
@@ -291,7 +288,7 @@ export function createMockClient(source: MockSource): ApiClient {
 
     listCourses: () => authed(() => buildCourses(locale())),
     getAttendance: () => authed(() => buildAttendance(state(), locale())),
-    listResults: (courseId?: Id) => authed(() => buildResults(locale()).filter((r) => !courseId || r.courseId === courseId)),
+    listResults: (courseId?: Id) => authed(() => buildResults(state(), locale()).filter((r) => !courseId || r.courseId === courseId)),
     listTopics: () => authed(() => []),
     getLeaderboard: () => authed(() => buildLeaderboard(state(), locale())),
     listBadges: () => authed(() => buildBadges(state(), locale())),
@@ -312,68 +309,20 @@ export function createMockClient(source: MockSource): ApiClient {
     submitPracticeAnswers: () => fail(new ApiError("not_found")),
 
     joinSession: (input: JoinInput) =>
-      authed(() =>
-        write((): JoinResult => {
-          const code = "token" in input ? input.token : input.shortCode;
-          const found = lessonFor(subjectByCode(code));
-          // An unknown code is, to the server, a token it never issued or has already retired.
-          if (!found) throw new ApiError("token_expired");
-          const { subject, quiz } = found;
-          const l = locale();
-          // Joining is the attendance (spec 5.4); the store keeps one check-in per subject per hour.
-          const entry = actions.checkIn(subject.id);
-          return {
-            session: {
-              id: `${SESSION_PREFIX}${subject.id}`,
-              courseId: subject.id,
-              state: "lobby",
-              lessonTitle: quiz.title[l],
-              questionCount: quiz.questions.length,
-              joinedCount: 9,
-            },
-            attendance: {
-              id: entry.id,
-              courseId: subject.id,
-              subjectId: subject.id,
-              subjectName: text(l, `subj.${subject.id}`),
-              date: entry.at,
-              status: "present",
-              joinedAt: entry.at,
-            },
-            serverNow: Date.now(),
-          };
-        }),
-      ),
+      authed(() => write(() => joinMock("token" in input ? input.token : input.shortCode, locale()))),
 
     getStudentState: (sessionId: Id) =>
       authed((): StudentSessionState => {
-        const id = sessionId.startsWith(SESSION_PREFIX) ? sessionId.slice(SESSION_PREFIX.length) : "";
-        const subject = lessonFor(CLASS_SUBJECTS.find((s) => s.id === id));
-        if (!subject) throw new ApiError("not_found");
-        return {
-          session: {
-            id: sessionId,
-            courseId: subject.subject.id,
-            state: "lobby",
-            lessonTitle: subject.quiz.title[locale()],
-            questionCount: subject.quiz.questions.length,
-            joinedCount: 9,
-          },
-          serverNow: Date.now(),
-          question: null,
-          myResponse: null,
-          result: null,
-          sessionPoints: 0,
-          sessionRank: 1,
-        };
+        const session = mockSessionFor(sessionId);
+        if (!session) throw new ApiError("not_found");
+        return session.studentState();
       }),
 
     submitAnswer: (sessionId: Id, answer: AnswerInput) =>
       authed((): AnswerReceipt => {
-        if (!sessionId.startsWith(SESSION_PREFIX)) throw new ApiError("not_found");
-        const duplicate = SEEN_ANSWERS.has(answer.idempotencyKey);
-        SEEN_ANSWERS.add(answer.idempotencyKey);
-        return { accepted: true, duplicate };
+        const session = mockSessionFor(sessionId);
+        if (!session) throw new ApiError("not_found");
+        return write(() => session.submit(answer));
       }),
 
     subscribe: (listener) => {

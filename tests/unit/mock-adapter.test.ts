@@ -5,12 +5,16 @@ import { createMockClient, mockClient, mockServerClient } from "@/lib/app/api/mo
 import { CLASS_SUBJECTS, LEADERBOARD, MOCK_CODE, MOCK_ROSTER, NOTIFS, BASE_ATTENDED, BASE_TOTAL } from "@/lib/app/api/mock/data";
 import { CODE_LENGTH, CODE_TTL_MS, LOCK_SECONDS, MAX_WRONG_CODES, RESEND_AFTER_MS } from "@/lib/app/api/mock/signin";
 import { QUIZZES } from "@/lib/app/api/mock/quiz";
+import { resetMockSessions } from "@/lib/app/api/mock/session";
 import { actions, DEFAULT_STATE, getState } from "@/lib/app/api/mock/store";
 import { getLocale, setLocale } from "@/lib/app/locale";
 
 const MY_START = LEADERBOARD.find((l) => l.me)!.points;
 
+afterEach(() => resetMockSessions());
+
 beforeEach(() => {
+  resetMockSessions();
   window.localStorage.clear();
   window.sessionStorage.clear();
   setLocale("mk");
@@ -188,7 +192,8 @@ describe("the display name (BR-STU-01)", () => {
 describe("joining a session", () => {
   it("opens the lobby of the class's quiz and records the attendance", async () => {
     const j = await mockClient.joinSession(code("MATH-7B"));
-    expect(j.session).toMatchObject({ courseId: "math", state: "lobby", id: "mock-session-math" });
+    expect(j.session).toMatchObject({ courseId: "math", state: "lobby" });
+    expect(j.session.id).toMatch(/^mock-session-math/);
     expect(j.session.questionCount).toBe(QUIZZES.math!.questions.length);
     expect(j.attendance).toMatchObject({ subjectId: "math", status: "present" });
     expect(j.attendance.joinedAt).not.toBeNull();
@@ -225,8 +230,8 @@ describe("joining a session", () => {
     }
   });
 
-  it("treats a code it never issued as an expired token", async () => {
-    await expect(mockClient.joinSession(code("NOPE-9"))).rejects.toMatchObject({ code: "token_expired" });
+  it("does not know a code it never issued", async () => {
+    await expect(mockClient.joinSession(code("NOPE-9"))).rejects.toMatchObject({ code: "not_found" });
     expect(getState().checkins).toHaveLength(0);
   });
 
@@ -240,7 +245,7 @@ describe("joining a session", () => {
     const { session } = await mockClient.joinSession(code("MATH-7B"));
     const state = await mockClient.getStudentState(session.id);
     expect(state.session.id).toBe(session.id);
-    expect(state).toMatchObject({ question: null, result: null, sessionPoints: 0 });
+    expect(state).toMatchObject({ question: null, result: null, sessionPoints: 0, board: null, progress: null, summary: null });
     await expect(mockClient.getStudentState("other-1")).rejects.toMatchObject({ code: "not_found" });
   });
 });
@@ -331,15 +336,11 @@ describe("notifications", () => {
 });
 
 describe("answers", () => {
-  const answer = (key: string) => ({ sessionQuestionId: "q", response: "1", answeredAt: Date.now(), idempotencyKey: key });
+  const answer = (key: string, over = {}) => ({ sessionQuestionId: "m1", response: "1", answeredAt: Date.now(), idempotencyKey: key, ...over });
 
-  it("accepts an answer once and reports a retry with the same key as a duplicate", async () => {
-    const first = await mockClient.submitAnswer("mock-session-math", answer("key-retry"));
-    const retry = await mockClient.submitAnswer("mock-session-math", answer("key-retry"));
-    const other = await mockClient.submitAnswer("mock-session-math", answer("key-other"));
-    expect(first).toEqual({ accepted: true, duplicate: false });
-    expect(retry).toEqual({ accepted: true, duplicate: true });
-    expect(other.duplicate).toBe(false);
+  it("refuses an answer to a question that is not open", async () => {
+    const { session } = await mockClient.joinSession(code("MATH-7B"));
+    await expect(mockClient.submitAnswer(session.id, answer("key-early"))).rejects.toMatchObject({ code: "not_found" });
   });
 
   it("refuses a session it does not know", async () => {
@@ -348,7 +349,7 @@ describe("answers", () => {
 });
 
 describe("results and badges", () => {
-  it("has one finished quiz, 4 of 5, and can filter it by course", async () => {
+  it("starts with one finished quiz, 4 of 5, and can filter it by course", async () => {
     const all = await mockClient.listResults();
     expect(all).toHaveLength(1);
     expect(all[0]).toMatchObject({ right: 4, total: 5, courseId: "math" });

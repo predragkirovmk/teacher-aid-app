@@ -2,7 +2,7 @@
 
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { setLocale as setLocalLocale, useLocale } from "../locale";
-import type { QuizRun } from "../quiz";
+import { forgetSession, recallSession, rememberSession } from "../session/resume";
 import { client } from "./index";
 import type { SettledPromise } from "./client";
 import { toApiError, type ApiError } from "./errors";
@@ -13,6 +13,7 @@ import type {
   Badge,
   Course,
   Id,
+  JoinedSession,
   JoinResult,
   Leaderboard,
   LeaderboardRow,
@@ -63,6 +64,12 @@ export function useCourse(id: Id): Query<Course | null> {
 export function useLatestResult(): Query<SessionResult | null> {
   const q = useResults();
   return useMemo(() => mapQuery(q, (all) => all[0] ?? null), [q]);
+}
+
+/** One finished session's result by id, or null when the list does not have it (yet). */
+export function useResult(sessionId: Id): Query<SessionResult | null> {
+  const q = useResults();
+  return useMemo(() => mapQuery(q, (all) => all.find((r) => r.sessionId === sessionId) ?? null), [q, sessionId]);
 }
 
 export type Standings = {
@@ -132,6 +139,7 @@ function forgetStudent() {
       if (key.startsWith("teacheraid-shown-") || key === "teacheraid-achievements-seen") window.localStorage.removeItem(key);
     }
     window.sessionStorage.removeItem("teacheraid-home-rise");
+    forgetSession();
   } catch {
     // blocked storage: nothing was kept
   }
@@ -227,7 +235,7 @@ export const markNotificationsRead = (ids: Id[] | "all") => change((c) => c.mark
 
 export type JoinState =
   | { status: "joining" }
-  | { status: "joined"; join: JoinResult }
+  | { status: "joined"; join: JoinedSession }
   | { status: "failed"; error: ApiError };
 
 /** Joins started by the scanner, so the screen it opens carries on from the answer instead of asking again. */
@@ -236,7 +244,13 @@ const started = new Map<string, Promise<JoinResult>>();
 const joinNow = (code: string): Promise<JoinResult> => {
   const p = client.joinSession({ token: code });
   // Joining is the attendance, so the lists that show it are stale from here, as the mock's store already knows.
-  void p.then(() => invalidate("attendance", "notifications"), () => {});
+  void p.then(
+    (join) => {
+      rememberSession(code, join.session.id);
+      invalidate("attendance", "notifications");
+    },
+    () => {},
+  );
   return p;
 };
 
@@ -251,45 +265,46 @@ export function startJoin(code: string): Promise<JoinResult> {
 
 /**
  * Join the session a code opens, once the student is signed in. An adapter that answers at once is
- * read before the first paint, so there is no frame between the code and the quiz.
+ * read before the first paint, so there is no frame between the code and the quiz. A code the API
+ * calls expired that this tab joined with earlier is a page reload mid-lesson (the code rotates every
+ * 30 seconds): the student is already in, so the session is read back instead of refused.
+ * `retry` asks again, for a failure that was only the network.
  */
-export function useJoinSession(code: string, enabled: boolean): JoinState {
+export function useJoinSession(code: string, enabled: boolean): JoinState & { retry: () => void } {
   const [state, setState] = useState<JoinState>({ status: "joining" });
+  const [attempt, setAttempt] = useState(0);
 
   useLayoutEffect(() => {
     if (!enabled) return;
     let current = true;
-    const handed = started.get(code);
+    const handed = attempt === 0 ? started.get(code) : undefined;
     started.delete(code);
     const p = handed ?? joinNow(code);
     const apply = (s: JoinState) => current && setState(s);
+    const fail = (e: unknown) => {
+      const error = toApiError(e);
+      const earlier = error.code === "token_expired" ? recallSession(code) : null;
+      if (!earlier) return apply({ status: "failed", error });
+      client.getStudentState(earlier).then(
+        (snapshot) => apply({ status: "joined", join: { session: snapshot.session, attendance: null, serverNow: snapshot.serverNow } }),
+        () => apply({ status: "failed", error }),
+      );
+    };
     const settled = (p as Partial<SettledPromise<JoinResult>>).settled;
     if (settled) {
-      apply(settled.ok ? { status: "joined", join: settled.value } : { status: "failed", error: toApiError(settled.error) });
+      if (settled.ok) apply({ status: "joined", join: settled.value });
+      else fail(settled.error);
     } else {
-      p.then(
-        (join) => apply({ status: "joined", join }),
-        (error) => apply({ status: "failed", error: toApiError(error) }),
-      );
+      p.then((join) => apply({ status: "joined", join }), fail);
     }
     return () => {
       current = false;
     };
-  }, [code, enabled]);
+  }, [code, enabled, attempt]);
 
-  return state;
-}
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const mockQuiz =
-  process.env.NEXT_PUBLIC_API_MODE === "live" ? null : (require("./mock/quiz") as typeof import("./mock/quiz"));
-
-/**
- * What the quiz screen draws, from the session a join opened. Only the demo's session driver
- * produces it so far (the teacher, the timer and the classmates are played in the browser), so the
- * quiz screen is only reached in demo mode; the live session engine of the next step replaces this
- * with one built from the server's snapshots and events.
- */
-export function useQuizRun(join: JoinResult): QuizRun {
-  return mockQuiz!.useMockQuizRun(join.session.courseId);
+  const retry = useCallback(() => {
+    setState({ status: "joining" });
+    setAttempt((n) => n + 1);
+  }, []);
+  return { ...state, retry };
 }
