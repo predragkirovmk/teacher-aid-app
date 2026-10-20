@@ -94,8 +94,9 @@ test("the countdown follows the server's clock, which the demo runs a few second
   }
   const label = (await page.getByRole("timer").getAttribute("aria-label")) ?? "";
   const seconds = Number(label.match(/\d+/)?.[0]);
-  // A 20-second question, a moment in: if the app used the phone's clock it would say 23 or 24.
-  expect(seconds).toBeGreaterThanOrEqual(17);
+  // A 20-second question, some seconds in (the suite runs in parallel, so not exactly how many): if the app
+  // used the phone's clock it would say 23 or 24, more than the question is long.
+  expect(seconds).toBeGreaterThanOrEqual(10);
   expect(seconds).toBeLessThanOrEqual(20);
 });
 

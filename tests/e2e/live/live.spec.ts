@@ -505,7 +505,7 @@ test.describe("a live session", () => {
   test("joining after the lobby is a late attendance, and the open question can still be answered", async ({ page, request }) => {
     await teacher(request, "fire", { index: 0, timer: 60 });
     await page.goto("/app/checkin/LIVE-7B");
-    await expect(page.getByText(/Означен си како задоцнет во/)).toBeVisible();
+    await expect(page.getByText(mk.q("q.late.note")).first()).toBeVisible();
     await expect(page.locator(OPTION).first()).toBeVisible({ timeout: 5000 });
     await expect(page.getByRole("status").filter({ hasText: mk.q("q.late.note") })).toBeVisible();
     await page.locator(OPTION).nth(1).click();

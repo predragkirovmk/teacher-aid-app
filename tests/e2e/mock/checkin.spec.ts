@@ -121,7 +121,8 @@ test.describe("when the join fails", () => {
 test("joining after the lobby is a late attendance with a gentle note", async ({ page }) => {
   await page.clock.install();
   await page.goto("/app/checkin/LATE-7B");
-  await expect(page.getByText(/Означен си како задоцнет во/)).toBeVisible();
+  await expect(page.getByText(mk.q("q.late.note")).first()).toBeVisible();
+  await expect(page.getByText(/Присуството е забележано во/)).toBeVisible();
   await expect(page.getByText(mk.q("q.late.note")).first()).toBeVisible();
 
   // The question that was open is there to answer, with the note beside it for a while.

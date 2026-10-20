@@ -154,7 +154,7 @@ function Joined({ course, join }: { course: Course; join: JoinedSession }) {
         <p className="q-strong">
           {t("q.joined.sub", { subject: subjectLabel(tt, course.subjectId, course.subjectName), teacher: personName(course.teacherName, locale) })}
         </p>
-        {joinedAt !== null && <p className="t-cap q-cap">{t(late ? "q.joined.timeLate" : "q.joined.time", { time: formatTime(joinedAt) })}</p>}
+        {joinedAt !== null && <p className="t-cap q-cap">{t("q.joined.time", { time: formatTime(joinedAt) })}</p>}
         {late && <p className="t-body muted q-late-text">{t("q.late.note")}</p>}
       </div>
       <div className="q-foot">
