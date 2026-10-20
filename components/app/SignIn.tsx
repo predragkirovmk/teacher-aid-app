@@ -361,7 +361,15 @@ function CodeStage({ stage, onChangeEmail, t }: { stage: CodeStage; onChangeEmai
         <p className="t-body muted signin__sub">
           {t("signin.codeSub", { n: codeLength })}
           {/* The address is on its own line and carries no full stop, so it can be copied as it reads. */}
-          <span className="signin__email">{email}</span>
+          <span className="signin__email">
+            {/* A long address breaks after the @ or a dot, never in the middle of a word. */}
+            {email.split(/(?<=[@.])/).map((part, i) => (
+              <span key={i}>
+                {i > 0 && <wbr />}
+                {part}
+              </span>
+            ))}
+          </span>
         </p>
       </div>
 

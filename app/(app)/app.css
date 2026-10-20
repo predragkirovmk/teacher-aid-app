@@ -1051,7 +1051,6 @@ details.faq p {
   color: var(--text);
   font-size: var(--fs-callout);
   font-weight: 650;
-  overflow-wrap: anywhere;
 }
 .signin__help {
   min-height: 1.25rem;
