@@ -11,6 +11,7 @@ import type {
   AttendanceStatus,
   AttendanceSummary,
   Badge,
+  BoardRow,
   Course,
   JoinResult,
   Leaderboard,
@@ -27,7 +28,9 @@ import type {
   QuestionStatus,
   ResultQuestion,
   Season,
+  SessionEvent,
   SessionQuestion,
+  SessionSummary,
   SessionResult,
   SessionSnapshot,
   SessionState,
@@ -186,7 +189,13 @@ export type WireStudentState = {
   result: WireQuestionResult | null;
   session_points: number;
   session_rank: number;
+  /** PROPOSED additions: absent or null from a server that does not send them. */
+  board?: WireBoardRow[] | null;
+  progress?: { answered: number; joined: number } | null;
+  summary?: { right: number; total: number } | null;
 };
+
+export type WireBoardRow = { student_id: string; name: string; points: number; rank: number };
 
 export type WireAnswerReceipt = { accepted: boolean; duplicate: boolean };
 
@@ -390,6 +399,8 @@ const questionResult = (w: WireQuestionResult): QuestionResult => ({
   explanation: w.explanation,
 });
 
+const boardRow = (w: WireBoardRow): BoardRow => ({ studentId: w.student_id, name: w.name, points: w.points, rank: w.rank });
+
 export const studentState = (w: WireStudentState): StudentSessionState => ({
   session: session(w.session),
   serverNow: ms(w.server_now),
@@ -398,9 +409,106 @@ export const studentState = (w: WireStudentState): StudentSessionState => ({
   result: w.result && questionResult(w.result),
   sessionPoints: w.session_points,
   sessionRank: w.session_rank,
+  board: w.board?.map(boardRow) ?? null,
+  progress: w.progress ?? null,
+  summary: w.summary ?? null,
 });
 
 export const answerReceipt = (w: WireAnswerReceipt): AnswerReceipt => ({ accepted: w.accepted, duplicate: w.duplicate });
+
+// ---- Realtime events -------------------------------------------------------------------------------------------
+
+/** The event types the student app listens for (spec 11.2; the PROPOSED ones are marked in the spec). */
+export const SESSION_EVENT_TYPES = [
+  "state.changed",
+  "joined.count",
+  "question.opened",
+  "question.progress",
+  "question.closed",
+  "question.revealed",
+  "question.skipped",
+  "leaderboard.updated",
+  "question.result",
+  "session.ended",
+  "signed_in_elsewhere",
+  "notification.created",
+] as const;
+
+type Body = Record<string, unknown>;
+
+const bad = (type: string): never => {
+  throw new ApiError("invalid_response", { message: `bad ${type} event` });
+};
+
+/**
+ * One realtime message as a domain event, or null for an event this build does not use (the opener's
+ * counts, the class view's token rotation, ...). A known event whose body is not what the proposal says
+ * throws `invalid_response`; the caller drops it and asks for a snapshot.
+ */
+export function sessionEvent(type: string, data: unknown): SessionEvent | null {
+  if (!(SESSION_EVENT_TYPES as readonly string[]).includes(type)) return null;
+  const d = (data && typeof data === "object" ? data : {}) as Body;
+  if (type === "signed_in_elsewhere") return { type, serverNow: null };
+  if (type === "notification.created") return { type, serverNow: null };
+  if (typeof d.server_now !== "string") return bad(type);
+  const serverNow = ms(d.server_now);
+  const str = (k: string) => (typeof d[k] === "string" ? (d[k] as string) : bad(type));
+  const num = (k: string) => (typeof d[k] === "number" ? (d[k] as number) : bad(type));
+  switch (type) {
+    case "state.changed":
+      return { type, serverNow, state: str("state") as SessionState };
+    case "joined.count":
+      return {
+        type,
+        serverNow,
+        joinedCount: num("joined_count"),
+        recent: Array.isArray(d.recent) ? d.recent.filter((n): n is string => typeof n === "string") : [],
+      };
+    case "question.opened":
+      return d.question && typeof d.question === "object" ? { type, serverNow, question: question(d.question as WireQuestion) } : bad(type);
+    case "question.progress":
+      return { type, serverNow, sessionQuestionId: str("session_question_id"), answered: num("answered"), joined: num("joined") };
+    case "question.closed":
+    case "question.skipped":
+      return { type, serverNow, sessionQuestionId: str("session_question_id") };
+    case "question.revealed":
+      return {
+        type,
+        serverNow,
+        sessionQuestionId: str("session_question_id"),
+        correctAnswer: str("correct_answer"),
+        explanation: typeof d.explanation === "string" ? d.explanation : null,
+      };
+    case "leaderboard.updated":
+      return Array.isArray(d.rows) ? { type, serverNow, rows: (d.rows as WireBoardRow[]).map(boardRow) } : bad(type);
+    case "question.result":
+      return {
+        type,
+        serverNow,
+        result: questionResult({
+          session_question_id: str("session_question_id"),
+          correct: d.correct === true,
+          points: num("points"),
+          speed_bonus: typeof d.speed_bonus === "number" ? d.speed_bonus : 0,
+          session_rank: num("session_rank"),
+          correct_answer: typeof d.correct_answer === "string" ? d.correct_answer : null,
+          explanation: typeof d.explanation === "string" ? d.explanation : null,
+        }),
+        sessionPoints: num("session_points"),
+      };
+    case "session.ended": {
+      const s = d.summary as Partial<SessionSummary> | null | undefined;
+      return {
+        type,
+        serverNow,
+        summary: s && typeof s.right === "number" && typeof s.total === "number" ? { right: s.right, total: s.total } : null,
+        sessionPoints: typeof d.session_points === "number" ? d.session_points : null,
+        sessionRank: typeof d.session_rank === "number" ? d.session_rank : null,
+      };
+    }
+  }
+  return null;
+}
 
 // ---- Domain to wire (request bodies) -------------------------------------------------------------------------
 

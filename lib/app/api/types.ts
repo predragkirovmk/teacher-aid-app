@@ -259,6 +259,7 @@ export type QuestionResult = {
   speedBonus: number;
   /** The student's rank in this session after the question (BR-PTS-09). */
   sessionRank: number;
+  /** Null until the teacher reveals the question (`question.revealed`). */
   correctAnswer: string | null;
   explanation: string | null;
 };
@@ -272,6 +273,15 @@ export type SessionSnapshot = {
   joinedCount: number;
 };
 
+/** A row of the session's own ranking (BR-PTS-09): points earned in this session only, real names (BR-LB-01). */
+export type BoardRow = { studentId: Id; name: string; points: number; rank: number };
+
+/** How many of the joined students have answered the open question (PROPOSED, `question.progress`). */
+export type QuestionProgress = { answered: number; joined: number };
+
+/** The student's tally of a finished session (PROPOSED, in `session.ended` and the snapshot after End). */
+export type SessionSummary = { right: number; total: number };
+
 export type JoinInput = { token: string } | { shortCode: string };
 
 /** The answer to a join: the session, the attendance it recorded, and the server's clock (F-07). */
@@ -280,6 +290,12 @@ export type JoinResult = {
   attendance: AttendanceEntry;
   serverNow: number;
 };
+
+/**
+ * A session the student is in. A fresh join knows the attendance it recorded; a student who comes
+ * back to a session they joined (the code on their screen has rotated since) does not.
+ */
+export type JoinedSession = Omit<JoinResult, "attendance"> & { attendance: AttendanceEntry | null };
 
 /** GET /sessions/{id}/student-state: one snapshot that rebuilds every state of section 4.4 after a reconnect. */
 export type StudentSessionState = {
@@ -292,10 +308,28 @@ export type StudentSessionState = {
   result: QuestionResult | null;
   sessionPoints: number;
   sessionRank: number;
+  /** The session's ranking, when the server sends it (PROPOSED). */
+  board: BoardRow[] | null;
+  /** Answers in so far for the open question (PROPOSED). */
+  progress: QuestionProgress | null;
+  /** The tally once the session has ended (PROPOSED), else null. */
+  summary: SessionSummary | null;
 };
 
-/** The student's place in section 4.4's table. */
-export type StudentStage = "waiting_start" | "answering" | "waiting_others" | "right" | "wrong" | "waiting_next" | "ended";
+/**
+ * The student's place in section 4.4's table. `waiting_result` is the moment between a question
+ * closing and the student's own result arriving; `syncing` is before the first snapshot.
+ */
+export type StudentStage =
+  | "syncing"
+  | "waiting_start"
+  | "answering"
+  | "waiting_others"
+  | "waiting_result"
+  | "right"
+  | "wrong"
+  | "waiting_next"
+  | "ended";
 
 export type AnswerInput = {
   sessionQuestionId: Id;
@@ -311,3 +345,25 @@ export type AnswerReceipt = {
   /** True when the key had been seen before: the first answer stands. */
   duplicate: boolean;
 };
+
+// ---- Realtime events, student side (spec 11.2) -----------------------------------------------------------------------
+
+/**
+ * What the student's channels (`session.{id}.public` and `student.{id}`) tell the app, in domain terms.
+ * Every one carries the server's time, which orders it against a snapshot (the engine drops what a
+ * snapshot already reflects). Names and payloads are the PROPOSED ones of spec 11.2.
+ */
+export type SessionEvent =
+  | { type: "state.changed"; serverNow: number; state: SessionState }
+  | { type: "joined.count"; serverNow: number; joinedCount: number; recent: string[] }
+  | { type: "question.opened"; serverNow: number; question: SessionQuestion }
+  | { type: "question.progress"; serverNow: number; sessionQuestionId: Id; answered: number; joined: number }
+  | { type: "question.closed"; serverNow: number; sessionQuestionId: Id }
+  | { type: "question.revealed"; serverNow: number; sessionQuestionId: Id; correctAnswer: string; explanation: string | null }
+  | { type: "question.skipped"; serverNow: number; sessionQuestionId: Id }
+  | { type: "leaderboard.updated"; serverNow: number; rows: BoardRow[] }
+  | { type: "question.result"; serverNow: number; result: QuestionResult; sessionPoints: number }
+  | { type: "session.ended"; serverNow: number; summary: SessionSummary | null; sessionPoints: number | null; sessionRank: number | null }
+  // Not about the session: the app reacts to these itself (session.ts, the notifications query).
+  | { type: "signed_in_elsewhere"; serverNow: null }
+  | { type: "notification.created"; serverNow: null };
