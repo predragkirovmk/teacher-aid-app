@@ -3,22 +3,39 @@
 import { CaretRightIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useState } from "react";
+import { Gate } from "@/components/app/QueryState";
 import { SubjectRow } from "@/components/app/SubjectCard";
 import { Top } from "@/components/app/Top";
-import { SUBJECTS } from "@/lib/app/data";
-import { translate, useT, type Key } from "@/lib/app/i18n";
+import { demoOnly } from "@/lib/app/api";
+import { useCourses } from "@/lib/app/api/hooks";
+import type { Course } from "@/lib/app/api/types";
+import { dictionaries, translate, useT, type Key } from "@/lib/app/i18n";
+import { personName } from "@/lib/app/quiz";
 
 const PAGES: [string, Key][] = [
   ["/app/attendance", "att.title"],
   ["/app/summary", "sum.title"],
   ["/app/leaderboard", "lb.title"],
-  ["/app/schedule", "sch.title"],
-  ["/app/documents", "docs.title"],
+  ...(demoOnly
+    ? ([
+        ["/app/schedule", "sch.title"],
+        ["/app/documents", "docs.title"],
+      ] as [string, Key][])
+    : []),
   ["/app/achievements", "ach.title"],
   ["/app/settings", "settings.title"],
   ["/app/faq", "faq.title"],
   ["/app/scan", "home.scanTitle"],
 ];
+
+/** Everything a course can be found by, in both languages: the subject's names, the teacher's and Latin spellings. */
+function terms(course: Course): string[] {
+  const key = `subj.${course.subjectId}`;
+  const known = key in dictionaries.en ? (["en", "mk"] as const).map((l) => translate(l, key as Key)) : [];
+  return [...known, course.subjectName, course.teacherName, personName(course.teacherName, "en"), ...(course.searchTerms ?? [])].map((s) =>
+    s.toLowerCase(),
+  );
+}
 
 /**
  * Every subject. The search narrows the list itself, by subject or teacher, and also finds the
@@ -26,11 +43,21 @@ const PAGES: [string, Key][] = [
  */
 export default function Subjects() {
   const { t } = useT();
+  const courses = useCourses();
+  return (
+    <Gate query={courses} header={<Top title={t("subjects.title")} />}>
+      {(all) => <SubjectList all={all} />}
+    </Gate>
+  );
+}
+
+function SubjectList({ all }: { all: Course[] }) {
+  const { t } = useT();
   const [q, setQ] = useState("");
   const needle = q.trim().toLowerCase();
   // Match in both languages, so typing "math" finds Математика and the other way round.
   const matches = (key: Key) => (["en", "mk"] as const).some((l) => translate(l, key).toLowerCase().includes(needle));
-  const subjects = needle ? SUBJECTS.filter((s) => matches(`subj.${s.id}`) || matches(`teacher.${s.id}`)) : SUBJECTS;
+  const subjects = needle ? all.filter((c) => terms(c).some((s) => s.includes(needle))) : all;
   const pages = needle ? PAGES.filter(([, key]) => matches(key)) : [];
   const count = subjects.length + pages.length;
   const found = !needle
@@ -61,9 +88,9 @@ export default function Subjects() {
 
       {subjects.length > 0 && (
         <ul className="list">
-          {subjects.map((s) => (
-            <li key={s.id}>
-              <SubjectRow subject={s} />
+          {subjects.map((c) => (
+            <li key={c.id}>
+              <SubjectRow course={c} />
             </li>
           ))}
         </ul>

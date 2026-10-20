@@ -4,25 +4,40 @@ import { CheckCircleIcon, ScanIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { ViewTransition } from "react";
 import { notFound, useParams } from "next/navigation";
-import { SubjectCard, roomLabel } from "@/components/app/SubjectCard";
+import { Gate } from "@/components/app/QueryState";
+import { SubjectCard } from "@/components/app/SubjectCard";
 import { Top } from "@/components/app/Top";
-import { daysFrom, nextLesson, type Lesson } from "@/lib/app/clock";
-import { subjectById } from "@/lib/app/data";
-import { useNow } from "@/lib/app/derived";
+import { demoOnly } from "@/lib/app/api";
+import { useAttendance, useCourse } from "@/lib/app/api/hooks";
+import type { Course } from "@/lib/app/api/types";
+import { daysFrom, nextLesson, roomLabel, useNow, type Lesson } from "@/lib/app/demo";
 import { useT } from "@/lib/app/i18n";
-import { useApp } from "@/lib/app/store";
+import { subjectLabel } from "@/lib/app/subjects";
 
 export default function SubjectPage() {
   const { id } = useParams<{ id: string }>();
-  const subject = subjectById(id);
   const { t } = useT();
-  const { checkins } = useApp();
-  // The lesson card waits for the phone's clock: the server cannot know the time there.
-  const now = useNow();
-  if (!subject) notFound();
+  const course = useCourse(id);
+  return (
+    <Gate query={course} header={<Top title={t("subjects.title")} />}>
+      {(c) => {
+        if (!c) notFound();
+        return <CourseView course={c} />;
+      }}
+    </Gate>
+  );
+}
 
-  const next = now === null ? undefined : nextLesson(now, subject.id);
-  const done = now !== null && checkins.some((c) => c.subject === subject.id && daysFrom(now, c.at) === 0);
+function CourseView({ course }: { course: Course }) {
+  const { t } = useT();
+  const attendance = useAttendance();
+  // The lesson card and today's check-in wait for the phone's clock: the server cannot know the time there.
+  const now = useNow();
+
+  const next = demoOnly && now !== null ? nextLesson(now, course.subjectId) : undefined;
+  const done =
+    now !== null &&
+    !!attendance.data?.log.some((e) => e.courseId === course.id && e.joinedAt !== null && daysFrom(now, e.joinedAt) === 0);
   const when = (l: Lesson) => {
     const d = daysFrom(now!, l.start);
     return d === 0 ? t("home.today") : d === 1 ? t("home.tomorrow") : t(`dayLong.${l.day}`);
@@ -30,9 +45,9 @@ export default function SubjectPage() {
 
   return (
     <main className="screen">
-      <Top title={t(`subj.${subject.id}`)} quiet />
-      <ViewTransition name={`subject-${subject.id}`} share="morph" default="none">
-        <SubjectCard subject={subject} />
+      <Top title={subjectLabel(t, course.subjectId, course.subjectName)} quiet />
+      <ViewTransition name={`subject-${course.id}`} share="morph" default="none">
+        <SubjectCard course={course} />
       </ViewTransition>
       <div className="stack" style={{ marginTop: 16 }}>
         {next && (
@@ -42,7 +57,7 @@ export default function SubjectPage() {
               {when(next)}, {next.from}
             </span>
             <span className="t-cap">
-              {t(`kind.${next.kind}`)} · {roomLabel(t, subject)}
+              {t(`kind.${next.kind}`)} · {roomLabel(t, course.subjectId)}
             </span>
           </div>
         )}

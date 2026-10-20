@@ -2,17 +2,22 @@
 
 import { PrinterIcon } from "@phosphor-icons/react";
 import { QRCodeSVG } from "qrcode.react";
+import { notFound } from "next/navigation";
 import { useSyncExternalStore } from "react";
 import { Top } from "@/components/app/Top";
-import { CLASS_SUBJECTS } from "@/lib/app/data";
+import { demoOnly } from "@/lib/app/api";
+import { CLASS_CODES } from "@/lib/app/demo";
 import { useT } from "@/lib/app/i18n";
 import { checkinLink } from "@/lib/app/scan";
+import { subjectLabel } from "@/lib/app/subjects";
 
 const noop = () => () => {};
 
+/** Printable test codes for the demo's classes. A real class code comes from the teacher's screen. */
 export default function QrKit() {
   const { t } = useT();
   const origin = useSyncExternalStore(noop, () => window.location.origin, () => "");
+  if (!demoOnly) notFound();
 
   return (
     <main className="screen">
@@ -20,11 +25,11 @@ export default function QrKit() {
       <p className="t-cap sub">{t("kit.sub")}</p>
       {origin && (
         <div className="kit">
-          {CLASS_SUBJECTS.map((s) => (
-            <figure key={s.id}>
+          {CLASS_CODES.map((s) => (
+            <figure key={s.subjectId}>
               <QRCodeSVG value={checkinLink(origin, s.code)} level="M" marginSize={1} fgColor="#07162f" bgColor="#ffffff" title={s.code} />
               <figcaption>
-                {t(`subj.${s.id}`)}
+                {subjectLabel(t, s.subjectId, s.subjectId)}
                 <small>{s.code}</small>
               </figcaption>
             </figure>

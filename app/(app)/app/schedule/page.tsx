@@ -1,16 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Top } from "@/components/app/Top";
-import { lessonsOn, shiftOf, weekStart } from "@/lib/app/clock";
-import { DAYS } from "@/lib/app/data";
-import { formatLongDate, useNow } from "@/lib/app/derived";
+import { demoOnly } from "@/lib/app/api";
+import { DAYS, lessonsOn, shiftOf, useNow, weekStart } from "@/lib/app/demo";
+import { formatLongDate } from "@/lib/app/format";
 import { useT } from "@/lib/app/i18n";
+import { subjectLabel } from "@/lib/app/subjects";
 
+/** The timetable is the demo's: the spec has no API for it. */
 export default function Schedule() {
   const { t, locale } = useT();
   // The week, its dates and its shift wait for the phone's clock: the server cannot know them.
   const now = useNow();
+  if (!demoOnly) notFound();
   const monday = now === null ? null : weekStart(now);
   return (
     <main className="screen">
@@ -37,7 +41,7 @@ export default function Schedule() {
                         {l.from}
                       </span>
                       <span className="grow item__main">
-                        <span className="item__title">{t(`subj.${l.subject}`)}</span>
+                        <span className="item__title">{subjectLabel(t, l.subject, l.subject)}</span>
                         {l.kind !== "lesson" && <span className="pill">{t(`kind.${l.kind}`)}</span>}
                       </span>
                     </Link>

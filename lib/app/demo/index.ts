@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
+import { demoOnly } from "../api";
 import { useAttendance } from "../api/hooks";
+import type { Key } from "../i18n";
 import { CLASS_SUBJECTS, DOCS, NOTIFS, SUBJECTS } from "../data";
 import { actions, useApp } from "../store";
 import { ROOMS, demoTime, type ClockId, type Scan } from "./schedule";
@@ -36,7 +38,7 @@ export const useRealNow = () => useSyncExternalStore(tick, minute, () => null);
 export function useNow(): number | null {
   const { clock } = useDemoClock();
   const real = useRealNow();
-  return real === null ? null : demoTime(clock, real);
+  return real === null ? null : demoOnly ? demoTime(clock, real) : real;
 }
 
 /** The student's check-ins by QR, for matching them to lessons. */
@@ -48,8 +50,11 @@ export function useScans(): Scan[] {
   );
 }
 
-/** Where a subject is taught. */
-export const roomOf = (subjectId: string) => ROOMS[subjectId];
+/** Where a subject is taught: its room, or the gym. */
+export const roomLabel = (t: (key: Key, vars?: Record<string, string | number>) => string, subjectId: string) => {
+  const room = ROOMS[subjectId];
+  return room === "gym" ? t("home.gym") : t("home.room", { n: room });
+};
 
 /** Clear the demo's check-ins, read alerts, points and achievements; the language stays. */
 export const resetDemo = () => actions.reset();

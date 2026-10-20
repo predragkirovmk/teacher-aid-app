@@ -2,8 +2,9 @@
 
 import { CaretRightIcon } from "@phosphor-icons/react";
 import { Top } from "@/components/app/Top";
-import { FAQ_IDS } from "@/lib/app/data";
 import { useT } from "@/lib/app/i18n";
+
+const FAQ_IDS = ["f1", "f2", "f3", "f4"] as const;
 
 export default function Faq() {
   const { t } = useT();
