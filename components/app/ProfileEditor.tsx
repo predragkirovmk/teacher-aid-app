@@ -7,7 +7,8 @@ import { useUI } from "@/components/app/ui";
 import { saveProfile } from "@/lib/app/api/hooks";
 import type { PhotoUpload } from "@/lib/app/api/types";
 import { errorCopy, useT } from "@/lib/app/i18n";
-import { cleanName, NAME_MAX, nameError, PHOTO_MAX_BYTES, useSelf } from "@/lib/app/profile";
+import { useSelf } from "@/lib/app/profile";
+import { cleanName, NAME_MAX, nameError, PHOTO_MAX_BYTES } from "@/lib/app/profile-rules";
 import { initials } from "@/lib/app/quiz";
 import { useQT } from "@/lib/app/quiz-copy";
 

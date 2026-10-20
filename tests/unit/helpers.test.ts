@@ -1,10 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { formatDate, formatLongDate, formatPoints, formatTime } from "@/lib/app/format";
 import { initials, personName, transliterate } from "@/lib/app/quiz";
 
-// profile.ts reads the signed-in student through the hooks, which need the adapter; only its pure rules are tested here.
-vi.mock("@/lib/app/api/hooks", () => ({ useMe: () => ({}) }));
-const { NAME_MAX, NAME_MIN, PHOTO_MAX_BYTES, cleanName, nameError } = await import("@/lib/app/profile");
+import { NAME_MAX, NAME_MIN, PHOTO_MAX_BYTES, cleanName, nameError } from "@/lib/app/profile-rules";
 
 describe("dates and numbers", () => {
   const ms = new Date(2026, 9, 2, 7, 5).getTime();
@@ -62,12 +60,16 @@ describe("the display name", () => {
     expect(nameError("А")).toBe("short");
     expect(nameError("Ан")).toBeNull();
     expect(nameError("А".repeat(NAME_MAX))).toBeNull();
+    expect(nameError("А".repeat(NAME_MAX + 1))).toBe("long");
   });
 
   it("counts letters, not UTF-16 units, and collapses spaces first", () => {
     expect(cleanName("  Марко   Т ")).toBe("Марко Т");
     expect(nameError(" А ")).toBe("short");
     expect(nameError("А   Б")).toBeNull();
+    // Letters outside the basic plane take two UTF-16 units but count once.
+    expect(nameError("𐐀".repeat(NAME_MAX))).toBeNull();
+    expect(nameError(`${"А".repeat(NAME_MAX)}   `)).toBeNull();
   });
 
   it("takes letters of any script with spaces, hyphens, apostrophes and full stops", () => {
