@@ -788,7 +788,6 @@ test.describe("a live session with an opener and a number", () => {
   type Req = import("@playwright/test").APIRequestContext;
   const OPTION = ".q-opt, .q-tf__btn";
   const teacher = (request: Req, action: string, data: object = {}) => request.post(`${API}/__control/session/${action}`, { data });
-  const control = (request: Req, what: string, data: object = {}) => request.post(`${API}/__control/${what}`, { data });
   const stageOf = (page: Page) => page.locator("main.q");
   const VOTE = "POST /sessions/se-live-1/opener/vote";
   const REASON = "POST /sessions/se-live-1/opener/reason";
