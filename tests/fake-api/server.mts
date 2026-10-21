@@ -32,6 +32,14 @@
  *   POST /__control/drop-streams                               cut every event stream (the app reconnects)
  *   POST /__control/block-streams     { on }                   refuse new event streams while on
  *   POST /__control/expire-token                               the class code now answers token_expired (it rotated)
+ *
+ * Answers follow BR-NET-01: an answer counts by the time the student gave (`answered_at`), not by when it
+ * arrives. It is accepted, and its question's result is worked out again and sent to the student as a
+ * corrected `question.result`, when that time is no later than the question's `closes_at` plus GRACE_MS
+ * (2 s, PROPOSED) and the session has not ended; later than that is refused as `question_closed`, and an
+ * answer to a skipped question is refused the same way (EC-NET-03). A repeat of a key is `duplicate`, a
+ * different key for a question already answered is `already_answered`. Closing a question early moves its
+ * `closes_at` back to now, as a real server's early close does (BR-TIME-04).
  * Class codes: LIVE-7B joins; EXPIRED-7B, OTHER-8A and ENDED-7B are refused as the API would; any other is unknown.
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
@@ -51,6 +59,8 @@ const ROSTER = ["live.student@school.example"];
 const CODE = "424242";
 const WRONG_ALLOWED = 3;
 const LOCK_SECONDS = 2;
+/** How far past a question's end an answer's own time may be and still count (PROPOSED, BR-NET-01, EC-TIME-01). */
+const GRACE_MS = 2000;
 
 /** An origin on this machine, which is the only kind a test browser sends. */
 const LOCAL_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
@@ -88,7 +98,9 @@ function newSession() {
     joinedStudent: false,
     joinedLate: false,
     current: null as Live | null,
-    answers: {} as Record<string, { response: string; key: string; answeredAt: number }>,
+    /** Every question the lesson has opened, by id, so an answer that arrives after the class moved on is judged by its own question. */
+    fired: {} as Record<string, Live>,
+    answers: {} as Record<string, { response: string; key: string; answeredAt: number; receivedAt: number }>,
     results: {} as Record<string, { correct: boolean; points: number; speedBonus: number; rank: number }>,
     revealed: [] as string[],
     answered: 0,
@@ -307,24 +319,50 @@ function join(res: ServerResponse, code: string) {
   });
 }
 
+/** Work out a question's result for the student from the answer the server holds, and send it. */
+function settle(cur: Live, announce: boolean) {
+  const sess = state.session;
+  const mine = sess.answers[cur.id];
+  const prior = sess.results[cur.id];
+  const correct = !!mine && mine.response === LESSON[cur.index].correct;
+  const left = mine ? Math.max(0, cur.closesAt - mine.answeredAt) : 0;
+  const speedBonus = correct ? Math.round((5 * left) / (cur.timer * 1000)) : 0;
+  const points = correct ? 10 + speedBonus : 0;
+  sess.points += points - (prior?.points ?? 0);
+  sess.right += (correct ? 1 : 0) - (prior?.correct ? 1 : 0);
+  sess.rank = Math.max(1, 5 - sess.right);
+  sess.results[cur.id] = { correct, points, speedBonus, rank: sess.rank };
+  if (announce) {
+    broadcast("student", "question.result", resultBody(cur.id));
+    broadcast("public", "leaderboard.updated", { rows: board() });
+  }
+}
+
 /** POST /sessions/{id}/answers. */
 function answer(res: ServerResponse, body: { session_question_id?: string; response?: string; answered_at?: string; idempotency_key?: string }) {
   const sess = state.session;
-  const cur = sess.current;
   if (sess.state === "ended") return fail(res, 410, "session_ended");
-  if (!cur || body.session_question_id !== cur.id) return fail(res, 404, "not_found");
+  const cur = sess.fired[body.session_question_id ?? ""];
+  if (!cur) return fail(res, 404, "not_found");
+  // A skipped question takes no answers (EC-NET-03).
+  if (cur.status === "skipped") return fail(res, 409, "question_closed");
   const had = sess.answers[cur.id];
   if (had) return had.key === body.idempotency_key ? send(res, 200, { accepted: true, duplicate: true }) : fail(res, 409, "already_answered");
-  if (cur.status !== "open") return fail(res, 409, "question_closed");
   const valid = LESSON[cur.index].kind === "multiple_choice" ? ["0", "1", "2", "3"] : ["true", "false"];
   if (!body.response || !valid.includes(body.response)) return fail(res, 422, "validation_failed");
   const claimed = Date.parse(body.answered_at ?? "");
+  const at = Number.isNaN(claimed) ? nowMs() : claimed;
+  // The answer's own time decides, not when it arrived (BR-NET-01): inside the window, with a little grace.
+  if (at > cur.closesAt + GRACE_MS) return fail(res, 409, "question_closed");
   sess.answers[cur.id] = {
     response: body.response,
     key: body.idempotency_key ?? "",
     // The answer's time is the phone's claim, clamped to the question's window (EC-NET-07).
-    answeredAt: Math.min(cur.closesAt, Math.max(cur.firedAt, Number.isNaN(claimed) ? nowMs() : claimed)),
+    answeredAt: Math.min(cur.closesAt, Math.max(cur.firedAt, at)),
+    receivedAt: nowMs(),
   };
+  // It arrived after the question closed: the result the student already has was worked out without it.
+  if (cur.status !== "open") settle(cur, true);
   return send(res, 200, { accepted: true, duplicate: false });
 }
 
@@ -360,6 +398,7 @@ function teacher(action: string, body: Record<string, unknown>) {
         broadcast("public", "state.changed", { state: "teaching" });
       }
       sess.current = { id: LESSON[index].id, index, status: "open", firedAt: nowMs(), closesAt: nowMs() + timer * 1000, timer };
+      sess.fired[sess.current.id] = sess.current;
       sess.answered = 0;
       return broadcast("public", "question.opened", { question: wireQuestion(sess.current) });
     }
@@ -371,18 +410,10 @@ function teacher(action: string, body: Record<string, unknown>) {
     case "close": {
       if (!cur || cur.status !== "open") return;
       cur.status = "closed";
-      const mine = sess.answers[cur.id];
-      const correct = !!mine && mine.response === LESSON[cur.index].correct;
-      const left = mine ? Math.max(0, cur.closesAt - mine.answeredAt) : 0;
-      const speedBonus = correct ? Math.round((5 * left) / (cur.timer * 1000)) : 0;
-      const points = correct ? 10 + speedBonus : 0;
-      sess.points += points;
-      sess.right += correct ? 1 : 0;
-      sess.rank = Math.max(1, 5 - sess.right);
-      sess.results[cur.id] = { correct, points, speedBonus, rank: sess.rank };
+      // Closed early, the question ends now (BR-TIME-04).
+      cur.closesAt = Math.min(cur.closesAt, nowMs());
       broadcast("public", "question.closed", { session_question_id: cur.id });
-      broadcast("student", "question.result", resultBody(cur.id));
-      return broadcast("public", "leaderboard.updated", { rows: board() });
+      return settle(cur, true);
     }
     case "reveal": {
       if (!cur || cur.status === "open") return;

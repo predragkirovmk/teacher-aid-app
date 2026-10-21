@@ -311,13 +311,31 @@ test.describe("signing in", () => {
  * the second option), a true or false (false), and 7 x 8 (second option).
  */
 test.describe("a live session", () => {
-  test.use({ allowConsoleErrors: [/Failed to load resource: (the server responded with a status of (403|404|410|503)|net::ERR_)/] });
+  test.use({ allowConsoleErrors: [/Failed to load resource: (the server responded with a status of (403|404|409|410|503)|net::ERR_)/] });
 
   const OPTION = ".q-opt, .q-tf__btn";
   const teacher = (request: import("@playwright/test").APIRequestContext, action: string, data: object = {}) =>
     request.post(`${API}/__control/session/${action}`, { data });
   const control = (request: import("@playwright/test").APIRequestContext, what: string, data: object = {}) =>
     request.post(`${API}/__control/${what}`, { data });
+  /** What the fake server holds of the live session: the answers it took, with the time it counted each at. */
+  type Held = { answers: Record<string, { response: string; key: string; answeredAt: number; receivedAt: number }>; current: { closesAt: number; status: string } | null };
+  const held = async (request: import("@playwright/test").APIRequestContext) =>
+    ((await (await request.get(`${API}/__control/state`)).json()) as { session: Held }).session;
+
+  /**
+   * A phone that has lost its signal: the browser is offline, and the lesson's stream is cut and refused, so it hears
+   * nothing from the class (Playwright's offline mode alone leaves an open stream running).
+   */
+  const goOffline = async (context: import("@playwright/test").BrowserContext, request: import("@playwright/test").APIRequestContext) => {
+    await control(request, "block-streams", { on: true });
+    await context.setOffline(true);
+    await control(request, "drop-streams");
+  };
+  const goOnline = async (context: import("@playwright/test").BrowserContext, request: import("@playwright/test").APIRequestContext) => {
+    await context.setOffline(false);
+    await control(request, "block-streams", { on: false });
+  };
   const timerSeconds = async (page: Page) => Number(((await page.getByRole("timer").getAttribute("aria-label")) ?? "").match(/\d+/)?.[0]);
 
   /** In the lobby, on the event stream. */
@@ -424,6 +442,8 @@ test.describe("a live session", () => {
     await teacher(request, "fire", { index: 0, timer: 60 });
     await page.locator(OPTION).nth(1).click();
     await expect(page.getByText(mk.q("q.locked"))).toBeVisible();
+    // The answer is saved before it is sent, so wait until the server has it before skipping the question.
+    await expect.poll(async () => ((await held(request)).answers.fq1 ?? null)?.response).toBe("1");
     await teacher(request, "skip");
     await expect(page.getByText(mk.q("q.next"))).toBeVisible();
     await expect(page.getByText(mk.q("q.locked"))).toHaveCount(0);
@@ -468,14 +488,14 @@ test.describe("a live session", () => {
     // The link goes, and while it is gone the first question closes and the second opens.
     await control(request, "block-streams", { on: true });
     await control(request, "drop-streams");
-    await expect(page.getByText(mk.q("q.conn"))).toBeVisible();
+    await expect(page.getByText(mk.q("net.reconnecting"))).toBeVisible();
     await teacher(request, "close");
     await teacher(request, "reveal");
     await teacher(request, "fire", { index: 1, timer: 60 });
     await control(request, "block-streams", { on: false });
 
     // It retries by itself and the snapshot puts the screen where the lesson is.
-    await expect(page.getByText(mk.q("q.conn"))).toBeHidden({ timeout: 15_000 });
+    await expect(page.getByText(mk.q("net.reconnecting"))).toBeHidden({ timeout: 15_000 });
     await expect(page.getByText(mk.q("q.tfPrompt"))).toBeVisible();
     const after = (await serverState(request)).calls.filter((c) => c === "GET /sessions/se-live-1/student-state").length;
     expect(after).toBeGreaterThan(before);
@@ -494,9 +514,11 @@ test.describe("a live session", () => {
     let refused = 0;
     await context.route(`${API}/api/v1/sessions/se-live-1/answers`, (route) => (refused++ < 2 ? route.abort() : route.continue()));
     await page.locator(OPTION).nth(1).click();
-    await expect(page.getByText(mk.q("q.sending"))).toBeVisible();
+    // The first attempt fails at once: the answer is on the phone, and the student is told so.
+    await expect(page.getByText(mk.q("ans.saved"))).toBeVisible();
     await expect.poll(async () => (await serverState(request)).bodies["POST /sessions/se-live-1/answers"], { timeout: 15_000 }).toBeTruthy();
-    await expect(page.getByText(mk.q("q.sending"))).toBeHidden();
+    await expect(page.getByText(mk.q("ans.sent"), { exact: true })).toBeVisible();
+    await expect(page.getByText(mk.q("ans.saved"))).toBeHidden();
     await teacher(request, "close");
     await expect(page.getByRole("heading", { name: mk.q("q.right") })).toBeVisible();
     expect(refused).toBeGreaterThanOrEqual(3);
@@ -533,6 +555,188 @@ test.describe("a live session", () => {
     await inLobby(page, request);
     await teacher(request, "elsewhere");
     await expect(page.getByRole("alert").filter({ hasText: mk.t("elsewhere.title") })).toBeVisible();
+  });
+
+  test.describe("answers given with no signal (F-08, BR-NET-01)", () => {
+    test("an answer given offline is saved, then counted with the time it was given when the question closed meanwhile", async ({ page, request, context }) => {
+      await inLobby(page, request);
+      await teacher(request, "fire", { index: 0, timer: 60 });
+      await expect(page.locator(OPTION).first()).toBeVisible();
+
+      await goOffline(context, request);
+      await expect(page.getByText(mk.q("net.offline"))).toBeVisible();
+      await page.locator(OPTION).nth(1).click();
+      await expect(page.getByText(mk.q("ans.saved"))).toBeVisible();
+      await expect(page.getByText(mk.q("net.saved.one"))).toHaveCount(0); // said once, under the card
+      // Nothing reached the server.
+      expect((await held(request)).answers.fq1).toBeUndefined();
+
+      // The teacher closes the question while the phone is out of signal; the server settles it without the answer.
+      await teacher(request, "close");
+      await goOnline(context, request);
+
+      // The saved answer arrives after the close, and counts: the verdict is a right answer.
+      await expect(page.getByRole("heading", { name: mk.q("q.right") })).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator(".q-gain")).toContainText(/\+1\d/);
+
+      const body = (await serverState(request)).bodies["POST /sessions/se-live-1/answers"] as { answered_at: string; idempotency_key: string };
+      const server = await held(request);
+      // The server counted it by the time the phone gave (server-clock terms), which is before the close, though it arrived after.
+      expect(server.answers.fq1.answeredAt).toBe(Date.parse(body.answered_at));
+      expect(server.answers.fq1.receivedAt).toBeGreaterThan(server.current!.closesAt);
+      expect(server.answers.fq1.key).toBe(body.idempotency_key);
+    });
+
+    test("an answer whose own time is past the question's end and the grace is refused, and the student is told it came too late", async ({ page, request, context }) => {
+      await inLobby(page, request);
+      await teacher(request, "fire", { index: 0, timer: 60 });
+      await expect(page.locator(OPTION).first()).toBeVisible();
+
+      await goOffline(context, request);
+      await expect(page.getByText(mk.q("net.offline"))).toBeVisible();
+      // The server closes the question now; the phone, out of signal, does not know and takes an answer a little later.
+      await teacher(request, "close");
+      await page.waitForTimeout(3000);
+      await page.locator(OPTION).nth(1).click();
+      await expect(page.getByText(mk.q("ans.saved"))).toBeVisible();
+      await goOnline(context, request);
+
+      // In the quiz the screen says so itself: the verdict, with the reason.
+      await expect(page.getByRole("heading", { name: mk.q("q.timeout") })).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByText(mk.q("q.tooLate"), { exact: true })).toBeVisible();
+      await expect(page.getByText(mk.q("ans.saved"))).toHaveCount(0);
+      expect((await held(request)).answers.fq1).toBeUndefined();
+    });
+
+    test("a student who has left the quiz is told on a toast that the saved answer came too late", async ({ page, request, context }) => {
+      await inLobby(page, request);
+      await teacher(request, "fire", { index: 0, timer: 60 });
+      await expect(page.locator(OPTION).first()).toBeVisible();
+
+      // The app cannot reach the answers endpoint or hear the class, though the rest works.
+      await context.route(`${API}/api/v1/sessions/se-live-1/answers`, (route) => route.abort());
+      await control(request, "block-streams", { on: true });
+      await control(request, "drop-streams");
+      await teacher(request, "close");
+      await page.waitForTimeout(3000);
+      await page.locator(OPTION).nth(1).click();
+      await expect(page.getByText(mk.q("ans.saved"))).toBeVisible();
+
+      await page.getByRole("button", { name: mk.q("q.leave") }).click();
+      await page.getByRole("dialog", { name: mk.q("q.leaveTitle") }).getByRole("button", { name: mk.q("q.leaveConfirm") }).click();
+      await expect(page).toHaveURL(/\/app$/);
+      await expect(page.getByText(mk.q("net.saved.one"))).toBeVisible();
+
+      await context.unroute(`${API}/api/v1/sessions/se-live-1/answers`);
+      await expect(page.locator(".toast")).toContainText(mk.q("ans.tooLate"), { timeout: 15_000 });
+      await expect(page.getByText(mk.q("net.saved.one"))).toHaveCount(0);
+      expect((await held(request)).answers.fq1).toBeUndefined();
+    });
+
+    test("an app opened again with no way to reach the server says the answer is saved, and sends it once it can", async ({ page, request, context }) => {
+      await inLobby(page, request);
+      await teacher(request, "fire", { index: 0, timer: 60 });
+      await expect(page.locator(OPTION).first()).toBeVisible();
+
+      await context.route(`${API}/**`, (route) => route.abort());
+      await page.locator(OPTION).nth(1).click();
+      await expect(page.getByText(mk.q("ans.saved"))).toBeVisible();
+      expect((await held(request)).answers.fq1).toBeUndefined();
+
+      // The app is closed and opened again, still with no way to the server: it cannot even say who is signed in,
+      // but it knows whose answer it holds, and says it is safe.
+      await page.reload();
+      await expect(page.getByRole("alert").filter({ hasText: mk.t("err.network") })).toBeVisible();
+      await expect(page.getByText(mk.q("net.saved.one"))).toBeVisible();
+      expect((await held(request)).answers.fq1).toBeUndefined();
+
+      // The way back opens: the server says who this is, the lesson opens on the question with the answer shown as
+      // given, and the answer goes out with the time it was given.
+      await context.unroute(`${API}/**`);
+      await page.getByRole("button", { name: mk.t("state.retry") }).click();
+      await expect.poll(async () => (await held(request)).answers.fq1?.response, { timeout: 25_000 }).toBe("1");
+      await expect(page.getByText(mk.q("q.locked"))).toBeVisible({ timeout: 25_000 });
+      await expect(page.getByText(mk.q("ans.sent"), { exact: true })).toBeVisible();
+      await expect(page.getByText(mk.q("net.saved.one"))).toHaveCount(0);
+    });
+
+    test("a reload when only the join cannot be made opens the lesson the tab joined, with the saved answer on the question", async ({ page, request, context }) => {
+      await inLobby(page, request);
+      await teacher(request, "fire", { index: 0, timer: 60 });
+      await expect(page.locator(OPTION).first()).toBeVisible();
+
+      await context.route(`${API}/api/v1/sessions/se-live-1/answers`, (route) => route.abort());
+      await page.locator(OPTION).nth(1).click();
+      await expect(page.getByText(mk.q("ans.saved"))).toBeVisible();
+
+      await context.route(`${API}/api/v1/sessions/join`, (route) => route.abort());
+      await page.reload();
+      // Not a failed join: the lesson is open, and the question is already answered, as saved.
+      await expect(page.locator("main[data-failure]")).toHaveCount(0);
+      await expect(page.getByText(mk.q("q.locked"))).toBeVisible();
+      await expect(page.getByText(mk.q("ans.saved"))).toBeVisible();
+
+      await context.unroute(`${API}/api/v1/sessions/se-live-1/answers`);
+      await expect.poll(async () => (await held(request)).answers.fq1?.response, { timeout: 25_000 }).toBe("1");
+      await expect(page.getByText(mk.q("ans.sent"), { exact: true })).toBeVisible({ timeout: 15_000 });
+    });
+
+    test("an answer saved before the app was closed is sent when it opens again, wherever the student opens it", async ({ page, request, context }) => {
+      await inLobby(page, request);
+      await teacher(request, "fire", { index: 0, timer: 60 });
+      await expect(page.locator(OPTION).first()).toBeVisible();
+      await context.route(`${API}/**`, (route) => route.abort());
+      await page.locator(OPTION).nth(1).click();
+      await expect(page.getByText(mk.q("ans.saved"))).toBeVisible();
+      await context.unroute(`${API}/**`);
+      // Closed, and opened again at Home, not in the lesson.
+      await page.goto("/app");
+      await expect(page.getByRole("heading", { level: 1 })).toContainText("Live");
+      await expect.poll(async () => (await held(request)).answers.fq1?.response, { timeout: 15_000 }).toBe("1");
+    });
+
+    test("the fake API counts an answer by its own time, within the grace past the close, and refuses one beyond it", async ({ request }) => {
+      const post = (key: string, answeredAt: number, response = "1") =>
+        request.post(`${API}/api/v1/sessions/se-live-1/answers`, {
+          data: { session_question_id: "fq1", response, answered_at: new Date(answeredAt).toISOString(), idempotency_key: key },
+        });
+      await teacher(request, "fire", { index: 0, timer: 60 });
+      await teacher(request, "close");
+      const closesAt = (await held(request)).current!.closesAt;
+
+      // One second past the close is inside the grace: counted, and its time clamped to the close.
+      const within = await post("k-within", closesAt + 1000);
+      expect(within.status()).toBe(200);
+      expect(await within.json()).toEqual({ accepted: true, duplicate: false });
+      expect((await held(request)).answers.fq1.answeredAt).toBe(closesAt);
+      // The same key again is stored once; a different key is the first answer standing.
+      expect(await (await post("k-within", closesAt + 1000)).json()).toEqual({ accepted: true, duplicate: true });
+      const other = await post("k-other", closesAt - 500, "2");
+      expect(other.status()).toBe(409);
+      expect(((await other.json()) as { error: { code: string } }).error.code).toBe("already_answered");
+      expect((await held(request)).answers.fq1.response).toBe("1");
+
+      // A new lesson: five seconds past the close is beyond the grace.
+      await request.post(`${API}/__control/reset`);
+      await teacher(request, "fire", { index: 0, timer: 60 });
+      await teacher(request, "close");
+      const beyond = await post("k-beyond", (await held(request)).current!.closesAt + 5000);
+      expect(beyond.status()).toBe(409);
+      expect(((await beyond.json()) as { error: { code: string } }).error.code).toBe("question_closed");
+      expect((await held(request)).answers.fq1).toBeUndefined();
+
+      // Skipped questions take nothing (EC-NET-03), and an ended session answers session_ended.
+      await teacher(request, "fire", { index: 1, timer: 60 });
+      await teacher(request, "skip");
+      const skipped = await request.post(`${API}/api/v1/sessions/se-live-1/answers`, {
+        data: { session_question_id: "fq2", response: "false", answered_at: new Date().toISOString(), idempotency_key: "k-skip" },
+      });
+      expect(((await skipped.json()) as { error: { code: string } }).error.code).toBe("question_closed");
+      await teacher(request, "end");
+      const ended = await post("k-ended", Date.now());
+      expect(ended.status()).toBe(410);
+      expect(((await ended.json()) as { error: { code: string } }).error.code).toBe("session_ended");
+    });
   });
 
   test.describe("when the join fails", () => {
