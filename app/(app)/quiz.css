@@ -768,10 +768,8 @@
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  transition:
-    box-shadow 160ms ease-out,
-    border-color 160ms ease-out;
 }
+/* The focus ring is instant: a field that is tapped into or tabbed to is not an event worth animating. */
 .n-box:focus-within,
 .n-box[data-invalid="true"] {
   border-color: #fff;
@@ -888,9 +886,6 @@
   line-height: 1.4;
   color: #fff;
   outline: 0;
-  transition:
-    box-shadow 160ms ease-out,
-    border-color 160ms ease-out;
 }
 .o-input::placeholder {
   color: var(--text-2);
@@ -1010,7 +1005,13 @@
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.72);
   transform-origin: left center;
-  animation: o-grow var(--spring-smooth-dur) var(--spring-smooth) calc(var(--i) * 60ms + 120ms) backwards;
+  /* Once, when the class's votes first arrive: they grow in from the left, a little apart. */
+  animation: o-grow var(--spring-snappy-dur) var(--spring-snappy) calc(var(--i) * 50ms + 80ms) backwards;
+  transition: background-color 200ms ease-out;
+}
+/* On the result the bars were already seen; only the right answer changes, and says so. */
+.o-counts--still .o-bar__track i {
+  animation: none;
 }
 .o-bar[data-right="true"] .o-bar__track i {
   background: var(--yellow);
@@ -1034,6 +1035,7 @@
 .o-tag--right {
   background: var(--ice);
   color: var(--ink);
+  animation: q-rise var(--spring-snappy-dur) var(--spring-snappy) backwards;
 }
 
 /* The result: a small badge, one word, the points, then everything the class did. */

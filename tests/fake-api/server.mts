@@ -27,6 +27,10 @@
  *   POST /__control/session/skip                               skip the open question
  *   POST /__control/session/end                                end the session: results, rank and the tally
  *   POST /__control/session/joined    { count }                the class gathering in the lobby
+ *   POST /__control/session/opener    { kind?, vote?, reason? } start the opener: "prediction" (default) or "debate", with the seconds each part lasts (30 and 45)
+ *   POST /__control/session/opener-voting-end                  voting closes: the class's final votes go out
+ *   POST /__control/session/opener-close                       the opener ends: the student's vote and reason are worked out and sent
+ *   POST /__control/session/opener-reveal                      the teacher reveals: the right answer, the final votes, the anonymous reasons
  *   POST /__control/session/elsewhere                          tell the student's channel they signed in on another device
  *   POST /__control/skew              { ms }                   the server's clock runs this far ahead of the machine's
  *   POST /__control/drop-streams                               cut every event stream (the app reconnects)
@@ -40,6 +44,11 @@
  * answer to a skipped question is refused the same way (EC-NET-03). A repeat of a key is `duplicate`, a
  * different key for a question already answered is `already_answered`. Closing a question early moves its
  * `closes_at` back to now, as a real server's early close does (BR-TIME-04).
+ * The opener (spec 4.3) takes `POST /sessions/{id}/opener/vote` (an answer's body) and `/opener/reason` (`text`
+ * instead of `response`), judged like answers: by the time the student gave, with the same grace, one of each,
+ * a key seen before is `duplicate`. A reason needs a vote. A right prediction is worth 10, a written reason 8
+ * whatever the vote (BR-PTS-02), a debate has no right side (OPEN-07). The fourth question of the lesson is a
+ * number: 7 divided by 4, within 0.01, no minus. The server reads a comma or a point and keeps the number as text.
  * Class codes: LIVE-7B joins; EXPIRED-7B, OTHER-8A and ENDED-7B are refused as the API would; any other is unknown.
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
@@ -79,12 +88,43 @@ const COURSES: WireCourse[] = [
 
 // ---- A live session ---------------------------------------------------------------------------------
 
-type LessonQuestion = { id: string; kind: "multiple_choice" | "true_false"; prompt: string; options: string[] | null; correct: string };
+type LessonQuestion = {
+  id: string;
+  kind: "multiple_choice" | "true_false" | "numeric";
+  prompt: string;
+  options: string[] | null;
+  correct: string;
+  numeric?: { unit: string | null; tolerance: number; allow_negative: boolean };
+};
 const LESSON: LessonQuestion[] = [
   { id: "fq1", kind: "multiple_choice", prompt: "2x = 10. What is x?", options: ["2", "5", "10", "20"], correct: "1" },
   { id: "fq2", kind: "true_false", prompt: "A triangle has four sides.", options: null, correct: "false" },
   { id: "fq3", kind: "multiple_choice", prompt: "What is 7 x 8?", options: ["54", "56", "58", "64"], correct: "1" },
+  { id: "fq4", kind: "numeric", prompt: "What is 7 divided by 4?", options: null, correct: "1.75", numeric: { unit: null, tolerance: 0.01, allow_negative: false } },
 ];
+
+/** What the opener asks, by kind; the class's votes are fixed, the student's is added to them. */
+const OPENERS = {
+  prediction: {
+    id: "fo1",
+    kind: "opener_prediction",
+    prompt: "Which is the biggest fraction?",
+    options: ["1/2", "1/3", "1/4"],
+    correct: "0",
+    class: [9, 3, 1],
+    reasons: ["Half is more than a third.", "The bigger the bottom, the smaller the piece."],
+  },
+  debate: {
+    id: "fo2",
+    kind: "opener_debate",
+    prompt: "Homework should be optional.",
+    options: null,
+    correct: null,
+    class: [4, 8],
+    reasons: ["I learn more when I choose.", "Without it nobody would practise."],
+  },
+} as const;
+const REASON_MAX = 80;
 const SESSION_ID = "se-live-1";
 const STUDENT_ID = "st-1";
 type SessionStateName = "lobby" | "opener" | "teaching" | "review" | "ended";
@@ -108,8 +148,24 @@ function newSession() {
     rank: 5,
     right: 0,
     summary: null as null | { right: number; total: number },
+    /** The opener the teacher started, while it is the lesson's current question. */
+    opener: null as null | OpenerLive,
   };
 }
+
+type OpenerLive = {
+  kind: "prediction" | "debate";
+  status: "open" | "closed" | "revealed";
+  phase: "voting" | "reasoning" | "revealed";
+  firedAt: number;
+  voteClosesAt: number;
+  /** When voting really ended, which may be earlier than planned. */
+  voteEnd: number;
+  closesAt: number;
+  mine: null | { response: string; key: string; answeredAt: number };
+  reason: null | { text: string; key: string; answeredAt: number };
+  result: null | { correct: boolean | null; points: number; reasonPoints: number };
+};
 
 const initial = () => ({
   /** Why every call is refused, or null while the student is signed in. */
@@ -249,8 +305,102 @@ const wireQuestion = (cur: Live) => {
     timer_seconds: cur.timer,
     fired_at: new Date(cur.firedAt).toISOString(),
     closes_at: new Date(cur.closesAt).toISOString(),
+    numeric: q.numeric ?? null,
+    opener: null,
   };
 };
+
+/** A number the way the server reads it: a comma or a point, at most one, a minus only where allowed; kept as text with a point. */
+function readNumber(raw: string, allowNegative: boolean): string | null {
+  const m = /^\s*(-?)(\d+)(?:[.,](\d+))?\s*$/.exec(raw);
+  if (!m || (m[1] && !allowNegative)) return null;
+  return `${m[1]}${m[2]}${m[3] ? `.${m[3]}` : ""}`;
+}
+
+const isRight = (q: LessonQuestion, response: string) =>
+  q.kind === "numeric" ? Math.abs(Number(response) - Number(q.correct)) <= (q.numeric?.tolerance ?? 0) + 1e-9 : response === q.correct;
+
+// ---- The opener ----------------------------------------------------------------------------------------
+
+const wireOpener = (o: OpenerLive) => {
+  const def = OPENERS[o.kind];
+  return {
+    id: def.id,
+    index: 0,
+    total: LESSON.length,
+    kind: def.kind,
+    prompt: def.prompt,
+    options: def.options,
+    status: o.status,
+    timer_seconds: (o.closesAt - o.firedAt) / 1000,
+    fired_at: new Date(o.firedAt).toISOString(),
+    closes_at: new Date(o.closesAt).toISOString(),
+    numeric: null,
+    opener: { vote_closes_at: new Date(o.voteClosesAt).toISOString(), reason_max_length: REASON_MAX },
+  };
+};
+
+/** The class's votes plus the student's, one count for each option or side. */
+const countsOf = (o: OpenerLive) => {
+  const base: number[] = [...OPENERS[o.kind].class];
+  if (o.mine) base[o.kind === "prediction" ? Number(o.mine.response) : o.mine.response === "agree" ? 0 : 1]++;
+  return base;
+};
+
+/** What the student's vote and reason are worth from what the server holds (BR-PTS-02). */
+function settleOpener(o: OpenerLive) {
+  const def = OPENERS[o.kind];
+  const voteRight = def.correct !== null && o.mine?.response === def.correct;
+  const reasonPoints = o.reason ? 8 : 0;
+  const points = (voteRight ? 10 : 0) + reasonPoints;
+  const before = o.result?.points ?? 0;
+  state.session.points += points - before;
+  o.result = { correct: def.correct === null ? null : voteRight, points, reasonPoints };
+}
+
+const openerResultBody = (o: OpenerLive) => ({
+  session_question_id: OPENERS[o.kind].id,
+  correct: o.result!.correct,
+  points: o.result!.points,
+  reason_points: o.result!.reasonPoints,
+  speed_bonus: 0,
+  session_rank: state.session.rank,
+  session_points: state.session.points,
+  correct_answer: o.status === "revealed" ? OPENERS[o.kind].correct : null,
+  explanation: null,
+});
+
+/** The opener's own two endpoints. The same rules as an answer: the student's own time decides, one of each, a repeated key is a duplicate. */
+function openerGive(res: ServerResponse, part: "vote" | "reason", body: { session_question_id?: string; response?: string; text?: string; answered_at?: string; idempotency_key?: string }) {
+  const sess = state.session;
+  if (sess.state === "ended") return fail(res, 410, "session_ended");
+  const o = sess.opener;
+  if (!o || OPENERS[o.kind].id !== body.session_question_id) return fail(res, 404, "not_found");
+  const key = body.idempotency_key ?? "";
+  const had = part === "vote" ? o.mine : o.reason;
+  if (had) return had.key === key ? send(res, 200, { accepted: true, duplicate: true }) : fail(res, 409, "already_answered");
+  const claimed = Date.parse(body.answered_at ?? "");
+  const at = Number.isNaN(claimed) ? nowMs() : claimed;
+  if (part === "vote") {
+    const valid = o.kind === "prediction" ? ["0", "1", "2"] : ["agree", "disagree"];
+    if (!body.response || !valid.includes(body.response)) return fail(res, 422, "validation_failed");
+    if (at > o.voteEnd + GRACE_MS) return fail(res, 409, "question_closed");
+    o.mine = { response: body.response, key, answeredAt: Math.min(o.voteEnd, Math.max(o.firedAt, at)) };
+  } else {
+    // A reason belongs to a vote, is one line, and is cut to the limit.
+    const text = (body.text ?? "").replace(/\s+/g, " ").trim().slice(0, REASON_MAX);
+    if (!o.mine || text === "") return fail(res, 422, "validation_failed");
+    if (at > o.closesAt + GRACE_MS) return fail(res, 409, "question_closed");
+    o.reason = { text, key, answeredAt: Math.min(o.closesAt, Math.max(o.mine.answeredAt, at)) };
+  }
+  // It arrived after the opener closed: the result the student has was worked out without it.
+  if (o.status !== "open") {
+    settleOpener(o);
+    broadcast("student", "question.result", openerResultBody(o));
+    broadcast("public", "leaderboard.updated", { rows: board() });
+  }
+  return send(res, 200, { accepted: true, duplicate: false });
+}
 
 const resultBody = (id: string) => {
   const r = state.session.results[id];
@@ -279,6 +429,27 @@ function board() {
 function snapshot() {
   const sess = state.session;
   const cur = sess.current;
+  const o = sess.opener;
+  if (o) {
+    return {
+      session: wireSession(),
+      server_now: nowIso(),
+      question: wireOpener(o),
+      my_response: o.mine?.response ?? null,
+      my_reason: o.reason?.text ?? null,
+      result: o.result ? openerResultBody(o) : null,
+      session_points: sess.points,
+      session_rank: sess.rank,
+      board: o.result ? board() : null,
+      progress: o.phase === "voting" ? { answered: countsOf(o).reduce((a, b) => a + b, 0), joined: sess.joined } : null,
+      summary: sess.summary,
+      opener: {
+        phase: o.phase,
+        votes: countsOf(o),
+        reasons: o.status === "revealed" ? [...OPENERS[o.kind].reasons] : [],
+      },
+    };
+  }
   return {
     session: wireSession(),
     server_now: nowIso(),
@@ -324,7 +495,7 @@ function settle(cur: Live, announce: boolean) {
   const sess = state.session;
   const mine = sess.answers[cur.id];
   const prior = sess.results[cur.id];
-  const correct = !!mine && mine.response === LESSON[cur.index].correct;
+  const correct = !!mine && isRight(LESSON[cur.index], mine.response);
   const left = mine ? Math.max(0, cur.closesAt - mine.answeredAt) : 0;
   const speedBonus = correct ? Math.round((5 * left) / (cur.timer * 1000)) : 0;
   const points = correct ? 10 + speedBonus : 0;
@@ -348,14 +519,16 @@ function answer(res: ServerResponse, body: { session_question_id?: string; respo
   if (cur.status === "skipped") return fail(res, 409, "question_closed");
   const had = sess.answers[cur.id];
   if (had) return had.key === body.idempotency_key ? send(res, 200, { accepted: true, duplicate: true }) : fail(res, 409, "already_answered");
-  const valid = LESSON[cur.index].kind === "multiple_choice" ? ["0", "1", "2", "3"] : ["true", "false"];
-  if (!body.response || !valid.includes(body.response)) return fail(res, 422, "validation_failed");
+  const lq = LESSON[cur.index];
+  const numeric = lq.kind === "numeric" ? readNumber(body.response ?? "", lq.numeric?.allow_negative ?? false) : null;
+  const valid = lq.kind === "multiple_choice" ? ["0", "1", "2", "3"] : ["true", "false"];
+  if (!body.response || (lq.kind === "numeric" ? numeric === null : !valid.includes(body.response))) return fail(res, 422, "validation_failed");
   const claimed = Date.parse(body.answered_at ?? "");
   const at = Number.isNaN(claimed) ? nowMs() : claimed;
   // The answer's own time decides, not when it arrived (BR-NET-01): inside the window, with a little grace.
   if (at > cur.closesAt + GRACE_MS) return fail(res, 409, "question_closed");
   sess.answers[cur.id] = {
-    response: body.response,
+    response: numeric ?? body.response,
     key: body.idempotency_key ?? "",
     // The answer's time is the phone's claim, clamped to the question's window (EC-NET-07).
     answeredAt: Math.min(cur.closesAt, Math.max(cur.firedAt, at)),
@@ -397,6 +570,7 @@ function teacher(action: string, body: Record<string, unknown>) {
         sess.state = "teaching";
         broadcast("public", "state.changed", { state: "teaching" });
       }
+      sess.opener = null;
       sess.current = { id: LESSON[index].id, index, status: "open", firedAt: nowMs(), closesAt: nowMs() + timer * 1000, timer };
       sess.fired[sess.current.id] = sess.current;
       sess.answered = 0;
@@ -427,6 +601,50 @@ function teacher(action: string, body: Record<string, unknown>) {
       delete sess.answers[cur.id];
       delete sess.results[cur.id];
       return broadcast("public", "question.skipped", { session_question_id: cur.id });
+    }
+    case "opener": {
+      const kind = body.kind === "debate" ? "debate" : "prediction";
+      const vote = Number(body.vote ?? 30) * 1000;
+      const reason = Number(body.reason ?? 45) * 1000;
+      const firedAt = nowMs();
+      sess.state = "opener";
+      broadcast("public", "state.changed", { state: "opener" });
+      sess.current = null;
+      sess.opener = { kind, status: "open", phase: "voting", firedAt, voteClosesAt: firedAt + vote, voteEnd: firedAt + vote, closesAt: firedAt + vote + reason, mine: null, reason: null, result: null };
+      return broadcast("public", "question.opened", { question: wireOpener(sess.opener) });
+    }
+    case "opener-voting-end": {
+      const o = sess.opener;
+      if (!o || o.phase !== "voting") return;
+      o.phase = "reasoning";
+      o.voteEnd = Math.min(o.voteEnd, nowMs());
+      return broadcast("public", "opener.counts", { session_question_id: OPENERS[o.kind].id, phase: "reasoning", votes: countsOf(o) });
+    }
+    case "opener-close": {
+      const o = sess.opener;
+      if (!o || o.status !== "open") return;
+      if (o.phase === "voting") {
+        o.phase = "reasoning";
+        o.voteEnd = Math.min(o.voteEnd, nowMs());
+        broadcast("public", "opener.counts", { session_question_id: OPENERS[o.kind].id, phase: "reasoning", votes: countsOf(o) });
+      }
+      o.status = "closed";
+      o.closesAt = Math.min(o.closesAt, nowMs());
+      settleOpener(o);
+      broadcast("public", "question.closed", { session_question_id: OPENERS[o.kind].id });
+      broadcast("student", "question.result", openerResultBody(o));
+      return broadcast("public", "leaderboard.updated", { rows: board() });
+    }
+    case "opener-reveal": {
+      const o = sess.opener;
+      if (!o || o.status === "open") return;
+      o.status = "revealed";
+      o.phase = "revealed";
+      if (o.result) o.result = { ...o.result };
+      const def = OPENERS[o.kind];
+      broadcast("public", "opener.counts", { session_question_id: def.id, phase: "revealed", votes: countsOf(o) });
+      broadcast("public", "opener.reasons", { session_question_id: def.id, reasons: [...def.reasons] });
+      return broadcast("public", "question.revealed", { session_question_id: def.id, correct_answer: def.correct, explanation: null });
     }
     case "elsewhere":
       return broadcast("student", "signed_in_elsewhere");
@@ -624,6 +842,14 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     const body = (await readJson(req)) as { token?: string; short_code?: string } | undefined;
     state.bodies[`${method} ${api}`] = body;
     return join(res, (body?.token ?? body?.short_code ?? "").trim().toUpperCase());
+  }
+
+  const opener = /^\/sessions\/([^/]+)\/opener\/(vote|reason)$/.exec(api);
+  if (opener && method === "POST") {
+    if (decodeURIComponent(opener[1]) !== SESSION_ID) return fail(res, 404, "not_found");
+    const body = (await readJson(req)) as Record<string, string> | undefined;
+    state.bodies[`${method} ${api}`] = body;
+    return openerGive(res, opener[2] as "vote" | "reason", body ?? {});
   }
 
   const live = /^\/sessions\/([^/]+)\/(student-state|answers)$/.exec(api);

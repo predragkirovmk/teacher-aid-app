@@ -206,12 +206,12 @@ export function Reasoning({ run, onLeave, onSend, onSkip }: Props & { onSend: (t
   );
 }
 
-/** Rows of bars: how the class voted. The bars grow once, from the left, the first time they are shown. */
-function VoteCounts({ q, votes, mine, right }: { q: SessionQuestion; votes: number[]; mine: number | null; right: number | null }) {
+/** Rows of bars: how the class voted. The bars grow once, from the left, the first time they are shown (`grow`); the result shows them as they were. */
+function VoteCounts({ q, votes, mine, right, grow }: { q: SessionQuestion; votes: number[]; mine: number | null; right: number | null; grow: boolean }) {
   const { t, side, debate, letter } = useOpenerLabels(q);
   const most = Math.max(1, ...votes);
   return (
-    <section className="card o-counts" aria-label={t("o.counts")}>
+    <section className={`card o-counts${grow ? "" : " o-counts--still"}`} aria-label={t("o.counts")}>
       <h2 className="t-label muted o-counts__title">{t("o.counts")}</h2>
       <ul className="o-bars">
         {votes.map((n, i) => (
@@ -300,7 +300,7 @@ export function OpenerWait({ run, onLeave }: Props) {
         )}
         <OwnReason run={run} />
         {o.votes ? (
-          <VoteCounts q={q} votes={o.votes} mine={mine} right={null} />
+          <VoteCounts q={q} votes={o.votes} mine={mine} right={null} grow />
         ) : (
           progress && (
             <section className="card q-answered" aria-label={`${progress.answered} ${t("o.voted", { total: progress.joined })}`}>
@@ -387,7 +387,7 @@ export function OpenerResult({ run, onLeave }: Props) {
         )}
       </div>
       <div className="q-stack o-rest">
-        {o.votes && <VoteCounts q={q} votes={o.votes} mine={mine} right={right} />}
+        {o.votes && <VoteCounts q={q} votes={o.votes} mine={mine} right={right} grow={false} />}
         {voted && o.reason !== null && <OwnReason run={run} />}
         {shown.length > 0 && (
           <section className="o-reasons" aria-label={t("o.classSays")}>

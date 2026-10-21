@@ -127,7 +127,7 @@ test.describe("what the live build leaves out or refuses", () => {
     expect(scripts.length).toBeGreaterThan(0);
     // Strings only the mock adapter, its leaderboard and its quiz driver contain. A count rather than
     // the script in the failure message: one chunk is a quarter of a megabyte.
-    for (const needle of ["mock-session-", "flaky-7b", "mock-classmate-", "student-marko", "Виктор Илиевски", "Њутнови закони", "marko.trajkovski@student", "teacheraid-mock-challenge"]) {
+    for (const needle of ["mock-session-", "flaky-7b", "mock-classmate-", "student-marko", "Виктор Илиевски", "Њутнови закони", "marko.trajkovski@student", "teacheraid-mock-challenge", "opener-7b", "debate-7b", "numeric-7b", "Spelling matters, even in a message to a friend"]) {
       expect(scripts.filter((source) => source.includes(needle)).length, `scripts containing "${needle}"`).toBe(0);
     }
   });
@@ -403,7 +403,7 @@ test.describe("a live session", () => {
     await teacher(request, "end");
     const ended = page.getByRole("heading", { name: mk.q("q.ended.title") });
     await expect(ended).toBeVisible();
-    await expect(page.getByText(/2 од 3 точни/)).toBeVisible();
+    await expect(page.getByText(/2 од 4 точни/)).toBeVisible();
     await expect(page.getByText(mk.q("q.place"))).toBeVisible();
     await expect(page.getByText(mk.q("q.total"))).toBeVisible();
 
@@ -411,7 +411,7 @@ test.describe("a live session", () => {
     await page.getByRole("link", { name: mk.q("q.ended.summary") }).click();
     await expect(page).toHaveURL(/\/app\/summary\/se-live-1$/);
     await expect(page.getByText("Linear equations")).toBeVisible();
-    await expect(page.locator(".tile-big")).toHaveText("2/3");
+    await expect(page.locator(".tile-big")).toHaveText("2/4");
   });
 
   test("a wrong answer waits for the teacher to show the right one", async ({ page, request }) => {
@@ -773,5 +773,233 @@ test.describe("a live session", () => {
       await expect(page.getByText(mk.q("q.waitTeacher"))).toBeVisible();
       expect((await serverState(request)).bodies["POST /sessions/join"]).toEqual({ token: "LIVE-7B" });
     });
+  });
+});
+
+/**
+ * The question kinds beyond multiple choice and true or false, against the fake API: a numeric answer, and the
+ * opener's vote and reason on their own endpoints (spec 7.6, 7.7, F-08), with the test playing the teacher. The
+ * fake's opener is a prediction ("which is the biggest fraction?", right answer the first option, a class of
+ * 13) or a debate; its fourth question is "7 divided by 4", right within 0.01, no minus.
+ */
+test.describe("a live session with an opener and a number", () => {
+  test.use({ allowConsoleErrors: [/Failed to load resource: (the server responded with a status of (403|404|409|410|422|503)|net::ERR_)/] });
+
+  type Req = import("@playwright/test").APIRequestContext;
+  const OPTION = ".q-opt, .q-tf__btn";
+  const teacher = (request: Req, action: string, data: object = {}) => request.post(`${API}/__control/session/${action}`, { data });
+  const control = (request: Req, what: string, data: object = {}) => request.post(`${API}/__control/${what}`, { data });
+  const stageOf = (page: Page) => page.locator("main.q");
+  const VOTE = "POST /sessions/se-live-1/opener/vote";
+  const REASON = "POST /sessions/se-live-1/opener/reason";
+  const ANSWER = "POST /sessions/se-live-1/answers";
+
+  async function inLobby(page: Page, request: Req) {
+    await page.goto("/app/checkin/LIVE-7B");
+    await expect(page.getByText(mk.q("q.waitTeacher"))).toBeVisible();
+    await expect.poll(async () => (await (await request.get(`${API}/__control/state`)).json()).streams).toBeGreaterThan(0);
+  }
+
+  test("a vote and a reason each go to their endpoint with a key and the time they were given, and the result adds them up", async ({ page, request }) => {
+    await inLobby(page, request);
+    await teacher(request, "opener");
+    await expect(stageOf(page)).toHaveAttribute("data-stage", "voting");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Which is the biggest fraction?");
+    expect((await serverState(request)).calls.filter((c) => c === "GET /sessions/se-live-1/student-state").length).toBeGreaterThan(0);
+
+    await page.locator(OPTION).nth(0).click();
+    await expect(stageOf(page)).toHaveAttribute("data-stage", "reasoning");
+    await expect.poll(async () => (await serverState(request)).bodies[VOTE]).toMatchObject({ session_question_id: "fo1", response: "0" });
+    const vote = (await serverState(request)).bodies[VOTE] as { answered_at: string; idempotency_key: string };
+    expect(Number.isNaN(Date.parse(vote.answered_at))).toBe(false);
+    expect(vote.idempotency_key).toMatch(/\S{8,}/);
+
+    // Mid-vote the class's counts are not shown (the stage after voting is where they live).
+    await teacher(request, "progress", { answered: 5 });
+    await expect(page.locator(".o-bars")).toHaveCount(0);
+
+    await page.getByRole("textbox").fill("  Half is   more than a third.  ");
+    await page.getByRole("textbox").press("Enter");
+    await expect.poll(async () => (await serverState(request)).bodies[REASON]).toMatchObject({ session_question_id: "fo1", text: "Half is more than a third." });
+    // The reason goes after the vote, and under its own key.
+    const { calls } = await serverState(request);
+    expect(calls.indexOf(VOTE)).toBeLessThan(calls.indexOf(REASON));
+    await expect(stageOf(page)).toHaveAttribute("data-stage", "opener_wait");
+
+    // Voting closes: the class's votes, and the student's own among them.
+    await teacher(request, "opener-voting-end");
+    const bars = page.locator(".o-bar");
+    await expect(bars).toHaveCount(3);
+    await expect(bars.nth(0).locator(".o-bar__n")).toHaveText("10");
+    await expect(bars.nth(0).locator(".o-tag").filter({ hasText: mk.q("o.yourVote") })).toBeVisible();
+
+    await teacher(request, "opener-close");
+    await expect(stageOf(page)).toHaveAttribute("data-stage", "opener_result");
+    await expect(page.getByRole("heading", { name: mk.q("q.right") })).toBeVisible();
+    await expect(page.locator(".o-chips")).toContainText(mk.q("o.pts.vote", { n: 10 }));
+    await expect(page.locator(".o-chips")).toContainText(mk.q("o.pts.reason", { n: 8 }));
+    await expect(page.locator(".q-total .q-big")).toHaveText("18");
+    // The right answer and the class's reasons wait for the teacher's reveal.
+    await expect(page.locator(".o-tag--right")).toHaveCount(0);
+    await expect(page.locator(".o-reason")).toHaveCount(0);
+    await teacher(request, "opener-reveal");
+    await expect(page.locator('.o-bar[data-right="true"]')).toContainText("1/2");
+    await expect(page.locator(".o-tag--right")).toContainText(mk.q("q.correctAnswer"));
+    await expect(page.locator(".o-reason")).toHaveCount(2);
+    await expect(page.locator(".o-reason").first()).toContainText("Half is more than a third.");
+
+    // The lesson goes on: the first question opens and the opener is gone.
+    await teacher(request, "fire", { index: 0, timer: 60 });
+    await expect(stageOf(page)).toHaveAttribute("data-stage", "answering");
+    await expect(page.locator(".o-bars")).toHaveCount(0);
+  });
+
+  test("a wrong vote with a reason is worth the reason's points, and a vote with no reason is worth the vote's", async ({ page, request }) => {
+    await inLobby(page, request);
+    await teacher(request, "opener");
+    await page.locator(OPTION).nth(2).click();
+    await page.getByRole("textbox").fill("Four is the biggest number.");
+    await page.getByRole("button", { name: mk.q("o.send") }).click();
+    await expect.poll(async () => (await serverState(request)).bodies[REASON]).toBeTruthy();
+    await teacher(request, "opener-close");
+    await expect(page.getByRole("heading", { name: mk.q("q.wrong") })).toBeVisible();
+    await expect(page.getByText(mk.q("o.voteWrongReason"))).toBeVisible();
+    await expect(page.locator(".q-total .q-big")).toHaveText("8");
+  });
+
+  test("an empty reason is never sent, and skipping sends nothing", async ({ page, request }) => {
+    await inLobby(page, request);
+    await teacher(request, "opener");
+    await page.locator(OPTION).nth(0).click();
+    await expect(stageOf(page)).toHaveAttribute("data-stage", "reasoning");
+    await page.getByRole("button", { name: mk.q("o.send") }).click();
+    await expect(page.locator(".n-err")).toContainText(mk.q("o.err.empty"));
+    await page.getByRole("button", { name: mk.q("o.skip") }).click();
+    await expect(stageOf(page)).toHaveAttribute("data-stage", "opener_wait");
+    await teacher(request, "opener-close");
+    await expect(page.locator(".q-total .q-big")).toHaveText("10");
+    expect((await serverState(request)).calls).not.toContain(REASON);
+  });
+
+  test("a debate has no right side: the split, and only the reason's points", async ({ page, request }) => {
+    await inLobby(page, request);
+    await teacher(request, "opener", { kind: "debate" });
+    await expect(page.locator(".q-tf__btn")).toHaveCount(2);
+    await page.getByRole("button", { name: mk.q("o.disagree") }).click();
+    await expect.poll(async () => (await serverState(request)).bodies[VOTE]).toMatchObject({ session_question_id: "fo2", response: "disagree" });
+    await page.getByRole("textbox").fill("Without it nobody would practise.");
+    await page.getByRole("textbox").press("Enter");
+    await teacher(request, "opener-voting-end");
+    await expect(page.locator(".o-bar")).toHaveCount(2);
+    await expect(page.locator(".o-bar").nth(1).locator(".o-bar__n")).toHaveText("9");
+    await teacher(request, "opener-close");
+    await teacher(request, "opener-reveal");
+    await expect(page.getByRole("heading", { name: mk.q("o.side.disagree") })).toBeVisible();
+    await expect(page.getByText(mk.q("o.noRight"))).toBeVisible();
+    await expect(page.locator(".o-tag--right")).toHaveCount(0);
+    await expect(page.locator(".q-total .q-big")).toHaveText("8");
+  });
+
+  test("a vote and a reason given with no signal are kept, in order, and counted when it returns", async ({ page, request, context }) => {
+    await inLobby(page, request);
+    await teacher(request, "opener");
+    await expect(stageOf(page)).toHaveAttribute("data-stage", "voting");
+
+    let refused = 0;
+    await context.route(`${API}/api/v1/sessions/se-live-1/opener/*`, (route) => (refused++ < 3 ? route.abort() : route.continue()));
+    await page.locator(OPTION).nth(0).click();
+    // The vote is on the phone, not lost: the reason can be written on top of it.
+    await expect(page.getByText(mk.q("ans.saved"))).toBeVisible();
+    await page.getByRole("textbox").fill("Half is more than a third.");
+    await page.getByRole("textbox").press("Enter");
+
+    // Both arrive once the road is open, the vote first.
+    await expect.poll(async () => (await serverState(request)).bodies[REASON], { timeout: 20_000 }).toBeTruthy();
+    const { calls } = await serverState(request);
+    expect(calls.indexOf(VOTE)).toBeGreaterThan(-1);
+    expect(calls.indexOf(VOTE)).toBeLessThan(calls.indexOf(REASON));
+    expect(refused).toBeGreaterThanOrEqual(3);
+    await expect(page.getByText(mk.q("ans.saved"))).toHaveCount(0);
+
+    await teacher(request, "opener-close");
+    await expect(page.locator(".q-total .q-big")).toHaveText("18");
+  });
+
+  test("a reason saved while the opener closed is counted by the time it was given, and corrects the points", async ({ page, request, context }) => {
+    await inLobby(page, request);
+    await teacher(request, "opener", { vote: 30, reason: 60 });
+    await page.locator(OPTION).nth(0).click();
+    await expect.poll(async () => (await serverState(request)).bodies[VOTE]).toBeTruthy();
+
+    // The reason cannot leave the phone; the opener closes meanwhile, and the student's result is 10 without it.
+    await context.route(`${API}/api/v1/sessions/se-live-1/opener/reason`, (route) => route.abort());
+    await page.getByRole("textbox").fill("Half is more than a third.");
+    await page.getByRole("textbox").press("Enter");
+    await expect(page.getByText(mk.q("ans.saved"))).toBeVisible();
+    await teacher(request, "opener-close");
+    await expect(page.getByText(mk.q("q.checking")).or(page.locator(".o-own"))).toBeVisible();
+
+    await context.unroute(`${API}/api/v1/sessions/se-live-1/opener/reason`);
+    // It arrives after the close and counts: the points are corrected to 18.
+    await expect(stageOf(page)).toHaveAttribute("data-stage", "opener_result", { timeout: 20_000 });
+    await expect(page.locator(".q-total .q-big")).toHaveText("18", { timeout: 20_000 });
+    await expect(page.locator(".o-chips")).toContainText(mk.q("o.pts.reason", { n: 8 }));
+  });
+
+  test("a reload after the vote and the reason picks up where the student was", async ({ page, request }) => {
+    await inLobby(page, request);
+    await teacher(request, "opener");
+    await page.locator(OPTION).nth(1).click();
+    await page.getByRole("textbox").fill("Because.");
+    await page.getByRole("textbox").press("Enter");
+    await expect.poll(async () => (await serverState(request)).bodies[REASON]).toBeTruthy();
+
+    await page.reload();
+    await expect(stageOf(page)).toHaveAttribute("data-stage", "opener_wait");
+    await expect(page.locator(".o-vote")).toContainText("1/3");
+    await expect(page.locator(".o-own")).toContainText("Because.");
+    // And the class's votes, once voting has closed, come with the snapshot.
+    await teacher(request, "opener-voting-end");
+    await expect(page.locator(".o-bar")).toHaveCount(3);
+    await page.reload();
+    await expect(page.locator(".o-bar")).toHaveCount(3);
+  });
+
+  test("a number is sent as plain text with a point, whichever separator was typed, and counted within the tolerance", async ({ page, request }) => {
+    await inLobby(page, request);
+    await teacher(request, "fire", { index: 3, timer: 60 });
+    await expect(stageOf(page)).toHaveAttribute("data-stage", "answering");
+    await expect(page.getByLabel(mk.q("n.label"))).toHaveAttribute("inputmode", "decimal");
+    await expect(page.getByRole("button", { name: mk.q("n.minus") })).toHaveCount(0);
+    await expect(page.locator(".n-unit")).toHaveCount(0);
+
+    await page.getByLabel(mk.q("n.label")).fill("-1,75");
+    await page.getByLabel(mk.q("n.label")).press("Enter");
+    await expect(page.locator(".n-err")).toContainText(mk.q("n.err.negative"));
+    expect((await serverState(request)).calls).not.toContain(ANSWER);
+
+    await page.getByLabel(mk.q("n.label")).fill("1,76");
+    await page.getByLabel(mk.q("n.label")).press("Enter");
+    await expect.poll(async () => ((await serverState(request)).bodies[ANSWER] as Record<string, string>)?.response).toBe("1.76");
+    await expect(page.locator(".q-locked")).toContainText("1,76");
+    await teacher(request, "close");
+    // 1.76 is within 0.01 of 1.75, so it is right, and the student is told the exact value.
+    await expect(page.getByRole("heading", { name: mk.q("q.right") })).toBeVisible();
+    await teacher(request, "reveal");
+    await expect(page.getByText(mk.q("n.exactValue", { text: "1,75" }))).toBeVisible();
+  });
+
+  test("a wrong number shows the correct value and the student's own", async ({ page, request }) => {
+    await inLobby(page, request);
+    await teacher(request, "fire", { index: 3, timer: 60 });
+    await page.getByLabel(mk.q("n.label")).fill("2");
+    await page.getByLabel(mk.q("n.label")).press("Enter");
+    await expect.poll(async () => ((await serverState(request)).bodies[ANSWER] as Record<string, string>)?.response).toBe("2");
+    await teacher(request, "close");
+    await teacher(request, "reveal");
+    await expect(page.getByRole("heading", { name: mk.q("q.wrong") })).toBeVisible();
+    await expect(page.locator(".q-correct")).toContainText("1,75");
+    await expect(page.locator(".q-correct")).toContainText(mk.q("n.tolerance", { tol: "0,01" }));
+    await expect(page.getByText(mk.q("n.yours", { text: "2" }))).toBeVisible();
   });
 });
