@@ -661,9 +661,9 @@ export class MockSession {
     this.toClass("leaderboard.updated", { rows: this.wireBoard() });
   }
 
-  /** The anonymous reasons the class wrote (FR-OPN-03): no names, the student's own left out. */
+  /** The anonymous reasons the class wrote (FR-OPN-03): no names, the student's own left out, each wording once. */
   private classReasons(live: OpenerLive) {
-    return live.reasonText.filter((_, i) => live.reasonAt[i] !== null);
+    return [...new Set(live.reasonText.filter((_, i) => live.reasonAt[i] !== null))];
   }
 
   private revealOpener(id: string) {

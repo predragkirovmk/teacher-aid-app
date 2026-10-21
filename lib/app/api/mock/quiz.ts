@@ -60,8 +60,8 @@ export const QUIZZES: Partial<Record<SubjectId, Quiz>> = {
         id: "p3",
         kind: "num",
         text: t(
-          "Тело се движи со 10 m/s и запира за 4 s. Колкаво е забрзувањето?",
-          "A body moving at 10 m/s stops in 4 s. What is its acceleration?",
+          "Тело се движи со 10\u00a0m/s и запира за 4\u00a0s. Колкаво е забрзувањето?",
+          "A body moving at 10\u00a0m/s stops in 4\u00a0s. What is its acceleration?",
         ),
         answer: "-2.5",
         tolerance: 0.1,
