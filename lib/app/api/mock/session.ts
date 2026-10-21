@@ -541,7 +541,9 @@ export class MockSession {
     // Once you have answered, the stragglers come in within a few seconds, and the question closes
     // when the last of them has (BR-TIME-04).
     const elapsed = Date.now() - live.openedAt;
-    live.answerAt = live.answerAt.map((t) => (t > elapsed ? elapsed + 600 + Math.random() * 3200 : t));
+    // (OFFLINE-ANSWER-7B waits longer, so "sent" is on screen for a few seconds before the class has all answered.)
+    const lag = this.scenario === "offline-answer" ? 5000 : 600;
+    live.answerAt = live.answerAt.map((t) => (t > elapsed ? elapsed + lag + Math.random() * 3200 : t));
     const duration = this.durationOf(q);
     const lastAt = Math.max(...live.answerAt);
     if (lastAt < duration) this.after(Math.max(0, live.openedAt + lastAt - Date.now()), () => this.close(live.question.id));
