@@ -142,7 +142,7 @@ export function Reasoning({ run, onLeave, onSend, onSkip }: Props & { onSend: (t
       <div className="q-body q-stack" key={`reason-${q.id}`}>
         <p className="q-question q-question--small">{q.prompt}</p>
         <VoteCard q={q} picked={run.picked} variant="slim" />
-        {run.answer !== "none" && run.answer !== "late" && <AnswerDelivery status={run.answer} />}
+        {(run.answer === "sending" || run.answer === "saved") && <AnswerDelivery status={run.answer} />}
         <form
           className="o-form"
           noValidate
@@ -268,7 +268,7 @@ function OwnReason({ run }: { run: SessionRunView }) {
     <div className="o-own">
       <span className="t-label muted">{t("o.yourReason")}</span>
       <p className="o-own__text">{o.reason}</p>
-      {o.reasonAnswer !== "none" && <AnswerDelivery status={o.reasonAnswer} />}
+      {(o.reasonAnswer === "sending" || o.reasonAnswer === "saved") && <AnswerDelivery status={o.reasonAnswer} />}
     </div>
   );
 }
@@ -291,7 +291,7 @@ export function OpenerWait({ run, onLeave }: Props) {
       <div className="q-body q-stack" key={`wait-${q.id}`}>
         <p className="q-question q-question--small">{q.prompt}</p>
         <VoteCard q={q} picked={run.picked} variant="full" />
-        {run.picked !== null && run.answer !== "none" && run.answer !== "late" && <AnswerDelivery status={run.answer} />}
+        {(run.answer === "sending" || run.answer === "saved") && <AnswerDelivery status={run.answer} />}
         {run.answer === "late" && (
           <p className="q-delivery" role="status">
             <HourglassIcon size={20} aria-hidden="true" />
