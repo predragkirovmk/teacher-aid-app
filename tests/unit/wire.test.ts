@@ -219,7 +219,7 @@ describe("wire to domain", () => {
       session_rank: 2,
     });
     expect(live.question).toMatchObject({ id: "sq1", timerSeconds: 20, firedAt: AT_MS, closesAt: null });
-    expect(live.result).toEqual({ sessionQuestionId: "sq1", correct: true, points: 15, speedBonus: 5, sessionRank: 2, correctAnswer: "b", explanation: null });
+    expect(live.result).toEqual({ sessionQuestionId: "sq1", correct: true, points: 15, reasonPoints: 0, speedBonus: 5, sessionRank: 2, correctAnswer: "b", explanation: null });
     expect(live).toMatchObject({ myResponse: "b", sessionPoints: 15, sessionRank: 2 });
   });
 
@@ -270,6 +270,17 @@ describe("domain to wire (request bodies)", () => {
       response: "b",
       answered_at: AT,
       idempotency_key: "k-1",
+    });
+  });
+
+  it("writes an opener vote like an answer and a reason with its text under `text`", () => {
+    const input = { sessionQuestionId: "o1", response: "agree", answeredAt: AT_MS, idempotencyKey: "k-2" };
+    expect(wire.voteBody(input)).toEqual({ session_question_id: "o1", response: "agree", answered_at: AT, idempotency_key: "k-2" });
+    expect(wire.reasonBody({ ...input, response: "It changes the meaning." })).toEqual({
+      session_question_id: "o1",
+      text: "It changes the meaning.",
+      answered_at: AT,
+      idempotency_key: "k-2",
     });
   });
 });

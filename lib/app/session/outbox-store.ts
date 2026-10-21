@@ -5,11 +5,15 @@
  * disk) it falls back to memory, so answers are still retried for as long as the page lives.
  */
 
+import type { SubmissionKind } from "../api/types";
+
 /** localStorage: who was signed in last, so a phone that cannot reach the server can still say whose answers it holds. Cleared when the session ends. */
 export const OUTBOX_STUDENT_KEY = "teacheraid-outbox-student";
 
-/** One answer waiting to reach the server. */
+/** One answer, opener vote or opener reason waiting to reach the server. */
 export type OutboxRecord = {
+  /** Which endpoint it goes to: `/answers`, `/opener/vote` or `/opener/reason`. For a reason `response` is the text. */
+  kind: SubmissionKind;
   /** The idempotency key: the server stores one answer per key, so a resend is safe (EC-NET-06). */
   key: string;
   /** Whose answer it is. Answers of a student who signed out are kept, and sent when they sign in again. */

@@ -118,6 +118,18 @@ export function createLiveClient(): ApiClient {
           body: wire.answerBody(answer),
         }),
       ),
+    submitVote: async (sessionId, vote) =>
+      wire.answerReceipt(
+        await request<wire.WireAnswerReceipt>("POST", `/sessions/${encodeURIComponent(sessionId)}/opener/vote`, {
+          body: wire.voteBody(vote),
+        }),
+      ),
+    submitReason: async (sessionId, reason) =>
+      wire.answerReceipt(
+        await request<wire.WireAnswerReceipt>("POST", `/sessions/${encodeURIComponent(sessionId)}/opener/reason`, {
+          body: wire.reasonBody(reason),
+        }),
+      ),
 
     // Realtime (spec 11.2) arrives with the live session engine; until then nothing pushes changes.
     subscribe: () => () => {},

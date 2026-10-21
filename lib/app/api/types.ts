@@ -230,10 +230,24 @@ export type PracticeAttempt = { score: number; total: number; points: number };
 
 export type SessionState = "lobby" | "opener" | "teaching" | "review" | "ended";
 
-/** Spec 3.2. The student app renders the multiple-choice and true-false kinds for now. */
+/** Spec 3.2. The two opener kinds are the lesson's first question: a vote, then one line of reason (4.3). */
 export type QuestionKind = "multiple_choice" | "true_false" | "numeric" | "opener_prediction" | "opener_debate";
 
 export type QuestionStatus = "ready" | "open" | "closed" | "revealed" | "skipped";
+
+/**
+ * What a numeric question adds (PROPOSED, spec 3.1 `tolerance` and FR-ANS-02): a unit to show beside the
+ * answer, the author's absolute tolerance (a value within it counts as right, edges included, AC-ANS-04),
+ * and whether the answer may be negative, which decides if the minus key is offered. The flag belongs to the
+ * question's subject and not to its answer, so the key does not give a negative answer away.
+ */
+export type NumericInfo = { unit: string | null; tolerance: number; allowNegative: boolean };
+
+/**
+ * What an opener question adds (PROPOSED, spec 4.3): voting runs until `voteClosesAt`, reasons until the
+ * question's `closesAt`, and a reason has at most `reasonMax` characters (BR-Q-03).
+ */
+export type OpenerInfo = { voteClosesAt: number; reasonMax: number };
 
 /** What the student sees of a question; never the correct answer before it is revealed. */
 export type SessionQuestion = {
@@ -249,13 +263,24 @@ export type SessionQuestion = {
   /** The server's times, so the client can count down on the server's clock (BR-TIME-03). */
   firedAt: number | null;
   closesAt: number | null;
+  /** Set for `numeric`, else null. */
+  numeric: NumericInfo | null;
+  /** Set for the two opener kinds, else null. */
+  opener: OpenerInfo | null;
 };
+
+/** Where an opener is (spec 4.3): voting, then reasoning, then revealed. */
+export type OpenerPhase = "voting" | "reasoning" | "revealed";
 
 /** What a closed question was worth to this student. */
 export type QuestionResult = {
   sessionQuestionId: Id;
-  correct: boolean;
+  /** Null for a debate opener, which has no right side (EC-Q-03, OPEN-07). */
+  correct: boolean | null;
+  /** The question's whole worth to the student: for an opener the vote's points and `reasonPoints` together. */
   points: number;
+  /** The part of `points` that came from the written reason (BR-PTS-02); 0 for everything but an opener. */
+  reasonPoints: number;
   speedBonus: number;
   /** The student's rank in this session after the question (BR-PTS-09). */
   sessionRank: number;
@@ -314,7 +339,14 @@ export type StudentSessionState = {
   progress: QuestionProgress | null;
   /** The tally once the session has ended (PROPOSED), else null. */
   summary: SessionSummary | null;
+  /** This student's written reason for the opener in `question` (PROPOSED), when there is one. */
+  myReason: string | null;
+  /** The opener in `question`: its phase, the class's votes once voting has closed, and the anonymous reasons (PROPOSED). */
+  opener: OpenerSnapshot | null;
 };
+
+/** What the class did in an opener, without names (FR-OPN-03). `votes` lines up with the options, or is [agree, disagree]. */
+export type OpenerSnapshot = { phase: OpenerPhase; votes: number[] | null; reasons: string[] };
 
 /**
  * The student's place in section 4.4's table. `waiting_result` is the moment between a question
@@ -329,7 +361,18 @@ export type StudentStage =
   | "right"
   | "wrong"
   | "waiting_next"
-  | "ended";
+  | "ended"
+  /** An opener: the student has not voted yet and voting is open. */
+  | "voting"
+  /** An opener: the vote is in and a reason can be written. */
+  | "reasoning"
+  /** An opener: nothing more to do but wait for the class and the result. */
+  | "opener_wait"
+  /** An opener: the result, the class's votes and the reasons. */
+  | "opener_result";
+
+/** What the phone sends to the server: an answer, an opener vote (`/opener/vote`) or an opener reason (`/opener/reason`, `response` holds its text). */
+export type SubmissionKind = "answer" | "vote" | "reason";
 
 export type AnswerInput = {
   sessionQuestionId: Id;
@@ -359,9 +402,11 @@ export type SessionEvent =
   | { type: "question.opened"; serverNow: number; question: SessionQuestion }
   | { type: "question.progress"; serverNow: number; sessionQuestionId: Id; answered: number; joined: number }
   | { type: "question.closed"; serverNow: number; sessionQuestionId: Id }
-  | { type: "question.revealed"; serverNow: number; sessionQuestionId: Id; correctAnswer: string; explanation: string | null }
+  | { type: "question.revealed"; serverNow: number; sessionQuestionId: Id; correctAnswer: string | null; explanation: string | null }
   | { type: "question.skipped"; serverNow: number; sessionQuestionId: Id }
   | { type: "leaderboard.updated"; serverNow: number; rows: BoardRow[] }
+  | { type: "opener.counts"; serverNow: number; sessionQuestionId: Id; phase: OpenerPhase; votes: number[] }
+  | { type: "opener.reasons"; serverNow: number; sessionQuestionId: Id; reasons: string[] }
   | { type: "question.result"; serverNow: number; result: QuestionResult; sessionPoints: number }
   | { type: "session.ended"; serverNow: number; summary: SessionSummary | null; sessionPoints: number | null; sessionRank: number | null }
   // Not about the session: the app reacts to these itself (session.ts, the notifications query).

@@ -1,15 +1,16 @@
 import { client } from "../api";
-import type { AnswerInput, AnswerReceipt, Id, StudentSessionState } from "../api/types";
+import type { AnswerInput, AnswerReceipt, Id, StudentSessionState, SubmissionKind } from "../api/types";
 import { requestBackgroundSync } from "./background-sync";
 import { createOutbox } from "./outbox";
 import { indexedDbStore } from "./outbox-store";
 
 /**
- * The raw call, `POST /sessions/{id}/answers`. Nothing but the outbox calls it: an answer leaves the
- * app by being saved in the outbox, which sends it, and sends it again until the server has spoken.
+ * The raw call: `POST /sessions/{id}/answers`, or the opener's `/opener/vote` and `/opener/reason`. Nothing
+ * but the outbox calls it: an answer leaves the app by being saved in the outbox, which sends it, and sends
+ * it again until the server has spoken.
  */
-export function sendAnswer(sessionId: Id, answer: AnswerInput): Promise<AnswerReceipt> {
-  return client.submitAnswer(sessionId, answer);
+export function sendAnswer(sessionId: Id, answer: AnswerInput, kind: SubmissionKind): Promise<AnswerReceipt> {
+  return kind === "vote" ? client.submitVote(sessionId, answer) : kind === "reason" ? client.submitReason(sessionId, answer) : client.submitAnswer(sessionId, answer);
 }
 
 /** The phone's outbox of answers (spec F-08): IndexedDB, or memory where the browser will not give it. */

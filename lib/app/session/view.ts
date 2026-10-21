@@ -1,6 +1,6 @@
-import type { BoardRow, Id, QuestionProgress, SessionQuestion, SessionState, SessionSummary, StudentStage } from "../api/types";
+import type { BoardRow, Id, OpenerPhase, QuestionProgress, SessionQuestion, SessionState, SessionSummary, StudentStage } from "../api/types";
 import { toServer } from "./clock";
-import { RESULT_WAIT_MS, VERDICT_AFTER_REVEAL_MS, VERDICT_MAX_MS, VERDICT_MS, undelivered, type EngineState } from "./engine";
+import { RESULT_WAIT_MS, VERDICT_AFTER_REVEAL_MS, VERDICT_MAX_MS, VERDICT_MS, undelivered, votingOpen, type EngineState } from "./engine";
 
 /**
  * What the quiz screen draws at one moment: the engine's state read at a local time. The stage is
@@ -8,6 +8,27 @@ import { RESULT_WAIT_MS, VERDICT_AFTER_REVEAL_MS, VERDICT_MAX_MS, VERDICT_MS, un
  * moment between a question closing and the student's result arriving). Times are server times; the
  * phone's clock only says how long it has been since the server last spoke.
  */
+/** What the quiz screen needs of an opener (spec 4.3) beyond what every question has. */
+export type OpenerView = {
+  kind: "prediction" | "debate";
+  /** Where the class is: the later of what the clocks say and what the server last told. */
+  phase: OpenerPhase;
+  /** The vote can still be given. */
+  votingOpen: boolean;
+  reasonMax: number;
+  /** The class's votes, once voting has closed and the server has sent them; else null. They line up with the options, or are [agree, disagree]. */
+  votes: number[] | null;
+  /** The anonymous reasons the server has sent (FR-OPN-03). */
+  reasons: string[];
+  /** The student's own reason, and where it has got to. */
+  reason: string | null;
+  reasonAnswer: "none" | "sending" | "saved" | "sent" | "late";
+  reasonSkipped: boolean;
+  /** What the vote and the reason were worth, once the result is in. */
+  votePoints: number;
+  reasonPoints: number;
+};
+
 export type SessionView = {
   stage: StudentStage;
   sessionId: Id;
@@ -36,8 +57,11 @@ export type SessionView = {
   progress: QuestionProgress | null;
   /** The question was skipped by the teacher and does not count (BR-SKIP-01). */
   skipped: boolean;
+  /** Set when the question is an opener. */
+  opener: OpenerView | null;
 
-  correct: boolean;
+  /** Null for a debate, which has no right side. */
+  correct: boolean | null;
   /** Points for the question, speed bonus included, and the bonus alone. */
   gain: number;
   bonus: number;
@@ -72,6 +96,7 @@ export function stageOf(s: EngineState, now: number): StudentStage {
   const q = s.question;
   if (!q) return session.state === "lobby" ? "waiting_start" : "waiting_next";
   const server = toServer(s.clock, now);
+  if (q.opener) return openerStage(s, q, server);
   switch (q.status) {
     case "open":
       if (q.closesAt !== null && server >= q.closesAt) return "waiting_result";
@@ -90,12 +115,63 @@ export function stageOf(s: EngineState, now: number): StudentStage {
   }
 }
 
+/** The student's place in an opener: vote, then a reason, then the wait for the class and the result. */
+function openerStage(s: EngineState, q: SessionQuestion, server: number): StudentStage {
+  switch (q.status) {
+    case "open":
+      if (q.closesAt !== null && server >= q.closesAt) return "opener_wait";
+      if (!s.mine) return votingOpen(s, server) ? "voting" : "opener_wait";
+      if (s.mine.status === "late") return "opener_wait";
+      return s.reason || s.reasonSkipped ? "opener_wait" : "reasoning";
+    case "closed":
+    case "revealed":
+      // Something the student gave has not reached the server: whatever it says about them cannot be told yet (BR-NET-01 may still count it).
+      if (undelivered(s.mine) || undelivered(s.reason)) return "opener_wait";
+      if (s.result || q.status === "revealed") return "opener_result";
+      return q.closesAt !== null && server - q.closesAt > RESULT_WAIT_MS ? "opener_result" : "opener_wait";
+    default:
+      return "waiting_next";
+  }
+}
+
+/** The clock the student is working against: voting until the vote closes, then the reason until the question ends. */
+function windowOf(s: EngineState, q: SessionQuestion): { start: number | null; end: number | null } {
+  if (q.opener) return s.mine ? { start: s.mine.at || q.firedAt, end: q.closesAt } : { start: q.firedAt, end: q.opener.voteClosesAt };
+  return { start: q.firedAt, end: q.closesAt };
+}
+
+const NO_REASONS: string[] = [];
+
+function openerView(s: EngineState, q: SessionQuestion, server: number): OpenerView {
+  const o = q.opener!;
+  const known = s.opener?.id === q.id ? s.opener : null;
+  const byClock: OpenerPhase = q.status === "revealed" ? "revealed" : q.status !== "open" || server >= o.voteClosesAt ? "reasoning" : "voting";
+  const order = ["voting", "reasoning", "revealed"];
+  const phase = known && order.indexOf(known.phase) > order.indexOf(byClock) ? known.phase : byClock;
+  const r = s.result && s.result.sessionQuestionId === q.id ? s.result : null;
+  return {
+    kind: q.kind === "opener_debate" ? "debate" : "prediction",
+    phase,
+    votingOpen: votingOpen(s, server),
+    reasonMax: o.reasonMax,
+    // The class's votes are for after voting: the server may send them live, but the student sees them once it has closed.
+    votes: phase === "voting" ? null : (known?.votes ?? null),
+    reasons: known?.reasons ?? NO_REASONS,
+    reason: s.reason && s.reason.status !== "late" ? s.reason.response : null,
+    reasonAnswer: s.reason ? s.reason.status : "none",
+    reasonSkipped: s.reasonSkipped,
+    votePoints: r ? r.points - r.reasonPoints : 0,
+    reasonPoints: r?.reasonPoints ?? 0,
+  };
+}
+
 export function viewOf(s: EngineState, now: number): SessionView {
   const q = s.question;
   const server = toServer(s.clock, now);
-  const duration = q ? (q.closesAt !== null && q.firedAt !== null ? q.closesAt - q.firedAt : q.timerSeconds * 1000) : 0;
-  const elapsed = q && q.firedAt !== null ? Math.min(duration, Math.max(0, server - q.firedAt)) : 0;
-  const secondsLeft = q ? (q.closesAt !== null ? Math.max(0, Math.ceil((q.closesAt - server) / 1000)) : q.timerSeconds) : 0;
+  const win = q ? windowOf(s, q) : { start: null, end: null };
+  const duration = q ? (win.end !== null && win.start !== null ? win.end - win.start : q.timerSeconds * 1000) : 0;
+  const elapsed = q && win.start !== null ? Math.min(duration, Math.max(0, server - win.start)) : 0;
+  const secondsLeft = q ? (win.end !== null ? Math.max(0, Math.ceil((win.end - server) / 1000)) : q.timerSeconds) : 0;
   const r = s.result;
   return {
     stage: stageOf(s, now),
@@ -115,7 +191,8 @@ export function viewOf(s: EngineState, now: number): SessionView {
     secondsLeft,
     progress: s.progress,
     skipped: q?.status === "skipped",
-    correct: r?.correct ?? false,
+    opener: q?.opener ? openerView(s, q, server) : null,
+    correct: r ? r.correct : false,
     gain: r?.points ?? 0,
     bonus: r?.speedBonus ?? 0,
     correctAnswer: r?.correctAnswer ?? (s.reveal && q && s.reveal.id === q.id ? s.reveal.correctAnswer : null),
@@ -131,10 +208,23 @@ export function viewOf(s: EngineState, now: number): SessionView {
 
 /** Whether the view changes with the passage of time alone, so something has to tick. */
 export const needsTick = (stage: StudentStage) =>
-  stage === "answering" || stage === "waiting_others" || stage === "waiting_result" || stage === "right" || stage === "wrong";
+  stage === "answering" ||
+  stage === "waiting_others" ||
+  stage === "waiting_result" ||
+  stage === "right" ||
+  stage === "wrong" ||
+  stage === "voting" ||
+  stage === "reasoning" ||
+  stage === "opener_wait";
 
-/** Two views that show the same thing. Their fields are primitives or objects that keep their identity, so a shallow compare is exact. */
+/** Two views that show the same thing. Their fields are primitives or objects that keep their identity, so a shallow compare is exact (the opener's view is rebuilt each tick, so it is compared by what it holds). */
 export function sameView(a: SessionView, b: SessionView): boolean {
   const keys = Object.keys(a) as (keyof SessionView)[];
+  return keys.every((k) => (k === "opener" ? sameOpener(a.opener, b.opener) : Object.is(a[k], b[k])));
+}
+
+function sameOpener(a: OpenerView | null, b: OpenerView | null): boolean {
+  if (a === null || b === null) return a === b;
+  const keys = Object.keys(a) as (keyof OpenerView)[];
   return keys.every((k) => Object.is(a[k], b[k]));
 }

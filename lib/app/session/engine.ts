@@ -1,6 +1,7 @@
 import type {
   BoardRow,
   Id,
+  OpenerPhase,
   QuestionProgress,
   QuestionResult,
   QuestionStatus,
@@ -10,6 +11,7 @@ import type {
   SessionState,
   SessionSummary,
   StudentSessionState,
+  SubmissionKind,
 } from "../api/types";
 import { mergeClock, sampleClock, toServer, type ClockSample } from "./clock";
 
@@ -27,8 +29,14 @@ import { mergeClock, sampleClock, toServer, type ClockSample } from "./clock";
  *   event that would move it back is a late duplicate and changes nothing, so the same event twice is
  *   the same as once, and two events in the wrong order end in the same place.
  * - An event about a question the app has never had is a sign it missed one: it asks for a snapshot.
+ *
+ * An opener (spec 4.3) is a question like the others, with two things to give: the vote (`mine`, the answer
+ * slot) and a one-line reason (`reason`), each saved and sent on its own. Voting closes at the opener's
+ * `voteClosesAt`, or when the server says the class has moved on (`opener.counts`); the reason can be given
+ * from the moment the vote is in until the question closes.
  */
 
+const PHASE_ORDER: Record<OpenerPhase, number> = { voting: 0, reasoning: 1, revealed: 2 };
 const STATE_ORDER: Record<SessionState, number> = { lobby: 0, opener: 1, teaching: 2, review: 3, ended: 4 };
 const STATUS_ORDER: Record<QuestionStatus, number> = { ready: 0, open: 1, closed: 2, revealed: 3, skipped: 4 };
 
@@ -48,7 +56,11 @@ const SEEN_MAX = 50;
 
 /** What the student answered, and where the answer has got to. */
 export type OwnAnswer = {
-  /** Option index as a string for multiple choice, "true" or "false" for true/false (PROPOSED, spec 11.3). */
+  /**
+   * Option index as a string for multiple choice and a prediction, "true" or "false" for true/false, "agree" or
+   * "disagree" for a debate, the number as plain text for a numeric question (PROPOSED, spec 11.2), and for a
+   * reason its text.
+   */
   response: string;
   key: string;
   /** When it was given, in server time (EC-NET-07). 0 for an answer the server had before this app did. */
@@ -84,11 +96,17 @@ export type EngineState = {
   stale: boolean;
   question: SessionQuestion | null;
   mine: OwnAnswer | null;
+  /** The opener's one-line reason, given after the vote. */
+  reason: OwnAnswer | null;
+  /** The student chose to give no reason, so the screen waits for the result instead. */
+  reasonSkipped: boolean;
+  /** What the class did in the opener: its phase as the server last said it, the votes and the anonymous reasons. */
+  opener: { id: Id; phase: OpenerPhase; votes: number[] | null; reasons: string[] } | null;
   result: QuestionResult | null;
   /** The local time the result reached this phone, which starts the verdict's time on screen. Null for a result found long after. */
   resultAt: number | null;
   /** The teacher's reveal, which may come before or after the result. */
-  reveal: { id: Id; correctAnswer: string; explanation: string | null; at: number } | null;
+  reveal: { id: Id; correctAnswer: string | null; explanation: string | null; at: number } | null;
   sessionPoints: number;
   /** The student's rank in this session; null before the first snapshot. */
   sessionRank: number | null;
@@ -109,8 +127,12 @@ export type Action =
   | { type: "event"; event: SessionEvent; receivedAt: number }
   /** Stop holding events for a snapshot that will not come (the snapshot call keeps failing) and apply them to what the app has. */
   | { type: "unhold"; receivedAt: number }
-  /** The student tapped an answer at local time `now`. */
+  /** The student tapped an answer (or voted, on an opener) at local time `now`. */
   | { type: "answer"; response: string; key: string; now: number }
+  /** The student wrote the opener's reason at local time `now`. Cleaned and capped here (EC-Q-02). */
+  | { type: "reason"; text: string; key: string; now: number }
+  /** The student gives no reason. */
+  | { type: "reason.skip" }
   /** The outbox has the answer on the phone but could not send it yet, or is slow. */
   | { type: "answer.saved"; key: string }
   /** `now` is the local time it was told, so a verdict that was waiting on the answer starts its time on screen then. */
@@ -119,8 +141,8 @@ export type Action =
   | { type: "answer.late"; key: string }
   /** The server will never take the answer (its question is gone): forget it. */
   | { type: "answer.failed"; key: string }
-  /** The page was reloaded with an answer still waiting in the outbox: the student has answered this question. */
-  | { type: "answer.restore"; key: string; sessionQuestionId: Id; response: string; at: number };
+  /** The page was reloaded with an answer, vote or reason still waiting in the outbox: the student has given it. */
+  | { type: "answer.restore"; kind: SubmissionKind; key: string; sessionQuestionId: Id; response: string; at: number };
 
 export function createEngine(init: { sessionId: Id; meId: Id; late?: boolean }): EngineState {
   return {
@@ -135,6 +157,9 @@ export function createEngine(init: { sessionId: Id; meId: Id; late?: boolean }):
     stale: false,
     question: null,
     mine: null,
+    reason: null,
+    reasonSkipped: false,
+    opener: null,
     result: null,
     resultAt: null,
     reveal: null,
@@ -159,6 +184,22 @@ type Known = "current" | "old" | "unknown";
 const known = (s: EngineState, id: Id): Known => (s.question?.id === id ? "current" : s.seen.includes(id) ? "old" : "unknown");
 
 const remember = (seen: Id[], id: Id | undefined) => (id ? [...seen, id].slice(-SEEN_MAX) : seen);
+
+/** A reason as it is kept: one line, single spaces, no more than `max` characters (EC-Q-02). */
+export function cleanReason(text: string, max: number): string {
+  return Array.from(text.replace(/\s+/g, " ").trim()).slice(0, max).join("").trim();
+}
+
+/** Whether a vote can still be given at server time `at`: the opener is open, the time is not up and the server has not moved the class on. */
+export function votingOpen(s: EngineState, at: number): boolean {
+  const q = s.question;
+  if (!q?.opener || q.status !== "open" || !s.session || s.session.state === "ended") return false;
+  if (s.opener?.id === q.id && PHASE_ORDER[s.opener.phase] > PHASE_ORDER.voting) return false;
+  return at < q.opener.voteClosesAt;
+}
+
+/** Which of the student's own submissions a key belongs to. */
+const ownerOf = (s: EngineState, key: string): "mine" | "reason" | null => (s.mine?.key === key ? "mine" : s.reason?.key === key ? "reason" : null);
 
 const sameRows = (a: BoardRow[] | null, b: BoardRow[]) =>
   !!a && a.length === b.length && a.every((r, i) => r.studentId === b[i].studentId && r.points === b[i].points && r.rank === b[i].rank);
@@ -196,9 +237,12 @@ function applyEvent(s: EngineState, ev: SessionEvent, at: number): EngineState {
       if (cur && !isNewer(q, cur)) return s;
       return {
         ...s,
-        session: session.state === "lobby" ? { ...session, state: "teaching" } : session,
+        session: session.state === "lobby" ? { ...session, state: q.opener ? "opener" : "teaching" } : session,
         question: q,
         mine: null,
+        reason: null,
+        reasonSkipped: false,
+        opener: null,
         result: null,
         resultAt: null,
         reveal: null,
@@ -240,11 +284,29 @@ function applyEvent(s: EngineState, ev: SessionEvent, at: number): EngineState {
       if (known(s, ev.sessionQuestionId) !== "current") return s;
       // A question that was already revealed cannot be skipped; nobody scores on a skipped one (BR-SKIP-01).
       if (STATUS_ORDER[cur!.status] >= STATUS_ORDER.revealed) return s;
-      return { ...s, question: { ...cur!, status: "skipped" }, mine: null, result: null, resultAt: null, progress: null };
+      return { ...s, question: { ...cur!, status: "skipped" }, mine: null, reason: null, opener: null, result: null, resultAt: null, progress: null };
     }
 
     case "leaderboard.updated":
       return sameRows(s.board, ev.rows) ? s : { ...s, board: ev.rows };
+
+    case "opener.counts": {
+      const k = known(s, ev.sessionQuestionId);
+      if (k === "old") return s;
+      if (k === "unknown") return { ...s, stale: true };
+      const had = s.opener?.id === ev.sessionQuestionId ? s.opener : null;
+      // The class only moves forward: a count from an earlier phase than the one the app knows is a late duplicate.
+      if (had && PHASE_ORDER[ev.phase] < PHASE_ORDER[had.phase]) return s;
+      return { ...s, opener: { id: ev.sessionQuestionId, phase: ev.phase, votes: ev.votes, reasons: had?.reasons ?? [] } };
+    }
+
+    case "opener.reasons": {
+      const k = known(s, ev.sessionQuestionId);
+      if (k === "old") return s;
+      if (k === "unknown") return { ...s, stale: true };
+      const had = s.opener?.id === ev.sessionQuestionId ? s.opener : null;
+      return { ...s, opener: { id: ev.sessionQuestionId, phase: had?.phase ?? "voting", votes: had?.votes ?? null, reasons: ev.reasons } };
+    }
 
     case "question.result": {
       const id = ev.result.sessionQuestionId;
@@ -255,7 +317,7 @@ function applyEvent(s: EngineState, ev: SessionEvent, at: number): EngineState {
       const have = s.result && s.result.sessionQuestionId === id ? s.result : null;
       if (have) {
         // The server counted an answer that reached it late (BR-NET-01): the result is corrected, and the student is told.
-        if (have.correct !== ev.result.correct || have.points !== ev.result.points) {
+        if (have.correct !== ev.result.correct || have.points !== ev.result.points || have.reasonPoints !== ev.result.reasonPoints) {
           return {
             ...s,
             result: { ...ev.result, correctAnswer: ev.result.correctAnswer ?? have.correctAnswer, explanation: ev.result.explanation ?? have.explanation },
@@ -315,6 +377,16 @@ function answerAfter(prev: EngineState, snap: StudentSessionState): OwnAnswer | 
   return null;
 }
 
+/** The same for the reason: the server's word, unless it has not heard yet. */
+function reasonAfter(prev: EngineState, snap: StudentSessionState): OwnAnswer | null {
+  const q = snap.question;
+  if (!q?.opener || q.status === "skipped") return null;
+  const same = prev.question?.id === q.id ? prev.reason : null;
+  if (snap.myReason !== null) return { response: snap.myReason, key: same?.key ?? "", at: same?.at ?? 0, status: "sent", held: same?.held };
+  if (same && (undelivered(same) || same.status === "late")) return same;
+  return null;
+}
+
 function applySnapshot(s: EngineState, snap: StudentSessionState, sentAt: number, receivedAt: number): EngineState {
   if (snap.session.id !== s.sessionId) return s;
   const q = snap.question;
@@ -337,6 +409,9 @@ function applySnapshot(s: EngineState, snap: StudentSessionState, sentAt: number
     pending: [],
     question: q,
     mine: answerAfter(s, snap),
+    reason: reasonAfter(s, snap),
+    reasonSkipped: sameQuestion && s.reasonSkipped,
+    opener: q?.opener && snap.opener ? { id: q.id, phase: snap.opener.phase, votes: snap.opener.votes, reasons: snap.opener.reasons } : null,
     result,
     resultAt: result ? (haveResult ? s.resultAt : recent ? receivedAt : null) : null,
     reveal: result?.correctAnswer || !sameQuestion ? null : s.reveal,
@@ -383,30 +458,57 @@ export function reduce(s: EngineState, a: Action): EngineState {
       if (!q || !s.session || s.session.state === "ended" || q.status !== "open" || s.mine) return s;
       const at = toServer(s.clock, a.now);
       // The clock says time is up: the screen already stopped taking taps, and the server would refuse it.
-      if (q.closesAt !== null && at >= q.closesAt) return s;
+      // (An opener's vote has a window of its own, shorter than the question's.)
+      if (q.opener ? !votingOpen(s, at) : q.closesAt !== null && at >= q.closesAt) return s;
       return { ...s, mine: { response: a.response, key: a.key, at: q.firedAt !== null ? Math.max(at, q.firedAt) : at, status: "sending" } };
     }
 
-    case "answer.saved":
-      return s.mine && s.mine.key === a.key && s.mine.status === "sending" ? { ...s, mine: { ...s.mine, status: "saved", held: true } } : s;
-
-    case "answer.sent": {
-      if (!s.mine || s.mine.key !== a.key || !undelivered(s.mine)) return s;
-      // A verdict that waited for the answer to arrive is read now, not when the result first came.
-      const waited = s.mine.held && s.result !== null && a.now !== undefined;
-      return { ...s, mine: { ...s.mine, status: "sent" }, resultAt: waited ? a.now! : s.resultAt };
+    case "reason": {
+      const q = s.question;
+      if (!q?.opener || !s.session || s.session.state === "ended" || q.status !== "open" || !s.mine || s.mine.status === "late" || s.reason) return s;
+      const at = toServer(s.clock, a.now);
+      if (q.closesAt !== null && at >= q.closesAt) return s;
+      const text = cleanReason(a.text, q.opener.reasonMax);
+      if (text === "") return s;
+      return { ...s, reason: { response: text, key: a.key, at: Math.max(at, s.mine.at), status: "sending" } };
     }
 
-    case "answer.late":
-      return s.mine && s.mine.key === a.key && undelivered(s.mine) ? { ...s, mine: { ...s.mine, status: "late" } } : s;
+    case "reason.skip": {
+      const q = s.question;
+      if (!q?.opener || q.status !== "open" || s.reason || s.reasonSkipped) return s;
+      return { ...s, reasonSkipped: true };
+    }
 
-    case "answer.failed":
-      return s.mine && s.mine.key === a.key && undelivered(s.mine) ? { ...s, mine: null } : s;
+    case "answer.saved": {
+      const own = ownerOf(s, a.key);
+      if (!own || s[own]!.status !== "sending") return s;
+      return { ...s, [own]: { ...s[own]!, status: "saved", held: true } };
+    }
+
+    case "answer.sent": {
+      const own = ownerOf(s, a.key);
+      if (!own || !undelivered(s[own])) return s;
+      // A verdict that waited for the answer to arrive is read now, not when the result first came.
+      const waited = s[own]!.held && s.result !== null && a.now !== undefined;
+      return { ...s, [own]: { ...s[own]!, status: "sent" }, resultAt: waited ? a.now! : s.resultAt };
+    }
+
+    case "answer.late": {
+      const own = ownerOf(s, a.key);
+      return own && undelivered(s[own]) ? { ...s, [own]: { ...s[own]!, status: "late" } } : s;
+    }
+
+    case "answer.failed": {
+      const own = ownerOf(s, a.key);
+      return own && undelivered(s[own]) ? { ...s, [own]: null } : s;
+    }
 
     case "answer.restore": {
       const q = s.question;
-      if (s.mine || !q || q.id !== a.sessionQuestionId || q.status === "skipped" || s.session?.state === "ended") return s;
-      return { ...s, mine: { response: a.response, key: a.key, at: a.at, status: "saved", held: true } };
+      if (!q || q.id !== a.sessionQuestionId || q.status === "skipped" || s.session?.state === "ended") return s;
+      const own = { response: a.response, key: a.key, at: a.at, status: "saved" as const, held: true };
+      if (a.kind === "reason") return q.opener && !s.reason ? { ...s, reason: own } : s;
+      return s.mine ? s : { ...s, mine: own };
     }
   }
 }

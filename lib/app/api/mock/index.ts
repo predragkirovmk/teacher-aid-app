@@ -329,6 +329,22 @@ export function createMockClient(source: MockSource): ApiClient {
         return write(() => session.submit(answer));
       }),
 
+    submitVote: (sessionId: Id, vote: AnswerInput) =>
+      authed((): AnswerReceipt => {
+        if (net.isOffline()) throw new ApiError("network");
+        const session = mockSessionFor(sessionId);
+        if (!session) throw new ApiError("not_found");
+        return write(() => session.submitVote(vote));
+      }),
+
+    submitReason: (sessionId: Id, reason: AnswerInput) =>
+      authed((): AnswerReceipt => {
+        if (net.isOffline()) throw new ApiError("network");
+        const session = mockSessionFor(sessionId);
+        if (!session) throw new ApiError("not_found");
+        return write(() => session.submitReason(reason));
+      }),
+
     subscribe: (listener) => {
       const stops = [subscribeStore(listener), subscribeLocale(listener)];
       return () => stops.forEach((stop) => stop());

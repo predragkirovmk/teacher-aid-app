@@ -19,6 +19,7 @@ import type {
   Locale,
   Notification,
   NotificationKind,
+  OpenerPhase,
   NotificationPayload,
   PracticeAttempt,
   PracticeQuestion,
@@ -169,12 +170,18 @@ export type WireQuestion = {
   timer_seconds: number;
   fired_at: string | null;
   closes_at: string | null;
+  /** PROPOSED: for `numeric`. Absent or null from a server that has none. */
+  numeric?: { unit: string | null; tolerance: number; allow_negative: boolean } | null;
+  /** PROPOSED: for the opener kinds. */
+  opener?: { vote_closes_at: string; reason_max_length: number } | null;
 };
 
 export type WireQuestionResult = {
   session_question_id: string;
-  correct: boolean;
+  correct: boolean | null;
   points: number;
+  /** PROPOSED: the part of `points` a written reason earned (opener only). */
+  reason_points?: number;
   speed_bonus: number;
   session_rank: number;
   correct_answer: string | null;
@@ -193,6 +200,8 @@ export type WireStudentState = {
   board?: WireBoardRow[] | null;
   progress?: { answered: number; joined: number } | null;
   summary?: { right: number; total: number } | null;
+  my_reason?: string | null;
+  opener?: { phase: OpenerPhase; votes: number[] | null; reasons: string[] } | null;
 };
 
 export type WireBoardRow = { student_id: string; name: string; points: number; rank: number };
@@ -387,12 +396,15 @@ const question = (w: WireQuestion): SessionQuestion => ({
   timerSeconds: w.timer_seconds,
   firedAt: msOrNull(w.fired_at),
   closesAt: msOrNull(w.closes_at),
+  numeric: w.numeric ? { unit: w.numeric.unit ?? null, tolerance: w.numeric.tolerance, allowNegative: w.numeric.allow_negative === true } : null,
+  opener: w.opener ? { voteClosesAt: ms(w.opener.vote_closes_at), reasonMax: w.opener.reason_max_length } : null,
 });
 
 const questionResult = (w: WireQuestionResult): QuestionResult => ({
   sessionQuestionId: w.session_question_id,
   correct: w.correct,
   points: w.points,
+  reasonPoints: w.reason_points ?? 0,
   speedBonus: w.speed_bonus,
   sessionRank: w.session_rank,
   correctAnswer: w.correct_answer,
@@ -412,6 +424,8 @@ export const studentState = (w: WireStudentState): StudentSessionState => ({
   board: w.board?.map(boardRow) ?? null,
   progress: w.progress ?? null,
   summary: w.summary ?? null,
+  myReason: w.my_reason ?? null,
+  opener: w.opener ? { phase: w.opener.phase, votes: w.opener.votes ?? null, reasons: w.opener.reasons ?? [] } : null,
 });
 
 export const answerReceipt = (w: WireAnswerReceipt): AnswerReceipt => ({ accepted: w.accepted, duplicate: w.duplicate });
@@ -428,6 +442,8 @@ export const SESSION_EVENT_TYPES = [
   "question.revealed",
   "question.skipped",
   "leaderboard.updated",
+  "opener.counts",
+  "opener.reasons",
   "question.result",
   "session.ended",
   "signed_in_elsewhere",
@@ -436,13 +452,15 @@ export const SESSION_EVENT_TYPES = [
 
 type Body = Record<string, unknown>;
 
+const OPENER_PHASES: readonly OpenerPhase[] = ["voting", "reasoning", "revealed"];
+
 const bad = (type: string): never => {
   throw new ApiError("invalid_response", { message: `bad ${type} event` });
 };
 
 /**
- * One realtime message as a domain event, or null for an event this build does not use (the opener's
- * counts, the class view's token rotation, ...). A known event whose body is not what the proposal says
+ * One realtime message as a domain event, or null for an event this build does not use (the class
+ * view's token rotation, ...). A known event whose body is not what the proposal says
  * throws `invalid_response`; the caller drops it and asks for a snapshot.
  */
 export function sessionEvent(type: string, data: unknown): SessionEvent | null {
@@ -476,9 +494,18 @@ export function sessionEvent(type: string, data: unknown): SessionEvent | null {
         type,
         serverNow,
         sessionQuestionId: str("session_question_id"),
-        correctAnswer: str("correct_answer"),
+        // Null for a debate, which has no right side (EC-Q-03).
+        correctAnswer: d.correct_answer === null ? null : str("correct_answer"),
         explanation: typeof d.explanation === "string" ? d.explanation : null,
       };
+    case "opener.counts": {
+      const phase = str("phase");
+      if (!OPENER_PHASES.includes(phase as OpenerPhase) || !Array.isArray(d.votes) || !d.votes.every((n) => typeof n === "number")) return bad(type);
+      return { type, serverNow, sessionQuestionId: str("session_question_id"), phase: phase as OpenerPhase, votes: d.votes as number[] };
+    }
+    case "opener.reasons":
+      if (!Array.isArray(d.reasons)) return bad(type);
+      return { type, serverNow, sessionQuestionId: str("session_question_id"), reasons: d.reasons.filter((r): r is string => typeof r === "string") };
     case "leaderboard.updated":
       return Array.isArray(d.rows) ? { type, serverNow, rows: (d.rows as WireBoardRow[]).map(boardRow) } : bad(type);
     case "question.result":
@@ -487,8 +514,9 @@ export function sessionEvent(type: string, data: unknown): SessionEvent | null {
         serverNow,
         result: questionResult({
           session_question_id: str("session_question_id"),
-          correct: d.correct === true,
+          correct: d.correct === null ? null : d.correct === true,
           points: num("points"),
+          reason_points: typeof d.reason_points === "number" ? d.reason_points : 0,
           speed_bonus: typeof d.speed_bonus === "number" ? d.speed_bonus : 0,
           session_rank: num("session_rank"),
           correct_answer: typeof d.correct_answer === "string" ? d.correct_answer : null,
@@ -520,6 +548,17 @@ export const settingsBody = (u: SettingsUpdate) => ({
 export const answerBody = (a: AnswerInput) => ({
   session_question_id: a.sessionQuestionId,
   response: a.response,
+  answered_at: iso(a.answeredAt),
+  idempotency_key: a.idempotencyKey,
+});
+
+/** `POST /sessions/{id}/opener/vote`: the same body as an answer; `response` is an option index or "agree" / "disagree". */
+export const voteBody = answerBody;
+
+/** `POST /sessions/{id}/opener/reason`: the reason is `text`, with the answer's time and key. */
+export const reasonBody = (a: AnswerInput) => ({
+  session_question_id: a.sessionQuestionId,
+  text: a.response,
   answered_at: iso(a.answeredAt),
   idempotency_key: a.idempotencyKey,
 });

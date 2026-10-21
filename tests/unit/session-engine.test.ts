@@ -559,7 +559,7 @@ describe("an answer saved for the connection", () => {
   });
 
   describe("after a reload", () => {
-    const restore = { type: "answer.restore", key: "k9", sessionQuestionId: "q1", response: "3", at: q.firedAt! + 3000 } as const;
+    const restore = { type: "answer.restore", kind: "answer", key: "k9", sessionQuestionId: "q1", response: "3", at: q.firedAt! + 3000 } as const;
 
     it("is put back on the question it was given for, as saved", () => {
       const s = reduce(play(snap(open(1), SKEW)), restore);

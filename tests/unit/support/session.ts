@@ -34,6 +34,8 @@ export const question = (n: number, over: Partial<SessionQuestion> = {}): Sessio
     timerSeconds: 20,
     firedAt,
     closesAt: firedAt + 20_000,
+    numeric: null,
+    opener: null,
     ...over,
   };
 };
@@ -42,6 +44,7 @@ export const result = (n: number, over: Partial<QuestionResult> = {}): QuestionR
   sessionQuestionId: `q${n}`,
   correct: true,
   points: 13,
+  reasonPoints: 0,
   speedBonus: 3,
   sessionRank: 4,
   correctAnswer: "1",
@@ -60,6 +63,8 @@ export const snapshot = (over: Partial<StudentSessionState> = {}): StudentSessio
   board: null,
   progress: null,
   summary: null,
+  myReason: null,
+  opener: null,
   ...over,
 });
 

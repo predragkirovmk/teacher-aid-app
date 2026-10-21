@@ -133,7 +133,7 @@ describe("events", () => {
     const { transport, getSnapshot, handle } = setup();
     await vi.advanceTimersByTimeAsync(0);
     const calls = getSnapshot.mock.calls.length;
-    transport.push(PUBLIC, "opener.counts", { a: 1 });
+    transport.push(PUBLIC, "review.ready", { a: 1 });
     transport.push(PUBLIC, "join_token.rotated", {});
     expect(getSnapshot.mock.calls.length).toBe(calls);
     expect(handle.getView().stage).toBe("waiting_next");
@@ -421,7 +421,7 @@ describe("answering", () => {
     };
     const store = memoryStore();
     const first = createOutbox({ store, send: down, random: () => 0.5 });
-    await first.enqueue({ key: "k9", studentId: "me", sessionId: "s1", sessionQuestionId: "q1", response: "3", answeredAt: serverNow() });
+    await first.enqueue({ kind: "answer", key: "k9", studentId: "me", sessionId: "s1", sessionQuestionId: "q1", response: "3", answeredAt: serverNow() });
     // The page is gone; a new one opens on the same disk.
     const transport = new FakeTransport();
     const second = createOutbox({ store, send: down, random: () => 0.5 });
@@ -457,6 +457,122 @@ describe("answering", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(sendAnswer).not.toHaveBeenCalled();
     expect(handle.getView().stage).toBe("waiting_result");
+  });
+});
+
+describe("an opener", () => {
+  const FIRED_AGO = 5000;
+  const openerQ = (over: Partial<SessionQuestion> = {}) =>
+    firedAgo(FIRED_AGO, {
+      id: "o1",
+      index: 0,
+      kind: "opener_prediction",
+      options: ["a", "b", "c"],
+      timerSeconds: 75,
+      closesAt: serverNow() - FIRED_AGO + 75_000,
+      opener: { voteClosesAt: serverNow() - FIRED_AGO + 30_000, reasonMax: 80 },
+      ...over,
+    });
+  let n = 0;
+  const open = async (replies?: Reply[], deps: Parameters<typeof setup>[0] = {}) => {
+    n = 0;
+    const s = setup({ newKey: () => `key-${++n}`, ...deps }, replies ?? [reply({ session: session({ state: "opener" }), question: openerQ() })]);
+    await vi.advanceTimersByTimeAsync(0);
+    return s;
+  };
+
+  it("sends the vote to its endpoint and the reason after it, each saved first", async () => {
+    const { handle, sendAnswer } = await open();
+    expect(handle.getView().stage).toBe("voting");
+    handle.answer("1");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(handle.getView()).toMatchObject({ stage: "reasoning", picked: "1", answer: "sent" });
+    handle.reason("  Same on  both sides.  ");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sendAnswer.mock.calls.map((c) => [c[2], (c[1] as { idempotencyKey: string; response: string }).idempotencyKey, (c[1] as { response: string }).response])).toEqual([
+      ["vote", "key-1", "1"],
+      ["reason", "key-2", "Same on both sides."],
+    ]);
+    expect(handle.getView()).toMatchObject({ stage: "opener_wait", opener: { reason: "Same on both sides.", reasonAnswer: "sent" } });
+  });
+
+  it("takes the vote once and the reason once", async () => {
+    const { handle, sendAnswer } = await open();
+    handle.answer("1");
+    handle.answer("2");
+    handle.reason("One.");
+    handle.reason("Two.");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sendAnswer).toHaveBeenCalledTimes(2);
+  });
+
+  it("sends no reason without a vote, and nothing empty", async () => {
+    const { handle, sendAnswer } = await open();
+    handle.reason("Too early.");
+    handle.answer("1");
+    handle.reason("   ");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sendAnswer).toHaveBeenCalledTimes(1);
+    expect(handle.getView().stage).toBe("reasoning");
+  });
+
+  it("moves on without a reason when the student skips it", async () => {
+    const { handle, sendAnswer } = await open();
+    handle.answer("1");
+    handle.skipReason();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(handle.getView().stage).toBe("opener_wait");
+    expect(sendAnswer).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a vote and a reason saved for the connection as saved, and sent when it is back", async () => {
+    let up = false;
+    const send = vi.fn(async () => {
+      if (!up) throw new ApiError("network");
+      return { accepted: true, duplicate: false };
+    });
+    const now = reply({ session: session({ state: "opener" }), question: openerQ() });
+    const there = reply({ session: session({ state: "opener" }), question: openerQ(), myResponse: "1", myReason: "Because." });
+    const { handle, transport } = await open([now, now, there], { send });
+    handle.answer("1");
+    handle.reason("Because.");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(handle.getView()).toMatchObject({ answer: "saved", opener: { reasonAnswer: "sending" } });
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(handle.getView().opener).toMatchObject({ reasonAnswer: "saved" });
+    up = true;
+    transport.setState("reconnecting");
+    transport.setState("open");
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(handle.getView()).toMatchObject({ answer: "sent", opener: { reasonAnswer: "sent" } });
+  });
+
+  it("puts a vote and a reason saved before a reload back, each where it was", async () => {
+    const down = async () => {
+      throw new ApiError("network");
+    };
+    const store = memoryStore();
+    const first = createOutbox({ store, send: down, random: () => 0.5 });
+    const base = { studentId: "me", sessionId: "s1", sessionQuestionId: "o1" };
+    await first.enqueue({ ...base, kind: "vote", key: "v9", response: "1", answeredAt: serverNow() - 3000 });
+    await first.enqueue({ ...base, kind: "reason", key: "r9", response: "Because.", answeredAt: serverNow() - 2000 });
+    const second = createOutbox({ store, send: down, random: () => 0.5 });
+    const transport = new FakeTransport();
+    const getSnapshot = vi.fn(async () => ({ ...reply({ session: session({ state: "opener" }), question: openerQ() }), serverNow: serverNow() }) as StudentSessionState);
+    const handle = createSessionHandle({ sessionId: "s1", meId: "me", transport, getSnapshot, outbox: second, random: () => 0.5 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(handle.getView()).toMatchObject({ stage: "opener_wait", picked: "1", answer: "saved", opener: { reason: "Because.", reasonAnswer: "saved" } });
+  });
+
+  it("listens to the class: the counts after voting and the anonymous reasons", async () => {
+    const { handle, transport } = await open();
+    handle.answer("1");
+    transport.push(PUBLIC, "opener.counts", { server_now: iso(serverNow() + 1), session_question_id: "o1", phase: "voting", votes: [1, 2, 3] });
+    expect(handle.getView().opener).toMatchObject({ phase: "voting", votes: null });
+    transport.push(PUBLIC, "opener.counts", { server_now: iso(serverNow() + 2), session_question_id: "o1", phase: "reasoning", votes: [4, 5, 6] });
+    transport.push(PUBLIC, "opener.reasons", { server_now: iso(serverNow() + 3), session_question_id: "o1", reasons: ["No air."] });
+    expect(handle.getView().opener).toMatchObject({ phase: "reasoning", votes: [4, 5, 6], reasons: ["No air."] });
   });
 });
 

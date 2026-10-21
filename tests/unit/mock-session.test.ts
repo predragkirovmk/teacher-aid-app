@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockClient, mockClient } from "@/lib/app/api/mock";
-import { CLASSMATES, CORRECT_POINTS, DURATION, QUIZZES, SPEED_POINTS, speedBonus } from "@/lib/app/api/mock/quiz";
+import { CLASSMATES, CORRECT_POINTS, DURATION, OPENER_TIMES, QUIZZES, SPEED_POINTS, speedBonus } from "@/lib/app/api/mock/quiz";
 import { ANSWER_GRACE_MS, SCRIPT, SKEW_MS, joinMock, mockSessionFor, mockTransport, resetMockSessions, serverNow, type MockSession } from "@/lib/app/api/mock/session";
 import { actions, getState } from "@/lib/app/api/mock/store";
 import { iso } from "@/lib/app/api/wire";
@@ -47,8 +47,13 @@ function lesson(code = "MATH-7B") {
 
 const advance = (ms: number) => vi.advanceTimersByTimeAsync(ms);
 
-/** Run to the moment question 1 opens. */
-const toFirstQuestion = () => advance(SCRIPT.start);
+/** The opener's whole length, from opening to the question closing. */
+const OPENER_MS = OPENER_TIMES.vote + OPENER_TIMES.reason;
+
+/** Run to the moment question 1 opens: the lobby, the opener (nobody votes), and the pause after it. */
+const toFirstQuestion = () => advance(SCRIPT.start + OPENER_MS + SCRIPT.next);
+/** The same for the lessons that skip the opener (the connection scenarios). */
+const toFirstQuestionDirect = () => advance(SCRIPT.start);
 
 const answer = (s: MockSession, response: string, afterMs: number, key = "k") => {
   const q = s.studentState().question!;
@@ -68,8 +73,8 @@ describe("the points", () => {
     expect(speedBonus(dur * 0.9, dur)).toBe(5);
   });
 
-  it("give a question 20 seconds, a true-or-false 15", () => {
-    expect(DURATION).toEqual({ mc: 20_000, tf: 15_000 });
+  it("give a question 20 seconds, a true-or-false 15 and a number 30", () => {
+    expect(DURATION).toEqual({ mc: 20_000, tf: 15_000, num: 30_000 });
   });
 });
 
@@ -149,7 +154,8 @@ describe("answering a question", () => {
     const speed = speedBonus(dur - 2000, dur);
     expect(l.session.studentState().result).toMatchObject({ correct: true, speedBonus: speed, points: CORRECT_POINTS + speed });
     expect(l.session.studentState().sessionPoints).toBe(CORRECT_POINTS + speed);
-    expect(l.types().filter((t) => t === "question.result")).toHaveLength(2);
+    // The opener's result came first, then this question's, then its correction.
+    expect(l.types().filter((t) => t === "question.result")).toHaveLength(3);
     expect(l.session.studentState().myResponse).toBe(right);
   });
 
@@ -197,7 +203,8 @@ describe("answering a question", () => {
     const q = l.session.studentState().question!;
     expect(q.index).toBe(1);
     expect(q.status).toBe("open");
-    expect(l.types().filter((t) => t === "question.closed")).toHaveLength(1);
+    // The opener closed, and question 1 once.
+    expect(l.types().filter((t) => t === "question.closed")).toHaveLength(2);
   });
 
   it("keeps the question open while a classmate has not answered", async () => {
@@ -222,6 +229,7 @@ describe("answering a question", () => {
 describe("the script", () => {
   it("fills the lobby, starts, and plays one question at a time to the end", async () => {
     const l = lesson();
+    // The opener is not one of the questions the lesson counts.
     expect(l.joined.session).toMatchObject({ state: "lobby", courseId: "math", questionCount: quiz.questions.length });
     await advance(SCRIPT.lobbyTick * 3 + 10);
     expect(l.types().filter((t) => t === "joined.count").length).toBeGreaterThanOrEqual(3);
@@ -230,17 +238,19 @@ describe("the script", () => {
     // Never answering: the script still runs to the end by itself.
     await advance(15 * 60_000);
     const types = l.types();
-    expect(types.filter((t) => t === "question.opened")).toHaveLength(quiz.questions.length);
-    expect(types.filter((t) => t === "question.closed")).toHaveLength(quiz.questions.length);
-    expect(types.filter((t) => t === "question.revealed")).toHaveLength(quiz.questions.length);
-    expect(types.filter((t) => t === "question.result")).toHaveLength(quiz.questions.length);
+    // The opener comes first and goes through the same four events as every pop-up.
+    const all = quiz.questions.length + 1;
+    expect(types.filter((t) => t === "question.opened")).toHaveLength(all);
+    expect(types.filter((t) => t === "question.closed")).toHaveLength(all);
+    expect(types.filter((t) => t === "question.revealed")).toHaveLength(all);
+    expect(types.filter((t) => t === "question.result")).toHaveLength(all);
     // In order: opened, closed, result, revealed for each question, then review, then the end.
     const per = types.filter((t) => ["question.opened", "question.closed", "question.result", "question.revealed"].includes(t));
     expect(per.slice(0, 4)).toEqual(["question.opened", "question.closed", "question.result", "question.revealed"]);
     expect(types.indexOf("state.changed")).toBeGreaterThan(-1);
     expect(types.at(-1)).toBe("session.ended");
     const states = l.heard.filter((m) => m.type === "state.changed").map((m) => (m.data as { state: string }).state);
-    expect(states).toEqual(["teaching", "review", "ended"]);
+    expect(states).toEqual(["opener", "teaching", "review", "ended"]);
     expect(l.session.studentState()).toMatchObject({ session: { state: "ended" }, summary: { right: 0, total: quiz.questions.length } });
   });
 
@@ -251,14 +261,14 @@ describe("the script", () => {
       const body = JSON.stringify(m.data);
       if (m.type === "question.opened") expect(body).not.toContain("correct");
       if (m.type === "question.result") expect((m.data as { correct_answer: unknown }).correct_answer).toBeNull();
-      if (m.type === "question.revealed") expect((m.data as { correct_answer: string }).correct_answer).toMatch(/^(\d|true|false)$/);
+      if (m.type === "question.revealed") expect((m.data as { correct_answer: string }).correct_answer).toMatch(/^(-?\d+(\.\d+)?|true|false)$/);
     }
   });
 
   it("opens each question with fired_at and closes_at on the server's clock", async () => {
     const l = lesson();
     await toFirstQuestion();
-    const opened = l.heard.find((m) => m.type === "question.opened")!.data as { server_now: string; question: { fired_at: string; closes_at: string; timer_seconds: number } };
+    const opened = l.heard.filter((m) => m.type === "question.opened")[1].data as { server_now: string; question: { fired_at: string; closes_at: string; timer_seconds: number } };
     expect(Date.parse(opened.question.closes_at) - Date.parse(opened.question.fired_at)).toBe(opened.question.timer_seconds * 1000);
     expect(Math.abs(Date.parse(opened.question.fired_at) - serverNow())).toBeLessThan(50);
   });
@@ -412,7 +422,13 @@ describe("through the session engine, the way the screen runs it", () => {
       meId: "student-marko",
       transport: mockTransport(joined.session.id),
       getSnapshot: (id) => client.getStudentState(id),
-      outbox: createOutbox({ store: memoryStore(), send: (id, a) => (sent.push(a.sessionQuestionId), client.submitAnswer(id, a)) }),
+      outbox: createOutbox({
+        store: memoryStore(),
+        send: (id, a, kind) => (
+          sent.push(`${kind}:${a.sessionQuestionId}`),
+          kind === "vote" ? client.submitVote(id, a) : kind === "reason" ? client.submitReason(id, a) : client.submitAnswer(id, a)
+        ),
+      }),
     });
     const stages = new Set<string>();
     handle.subscribe(() => stages.add(handle.getView().stage));
@@ -422,20 +438,24 @@ describe("through the session engine, the way the screen runs it", () => {
     let answered = 0;
     for (let i = 0; i < 400 && handle.getView().stage !== "ended"; i++) {
       const v = handle.getView();
-      if (v.stage === "answering") {
+      if (v.stage === "voting") handle.answer(String((quiz.opener as { answer: number }).answer));
+      else if (v.stage === "reasoning") handle.reason("Same on both sides keeps the balance.");
+      else if (v.stage === "answering") {
         const q = quiz.questions[v.question!.index];
-        handle.answer(q.kind === "mc" ? String(q.answer) : q.answer === 0 ? "true" : "false");
+        handle.answer(q.kind === "mc" ? String(q.answer) : q.kind === "num" ? q.answer : q.answer === 0 ? "true" : "false");
         answered++;
       }
       await advance(500);
     }
     const v = handle.getView();
     expect(answered).toBe(quiz.questions.length);
-    expect(new Set(sent).size).toBe(quiz.questions.length);
+    // Every pop-up, and the opener's vote and reason, each once.
+    expect(new Set(sent).size).toBe(quiz.questions.length + 2);
     expect(v.stage).toBe("ended");
     expect(v.summary).toEqual({ right: quiz.questions.length, total: quiz.questions.length });
-    expect(v.points).toBeGreaterThanOrEqual(quiz.questions.length * CORRECT_POINTS);
-    for (const s of ["waiting_start", "answering", "waiting_others", "right", "waiting_next", "ended"]) expect(stages, s).toContain(s);
+    // The opener: a right prediction (10) and a reason (8), then the pop-ups.
+    expect(v.points).toBeGreaterThanOrEqual(CORRECT_POINTS + 8 + quiz.questions.length * CORRECT_POINTS);
+    for (const s of ["waiting_start", "voting", "reasoning", "opener_wait", "opener_result", "answering", "waiting_others", "right", "waiting_next", "ended"]) expect(stages, s).toContain(s);
     expect(getState().perfectQuiz).toBe(true);
     expect(session.ended).toBe(true);
     handle.dispose();
@@ -479,7 +499,7 @@ describe("OFFLINE-ANSWER-7B and the mock's network", () => {
   it("drops the network for 15 seconds as the first answer is sent, then lets the same answer through", async () => {
     const l = lesson("OFFLINE-ANSWER-7B");
     const client = createMockClient({ state: getState, locale: () => "mk", writable: true });
-    await toFirstQuestion();
+    await toFirstQuestionDirect();
     const q = l.session.studentState().question!;
     const input = { sessionQuestionId: q.id, response: right, answeredAt: q.firedAt! + 1000, idempotencyKey: "k1" };
 
@@ -517,5 +537,303 @@ describe("OFFLINE-ANSWER-7B and the mock's network", () => {
     await expect(client.submitAnswer(l.session.id, { sessionQuestionId: q.id, response: right, answeredAt: q.firedAt! + 1000, idempotencyKey: "k1" })).rejects.toMatchObject({ code: "network" });
     net.setForcedOffline(false);
     await expect(client.getStudentState(l.session.id)).resolves.toBeTruthy();
+  });
+});
+
+describe("the special codes for the new question kinds", () => {
+  it("OPENER-7B opens the maths lesson on its prediction opener, with nobody late and no lobby", () => {
+    const j = joinMock("OPENER-7B", "mk");
+    expect(j.session).toMatchObject({ courseId: "math", state: "opener", questionCount: quiz.questions.length });
+    expect(j.attendance.status).toBe("present");
+    const q = mockSessionFor(j.session.id)!.studentState().question!;
+    expect(q).toMatchObject({ kind: "opener_prediction", status: "open", numeric: null });
+    expect(q.options).toHaveLength(3);
+    expect(q.opener).toMatchObject({ reasonMax: 80 });
+    expect(q.opener!.voteClosesAt - q.firedAt!).toBe(OPENER_TIMES.vote);
+    expect(q.closesAt! - q.firedAt!).toBe(OPENER_TIMES.vote + OPENER_TIMES.reason);
+  });
+
+  it("DEBATE-7B opens the English lesson on a claim with two sides and no options", () => {
+    const j = joinMock("DEBATE-7B", "en");
+    expect(j.session).toMatchObject({ courseId: "english", state: "opener" });
+    expect(mockSessionFor(j.session.id)!.studentState().question).toMatchObject({ kind: "opener_debate", options: null });
+  });
+
+  it("NUMERIC-7B opens the physics lesson on its numeric question: a unit, a minus, a decimal and a tolerance", () => {
+    const j = joinMock("NUMERIC-7B", "mk");
+    expect(j.session).toMatchObject({ courseId: "physics", state: "teaching" });
+    const q = mockSessionFor(j.session.id)!.studentState().question!;
+    expect(q).toMatchObject({ kind: "numeric", options: null, status: "open", opener: null, numeric: { unit: "m/s²", tolerance: 0.1, allowNegative: true } });
+    expect(q.closesAt! - q.firedAt!).toBe(DURATION.num);
+  });
+
+  it("each is its own lesson, apart from the regular code for the same subject", () => {
+    const a = joinMock("OPENER-7B", "mk");
+    const b = joinMock("MATH-7B", "mk");
+    expect(b.session.id).not.toBe(a.session.id);
+    expect(joinMock("opener-7b", "mk").session.id).toBe(a.session.id);
+  });
+});
+
+describe("the opener", () => {
+  const hear = (code: string) => {
+    const joined = joinMock(code, "mk");
+    const session = mockSessionFor(joined.session.id)!;
+    const heard: RealtimeMessage[] = [];
+    session.listen((m) => heard.push(m));
+    return { session, heard, ofType: (t: string) => heard.filter((m) => m.type === t).map((m) => m.data as Record<string, unknown>) };
+  };
+  const o = (s: MockSession) => s.studentState().question!;
+  const vote = (s: MockSession, response: string, afterMs: number, key = "v") =>
+    s.submitVote({ sessionQuestionId: o(s).id, response, answeredAt: o(s).firedAt! + afterMs, idempotencyKey: key });
+  const reason = (s: MockSession, text: string, afterMs: number, key = "r") =>
+    s.submitReason({ sessionQuestionId: o(s).id, response: text, answeredAt: o(s).firedAt! + afterMs, idempotencyKey: key });
+  const mathRight = String((quiz.opener as { answer: number }).answer);
+  const mathWrong = mathRight === "0" ? "1" : "0";
+  /** Run until the opener has closed and no further. */
+  const closeOpener = async (s: MockSession) => {
+    for (let i = 0; i < 700 && s.studentState().question?.status === "open"; i++) await advance(100);
+  };
+
+  it("is the first thing the class does after the teacher starts, and moves the lesson to `opener`", async () => {
+    const { heard, session } = hear("MATH-7B");
+    await advance(SCRIPT.start);
+    expect(heard.filter((m) => ["state.changed", "question.opened"].includes(m.type)).map((m) => [m.type, (m.data as { state?: string }).state ?? (m.data as { question: { kind: string } }).question.kind])).toEqual([
+      ["state.changed", "opener"],
+      ["question.opened", "opener_prediction"],
+    ]);
+    expect(session.studentState().session.state).toBe("opener");
+  });
+
+  it("gives 10 for a right vote and 8 for a reason, 18 together", async () => {
+    const { session, ofType } = hear("OPENER-7B");
+    expect(vote(session, mathRight, 1000)).toEqual({ accepted: true, duplicate: false });
+    expect(reason(session, "Same on both sides keeps the balance.", 3000)).toEqual({ accepted: true, duplicate: false });
+    await closeOpener(session);
+    expect(session.studentState().result).toMatchObject({ correct: true, points: 18, reasonPoints: 8, speedBonus: 0, correctAnswer: null });
+    expect(session.studentState().sessionPoints).toBe(18);
+    expect(getState().quizPoints).toBe(18);
+    expect(ofType("question.result")[0]).toMatchObject({ correct: true, points: 18, reason_points: 8, session_points: 18 });
+  });
+
+  it("gives the reason's 8 even when the vote was wrong (BR-PTS-06), and 10 alone for a right vote with no reason", async () => {
+    const wrong = hear("OPENER-7B");
+    vote(wrong.session, mathWrong, 1000);
+    reason(wrong.session, "I think it doubles.", 3000);
+    await closeOpener(wrong.session);
+    expect(wrong.session.studentState().result).toMatchObject({ correct: false, points: 8, reasonPoints: 8 });
+    resetMockSessions();
+    const silent = hear("OPENER-7B");
+    vote(silent.session, mathRight, 1000);
+    await closeOpener(silent.session);
+    expect(silent.session.studentState().result).toMatchObject({ correct: true, points: 10, reasonPoints: 0 });
+  });
+
+  it("has no right side in a debate: the vote earns nothing and the reason earns 8 (OPEN-07)", async () => {
+    const { session, ofType } = hear("DEBATE-7B");
+    vote(session, "agree", 1000);
+    reason(session, "It changes the meaning.", 3000);
+    await closeOpener(session);
+    expect(session.studentState().result).toMatchObject({ correct: null, points: 8, reasonPoints: 8 });
+    await advance(SCRIPT.reveal + 10);
+    expect(ofType("question.revealed")[0]).toMatchObject({ correct_answer: null });
+    expect(session.studentState().result?.correctAnswer).toBeNull();
+    // A debate vote is agree or disagree, nothing else.
+    expect(() => vote(session, "1", 1500, "x")).toThrowError(expect.objectContaining({ code: "already_answered" }));
+  });
+
+  it("tells a student who did not vote that they got nothing", async () => {
+    const { session } = hear("OPENER-7B");
+    await closeOpener(session);
+    expect(session.studentState().result).toMatchObject({ correct: false, points: 0, reasonPoints: 0 });
+  });
+
+  it("sends the counts live while voting, final when voting closes, and again with the reveal", async () => {
+    const { session, ofType } = hear("OPENER-7B");
+    await advance(SCRIPT.progressTick * 2 + 10);
+    expect(ofType("opener.counts").every((c) => c.phase === "voting")).toBe(true);
+    await advance(OPENER_TIMES.vote);
+    const phases = ofType("opener.counts").map((c) => c.phase);
+    expect(phases).toContain("reasoning");
+    const sizes = new Set(ofType("opener.counts").map((c) => (c.votes as number[]).length));
+    expect(sizes).toEqual(new Set([3]));
+    const final = ofType("opener.counts").find((c) => c.phase === "reasoning")!.votes as number[];
+    // Everybody in the class voted, the student did not.
+    expect(final.reduce((a, b) => a + b, 0)).toBe(CLASSMATES.length);
+    await closeOpener(session);
+    await advance(SCRIPT.reveal + 10);
+    expect(ofType("opener.counts").at(-1)).toMatchObject({ phase: "revealed", votes: final });
+  });
+
+  it("keeps the anonymous reasons back until the reveal, and gives no names", async () => {
+    const { session, ofType, heard } = hear("OPENER-7B");
+    await closeOpener(session);
+    expect(ofType("opener.reasons")).toHaveLength(0);
+    expect(session.studentState().opener!.reasons).toEqual([]);
+    await advance(SCRIPT.reveal + 10);
+    const [r] = ofType("opener.reasons");
+    expect((r.reasons as string[]).length).toBeGreaterThan(3);
+    expect(Object.keys(r).sort()).toEqual(["channel", "reasons", "server_now", "session_question_id"]);
+    expect(session.studentState().opener).toMatchObject({ phase: "revealed", reasons: r.reasons });
+    const names = CLASSMATES.map((c) => c.split(" ")[0]);
+    expect(JSON.stringify(heard.filter((m) => m.type.startsWith("opener."))).includes(names[0])).toBe(false);
+  });
+
+  it("closes voting when everyone has voted, without waiting for the planned end", async () => {
+    const { session, ofType } = hear("OPENER-7B");
+    vote(session, mathRight, 500);
+    await advance(OPENER_TIMES.vote / 2);
+    const closed = ofType("opener.counts").find((c) => c.phase === "reasoning")!;
+    expect(closed).toBeTruthy();
+    // The student's own vote is in the final count.
+    expect((closed.votes as number[]).reduce((a, b) => a + b, 0)).toBe(CLASSMATES.length + 1);
+  });
+
+  it("refuses a vote given after voting really ended, and a reason after the end and its grace", async () => {
+    const { session } = hear("OPENER-7B");
+    const q = o(session);
+    await closeOpener(session);
+    expect(() => session.submitVote({ sessionQuestionId: q.id, response: mathRight, answeredAt: q.opener!.voteClosesAt + ANSWER_GRACE_MS + 1, idempotencyKey: "a" })).toThrowError(
+      expect.objectContaining({ code: "question_closed" }),
+    );
+    expect(() => session.submitReason({ sessionQuestionId: q.id, response: "Late.", answeredAt: q.closesAt! + ANSWER_GRACE_MS + 1, idempotencyKey: "b" })).toThrowError(
+      expect.objectContaining({ code: "question_closed" }),
+    );
+  });
+
+  it("counts a vote and a reason that were saved offline and arrive after the opener closed (BR-NET-01)", async () => {
+    const { session, ofType } = hear("OPENER-7B");
+    const q = o(session);
+    await closeOpener(session);
+    expect(session.studentState().result).toMatchObject({ points: 0 });
+    session.submitVote({ sessionQuestionId: q.id, response: mathRight, answeredAt: q.firedAt! + 2000, idempotencyKey: "late-v" });
+    expect(session.studentState().result).toMatchObject({ correct: true, points: 10 });
+    session.submitReason({ sessionQuestionId: q.id, response: "No air.", answeredAt: q.firedAt! + 4000, idempotencyKey: "late-r" });
+    expect(session.studentState().result).toMatchObject({ correct: true, points: 18, reasonPoints: 8 });
+    expect(session.studentState().sessionPoints).toBe(18);
+    // The opener's result, then one correction for the vote and one for the reason.
+    expect(ofType("question.result")).toHaveLength(3);
+    expect(ofType("question.result").at(-1)).toMatchObject({ points: 18, reason_points: 8, session_points: 18 });
+  });
+
+  it("counts a vote and a reason that arrive after the class has moved on to the first pop-up", async () => {
+    const { session } = hear("OPENER-7B");
+    const q = o(session);
+    await closeOpener(session);
+    await advance(SCRIPT.next + 100);
+    expect(o(session).id).not.toBe(q.id);
+    session.submitVote({ sessionQuestionId: q.id, response: mathRight, answeredAt: q.firedAt! + 2000, idempotencyKey: "old-v" });
+    expect(session.studentState().sessionPoints).toBe(10);
+  });
+
+  it("refuses what the opener cannot take", async () => {
+    const { session } = hear("OPENER-7B");
+    // A reason belongs to a vote.
+    expect(() => reason(session, "No vote yet.", 500)).toThrowError(expect.objectContaining({ code: "validation_failed" }));
+    expect(() => vote(session, "7", 500)).toThrowError(expect.objectContaining({ code: "validation_failed" }));
+    expect(() => vote(session, "agree", 500)).toThrowError(expect.objectContaining({ code: "validation_failed" }));
+    vote(session, mathRight, 800, "v1");
+    expect(() => reason(session, "   ", 1000)).toThrowError(expect.objectContaining({ code: "validation_failed" }));
+    expect(reason(session, "One.", 1200, "r1")).toEqual({ accepted: true, duplicate: false });
+    expect(reason(session, "One.", 1200, "r1")).toEqual({ accepted: true, duplicate: true });
+    expect(() => reason(session, "Two.", 1500, "r2")).toThrowError(expect.objectContaining({ code: "already_answered" }));
+    expect(() => vote(session, mathWrong, 900, "v2")).toThrowError(expect.objectContaining({ code: "already_answered" }));
+    expect(() => session.submitVote({ sessionQuestionId: "nope", response: "0", answeredAt: 0, idempotencyKey: "z" })).toThrowError(expect.objectContaining({ code: "not_found" }));
+  });
+
+  it("keeps a reason to one line of at most 80 characters", async () => {
+    const { session } = hear("OPENER-7B");
+    vote(session, mathRight, 500);
+    reason(session, `  ${"word ".repeat(40)}\n\nmore  `, 900);
+    // What the server kept shows in the snapshot.
+    const kept = session.studentState().myReason!;
+    expect(kept.length).toBeLessThanOrEqual(80);
+    expect(kept.length).toBeGreaterThan(70);
+    expect(kept).not.toMatch(/\s{2}|\n|\s$/);
+  });
+
+  it("is followed by the lesson's first question after a pause", async () => {
+    const { session } = hear("OPENER-7B");
+    await closeOpener(session);
+    await advance(SCRIPT.next + 10);
+    expect(session.studentState().question).toMatchObject({ index: 0, kind: "multiple_choice", status: "open" });
+    expect(session.studentState().session.state).toBe("teaching");
+    expect(session.studentState().opener).toBeNull();
+  });
+});
+
+describe("a numeric question", () => {
+  const numeric = () => {
+    const joined = joinMock("NUMERIC-7B", "mk");
+    const session = mockSessionFor(joined.session.id)!;
+    const heard: RealtimeMessage[] = [];
+    session.listen((m) => heard.push(m));
+    return { session, heard, ofType: (t: string) => heard.filter((m) => m.type === t).map((m) => m.data as Record<string, unknown>) };
+  };
+  const give = (s: MockSession, response: string, afterMs = 1000, key = "n") => {
+    const q = s.studentState().question!;
+    return s.submit({ sessionQuestionId: q.id, response, answeredAt: q.firedAt! + afterMs, idempotencyKey: key });
+  };
+  const closeIt = async (s: MockSession) => {
+    for (let i = 0; i < 400 && s.studentState().question?.status === "open"; i++) await advance(100);
+  };
+
+  it("is right within the tolerance, edges included, and earns the speed bonus", async () => {
+    const { session } = numeric();
+    give(session, "-2.4", 0);
+    await closeIt(session);
+    expect(session.studentState().result).toMatchObject({ correct: true, speedBonus: 5, points: 15 });
+  });
+
+  it("is wrong past the tolerance", async () => {
+    const { session } = numeric();
+    give(session, "-2.3");
+    await closeIt(session);
+    expect(session.studentState().result).toMatchObject({ correct: false, points: 0 });
+  });
+
+  it("keeps the number as the server reads it, so a comma and a point are the same answer", async () => {
+    const { session } = numeric();
+    give(session, "-2,50");
+    expect(session.studentState().myResponse).toBe("-2.5");
+    await closeIt(session);
+    expect(session.studentState().result?.correct).toBe(true);
+  });
+
+  it("refuses what is not a number", async () => {
+    const { session } = numeric();
+    expect(() => give(session, "abc")).toThrowError(expect.objectContaining({ code: "validation_failed" }));
+    expect(() => give(session, "")).toThrowError(expect.objectContaining({ code: "validation_failed" }));
+    expect(() => give(session, "1.000,5")).toThrowError(expect.objectContaining({ code: "validation_failed" }));
+  });
+
+  it("takes no minus on a question that does not allow one, and a decimal with a comma on the maths one", async () => {
+    const joined = joinMock("MATH-7B", "mk");
+    const math = mockSessionFor(joined.session.id)!;
+    // The lobby, the opener, then two pop-ups nobody answers, and the third is the number.
+    await advance(SCRIPT.start + OPENER_MS + SCRIPT.next + DURATION.mc + SCRIPT.next + DURATION.tf + SCRIPT.next);
+    const q = math.studentState().question!;
+    expect(q).toMatchObject({ kind: "numeric", status: "open", numeric: { unit: null, tolerance: 0.01, allowNegative: false } });
+    const send = (response: string, key: string) => math.submit({ sessionQuestionId: q.id, response, answeredAt: q.firedAt! + 1000, idempotencyKey: key });
+    expect(() => send("-3,25", "a")).toThrowError(expect.objectContaining({ code: "validation_failed" }));
+    send("3,26", "b");
+    for (let i = 0; i < 400 && math.studentState().question?.status === "open"; i++) await advance(100);
+    // 3.26 is 0.01 away from 3.25: the edge of the tolerance counts.
+    expect(math.studentState().result).toMatchObject({ correct: true });
+  });
+
+  it("reveals the number as plain text, and the summary writes it with its unit and the locale's separator", async () => {
+    const { session, ofType } = numeric();
+    give(session, "-2,5", 1000);
+    await advance(15 * 60_000);
+    expect(ofType("question.revealed")[0]).toMatchObject({ correct_answer: "-2.5" });
+    const [done] = getState().finished;
+    expect(done.questions[0]).toMatchObject({ correct: true, correctAnswer: "−2,5 m/s²", yourAnswer: "−2,5 m/s²" });
+  });
+
+  it("counts only the questions the class got to: a lesson joined at question 3 has three", async () => {
+    const { session } = numeric();
+    await advance(15 * 60_000);
+    expect(session.studentState().summary).toEqual({ right: 0, total: 3 });
   });
 });

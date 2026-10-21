@@ -91,6 +91,10 @@ export interface ApiClient {
   getStudentState(sessionId: Id): Promise<StudentSessionState>;
   /** POST /sessions/{id}/answers. Idempotent on `idempotencyKey` (EC-NET-06). */
   submitAnswer(sessionId: Id, answer: AnswerInput): Promise<AnswerReceipt>;
+  /** POST /sessions/{id}/opener/vote: the student's vote on the opener (PROPOSED body: an answer's). Idempotent on `idempotencyKey`. */
+  submitVote(sessionId: Id, vote: AnswerInput): Promise<AnswerReceipt>;
+  /** POST /sessions/{id}/opener/reason: the one-line reason; `response` holds the text (PROPOSED). Idempotent on `idempotencyKey`. */
+  submitReason(sessionId: Id, reason: AnswerInput): Promise<AnswerReceipt>;
 
   /**
    * Called when what the client knows may have changed behind the app's back: the mock when its

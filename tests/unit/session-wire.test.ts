@@ -29,7 +29,7 @@ describe("realtime events", () => {
     expect(sessionEvent("question.opened", { server_now: at, question: wireQ })).toEqual({
       type: "question.opened",
       serverNow: T0,
-      question: { id: "q1", index: 0, total: 5, kind: "multiple_choice", prompt: "2 + 2?", options: ["3", "4", "5", "6"], status: "open", timerSeconds: 25, firedAt: T0, closesAt: T0 + 25_000 },
+      question: { id: "q1", index: 0, total: 5, kind: "multiple_choice", prompt: "2 + 2?", options: ["3", "4", "5", "6"], status: "open", timerSeconds: 25, firedAt: T0, closesAt: T0 + 25_000, numeric: null, opener: null },
     });
     expect(sessionEvent("question.progress", { server_now: at, session_question_id: "q1", answered: 4, joined: 24 })).toMatchObject({ answered: 4, joined: 24 });
     expect(sessionEvent("question.closed", { server_now: at, session_question_id: "q1" })).toEqual({ type: "question.closed", serverNow: T0, sessionQuestionId: "q1" });
@@ -52,7 +52,7 @@ describe("realtime events", () => {
       type: "question.result",
       serverNow: T0,
       sessionPoints: 23,
-      result: { sessionQuestionId: "q1", correct: true, points: 13, speedBonus: 3, sessionRank: 2, correctAnswer: null, explanation: null },
+      result: { sessionQuestionId: "q1", correct: true, points: 13, reasonPoints: 0, speedBonus: 3, sessionRank: 2, correctAnswer: null, explanation: null },
     });
     expect(sessionEvent("session.ended", { server_now: at, session_points: 40, session_rank: 3, summary: { right: 4, total: 5 } })).toEqual({
       type: "session.ended",
@@ -68,6 +68,44 @@ describe("realtime events", () => {
     expect(sessionEvent("notification.created", undefined)).toEqual({ type: "notification.created", serverNow: null });
   });
 
+  it("reads a numeric question's unit, tolerance and sign, and an opener's two windows", () => {
+    const num = sessionEvent("question.opened", {
+      server_now: at,
+      question: { ...wireQ, kind: "numeric", options: null, numeric: { unit: "m/s²", tolerance: 0.1, allow_negative: true } },
+    });
+    expect(num).toMatchObject({ question: { kind: "numeric", options: null, numeric: { unit: "m/s²", tolerance: 0.1, allowNegative: true }, opener: null } });
+    const noUnit = sessionEvent("question.opened", { server_now: at, question: { ...wireQ, kind: "numeric", options: null, numeric: { tolerance: 0, allow_negative: false } } });
+    expect(noUnit).toMatchObject({ question: { numeric: { unit: null, tolerance: 0, allowNegative: false } } });
+    const op = sessionEvent("question.opened", {
+      server_now: at,
+      question: { ...wireQ, kind: "opener_prediction", opener: { vote_closes_at: iso(T0 + 30_000), reason_max_length: 80 } },
+    });
+    expect(op).toMatchObject({ question: { kind: "opener_prediction", numeric: null, opener: { voteClosesAt: T0 + 30_000, reasonMax: 80 } } });
+  });
+
+  it("reads the opener's counts and anonymous reasons (spec 11.2, PROPOSED payloads)", () => {
+    expect(sessionEvent("opener.counts", { server_now: at, session_question_id: "o1", phase: "reasoning", votes: [4, 2, 20] })).toEqual({
+      type: "opener.counts",
+      serverNow: T0,
+      sessionQuestionId: "o1",
+      phase: "reasoning",
+      votes: [4, 2, 20],
+    });
+    expect(sessionEvent("opener.reasons", { server_now: at, session_question_id: "o1", reasons: ["No air.", 7, "Same."] })).toEqual({
+      type: "opener.reasons",
+      serverNow: T0,
+      sessionQuestionId: "o1",
+      reasons: ["No air.", "Same."],
+    });
+  });
+
+  it("reads a reveal with no right answer (a debate), and a result with no right or wrong", () => {
+    expect(sessionEvent("question.revealed", { server_now: at, session_question_id: "d1", correct_answer: null })).toMatchObject({ correctAnswer: null, explanation: null });
+    expect(
+      sessionEvent("question.result", { server_now: at, session_question_id: "d1", correct: null, points: 8, reason_points: 8, session_rank: 2, session_points: 8, correct_answer: null }),
+    ).toMatchObject({ result: { correct: null, points: 8, reasonPoints: 8 } });
+  });
+
   it("lets the optional parts of an event be missing", () => {
     expect(sessionEvent("joined.count", { server_now: at, joined_count: 3 })).toMatchObject({ recent: [] });
     expect(sessionEvent("session.ended", { server_now: at })).toMatchObject({ summary: null, sessionPoints: null, sessionRank: null });
@@ -75,7 +113,7 @@ describe("realtime events", () => {
   });
 
   it("ignores events this build has no use for", () => {
-    for (const type of ["opener.counts", "opener.reasons", "join_token.rotated", "review.ready", "student.presence", "nudge", "whatever"]) {
+    for (const type of ["join_token.rotated", "review.ready", "student.presence", "nudge", "whatever"]) {
       expect(sessionEvent(type, { server_now: at })).toBeNull();
     }
   });
@@ -88,6 +126,10 @@ describe("realtime events", () => {
     bad("question.opened", { server_now: at });
     bad("question.closed", { server_now: at });
     bad("question.progress", { server_now: at, session_question_id: "q1", answered: "many", joined: 2 });
+    bad("opener.counts", { server_now: at, session_question_id: "o1", phase: "later", votes: [1] });
+    bad("opener.counts", { server_now: at, session_question_id: "o1", phase: "voting", votes: "many" });
+    bad("opener.counts", { server_now: at, session_question_id: "o1", phase: "voting", votes: [1, "2"] });
+    bad("opener.reasons", { server_now: at, session_question_id: "o1" });
     bad("leaderboard.updated", { server_now: at, rows: "no" });
     bad("question.result", { server_now: at, session_question_id: "q1" });
   });
@@ -125,5 +167,17 @@ describe("the student-state snapshot", () => {
       summary: { right: 4, total: 5 },
     });
     expect(s).toMatchObject({ board: [{ studentId: "a", name: "Ана", points: 10, rank: 1 }], progress: { answered: 3, joined: 20 }, summary: { right: 4, total: 5 } });
+  });
+
+  it("reads the student's reason and the opener's phase, votes and reasons when the server sends them", () => {
+    expect(studentState({ ...base, question: null })).toMatchObject({ myReason: null, opener: null });
+    const s = studentState({
+      ...base,
+      my_reason: "No air.",
+      opener: { phase: "reasoning", votes: [4, 2, 20], reasons: ["Same."] },
+    });
+    expect(s).toMatchObject({ myReason: "No air.", opener: { phase: "reasoning", votes: [4, 2, 20], reasons: ["Same."] } });
+    // Votes can be left out while voting is open; the reasons can be missing too.
+    expect(studentState({ ...base, opener: { phase: "voting", votes: null } as never }).opener).toEqual({ phase: "voting", votes: null, reasons: [] });
   });
 });

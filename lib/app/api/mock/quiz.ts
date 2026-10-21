@@ -1,4 +1,4 @@
-import type { Question, Text } from "../../quiz";
+import type { Opener, Question, Text } from "../../quiz";
 import type { SubjectId } from "./data";
 
 /**
@@ -8,7 +8,7 @@ import type { SubjectId } from "./data";
  * (BR-PTS-02, BR-PTS-04): 10 for a right answer plus up to 5 for speed.
  */
 
-export type Quiz = { subject: SubjectId; title: Text; questions: Question[] };
+export type Quiz = { subject: SubjectId; title: Text; opener: Opener; questions: Question[] };
 
 const t = (mk: string, en: string): Text => ({ mk, en });
 
@@ -17,6 +17,23 @@ export const QUIZZES: Partial<Record<SubjectId, Quiz>> = {
   physics: {
     subject: "physics",
     title: t("Њутнови закони", "Newton's laws"),
+    opener: {
+      id: "po",
+      kind: "prediction",
+      text: t(
+        "Тешка и лесна топка паѓаат од иста висина во вакуум. Која ќе удри прва?",
+        "A heavy ball and a light ball fall from the same height in a vacuum. Which hits the ground first?",
+      ),
+      options: [t("Тешката", "The heavy one"), t("Лесната", "The light one"), t("Истовремено", "Both at the same time")],
+      answer: 2,
+      reasons: [
+        t("Без воздух нема отпор, па сè паѓа исто.", "With no air there is no drag, so everything falls the same."),
+        t("Тешката е повлечена посилно, но и потешка за движење.", "The heavy one is pulled harder, but it is also harder to move."),
+        t("Го видов тоа на Месечината, перото и чеканот паднаа заедно.", "I saw it on the Moon: the feather and the hammer landed together."),
+        t("Мислам дека тешката е побрза, секогаш е така.", "I think the heavy one is faster, it always is."),
+        t("Забрзувањето не зависи од масата.", "Acceleration doesn't depend on mass."),
+      ],
+    },
     questions: [
       {
         id: "p1",
@@ -41,10 +58,15 @@ export const QUIZZES: Partial<Record<SubjectId, Quiz>> = {
       },
       {
         id: "p3",
-        kind: "mc",
-        text: t("Сила од 10 N делува на тело со маса 2 kg. Колкаво е забрзувањето?", "A 10 N force acts on a 2 kg body. What is its acceleration?"),
-        options: [t("20 m/s²", "20 m/s²"), t("5 m/s²", "5 m/s²"), t("12 m/s²", "12 m/s²"), t("0,2 m/s²", "0.2 m/s²")],
-        answer: 1,
+        kind: "num",
+        text: t(
+          "Тело се движи со 10 m/s и запира за 4 s. Колкаво е забрзувањето?",
+          "A body moving at 10 m/s stops in 4 s. What is its acceleration?",
+        ),
+        answer: "-2.5",
+        tolerance: 0.1,
+        unit: "m/s²",
+        allowNegative: true,
       },
       {
         id: "p4",
@@ -64,6 +86,23 @@ export const QUIZZES: Partial<Record<SubjectId, Quiz>> = {
   math: {
     subject: "math",
     title: t("Линеарни равенки", "Linear equations"),
+    opener: {
+      id: "mo",
+      kind: "prediction",
+      text: t(
+        "Ги удвојуваш двете страни на една равенка. Што се случува со решението?",
+        "You double both sides of an equation. What happens to its solution?",
+      ),
+      options: [t("Се удвојува", "It doubles"), t("Останува исто", "It stays the same"), t("Се преполовува", "It halves")],
+      answer: 1,
+      reasons: [
+        t("Исто нешто на двете страни не ја менува рамнотежата.", "The same thing on both sides doesn't tip the balance."),
+        t("Како вага: ставам исто на двата краја.", "Like a scale: I put the same on both ends."),
+        t("Пробав 2x = 4, па 4x = 8. Пак x = 2.", "I tried 2x = 4, then 4x = 8. Still x = 2."),
+        t("Мислам дека се удвојува бидејќи сè е двојно.", "I think it doubles because everything is doubled."),
+        t("Решението е x, а x не се менува.", "The solution is x, and x doesn't change."),
+      ],
+    },
     questions: [
       {
         id: "m1",
@@ -80,10 +119,10 @@ export const QUIZZES: Partial<Record<SubjectId, Quiz>> = {
       },
       {
         id: "m3",
-        kind: "mc",
-        text: t("Колку е x ако x/4\u00a0=\u00a03?", "What is x if x/4\u00a0=\u00a03?"),
-        options: [t("12", "12"), t("7", "7"), t("0,75", "0.75"), t("1", "1")],
-        answer: 0,
+        kind: "num",
+        text: t("Реши ја равенката 4x\u00a0−\u00a03\u00a0=\u00a010. Колку е x?", "Solve 4x\u00a0−\u00a03\u00a0=\u00a010. What is x?"),
+        answer: "3.25",
+        tolerance: 0.01,
       },
       {
         id: "m4",
@@ -106,6 +145,24 @@ export const QUIZZES: Partial<Record<SubjectId, Quiz>> = {
   mkd: {
     subject: "mkd",
     title: t("Видови зборови", "Parts of speech"),
+    opener: {
+      id: "ko",
+      kind: "debate",
+      text: t("Правилното пишување е важно и во порака до другар.", "Spelling matters, even in a message to a friend."),
+      agreeShare: 0.6,
+      reasons: {
+        agree: [
+          t("Така ме разбираат без да погодуваат.", "That way they understand me without guessing."),
+          t("Навика е: ако пишувам лошо, ќе пишувам лошо секаде.", "It's a habit: write badly here, write badly everywhere."),
+          t("Грешката во пораката може да смени што значи.", "A typo can change what the message means."),
+        ],
+        disagree: [
+          t("Важно е да се разбереме, не да биде совршено.", "What matters is understanding each other, not perfection."),
+          t("Пораките се брзи, никој не гледа запирки.", "Messages are quick, nobody checks commas."),
+          t("Со другар може и скратено.", "With a friend, short is fine."),
+        ],
+      },
+    },
     questions: [
       {
         id: "k1",
@@ -145,6 +202,24 @@ export const QUIZZES: Partial<Record<SubjectId, Quiz>> = {
   english: {
     subject: "english",
     title: t("Past simple", "Past simple"),
+    opener: {
+      id: "eo",
+      kind: "debate",
+      text: t("Англиски се учи полесно со песни отколку со учебник.", "English is easier to learn from songs than from a textbook."),
+      agreeShare: 0.55,
+      reasons: {
+        agree: [
+          t("Песните ги паметам без да учам.", "I remember songs without trying."),
+          t("Слушам секој ден, па зборовите ми се лепат.", "I listen every day, so the words stick."),
+          t("Во песна гледам како се зборува навистина.", "A song shows how people really speak."),
+        ],
+        disagree: [
+          t("Учебникот ми ја објаснува граматиката.", "The textbook explains the grammar."),
+          t("Во песните има збор што не го разбирам.", "Songs have words I can't make out."),
+          t("Без правила правам грешки.", "Without rules I make mistakes."),
+        ],
+      },
+    },
     questions: [
       {
         id: "e1",
@@ -189,7 +264,14 @@ export const QUIZZES: Partial<Record<SubjectId, Quiz>> = {
 };
 
 /** Time per question: the proposed defaults of spec 8 (BR-TIME-01), shortened a little for the demo. */
-export const DURATION = { mc: 20_000, tf: 15_000 } as const;
+export const DURATION = { mc: 20_000, tf: 15_000, num: 30_000 } as const;
+
+/** The opener's two timers (BR-TIME-01 proposes 30 s to vote and 45 s for the reason), shortened for the demo. */
+export const OPENER_TIMES = { vote: 15_000, reason: 25_000 } as const;
+/** The longest a reason may be (BR-Q-03, PROPOSED). */
+export const REASON_MAX = 80;
+/** What a written reason is worth, right vote or not (BR-PTS-02, BR-PTS-06). */
+export const REASON_POINTS = 8;
 
 export const CORRECT_POINTS = 10;
 export const SPEED_POINTS = 5;

@@ -9,6 +9,7 @@ import type {
   BoardRow,
   JoinResult,
   Locale,
+  OpenerPhase,
   QuestionProgress,
   QuestionResult,
   SessionQuestion,
@@ -17,9 +18,11 @@ import type {
   SessionSummary,
   StudentSessionState,
 } from "../types";
+import { formatNumeric, parseNumeric, withUnit, withinTolerance } from "../../numeric";
+import { cleanReason } from "../../session/engine";
 import { iso } from "../wire";
 import { subjectByCode, type ClassSubject } from "./data";
-import { CLASSMATES, CORRECT_POINTS, DURATION, QUIZZES, speedBonus, type Quiz } from "./quiz";
+import { CLASSMATES, CORRECT_POINTS, DURATION, OPENER_TIMES, QUIZZES, REASON_MAX, REASON_POINTS, speedBonus, type Quiz } from "./quiz";
 import { actions } from "./store";
 
 /**
@@ -33,13 +36,21 @@ import { actions } from "./store";
  * The server's clock deliberately runs ahead of the phone's by a few seconds, so a client that trusted
  * its own would visibly drift.
  *
+ * Every lesson opens with its opener (a prediction in maths and physics, a debate in Macedonian and English:
+ * a vote, then one line of reason, then the class's votes and reasons) before the pop-up questions; maths and
+ * physics each have a numeric question among them.
+ *
  * Special codes (the class QR codes are MATH-7B, PHYS-7B, MKD-7B and ENG-7B):
  *   EXPIRED-7B  the code has expired (token_expired)    OTHER-8A   another class's code (not_enrolled)
  *   ENDED-7B    the lesson is over (session_ended)       OFFLINE-7B no connection the first time, then MATH-7B
  *   LATE-7B     joins a lesson in progress, marked late  FLAKY-7B   the connection drops during question 1
+ *               (LATE-7B, FLAKY-7B and OFFLINE-ANSWER-7B skip the opener: they are about the pop-ups)
  *   OFFLINE-ANSWER-7B  the network drops for about 15 s the moment the student sends their first answer, so
  *               "saved, will send when you're back online" turns into "sent" with no airplane mode (BR-NET-01);
  *               its first question runs 45 s instead of 20, so "sent" is on screen before the question closes
+ *   OPENER-7B   the maths lesson, straight into its prediction opener (no lobby)
+ *   DEBATE-7B   the English lesson, straight into its debate opener, which has no right side (OPEN-07)
+ *   NUMERIC-7B  the physics lesson, straight into its numeric question (a unit, a minus, a decimal, a tolerance)
  * Any other code is unknown (not_found).
  *
  * The mock's network is the browser's: while the phone is offline (or this demo is pretending to be), answers
@@ -92,7 +103,32 @@ const SKILL = CLASSMATES.map((_, i) => 0.35 + ((i * 37) % 40) / 100);
 
 const text = (locale: Locale, key: string) => translate(locale, key as Key);
 
-export type Scenario = "normal" | "late" | "flaky" | "offline-answer";
+export type Scenario = "normal" | "late" | "flaky" | "offline-answer" | "opener" | "debate" | "numeric";
+
+/** The opener as the server holds it: the class's schedule, the student's vote and reason, and where the phase is. */
+type OpenerLive = {
+  question: SessionQuestion;
+  def: Quiz["opener"];
+  /** The right option as a response ("1"), or null: a debate has no right side. */
+  right: string | null;
+  phase: OpenerPhase;
+  /** When each classmate votes (ms after the opener opened) and for what. */
+  votes: { at: number; response: string }[];
+  /** When each classmate writes a reason, or null for one who writes none, and what. */
+  reasonAt: (number | null)[];
+  reasonText: string[];
+  mine: { response: string; at: number; key: string } | null;
+  myReason: { text: string; at: number; key: string } | null;
+  result: QuestionResult | null;
+  openedAt: number;
+  /** When voting really ended, in server time: the planned time, or earlier when everyone had voted (BR-TIME-04). */
+  voteEnd: number;
+  /** When the question really ended. */
+  end: number;
+  closed: boolean;
+};
+
+const optionCount = (def: Quiz["opener"]) => (def.kind === "prediction" ? def.options.length : 2);
 
 type Live = {
   question: SessionQuestion;
@@ -109,8 +145,12 @@ type Live = {
 
 const correctOf = (quiz: Quiz, index: number): string => {
   const q = quiz.questions[index];
-  return q.kind === "mc" ? String(q.answer) : q.answer === 0 ? "true" : "false";
+  return q.kind === "mc" ? String(q.answer) : q.kind === "num" ? q.answer : q.answer === 0 ? "true" : "false";
 };
+
+/** Whether a response is right for a question: the same answer, or for a number within the author's tolerance. */
+const isRight = (q: Quiz["questions"][number], response: string, right: string) =>
+  q.kind === "num" ? withinTolerance(response, right, q.tolerance) : response === right;
 
 const shuffle = (n: number) => {
   const a = Array.from({ length: n }, (_, i) => i);
@@ -130,6 +170,10 @@ export class MockSession {
   private order = shuffle(N);
   private recentNames: string[] = [];
   private live: Live | null = null;
+  /** The opener while it is the lesson's current question; null once the first pop-up has opened. */
+  private openerNow: OpenerLive | null = null;
+  /** Every opener the lesson has run, so a vote or reason that arrives after it moved on can still be judged by its own time. */
+  private openers = new Map<string, OpenerLive>();
   private index = -1;
   private points = 0;
   private right = 0;
@@ -166,9 +210,18 @@ export class MockSession {
       this.joined = N + 1;
       this.state = "teaching";
       this.fire(0, 6000);
+    } else if (scenario === "opener" || scenario === "debate") {
+      // Straight into the opener: everyone is already in the room.
+      this.joined = N + 1;
+      this.fireOpener();
+    } else if (scenario === "numeric") {
+      this.joined = N + 1;
+      this.state = "teaching";
+      this.fire(Math.max(0, quiz.questions.findIndex((x) => x.kind === "num")));
     } else {
       this.lobbyTick();
-      this.after(SCRIPT.start, () => this.fire(0));
+      // The two scenarios about the connection are about the pop-ups, so they go straight to the first one.
+      this.after(SCRIPT.start, () => (scenario === "flaky" || scenario === "offline-answer" ? this.fire(0) : this.fireOpener()));
     }
   }
 
@@ -243,13 +296,15 @@ export class MockSession {
       id: q.id,
       index,
       total: this.quiz.questions.length,
-      kind: q.kind === "mc" ? "multiple_choice" : "true_false",
+      kind: q.kind === "mc" ? "multiple_choice" : q.kind === "num" ? "numeric" : "true_false",
       prompt: q.text[this.locale],
       options: q.kind === "mc" ? q.options.map((o) => o[this.locale]) : null,
       status: "open",
       timerSeconds: timer,
       firedAt,
       closesAt: firedAt + timer * 1000,
+      numeric: q.kind === "num" ? { unit: q.unit ?? null, tolerance: q.tolerance, allowNegative: q.allowNegative ?? false } : null,
+      opener: null,
     };
   }
 
@@ -265,16 +320,19 @@ export class MockSession {
       timer_seconds: q.timerSeconds,
       fired_at: q.firedAt === null ? null : iso(q.firedAt),
       closes_at: q.closesAt === null ? null : iso(q.closesAt),
+      numeric: q.numeric && { unit: q.numeric.unit, tolerance: q.numeric.tolerance, allow_negative: q.numeric.allowNegative },
+      opener: q.opener && { vote_closes_at: iso(q.opener.voteClosesAt), reason_max_length: q.opener.reasonMax },
     };
   }
 
   /** The teacher fires question `index`; `ago` lets a late joiner arrive after it began. */
   private fire(index: number, ago = 0) {
     if (this.ended) return;
-    if (this.state === "lobby") {
+    if (this.state === "lobby" || this.state === "opener") {
       this.state = "teaching";
       this.toClass("state.changed", { state: "teaching" });
     }
+    this.openerNow = null;
     this.index = index;
     this.revealed = null;
     const q = this.quiz.questions[index];
@@ -330,7 +388,7 @@ export class MockSession {
     live.question = { ...live.question, status: "closed" };
 
     const mine = live.mine;
-    const correct = mine !== null && mine.response === live.right;
+    const correct = mine !== null && isRight(q, mine.response, live.right);
     const left = mine ? Math.max(0, duration - (mine.at - live.question.firedAt!)) : 0;
     const bonus = correct ? speedBonus(left, duration) : 0;
     const gain = correct ? CORRECT_POINTS + bonus : 0;
@@ -346,6 +404,7 @@ export class MockSession {
       sessionQuestionId: live.question.id,
       correct,
       points: gain,
+      reasonPoints: 0,
       speedBonus: bonus,
       sessionRank: this.rank,
       // The teacher shows the answer a moment later (`question.revealed`).
@@ -357,7 +416,7 @@ export class MockSession {
       id: q.id,
       prompt: q.text[this.locale],
       correct,
-      correctAnswer: q.kind === "mc" ? q.options[q.answer][this.locale] : text(this.locale, q.answer === 0 ? "q.true" : "q.false"),
+      correctAnswer: this.answerText(q, live.right),
       yourAnswer: mine ? this.answerText(q, mine.response) : null,
     });
 
@@ -387,8 +446,10 @@ export class MockSession {
     }
   }
 
+  /** An answer as the summary shows it: the option's words, true or false, or the number with its unit. */
   private answerText(q: Quiz["questions"][number], response: string) {
     if (q.kind === "tf") return text(this.locale, response === "true" ? "q.true" : "q.false");
+    if (q.kind === "num") return withUnit(formatNumeric(response, this.locale), q.unit ?? null);
     return q.options[Number(response)]?.[this.locale] ?? null;
   }
 
@@ -414,15 +475,17 @@ export class MockSession {
     if (this.ended) return;
     this.stop();
     this.state = "ended";
-    this.summary = { right: this.right, total: this.quiz.questions.length };
-    if (this.right === this.quiz.questions.length) actions.markPerfectQuiz();
+    // The tally counts the pop-ups the class got to (a lesson joined at one question never opened the earlier ones); the opener is not one.
+    const total = this.played.length;
+    this.summary = { right: this.right, total };
+    if (total > 0 && this.right === total) actions.markPerfectQuiz();
     actions.finishSession({
       sessionId: this.id,
       courseId: this.subject.id,
       lessonTitle: this.quiz.title[this.locale],
       endedAt: Date.now(),
       right: this.right,
-      total: this.quiz.questions.length,
+      total,
       questions: this.played,
     });
     this.toClass("state.changed", { state: "ended" });
@@ -441,6 +504,232 @@ export class MockSession {
     return (this.board ?? []).map((r) => ({ student_id: r.studentId, name: r.name, points: r.points, rank: r.rank }));
   }
 
+  // ---- The opener (spec 4.3) -----------------------------------------------------------------
+
+  /** The teacher starts the opener: the lesson moves to `opener` and the vote opens. */
+  private fireOpener() {
+    if (this.ended) return;
+    const def = this.quiz.opener;
+    this.state = "opener";
+    this.toClass("state.changed", { state: "opener" });
+    const firedAt = serverNow();
+    const voteMs = OPENER_TIMES.vote;
+    const total = voteMs + OPENER_TIMES.reason;
+    const options = def.kind === "prediction" ? def.options.map((o) => o[this.locale]) : null;
+    const question: SessionQuestion = {
+      id: def.id,
+      index: 0,
+      total: this.quiz.questions.length,
+      kind: def.kind === "prediction" ? "opener_prediction" : "opener_debate",
+      prompt: def.text[this.locale],
+      options,
+      status: "open",
+      timerSeconds: total / 1000,
+      firedAt,
+      closesAt: firedAt + total,
+      numeric: null,
+      opener: { voteClosesAt: firedAt + voteMs, reasonMax: REASON_MAX },
+    };
+    const sides = optionCount(def);
+    const votes = CLASSMATES.map((_, i) => {
+      const at = 1800 + Math.random() * (Math.random() < 0.85 ? voteMs * 0.6 : voteMs * 0.85 - 1800);
+      if (def.kind === "prediction") {
+        const wrong = [...Array(sides).keys()].filter((o) => o !== def.answer);
+        const right = Math.random() < SKILL[i] + 0.1;
+        return { at, response: String(right ? def.answer : wrong[Math.floor(Math.random() * wrong.length)]) };
+      }
+      return { at, response: Math.random() < def.agreeShare ? "agree" : "disagree" };
+    });
+    const reasonAt = votes.map((v) => (Math.random() < 0.7 ? v.at + 1500 + Math.random() * 7000 : null));
+    const reasonText = votes.map((v, i) => {
+      const pool = def.kind === "prediction" ? def.reasons : v.response === "agree" ? def.reasons.agree : def.reasons.disagree;
+      return pool[i % pool.length][this.locale];
+    });
+    const live: OpenerLive = {
+      question,
+      def,
+      right: def.kind === "prediction" ? String(def.answer) : null,
+      phase: "voting",
+      votes,
+      reasonAt,
+      reasonText,
+      mine: null,
+      myReason: null,
+      result: null,
+      openedAt: Date.now(),
+      voteEnd: firedAt + voteMs,
+      end: firedAt + total,
+      closed: false,
+    };
+    this.openerNow = live;
+    this.openers.set(def.id, live);
+    this.live = null;
+    this.toClass("question.opened", { question: this.wireQuestion(question) });
+    this.after(voteMs, () => this.closeVoting(live));
+    this.after(total, () => this.closeOpener(live));
+    clearInterval(this.ticker);
+    this.ticker = setInterval(() => this.openerProgress(live), SCRIPT.progressTick);
+  }
+
+  /** The class's votes so far, one count for each option (or [agree, disagree]); `final` takes everyone's. */
+  private countVotes(live: OpenerLive, final: boolean): number[] {
+    const elapsed = Date.now() - live.openedAt;
+    const counts = Array.from({ length: optionCount(live.def) }, () => 0);
+    for (const v of live.votes) if (final || v.at <= elapsed) counts[live.def.kind === "prediction" ? Number(v.response) : v.response === "agree" ? 0 : 1]++;
+    if (live.mine) counts[live.def.kind === "prediction" ? Number(live.mine.response) : live.mine.response === "agree" ? 0 : 1]++;
+    return counts;
+  }
+
+  private openerProgress(live: OpenerLive) {
+    if (live.closed || live.phase !== "voting") return;
+    const votes = this.countVotes(live, false);
+    this.toClass("question.progress", { session_question_id: live.question.id, answered: votes.reduce((a, b) => a + b, 0), joined: N + 1 });
+    // The live counts are for the class view; a student's phone shows them once voting has closed.
+    this.toClass("opener.counts", { session_question_id: live.question.id, phase: "voting", votes });
+  }
+
+  /** Voting ends: by its timer, or because everyone has voted. The counts are final from here on. */
+  private closeVoting(live: OpenerLive) {
+    if (this.ended || live.closed || live.phase !== "voting") return;
+    live.phase = "reasoning";
+    live.voteEnd = Math.min(live.voteEnd, serverNow());
+    this.toClass("opener.counts", { session_question_id: live.question.id, phase: "reasoning", votes: this.countVotes(live, true) });
+  }
+
+  /** The reason window ends: the student's vote and reason are worked out and sent; the reveal follows. */
+  private closeOpener(live: OpenerLive) {
+    if (this.ended || live.closed) return;
+    this.closeVoting(live);
+    live.closed = true;
+    live.end = Math.min(live.end, serverNow());
+    clearInterval(this.ticker);
+    this.ticker = undefined;
+    live.question = { ...live.question, status: "closed" };
+    // The class: a right vote is worth 10 and a written reason 8, right or wrong (BR-PTS-02). A debate has no right vote (OPEN-07).
+    this.theirs = this.theirs.map((p, i) => {
+      const voteRight = live.right !== null && live.votes[i].response === live.right;
+      return p + (voteRight ? CORRECT_POINTS : 0) + (live.reasonAt[i] !== null ? REASON_POINTS : 0);
+    });
+    this.settleOpener(live, false);
+    this.toClass("question.closed", { session_question_id: live.question.id });
+    this.sendOpenerResult(live);
+    const id = live.question.id;
+    this.after(SCRIPT.reveal, () => this.revealOpener(id));
+    this.after(SCRIPT.next, () => this.fire(0));
+  }
+
+  /** Work out what the student's vote and reason are worth from what the server holds, and add the difference to their points. */
+  private settleOpener(live: OpenerLive, announce: boolean) {
+    const before = live.result?.points ?? 0;
+    const voteRight = live.right !== null && live.mine !== null && live.mine.response === live.right;
+    const reasonPoints = live.myReason ? REASON_POINTS : 0;
+    const gain = (voteRight ? CORRECT_POINTS : 0) + reasonPoints;
+    this.points += gain - before;
+    this.rank = rankOf(this.points, this.theirs);
+    live.result = {
+      sessionQuestionId: live.question.id,
+      // A debate has no right side; a prediction is right or not, and not voting is not right.
+      correct: live.right === null ? null : voteRight,
+      points: gain,
+      reasonPoints,
+      speedBonus: 0,
+      sessionRank: this.rank,
+      correctAnswer: live.question.status === "revealed" ? live.right : null,
+      explanation: null,
+    };
+    this.board = this.makeBoard();
+    if (gain > before) actions.addQuizPoints(gain - before);
+    if (live.mine) actions.markQuizAnswered();
+    if (announce) this.sendOpenerResult(live);
+  }
+
+  private sendOpenerResult(live: OpenerLive) {
+    const r = live.result!;
+    this.toMe("question.result", {
+      session_question_id: r.sessionQuestionId,
+      correct: r.correct,
+      points: r.points,
+      reason_points: r.reasonPoints,
+      speed_bonus: 0,
+      session_rank: r.sessionRank,
+      session_points: this.points,
+      correct_answer: r.correctAnswer,
+      explanation: null,
+    });
+    this.toClass("leaderboard.updated", { rows: this.wireBoard() });
+  }
+
+  /** The anonymous reasons the class wrote (FR-OPN-03): no names, the student's own left out. */
+  private classReasons(live: OpenerLive) {
+    return live.reasonText.filter((_, i) => live.reasonAt[i] !== null);
+  }
+
+  private revealOpener(id: string) {
+    const live = this.openers.get(id);
+    if (!live || this.ended || live.question.status === "revealed") return;
+    live.question = { ...live.question, status: "revealed" };
+    if (live.result) live.result = { ...live.result, correctAnswer: live.right };
+    this.toClass("opener.counts", { session_question_id: id, phase: "revealed", votes: this.countVotes(live, true) });
+    this.toClass("opener.reasons", { session_question_id: id, reasons: this.classReasons(live) });
+    this.toClass("question.revealed", { session_question_id: id, correct_answer: live.right, explanation: null });
+  }
+
+  /** POST /sessions/{id}/opener/vote. */
+  submitVote(answer: AnswerInput): AnswerReceipt {
+    if (this.ended) throw new ApiError("session_ended");
+    if (this.keys.has(answer.idempotencyKey)) return { accepted: true, duplicate: true };
+    const live = this.openers.get(answer.sessionQuestionId);
+    if (!live) throw new ApiError("not_found");
+    // Judged by the vote's own time against the end of voting, with the same little grace as an answer.
+    if (answer.answeredAt > live.voteEnd + ANSWER_GRACE_MS) throw new ApiError("question_closed");
+    if (live.mine) throw new ApiError("already_answered");
+    const valid = live.def.kind === "prediction" ? live.def.options.map((_, i) => String(i)) : ["agree", "disagree"];
+    if (!valid.includes(answer.response)) throw new ApiError("validation_failed");
+    const at = Math.min(live.voteEnd, Math.max(live.question.firedAt!, answer.answeredAt));
+    live.mine = { response: answer.response, at, key: answer.idempotencyKey };
+    this.keys.set(answer.idempotencyKey, answer.response);
+    if (live.closed) {
+      this.settleOpener(live, true);
+      return { accepted: true, duplicate: false };
+    }
+    if (live.phase === "voting") {
+      // Once you have voted, the stragglers come in within a few seconds, and voting ends when the last of them has (BR-TIME-04).
+      const elapsed = Date.now() - live.openedAt;
+      live.votes = live.votes.map((v) => (v.at > elapsed ? { ...v, at: elapsed + 600 + Math.random() * 3200 } : v));
+      const lastAt = Math.max(...live.votes.map((v) => v.at));
+      if (lastAt < OPENER_TIMES.vote) this.after(Math.max(0, live.openedAt + lastAt - Date.now()), () => this.closeVoting(live));
+      this.openerProgress(live);
+    }
+    return { accepted: true, duplicate: false };
+  }
+
+  /** POST /sessions/{id}/opener/reason. */
+  submitReason(answer: AnswerInput): AnswerReceipt {
+    if (this.ended) throw new ApiError("session_ended");
+    if (this.keys.has(answer.idempotencyKey)) return { accepted: true, duplicate: true };
+    const live = this.openers.get(answer.sessionQuestionId);
+    if (!live) throw new ApiError("not_found");
+    if (answer.answeredAt > live.end + ANSWER_GRACE_MS) throw new ApiError("question_closed");
+    // A reason belongs to a vote (a reason given to nothing is nothing), and is one line of at most the limit (EC-Q-02).
+    if (!live.mine) throw new ApiError("validation_failed");
+    if (live.myReason) throw new ApiError("already_answered");
+    const text = cleanReason(answer.response, REASON_MAX);
+    if (text === "") throw new ApiError("validation_failed");
+    const at = Math.min(live.end, Math.max(live.mine.at, answer.answeredAt));
+    live.myReason = { text, at, key: answer.idempotencyKey };
+    this.keys.set(answer.idempotencyKey, text);
+    if (live.closed) {
+      this.settleOpener(live, true);
+      return { accepted: true, duplicate: false };
+    }
+    // The stragglers write theirs within a few seconds, and the question ends when the last has (BR-TIME-04).
+    const elapsed = Date.now() - live.openedAt;
+    live.reasonAt = live.reasonAt.map((t) => (t !== null && t > elapsed ? elapsed + 600 + Math.random() * 3000 : t));
+    const lastAt = Math.max(elapsed, ...live.reasonAt.filter((t): t is number => t !== null));
+    if (lastAt < OPENER_TIMES.vote + OPENER_TIMES.reason) this.after(Math.max(0, live.openedAt + lastAt - Date.now()), () => this.closeOpener(live));
+    return { accepted: true, duplicate: false };
+  }
+
   // ---- The API ---------------------------------------------------------------------------------
 
   snapshotOf(): SessionSnapshot {
@@ -457,11 +746,34 @@ export class MockSession {
   /** GET /sessions/{id}/student-state. */
   studentState(): StudentSessionState {
     const live = this.live;
+    const opener = this.openerNow;
+    if (opener) {
+      return {
+        session: this.snapshotOf(),
+        serverNow: serverNow(),
+        question: opener.question,
+        myResponse: opener.mine?.response ?? null,
+        myReason: opener.myReason?.text ?? null,
+        result: opener.result,
+        sessionPoints: this.points,
+        sessionRank: this.rank,
+        board: this.board,
+        progress: opener.phase === "voting" ? { answered: this.countVotes(opener, false).reduce((a, b) => a + b, 0), joined: N + 1 } : null,
+        summary: this.summary,
+        opener: {
+          phase: opener.question.status === "revealed" ? "revealed" : opener.phase,
+          votes: this.countVotes(opener, opener.phase !== "voting"),
+          reasons: opener.question.status === "revealed" ? this.classReasons(opener) : [],
+        },
+      };
+    }
     return {
       session: this.snapshotOf(),
       serverNow: serverNow(),
       question: live ? live.question : null,
       myResponse: live?.mine?.response ?? null,
+      myReason: null,
+      opener: null,
       result: live?.result ?? null,
       sessionPoints: this.points,
       sessionRank: this.rank,
@@ -479,7 +791,7 @@ export class MockSession {
     const q = this.quiz.questions.find((x) => x.id === live.question.id)!;
     const mine = live.mine!;
     const duration = this.durationOf(q);
-    const correct = mine.response === live.right;
+    const correct = isRight(q, mine.response, live.right);
     const left = Math.max(0, duration - (mine.at - live.question.firedAt!));
     const bonus = correct ? speedBonus(left, duration) : 0;
     const gain = correct ? CORRECT_POINTS + bonus : 0;
@@ -509,6 +821,12 @@ export class MockSession {
     this.toClass("leaderboard.updated", { rows: this.wireBoard() });
   }
 
+  /** Whether the server would take this as an answer to the question: an option, true or false, or a number it can read. */
+  private validAnswer(q: Quiz["questions"][number], response: string) {
+    if (q.kind === "num") return parseNumeric(response, q.allowNegative ?? false).ok;
+    return (q.kind === "mc" ? ["0", "1", "2", "3"] : ["true", "false"]).includes(response);
+  }
+
   /** POST /sessions/{id}/answers. */
   submit(answer: AnswerInput): AnswerReceipt {
     if (this.ended) throw new ApiError("session_ended");
@@ -526,13 +844,14 @@ export class MockSession {
     if (!open && answer.answeredAt > live.question.closesAt! + ANSWER_GRACE_MS) throw new ApiError("question_closed");
     if (live.mine) throw new ApiError("already_answered");
     const q = this.quiz.questions.find((x) => x.id === live.question.id)!;
-    const valid = q.kind === "mc" ? ["0", "1", "2", "3"] : ["true", "false"];
-    if (!valid.includes(answer.response)) throw new ApiError("validation_failed");
+    if (!this.validAnswer(q, answer.response)) throw new ApiError("validation_failed");
 
-    // The answer time is the phone's claim, clamped to the question's window (EC-NET-07).
+    // The answer time is the phone's claim, clamped to the question's window (EC-NET-07). A number is kept as the server reads it.
     const at = Math.min(live.question.closesAt!, Math.max(live.question.firedAt!, answer.answeredAt));
-    live.mine = { response: answer.response, at, key: answer.idempotencyKey };
-    this.keys.set(answer.idempotencyKey, answer.response);
+    const kept = q.kind === "num" ? parseNumeric(answer.response, q.allowNegative ?? false) : null;
+    const response = kept?.ok ? kept.value : answer.response;
+    live.mine = { response, at, key: answer.idempotencyKey };
+    this.keys.set(answer.idempotencyKey, response);
     if (!open) {
       this.creditLate(live);
       return { accepted: true, duplicate: false };
@@ -567,9 +886,17 @@ const SPECIAL = {
   late: "late-7b",
   flaky: "flaky-7b",
   offlineAnswer: "offline-answer-7b",
+  opener: "opener-7b",
+  debate: "debate-7b",
+  numeric: "numeric-7b",
 } as const;
 
+/** The scenarios that open on a given question with the student already in the room. */
+const JUMPS: Scenario[] = ["opener", "debate", "numeric"];
+
 const MATH = subjectByCode("MATH-7B")!;
+const ENGLISH = subjectByCode("ENG-7B")!;
+const PHYSICS = subjectByCode("PHYS-7B")!;
 
 /** What a code opens, or the error the API would answer it with. */
 function resolve(code: string): { subject: ClassSubject; scenario: Scenario } {
@@ -587,6 +914,9 @@ function resolve(code: string): { subject: ClassSubject; scenario: Scenario } {
   if (c === SPECIAL.late) return { subject: MATH, scenario: "late" };
   if (c === SPECIAL.flaky) return { subject: MATH, scenario: "flaky" };
   if (c === SPECIAL.offlineAnswer) return { subject: MATH, scenario: "offline-answer" };
+  if (c === SPECIAL.opener) return { subject: MATH, scenario: "opener" };
+  if (c === SPECIAL.debate) return { subject: ENGLISH, scenario: "debate" };
+  if (c === SPECIAL.numeric) return { subject: PHYSICS, scenario: "numeric" };
   const subject = subjectByCode(c);
   if (!subject || !QUIZZES[subject.id]) throw new ApiError("not_found");
   return { subject, scenario: "normal" };
@@ -602,7 +932,8 @@ export function joinMock(code: string, locale: Locale): JoinResult {
     sessions.set(session.id, session);
   }
   // Joining is the attendance (BR-JOIN-01); it earns no points (BR-PTS-01).
-  session.joinedLate ??= session.state !== "lobby";
+  // The codes that jump into a question put the student in the room from the start; any other lesson joined after the lobby is late.
+  session.joinedLate ??= session.state !== "lobby" && !JUMPS.includes(session.scenario);
   const late = session.joinedLate;
   const entry = actions.checkIn(subject.id, late);
   const attendance: AttendanceEntry = {

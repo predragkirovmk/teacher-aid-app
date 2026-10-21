@@ -1,5 +1,5 @@
 import { ApiError, toApiError } from "../api/errors";
-import type { Id, StudentSessionState } from "../api/types";
+import type { Id, StudentSessionState, SubmissionKind } from "../api/types";
 import { sessionEvent } from "../api/wire";
 import { toLocal } from "./clock";
 import { createEngine, reduce, type Action, type EngineState } from "./engine";
@@ -49,8 +49,12 @@ export type SessionHandle = {
   getView(): SessionRunView;
   getState(): EngineState;
   subscribe(listener: () => void): () => void;
-  /** The student taps an answer. Final once sent (BR-ANS-02). */
+  /** The student taps an answer, or votes on an opener. Final once sent (BR-ANS-02). */
   answer(response: string): void;
+  /** The student sends the opener's one-line reason. Final once sent. */
+  reason(text: string): void;
+  /** The student gives no reason. */
+  skipReason(): void;
   /** Load again after the session failed to load. */
   retry(): void;
   /** The phone came back to the foreground or the network came back. */
@@ -87,7 +91,9 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
   let failures = 0;
   let endedTold = false;
   const listeners = new Set<() => void>();
-  const timers: { retry?: ReturnType<typeof setTimeout>; deadline?: ReturnType<typeof setTimeout>; tick?: ReturnType<typeof setInterval>; saved?: ReturnType<typeof setTimeout> } = {};
+  const timers: { retry?: ReturnType<typeof setTimeout>; deadline?: ReturnType<typeof setTimeout>; tick?: ReturnType<typeof setInterval> } = {};
+  /** One per answer, vote or reason that has been handed to the outbox and not yet heard back on. */
+  const savedTimers = new Set<ReturnType<typeof setTimeout>>();
   let deadlineKey = "";
 
   const compute = (): SessionRunView => ({ ...viewOf(state, now()), connection, syncing, failed });
@@ -183,13 +189,16 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
     );
   }
 
-  /** After a reload the answer the student gave is still in the outbox; the question must not ask for it again. */
+  /** After a reload the answer (or vote, or reason) the student gave is still in the outbox; the question must not ask for it again. */
   function restorePending() {
     void deps.outbox.load().then(() => {
       const q = state.question;
-      if (disposed || state.mine || !q) return;
-      const saved = deps.outbox.pendingFor(deps.meId, sessionId, q.id);
-      if (saved) dispatch({ type: "answer.restore", key: saved.key, sessionQuestionId: saved.sessionQuestionId, response: saved.response, at: saved.answeredAt });
+      if (disposed || !q) return;
+      // The vote first: a reason is only restored on a question the student has voted on.
+      for (const kind of q.opener ? (["vote", "reason"] as const) : (["answer"] as const)) {
+        const saved = deps.outbox.pendingFor(deps.meId, sessionId, q.id, kind);
+        if (saved) dispatch({ type: "answer.restore", kind, key: saved.key, sessionQuestionId: saved.sessionQuestionId, response: saved.response, at: saved.answeredAt });
+      }
     });
   }
 
@@ -205,7 +214,7 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
       case "delivered": {
         // Delivered after the question moved on, or after waiting for the connection: the points and the
         // verdict are the server's to say, so ask.
-        const behind = !current || state.question?.status !== "open" || !!state.mine?.held || o.duplicate;
+        const behind = !current || state.question?.status !== "open" || !!state.mine?.held || !!state.reason?.held || o.duplicate;
         dispatch({ type: "answer.sent", key, now: now() });
         if (behind) refresh();
         return;
@@ -259,6 +268,26 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
     deps.outbox.subscribe(onOutcome),
   ];
 
+  /**
+   * The student gave an answer (or a vote), or a reason. It goes into the engine first, which cleans it and
+   * stamps it with the server-clock time of the tap; what the engine kept is saved in the outbox, then sent.
+   */
+  function give(kind: "answer" | "reason", action: (key: string) => Action) {
+    const key = (deps.newKey ?? randomKey)();
+    dispatch(action(key));
+    const q = state.question;
+    const own = kind === "reason" ? state.reason : state.mine;
+    if (own?.key !== key || !q) return;
+    const submission: SubmissionKind = kind === "reason" ? "reason" : q.opener ? "vote" : "answer";
+    void deps.outbox.enqueue({ kind: submission, key, studentId: deps.meId, sessionId, sessionQuestionId: q.id, response: own.response, answeredAt: own.at });
+    // A send that is slow is, to the student, an answer saved for later.
+    const timer = setTimeout(() => {
+      savedTimers.delete(timer);
+      if (!disposed) dispatch({ type: "answer.saved", key });
+    }, SAVED_AFTER_MS);
+    savedTimers.add(timer);
+  }
+
   refresh();
 
   return {
@@ -271,18 +300,13 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
       };
     },
     answer(response) {
-      if (state.mine) return;
-      const key = (deps.newKey ?? randomKey)();
-      dispatch({ type: "answer", response, key, now: now() });
-      const after: EngineState = state;
-      if (after.mine?.key !== key || !after.question) return;
-      // Saved first, sent after: the record carries the time the engine gave the tap, in the server's terms.
-      void deps.outbox.enqueue({ key, studentId: deps.meId, sessionId, sessionQuestionId: after.question.id, response, answeredAt: after.mine.at });
-      // A send that is slow is, to the student, an answer saved for later.
-      clearTimeout(timers.saved);
-      timers.saved = setTimeout(() => {
-        if (!disposed) dispatch({ type: "answer.saved", key });
-      }, SAVED_AFTER_MS);
+      if (!state.mine) give("answer", (key) => ({ type: "answer", response, key, now: now() }));
+    },
+    reason(text) {
+      if (!state.reason) give("reason", (key) => ({ type: "reason", text, key, now: now() }));
+    },
+    skipReason() {
+      dispatch({ type: "reason.skip" });
     },
     retry() {
       failed = null;
@@ -300,7 +324,8 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
       stops.forEach((stop) => stop());
       clearTimeout(timers.retry);
       clearTimeout(timers.deadline);
-      clearTimeout(timers.saved);
+      savedTimers.forEach(clearTimeout);
+      savedTimers.clear();
       clearInterval(timers.tick);
       listeners.clear();
       transport.close();

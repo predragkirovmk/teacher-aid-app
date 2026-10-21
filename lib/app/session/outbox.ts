@@ -1,5 +1,5 @@
 import { toApiError, type ApiErrorCode } from "../api/errors";
-import type { AnswerInput, AnswerReceipt, Id } from "../api/types";
+import type { AnswerInput, AnswerReceipt, Id, SubmissionKind } from "../api/types";
 import type { OutboxRecord, OutboxStore } from "./outbox-store";
 import { backoffDelay } from "./transport";
 
@@ -20,6 +20,10 @@ import { backoffDelay } from "./transport";
  * (`flush()`: the `online` event, the page coming to the front, the realtime link reopening, the app
  * starting). The server stores one answer per key, so a repeat is harmless. Answers go in the order they
  * were given, one at a time, and a failure stops the line: the next would fail for the same reason.
+ *
+ * An opener's vote and its one-line reason travel the same way, under their own endpoints (`kind`): they are
+ * answers too, and the same things go wrong with them. A reason sent before its vote is not a risk, because the
+ * line is in the order they were given and stops at the first failure.
  *
  * The answer's time is the engine's server-clock time, taken when the student tapped, so it is the same
  * however late the answer arrives.
@@ -56,8 +60,8 @@ export type OutboxStatus = {
 
 export type OutboxDeps = {
   store: OutboxStore;
-  /** The raw call (`POST /sessions/{id}/answers`); see send.ts. */
-  send(sessionId: Id, answer: AnswerInput): Promise<AnswerReceipt>;
+  /** The raw call, `POST /sessions/{id}/answers` or the opener's vote or reason by `kind`; see send.ts. */
+  send(sessionId: Id, answer: AnswerInput, kind: SubmissionKind): Promise<AnswerReceipt>;
   now?: () => number;
   random?: () => number;
   /** An answer has been kept for a later try: ask the browser to wake the page when the network is back. */
@@ -83,8 +87,8 @@ export type Outbox = {
   flush(): Promise<void>;
   /** Wait until what the store holds has been read. */
   load(): Promise<void>;
-  /** The answer this student saved for this question, if it is still waiting. */
-  pendingFor(studentId: Id, sessionId: Id, sessionQuestionId: Id): OutboxRecord | null;
+  /** What this student saved for this question and is still waiting, of one `kind` (any, when not given). */
+  pendingFor(studentId: Id, sessionId: Id, sessionQuestionId: Id, kind?: SubmissionKind): OutboxRecord | null;
   subscribe(listener: (outcome: AnswerOutcome) => void): () => void;
   onStatus(listener: () => void): () => void;
   getStatus(): OutboxStatus;
@@ -149,12 +153,16 @@ export function createOutbox(deps: OutboxDeps): Outbox {
         continue;
       }
       try {
-        const receipt = await send(record.sessionId, {
-          sessionQuestionId: record.sessionQuestionId,
-          response: record.response,
-          answeredAt: record.answeredAt,
-          idempotencyKey: record.key,
-        });
+        const receipt = await send(
+          record.sessionId,
+          {
+            sessionQuestionId: record.sessionQuestionId,
+            response: record.response,
+            answeredAt: record.answeredAt,
+            idempotencyKey: record.key,
+          },
+          record.kind,
+        );
         failing = false;
         await forget(record);
         tell({ type: "delivered", record, duplicate: receipt.duplicate });
@@ -251,8 +259,12 @@ export function createOutbox(deps: OutboxDeps): Outbox {
     },
     flush,
     load,
-    pendingFor(student, sessionId, sessionQuestionId) {
-      return [...records.values()].find((r) => r.studentId === student && r.sessionId === sessionId && r.sessionQuestionId === sessionQuestionId) ?? null;
+    pendingFor(student, sessionId, sessionQuestionId, kind) {
+      return (
+        [...records.values()].find(
+          (r) => r.studentId === student && r.sessionId === sessionId && r.sessionQuestionId === sessionQuestionId && (kind === undefined || r.kind === kind),
+        ) ?? null
+      );
     },
     subscribe(listener) {
       outcomes.add(listener);
