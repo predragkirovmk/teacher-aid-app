@@ -92,5 +92,11 @@ export function useSession(sessionId: Id, late: boolean) {
     net.setLink(connection, syncing);
     return () => net.setLink(null);
   }, [meId, connection, syncing]);
-  return { run, answer: (response: string) => holder.get()?.answer(response), retry: () => holder.get()?.retry() };
+  return {
+    run,
+    answer: (response: string) => holder.get()?.answer(response),
+    reason: (text: string) => holder.get()?.reason(text),
+    skipReason: () => holder.get()?.skipReason(),
+    retry: () => holder.get()?.retry(),
+  };
 }

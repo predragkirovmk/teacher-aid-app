@@ -51,7 +51,7 @@ const advance = (ms: number) => vi.advanceTimersByTimeAsync(ms);
 const OPENER_MS = OPENER_TIMES.vote + OPENER_TIMES.reason;
 
 /** Run to the moment question 1 opens: the lobby, the opener (nobody votes), and the pause after it. */
-const toFirstQuestion = () => advance(SCRIPT.start + OPENER_MS + SCRIPT.next);
+const toFirstQuestion = () => advance(SCRIPT.start + OPENER_MS + SCRIPT.afterOpener);
 /** The same for the lessons that skip the opener (the connection scenarios). */
 const toFirstQuestionDirect = () => advance(SCRIPT.start);
 
@@ -720,7 +720,7 @@ describe("the opener", () => {
     const { session } = hear("OPENER-7B");
     const q = o(session);
     await closeOpener(session);
-    await advance(SCRIPT.next + 100);
+    await advance(SCRIPT.afterOpener + 100);
     expect(o(session).id).not.toBe(q.id);
     session.submitVote({ sessionQuestionId: q.id, response: mathRight, answeredAt: q.firedAt! + 2000, idempotencyKey: "old-v" });
     expect(session.studentState().sessionPoints).toBe(10);
@@ -755,7 +755,7 @@ describe("the opener", () => {
   it("is followed by the lesson's first question after a pause", async () => {
     const { session } = hear("OPENER-7B");
     await closeOpener(session);
-    await advance(SCRIPT.next + 10);
+    await advance(SCRIPT.afterOpener + 10);
     expect(session.studentState().question).toMatchObject({ index: 0, kind: "multiple_choice", status: "open" });
     expect(session.studentState().session.state).toBe("teaching");
     expect(session.studentState().opener).toBeNull();
@@ -811,7 +811,7 @@ describe("a numeric question", () => {
     const joined = joinMock("MATH-7B", "mk");
     const math = mockSessionFor(joined.session.id)!;
     // The lobby, the opener, then two pop-ups nobody answers, and the third is the number.
-    await advance(SCRIPT.start + OPENER_MS + SCRIPT.next + DURATION.mc + SCRIPT.next + DURATION.tf + SCRIPT.next);
+    await advance(SCRIPT.start + OPENER_MS + SCRIPT.afterOpener + DURATION.mc + SCRIPT.next + DURATION.tf + SCRIPT.next);
     const q = math.studentState().question!;
     expect(q).toMatchObject({ kind: "numeric", status: "open", numeric: { unit: null, tolerance: 0.01, allowNegative: false } });
     const send = (response: string, key: string) => math.submit({ sessionQuestionId: q.id, response, answeredAt: q.firedAt! + 1000, idempotencyKey: key });

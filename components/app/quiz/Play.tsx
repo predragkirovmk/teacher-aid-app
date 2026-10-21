@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownIcon, ArrowUpIcon, CheckIcon, FlagCheckeredIcon, HourglassIcon, LockIcon, MinusIcon, PencilSimpleIcon, UsersIcon, XIcon } from "@phosphor-icons/react";
+import { ArrowDownIcon, ArrowUpIcon, CheckIcon, FlagCheckeredIcon, HashIcon, HourglassIcon, LockIcon, MinusIcon, PencilSimpleIcon, UsersIcon, XIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useState, ViewTransition, type CSSProperties } from "react";
@@ -20,21 +20,13 @@ import type { SessionRunView } from "@/lib/app/session/controller";
 import { useSession } from "@/lib/app/session/react";
 import { subjectLabel } from "@/lib/app/subjects";
 import { JoinFailureScreen } from "./JoinFailure";
-import { Burst, CheckDraw, CrossDraw, QuizCard, QuizTop, TimerRing, useCountUp } from "./parts";
-
-const buzz = (pattern: number | number[]) => {
-  try {
-    navigator.vibrate?.(pattern);
-  } catch {
-    // Some browsers throw when vibration is blocked; it is only a nicety.
-  }
-};
+import { formatNumeric } from "@/lib/app/numeric";
+import { NumericQuestion, numberText } from "./Numeric";
+import { OpenerResult, OpenerWait, Reasoning, Voting } from "./Opener";
+import { Burst, CheckDraw, CrossDraw, QuizCard, QuizTop, TimerRing, buzz, useCountUp } from "./parts";
 
 /** How long the "you're in" confirmation holds before the lesson itself is the screen. */
 const JOINED_MS = 1700;
-
-/** The question kinds this version can answer; the rest are followed on the board. */
-const supported = (q: SessionQuestion) => q.kind === "multiple_choice" || q.kind === "true_false";
 
 /**
  * The live quiz. What it draws comes from the session engine (lib/app/session): the server's
@@ -46,7 +38,7 @@ export function Play({ course, join }: { course: Course; join: JoinedSession }) 
   const { confirm } = useUI();
   const { t } = useQT();
   const { t: tt } = useT();
-  const { run, answer, retry } = useSession(join.session.id, join.attendance?.status === "late");
+  const { run, answer, reason, skipReason, retry } = useSession(join.session.id, join.attendance?.status === "late");
   // Joining the session was the check-in (spec 5.4): the screen starts from its answer, for a moment.
   const [confirming, setConfirming] = useState(join.attendance !== null);
 
@@ -84,7 +76,8 @@ export function Play({ course, join }: { course: Course; join: JoinedSession }) 
   }
 
   // The answer's own state is drawn under the locked card; the strip need not say it a second time.
-  const lockedScreen = (run.stage === "waiting_others" || run.stage === "waiting_result") && run.picked !== null;
+  const lockedScreen =
+    ((run.stage === "waiting_others" || run.stage === "waiting_result") && run.picked !== null) || run.stage === "reasoning" || run.stage === "opener_wait";
   // Said while the student is on the first question they came to, and gone once the lesson has ranked anyone.
   const lateNote = run.late && run.board === null && run.points === 0 && (run.stage === "answering" || run.stage === "waiting_others" || run.stage === "waiting_result");
   return (
@@ -102,16 +95,17 @@ export function Play({ course, join }: { course: Course; join: JoinedSession }) 
             )}
             {run.stage === "syncing" && <Connecting course={course} join={join} onLeave={onLeave} />}
             {run.stage === "waiting_start" && <Lobby course={course} join={join} run={run} onLeave={onLeave} />}
-            {(run.stage === "answering" || run.stage === "waiting_others" || run.stage === "waiting_result") &&
-              (run.question && supported(run.question) ? (
-                run.stage === "answering" ? (
-                  <Question run={run} onLeave={onLeave} onPick={answer} />
-                ) : (
-                  <Locked run={run} onLeave={onLeave} />
-                )
+            {run.stage === "answering" &&
+              (run.question!.kind === "numeric" ? (
+                <NumericQuestion run={run} onLeave={onLeave} onPick={answer} />
               ) : (
-                <Unsupported run={run} onLeave={onLeave} />
+                <Question run={run} onLeave={onLeave} onPick={answer} />
               ))}
+            {(run.stage === "waiting_others" || run.stage === "waiting_result") && <Locked run={run} onLeave={onLeave} />}
+            {run.stage === "voting" && <Voting run={run} onLeave={onLeave} onPick={answer} />}
+            {run.stage === "reasoning" && <Reasoning run={run} onLeave={onLeave} onSend={reason} onSkip={skipReason} />}
+            {run.stage === "opener_wait" && <OpenerWait run={run} onLeave={onLeave} />}
+            {run.stage === "opener_result" && <OpenerResult run={run} onLeave={onLeave} />}
             {(run.stage === "right" || run.stage === "wrong") && <Verdict key={run.question?.id} run={run} />}
             {run.stage === "waiting_next" && <Between key={run.question?.id ?? "none"} course={course} join={join} run={run} onLeave={onLeave} onHome={() => router.replace("/app")} />}
             {run.stage === "ended" && <Ended run={run} onHome={() => router.replace("/app")} />}
@@ -299,11 +293,12 @@ function Question({ run, onLeave, onPick }: { run: SessionRunView; onLeave: () =
  * final once tapped (BR-ANS-02); what the screen waits for is the class, or the server's verdict.
  */
 function Locked({ run, onLeave }: { run: SessionRunView; onLeave: () => void }) {
-  const { t } = useQT();
+  const { t, locale } = useQT();
   const q = run.question!;
   const { label, mark } = useChoiceLabels(q);
   const closing = run.stage === "waiting_result";
-  const picked = run.picked === null ? null : choiceOf(q, run.picked);
+  const numeric = q.kind === "numeric";
+  const picked = run.picked === null ? null : numeric ? 0 : choiceOf(q, run.picked);
   const progress = !closing ? run.progress : null;
   const dots = progress ? Math.min(progress.joined, 40) : 0;
 
@@ -319,15 +314,15 @@ function Locked({ run, onLeave }: { run: SessionRunView; onLeave: () => void }) 
       <div className="q-body q-stack">
         <p className="q-question q-question--small">{q.prompt}</p>
         {picked !== null ? (
-          <ViewTransition name={`q-pick-${picked}`} share="q-morph" default="none">
+          <ViewTransition name={numeric ? "q-pick-n" : `q-pick-${picked}`} share="q-morph" default="none">
             <div className="q-locked">
               <span className="t-label q-locked__head">
                 <LockIcon size={18} weight="bold" aria-hidden="true" />
                 {t("q.locked")}
               </span>
               <span className="q-answer">
-                <span className="q-letter q-letter--ink">{mark(picked)}</span>
-                {label(picked)}
+                <span className="q-letter q-letter--ink">{numeric ? <HashIcon size={22} weight="bold" aria-hidden="true" /> : mark(picked)}</span>
+                {numeric ? numberText(run.picked!, q, locale) : label(picked)}
               </span>
             </div>
           </ViewTransition>
@@ -361,32 +356,19 @@ function Locked({ run, onLeave }: { run: SessionRunView; onLeave: () => void }) 
   );
 }
 
-/** A question the app cannot show yet (numeric, opener): say so, and that the lesson goes on at the board. */
-function Unsupported({ run, onLeave }: { run: SessionRunView; onLeave: () => void }) {
-  const { t } = useQT();
-  const q = run.question!;
-  return (
-    <>
-      <QuizTop onLeave={onLeave} label={t("q.progress", { n: q.index + 1, total: q.total })} done={q.index + 1} total={q.total} />
-      <div className="q-body q-body--center" role="status">
-        <span className="q-badge q-badge--no q-pop">
-          <HourglassIcon size={52} color="var(--yellow)" aria-hidden="true" />
-        </span>
-        <h1 className="q-hero q-hero--fail">{t("q.unsupported.title")}</h1>
-        <p className="t-body muted q-fail__body">{t("q.unsupported.body")}</p>
-      </div>
-    </>
-  );
-}
-
 function Verdict({ run }: { run: SessionRunView }) {
-  const { t } = useQT();
+  const { t, locale } = useQT();
   const q = run.question!;
   const { letters, label, mark } = useChoiceLabels(q);
   const gain = useCountUp(run.gain, 0, 700);
   const total = useCountUp(run.points, run.points - run.gain, 1000);
-  const picked = run.picked === null ? null : choiceOf(q, run.picked);
-  const right = run.correctAnswer === null ? null : choiceOf(q, run.correctAnswer);
+  const numeric = q.kind === "numeric";
+  const picked = run.picked === null ? null : numeric ? 0 : choiceOf(q, run.picked);
+  const right = run.correctAnswer === null ? null : numeric ? 0 : choiceOf(q, run.correctAnswer);
+  // A number: the student's own value and the right one, each with its unit, in the student's script.
+  const yours = numeric && run.picked !== null ? numberText(run.picked, q, locale) : null;
+  const exact = numeric && run.correctAnswer !== null ? numberText(run.correctAnswer, q, locale) : null;
+  const tolerance = q.numeric && q.numeric.tolerance > 0 ? formatNumeric(String(q.numeric.tolerance), locale) : null;
 
   return (
     <>
@@ -403,6 +385,8 @@ function Verdict({ run }: { run: SessionRunView }) {
           <span className="t-cap q-cap">
             {run.bonus > 0 ? t("q.breakdown", { base: run.gain - run.bonus, bonus: run.bonus }) : t("q.breakdownBase", { base: run.gain })}
           </span>
+          {/* Right within the tolerance, but not on the dot: say what the exact value is. */}
+          {yours !== null && exact !== null && yours !== exact && <span className="t-cap q-cap">{t("n.exactValue", { text: exact })}</span>}
         </div>
       ) : (
         <>
@@ -420,12 +404,13 @@ function Verdict({ run }: { run: SessionRunView }) {
               <div className="q-correct">
                 <span className="t-label q-locked__head">
                   <CheckIcon size={18} weight="bold" aria-hidden="true" />
-                  {t("q.correctAnswer")}
+                  {numeric ? t("n.correctValue") : t("q.correctAnswer")}
                 </span>
                 <span className="q-answer">
-                  <span className="q-letter q-letter--blue">{mark(right)}</span>
-                  {label(right)}
+                  <span className="q-letter q-letter--blue">{numeric ? <HashIcon size={22} weight="bold" aria-hidden="true" /> : mark(right)}</span>
+                  {numeric ? exact : label(right)}
                 </span>
+                {numeric && tolerance && <span className="t-cap q-correct__note">{t("n.tolerance", { tol: tolerance })}</span>}
               </div>
             ) : (
               <p className="t-cap q-cap q-wait" role="status">
@@ -435,9 +420,11 @@ function Verdict({ run }: { run: SessionRunView }) {
             )}
             {picked !== null && (
               <p className="t-cap q-cap" style={{ margin: "0 8px" }}>
-                {q.kind === "true_false"
-                  ? t("q.yourAnswerTf", { text: label(picked) })
-                  : t("q.yourAnswer", { letter: letters[picked], text: label(picked) })}
+                {numeric
+                  ? t("n.yours", { text: yours! })
+                  : q.kind === "true_false"
+                    ? t("q.yourAnswerTf", { text: label(picked) })
+                    : t("q.yourAnswer", { letter: letters[picked], text: label(picked) })}
               </p>
             )}
           </div>
@@ -519,7 +506,7 @@ function Between({ course, join, run, onLeave, onHome }: { course: Course; join:
   const wrapping = run.sessionState === "review" || (run.last && q !== null);
 
   // No question yet (the lesson is still on the opener, or has just begun): nothing to rank.
-  if (!q || run.rank === null) {
+  if (!q || q.opener || run.rank === null) {
     return (
       <>
         <QuizTop onLeave={onLeave} label={subjectLabel(tt, course.subjectId, course.subjectName)} />

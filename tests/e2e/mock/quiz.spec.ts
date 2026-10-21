@@ -1,19 +1,34 @@
-import { expect, mk, test } from "../fixtures";
+import { expect, mk, test, untilStage } from "../fixtures";
 import type { Page } from "@playwright/test";
 
 // The scripted lesson paces itself on real timers (about three minutes); a controlled clock skips the waiting.
 const OPTION = ".q-opt, .q-tf__btn";
 const stage = (page: Page) => page.locator("main.q").getAttribute("data-stage");
 
-/** Play on: answer whatever is asked, and let the clock run, until `done`. */
+/** Give an answer to whatever is on the screen: a number is typed, anything else is the first option. */
+async function answerNow(page: Page) {
+  const number = page.locator(".n-input");
+  if (await number.isVisible()) {
+    await number.fill("3,25");
+    await number.press("Enter");
+  } else {
+    await page.locator(OPTION).first().click();
+  }
+}
+
+/** Play on: vote and give a reason in the opener, answer every question, and let the clock run, until `done`. */
 async function playUntil(page: Page, done: () => Promise<boolean>, seen = new Set<string>()) {
-  const option = page.locator(OPTION).first();
   let answered = 0;
-  for (let i = 0; i < 300 && !(await done()); i++) {
+  for (let i = 0; i < 400 && !(await done()); i++) {
     const s = await stage(page).catch(() => null);
     if (s) seen.add(s);
-    if (await option.isVisible()) {
-      await option.click();
+    if (s === "voting") await page.locator(OPTION).first().click();
+    else if (s === "reasoning") {
+      const reason = page.getByRole("textbox");
+      await reason.fill("Same on both sides keeps the balance.");
+      await reason.press("Enter");
+    } else if (s === "answering") {
+      await answerNow(page);
       answered++;
     }
     await page.clock.fastForward(1_500);
@@ -33,7 +48,7 @@ test("a whole lesson: answer every question, see each verdict, the ending and th
   expect(answered).toBe(5);
   seen.add((await stage(page)) ?? "");
   // Every state of the student's lesson came by (spec 4.4).
-  for (const s of ["joined", "waiting_start", "answering", "waiting_others", "waiting_next", "ended"]) expect(seen, s).toContain(s);
+  for (const s of ["joined", "waiting_start", "voting", "reasoning", "opener_wait", "opener_result", "answering", "waiting_others", "waiting_next", "ended"]) expect(seen, s).toContain(s);
   expect(seen.has("right") || seen.has("wrong")).toBe(true);
 
   // The ending: the tally, the place, the points, and the way to the summary.
@@ -56,13 +71,9 @@ test("the verdict, the ranking and the next question come one after the other", 
   await page.goto("/app/checkin/MATH-7B");
   await expect(page.getByText(mk.q("q.live"))).toBeVisible();
 
-  const option = page.locator(OPTION).first();
-  for (let i = 0; i < 40 && !(await option.isVisible()); i++) {
-    await page.clock.fastForward(1_000);
-    await page.waitForTimeout(30);
-  }
+  await untilStage(page, "answering");
   await expect(page.getByRole("timer")).toBeVisible();
-  await option.click();
+  await page.locator(OPTION).first().click();
   // Locked in: the answer, and the class's progress.
   await expect(page.getByText(mk.q("q.locked"))).toBeVisible();
   await expect(page.getByText(/од 28 одговорија/)).toBeVisible();
@@ -87,11 +98,7 @@ test("the verdict, the ranking and the next question come one after the other", 
 test("the countdown follows the server's clock, which the demo runs a few seconds ahead of the phone's", async ({ page }) => {
   await page.clock.install();
   await page.goto("/app/checkin/MATH-7B");
-  const option = page.locator(OPTION).first();
-  for (let i = 0; i < 40 && !(await option.isVisible()); i++) {
-    await page.clock.fastForward(500);
-    await page.waitForTimeout(30);
-  }
+  await untilStage(page, "answering");
   const label = (await page.getByRole("timer").getAttribute("aria-label")) ?? "";
   const seconds = Number(label.match(/\d+/)?.[0]);
   // A 20-second question, some seconds in (the suite runs in parallel, so not exactly how many): if the app

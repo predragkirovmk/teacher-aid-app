@@ -70,6 +70,8 @@ export const SCRIPT = {
   reveal: 1200,
   /** From a question closing to the next one opening. */
   next: 8600,
+  /** From the opener closing to the first question: the class's votes and reasons are worth reading, so it is longer. */
+  afterOpener: 20_000,
   /** From the last question closing to the lesson going to review, and from review to End. */
   review: 9000,
   end: 6000,
@@ -615,7 +617,7 @@ export class MockSession {
     this.sendOpenerResult(live);
     const id = live.question.id;
     this.after(SCRIPT.reveal, () => this.revealOpener(id));
-    this.after(SCRIPT.next, () => this.fire(0));
+    this.after(SCRIPT.afterOpener, () => this.fire(0));
   }
 
   /** Work out what the student's vote and reason are worth from what the server holds, and add the difference to their points. */

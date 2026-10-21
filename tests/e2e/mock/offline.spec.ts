@@ -1,4 +1,4 @@
-import { expect, mk, en, test } from "../fixtures";
+import { expect, mk, en, test, untilStage } from "../fixtures";
 import type { Page } from "@playwright/test";
 
 /**
@@ -9,15 +9,8 @@ import type { Page } from "@playwright/test";
 const OPTION = ".q-opt, .q-tf__btn";
 const stage = (page: Page) => page.locator("main.q").getAttribute("data-stage");
 
-/** Run the demo's clock on until question 1 is open. */
-async function toQuestion(page: Page) {
-  const option = page.locator(OPTION).first();
-  for (let i = 0; i < 40 && !(await option.isVisible()); i++) {
-    await page.clock.fastForward(500);
-    await page.waitForTimeout(30);
-  }
-  await expect(option).toBeVisible();
-}
+/** Run the demo's clock on until a pop-up question is open: past the lobby and the opener. */
+const toQuestion = (page: Page) => untilStage(page, "answering");
 
 test("an answer given with no signal is saved, and sent and counted when the signal returns", async ({ page, context }) => {
   await page.clock.install();

@@ -8,6 +8,15 @@ import { useQT } from "@/lib/app/quiz-copy";
 import { initials, personName } from "@/lib/app/quiz";
 import { subjectStyle } from "@/lib/app/subjects";
 
+/** A short buzz where the phone supports it; some browsers throw when vibration is blocked, and it is only a nicety. */
+export const buzz = (pattern: number | number[]) => {
+  try {
+    navigator.vibrate?.(pattern);
+  } catch {
+    // ignored
+  }
+};
+
 const noop = () => () => {};
 const calmNow = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 export const useCalm = () => useSyncExternalStore(noop, calmNow, () => false);

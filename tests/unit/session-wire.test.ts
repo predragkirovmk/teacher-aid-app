@@ -173,11 +173,12 @@ describe("the student-state snapshot", () => {
     expect(studentState({ ...base, question: null })).toMatchObject({ myReason: null, opener: null });
     const s = studentState({
       ...base,
+      question: { ...wireQ, kind: "multiple_choice", status: "open" } as never,
       my_reason: "No air.",
       opener: { phase: "reasoning", votes: [4, 2, 20], reasons: ["Same."] },
     });
     expect(s).toMatchObject({ myReason: "No air.", opener: { phase: "reasoning", votes: [4, 2, 20], reasons: ["Same."] } });
     // Votes can be left out while voting is open; the reasons can be missing too.
-    expect(studentState({ ...base, opener: { phase: "voting", votes: null } as never }).opener).toEqual({ phase: "voting", votes: null, reasons: [] });
+    expect(studentState({ ...base, question: null, opener: { phase: "voting", votes: null } as never }).opener).toEqual({ phase: "voting", votes: null, reasons: [] });
   });
 });
