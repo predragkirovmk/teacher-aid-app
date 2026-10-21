@@ -1876,6 +1876,53 @@ button.pill {
     transform: translateY(-4px) scale(0.98);
   }
 }
+/* The connection, said quietly: offline, reconnecting, back, and answers saved for later. Floats like a
+   toast but takes no taps, so nothing under it is ever blocked. */
+.net-pill {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  top: calc(env(safe-area-inset-top) + 16px);
+  transform: translateX(-50%);
+  max-width: 88%;
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-label);
+  line-height: 1.35;
+  font-weight: 600;
+  pointer-events: none;
+  transition:
+    opacity var(--spring-snappy-dur) var(--spring-snappy),
+    transform var(--spring-snappy-dur) var(--spring-snappy);
+  @starting-style {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px);
+  }
+}
+.net-pill svg {
+  flex: none;
+}
+.net-pill__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.net-pill__saved {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-2);
+}
+@media (prefers-reduced-motion: reduce) {
+  .net-pill {
+    @starting-style {
+      transform: translateX(-50%);
+    }
+  }
+}
 .toast--out {
   opacity: 0;
   transform: translateX(-50%) translateY(-8px);

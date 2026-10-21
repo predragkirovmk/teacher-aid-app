@@ -10,6 +10,8 @@ import { useT } from "@/lib/app/i18n";
 import { welcomeUrl } from "@/lib/app/signin";
 import type { Locale } from "@/lib/app/api/types";
 import { ClockOptions } from "./ClockOptions";
+import { ConnectionPill } from "./ConnectionPill";
+import { OutboxRunner } from "./OutboxRunner";
 import { Pager } from "./Pager";
 import { SignedElsewhere, Splash, Unreachable } from "./SessionScreens";
 import { UIContext, type ConfirmOptions } from "./ui";
@@ -113,11 +115,16 @@ export function Shell({ children }: { children: ReactNode }) {
       <Splash />
     );
 
+  // The quiz draws the connection itself, as a strip in its own layout.
+  const inQuiz = view === "screen" && (pathname.startsWith("/app/play") || pathname.startsWith("/app/checkin"));
+
   return (
     <UIContext.Provider value={ui}>
+      <OutboxRunner meId={status === "signedIn" ? me.data?.id : undefined} />
       <div className="stage">
         <div className="phone">
           <Pager pathname={pathname}>{content}</Pager>
+          {!inQuiz && <ConnectionPill variant="float" />}
           {showTabs && (
             <>
               <div className="edge" aria-hidden="true" />

@@ -109,7 +109,7 @@ test("a connection that drops mid-question is noticed, and the screen catches up
     await page.waitForTimeout(30);
   }
   // Not answering: 12 seconds in, the link drops.
-  const lost = page.getByText(mk.q("q.conn"));
+  const lost = page.getByText(mk.q("net.reconnecting"));
   for (let i = 0; i < 40 && !(await lost.isVisible()); i++) {
     await page.clock.fastForward(1_000);
     await page.waitForTimeout(30);
@@ -122,6 +122,7 @@ test("a connection that drops mid-question is noticed, and the screen catches up
     await page.waitForTimeout(30);
   }
   await expect(lost).toBeHidden();
+  await expect(page.getByText(mk.q("net.back"))).toBeVisible();
   const { answered } = await playUntil(page, async () => (await stage(page)) === "waiting_next" || (await stage(page)) === "ended");
   void answered;
   await expect(page.locator("main.q")).not.toHaveAttribute("data-stage", "syncing");

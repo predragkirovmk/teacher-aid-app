@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowDownIcon, ArrowUpIcon, CheckIcon, FlagCheckeredIcon, HourglassIcon, LockIcon, MinusIcon, PencilSimpleIcon, UsersIcon, WifiSlashIcon, XIcon } from "@phosphor-icons/react";
+import { ArrowDownIcon, ArrowUpIcon, CheckIcon, FlagCheckeredIcon, HourglassIcon, LockIcon, MinusIcon, PencilSimpleIcon, UsersIcon, XIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useState, ViewTransition, type CSSProperties } from "react";
 import { Avatar } from "@/components/app/Avatar";
+import { AnswerDelivery, ConnectionPill } from "@/components/app/ConnectionPill";
 import { ProfileEditor } from "@/components/app/ProfileEditor";
 import { Sheet } from "@/components/app/Shell";
 import { useUI } from "@/components/app/ui";
@@ -82,7 +83,8 @@ export function Play({ course, join }: { course: Course; join: JoinedSession }) 
     );
   }
 
-  const offline = run.connection === "reconnecting" || run.syncing;
+  // The answer's own state is drawn under the locked card; the strip need not say it a second time.
+  const lockedScreen = (run.stage === "waiting_others" || run.stage === "waiting_result") && run.picked !== null;
   // Said while the student is on the first question they came to, and gone once the lesson has ranked anyone.
   const lateNote = run.late && run.board === null && run.points === 0 && (run.stage === "answering" || run.stage === "waiting_others" || run.stage === "waiting_result");
   return (
@@ -92,17 +94,11 @@ export function Play({ course, join }: { course: Course; join: JoinedSession }) 
           <Joined course={course} join={join} />
         ) : (
           <>
-            {offline && run.stage !== "ended" && run.stage !== "syncing" ? (
-              <p className="q-note q-note--conn" role="status">
-                <WifiSlashIcon size={18} aria-hidden="true" />
-                {t("q.conn")}
+            <ConnectionPill variant="inline" answerShown={lockedScreen} />
+            {lateNote && (
+              <p className="q-note q-note--late" role="status">
+                {t("q.late.note")}
               </p>
-            ) : (
-              lateNote && (
-                <p className="q-note q-note--late" role="status">
-                  {t("q.late.note")}
-                </p>
-              )
             )}
             {run.stage === "syncing" && <Connecting course={course} join={join} onLeave={onLeave} />}
             {run.stage === "waiting_start" && <Lobby course={course} join={join} run={run} onLeave={onLeave} />}
@@ -343,6 +339,7 @@ function Locked({ run, onLeave }: { run: SessionRunView; onLeave: () => void }) 
             </span>
           </div>
         )}
+        {picked !== null && run.answer !== "none" && run.answer !== "late" && <AnswerDelivery status={run.answer} />}
         {progress && (
           <section className="card q-answered" aria-label={`${progress.answered} ${t("q.answered", { total: progress.joined })}`}>
             <div className="q-answered__count">
@@ -358,7 +355,7 @@ function Locked({ run, onLeave }: { run: SessionRunView; onLeave: () => void }) 
         )}
       </div>
       <p className="q-foot t-cap q-cap q-center" role="status">
-        {closing ? t("q.checking") : run.answer === "sending" ? t("q.sending") : t("q.waitNote")}
+        {closing ? (run.answer === "saved" || run.answer === "sending" ? t("q.savedWait") : t("q.checking")) : t("q.waitNote")}
       </p>
     </>
   );
@@ -579,6 +576,12 @@ function Ended({ run, onHome }: { run: SessionRunView; onHome: () => void }) {
   const total = useCountUp(run.points, 0, 900);
   return (
     <>
+      {/* An answer saved offline that reached the server only after the End did not count. */}
+      {run.answer === "late" && (
+        <p className="q-note" role="status">
+          {t("ans.ended")}
+        </p>
+      )}
       <div className="q-body q-body--center q-body--tight" role="status">
         <span className="q-badge q-badge--no q-pop">
           <FlagCheckeredIcon size={56} color="var(--yellow)" aria-hidden="true" />

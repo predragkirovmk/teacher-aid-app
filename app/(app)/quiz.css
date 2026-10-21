@@ -638,6 +638,32 @@
 .q-note svg {
   flex: none;
 }
+/* Where the student's own answer has got to, under the card that holds it. A send that is quick never
+   shows "Sending": that line only appears if it is still going after most of a second. */
+.q-delivery {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0 4px;
+  min-height: 24px;
+  font-size: var(--fs-label);
+  line-height: 1.35;
+  font-weight: 600;
+  animation: q-rise var(--spring-snappy-dur) var(--spring-snappy) backwards;
+}
+.q-delivery svg {
+  flex: none;
+}
+.q-delivery[data-status="sending"] {
+  opacity: 0;
+  animation: q-delivery-wait 1ms linear 700ms forwards;
+}
+@keyframes q-delivery-wait {
+  to {
+    opacity: 1;
+  }
+}
 .q-late-text {
   margin: 8px 0 0;
   max-width: 22rem;
