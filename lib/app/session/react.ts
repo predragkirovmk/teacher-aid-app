@@ -9,7 +9,8 @@ import type { Id } from "../api/types";
 import { createTransport } from "./connect";
 import { createSessionHandle, type SessionHandle, type SessionRunView } from "./controller";
 import { createEngine } from "./engine";
-import { sendAnswer } from "./send";
+import { net } from "./net";
+import { outbox } from "./send";
 import { viewOf } from "./view";
 
 const IDLE: SessionRunView = { ...viewOf(createEngine({ sessionId: "", meId: "" }), 0), connection: "connecting", syncing: false, failed: null };
@@ -59,7 +60,7 @@ export function useSession(sessionId: Id, late: boolean) {
       late,
       transport: createTransport(sessionId),
       getSnapshot: (id) => client.getStudentState(id),
-      sendAnswer,
+      outbox,
       onSignedInElsewhere: () => endSession("signed_in_elsewhere"),
       onNotification: () => invalidate("notifications"),
       // Points are settled and attendance and results written when the session ends (BR-PTS-10, F-10).
@@ -83,5 +84,13 @@ export function useSession(sessionId: Id, late: boolean) {
   }, [holder, sessionId, meId, late]);
 
   const run = useSyncExternalStore(holder.subscribe, holder.getView, () => IDLE);
+
+  // The lesson's link tells the connection note (net.ts) what it knows; leaving the quiz takes it back.
+  const { connection, syncing } = run;
+  useEffect(() => {
+    if (!meId) return;
+    net.setLink(connection, syncing);
+    return () => net.setLink(null);
+  }, [meId, connection, syncing]);
   return { run, answer: (response: string) => holder.get()?.answer(response), retry: () => holder.get()?.retry() };
 }

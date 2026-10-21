@@ -3,6 +3,8 @@ import { ApiError } from "@/lib/app/api/errors";
 import type { SessionQuestion, StudentSessionState } from "@/lib/app/api/types";
 import { iso } from "@/lib/app/api/wire";
 import { createSessionHandle, publicChannel, studentChannel, type SessionDeps, type SessionHandle } from "@/lib/app/session/controller";
+import { createOutbox } from "@/lib/app/session/outbox";
+import { memoryStore } from "@/lib/app/session/outbox-store";
 import { T0, question, result, session, snapshot } from "./support/session";
 import { FakeTransport, deferred, wireQuestion, wireResult } from "./support/transport";
 
@@ -31,7 +33,11 @@ const reply = (over: Partial<StudentSessionState> = {}): Reply => {
   return rest;
 };
 
-function setup(overrides: Partial<SessionDeps> = {}, replies: Reply[] = [reply()]) {
+/** An outbox over memory, sending through `send`: what the phone has, minus the disk. */
+const outboxOver = (send: Parameters<typeof createOutbox>[0]["send"]) => createOutbox({ store: memoryStore(), send, random: () => 0.5 });
+
+function setup(overrides: Partial<SessionDeps> & { send?: Parameters<typeof createOutbox>[0]["send"] } = {}, replies: Reply[] = [reply()]) {
+  const { send, ...deps } = overrides;
   const transport = new FakeTransport();
   let call = 0;
   const getSnapshot = vi.fn(async () => {
@@ -39,18 +45,19 @@ function setup(overrides: Partial<SessionDeps> = {}, replies: Reply[] = [reply()
     if (next instanceof Error) throw next;
     return { ...next, serverNow: serverNow() } as StudentSessionState;
   });
-  const sendAnswer = vi.fn(async () => ({ accepted: true, duplicate: false }));
+  const sendAnswer = vi.fn(send ?? (async () => ({ accepted: true, duplicate: false })));
+  const outbox = outboxOver(sendAnswer);
   const handle: SessionHandle = createSessionHandle({
     sessionId: "s1",
     meId: "me",
     transport,
     getSnapshot,
-    sendAnswer,
+    outbox,
     newKey: () => "key-1",
     random: () => 0.5,
-    ...overrides,
+    ...deps,
   });
-  return { transport, getSnapshot, sendAnswer, handle };
+  return { transport, getSnapshot, sendAnswer, outbox, handle };
 }
 
 describe("starting", () => {
@@ -116,6 +123,7 @@ describe("events", () => {
     await vi.advanceTimersByTimeAsync(0);
     transport.push(PUBLIC, "question.opened", { server_now: iso(serverNow()), question: wireQuestion(firedAgo(15_000)) });
     handle.answer("1");
+    await vi.advanceTimersByTimeAsync(0);
     transport.push(PUBLIC, "question.closed", { server_now: iso(serverNow() + 1), session_question_id: "q1" });
     transport.push(STUDENT, "question.result", wireResult(result(1, { points: 14 }), 14, serverNow() + 2));
     expect(handle.getView()).toMatchObject({ stage: "right", gain: 14, points: 14, rank: 4, picked: "1" });
@@ -196,7 +204,7 @@ describe("reconnecting", () => {
     const transport = new FakeTransport();
     let n = 0;
     const getSnapshot = vi.fn(() => (n++ === 0 ? Promise.resolve(snapshot({ session: session({ state: "lobby" }), serverNow: serverNow() })) : wait.promise));
-    const handle = createSessionHandle({ sessionId: "s1", meId: "me", transport, getSnapshot, sendAnswer: vi.fn(), random: () => 0.5 });
+    const handle = createSessionHandle({ sessionId: "s1", meId: "me", transport, getSnapshot, outbox: outboxOver(vi.fn()), random: () => 0.5 });
     await vi.advanceTimersByTimeAsync(0);
 
     transport.setState("open"); // asks again
@@ -211,7 +219,7 @@ describe("reconnecting", () => {
     const first = deferred<StudentSessionState>();
     const transport = new FakeTransport();
     const getSnapshot = vi.fn(() => first.promise);
-    createSessionHandle({ sessionId: "s1", meId: "me", transport, getSnapshot, sendAnswer: vi.fn(), random: () => 0.5 });
+    createSessionHandle({ sessionId: "s1", meId: "me", transport, getSnapshot, outbox: outboxOver(vi.fn()), random: () => 0.5 });
     transport.setState("open");
     transport.setState("reconnecting");
     transport.setState("open");
@@ -297,8 +305,8 @@ describe("reconnecting", () => {
 });
 
 describe("answering", () => {
-  async function openQuestion(extra: Partial<SessionDeps> = {}) {
-    const s = setup(extra, [reply({ question: firedAgo(1000) })]);
+  async function openQuestion(extra: Parameters<typeof setup>[0] = {}, replies: Reply[] = [reply({ question: firedAgo(1000) })]) {
+    const s = setup(extra, replies);
     await vi.advanceTimersByTimeAsync(0);
     return s;
   }
@@ -328,16 +336,18 @@ describe("answering", () => {
     expect(handle.getView().picked).toBe("2");
   });
 
-  it("tries again with the same key when the network fails, while the question can still take it", async () => {
+  it("saves the answer and tries again with the same key when the network fails", async () => {
     const sendAnswer = vi
       .fn()
       .mockRejectedValueOnce(new ApiError("network"))
       .mockRejectedValueOnce(new ApiError("server_error"))
       .mockResolvedValue({ accepted: true, duplicate: false });
-    const { handle } = await openQuestion({ sendAnswer });
+    const taken = reply({ question: firedAgo(1000), myResponse: "2" });
+    const { handle } = await openQuestion({ send: sendAnswer }, [reply({ question: firedAgo(1000) }), taken]);
     handle.answer("2");
     await vi.advanceTimersByTimeAsync(0);
-    expect(handle.getView().answer).toBe("sending");
+    // The first failure is the cue to say it is kept: saved, not "sending".
+    expect(handle.getView().answer).toBe("saved");
     await vi.advanceTimersByTimeAsync(1000);
     await vi.advanceTimersByTimeAsync(2000);
     expect(sendAnswer).toHaveBeenCalledTimes(3);
@@ -345,19 +355,85 @@ describe("answering", () => {
     expect(handle.getView().answer).toBe("sent");
   });
 
-  it("gives up on an answer it could not deliver once the question is long over", async () => {
-    const sendAnswer = vi.fn().mockRejectedValue(new ApiError("network"));
-    const { handle } = await openQuestion({ sendAnswer });
+  it("shows a send that is slow as saved, and sent when it lands", async () => {
+    const slow = deferred<{ accepted: boolean; duplicate: boolean }>();
+    const { handle } = await openQuestion({ send: () => slow.promise }, [reply({ question: firedAgo(1000) }), reply({ question: firedAgo(1000), myResponse: "2" })]);
     handle.answer("2");
-    await vi.advanceTimersByTimeAsync(19_000 + 10_000);
+    await vi.advanceTimersByTimeAsync(2000);
     expect(handle.getView().answer).toBe("sending");
-    await vi.advanceTimersByTimeAsync(20_000);
-    expect(handle.getView().answer).toBe("late");
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(handle.getView().answer).toBe("saved");
+    slow.resolve({ accepted: true, duplicate: false });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(handle.getView().answer).toBe("sent");
+  });
+
+  it("keeps an answer it could not deliver, however long the question has been over, and waits for the result meanwhile", async () => {
+    let up = false;
+    const sendAnswer = vi.fn(async () => {
+      if (!up) throw new ApiError("network");
+      return { accepted: true, duplicate: false };
+    });
+    // The server has heard nothing until the answer is delivered: its snapshots say so until then.
+    const first = reply({ question: firedAgo(1000) });
+    const closed = reply({ question: firedAgo(1000, { status: "closed" }) });
+    const taken = reply({ question: firedAgo(1000, { status: "closed" }), myResponse: "2" });
+    let asked = 0;
+    const getSnapshot = vi.fn(async () => ({ ...(asked++ === 0 ? first : up ? taken : closed), serverNow: serverNow() }) as StudentSessionState);
+    const { handle, transport } = await openQuestion({ send: sendAnswer, getSnapshot });
+    handle.answer("2");
+    // A minute and a half later: the question closed long ago, the link is down, the student is told nothing false.
+    transport.setState("reconnecting");
+    await vi.advanceTimersByTimeAsync(90_000);
+    expect(handle.getView()).toMatchObject({ answer: "saved", picked: "2", stage: "waiting_result" });
+    // The connection returns: the link reopens, the outbox sends, and the app asks what the server makes of it.
+    up = true;
+    const calls = getSnapshot.mock.calls.length;
+    transport.setState("open");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(handle.getView().answer).toBe("sent");
+    expect(getSnapshot.mock.calls.length).toBeGreaterThan(calls);
+  });
+
+  it("counts a late answer: the snapshot after delivery brings the verdict, however long after the question", async () => {
+    let up = false;
+    const sendAnswer = vi.fn(async () => {
+      if (!up) throw new ApiError("network");
+      return { accepted: true, duplicate: false };
+    });
+    const closed = (over: object = {}) => reply({ question: firedAgo(1000, { status: "revealed" }), ...over });
+    const s = setup({ send: sendAnswer }, [reply({ question: firedAgo(1000) }), closed(), closed({ result: result(1, { correct: true, points: 13 }), sessionPoints: 13, myResponse: "1" })]);
+    await vi.advanceTimersByTimeAsync(0);
+    s.handle.answer("1");
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(s.handle.getView().stage).toBe("waiting_result");
+    up = true;
+    s.transport.setState("reconnecting");
+    s.transport.setState("open");
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(s.handle.getView()).toMatchObject({ stage: "right", answer: "sent", gain: 13 });
+  });
+
+  it("puts an answer saved before a reload back on the question", async () => {
+    const down = async () => {
+      throw new ApiError("network");
+    };
+    const store = memoryStore();
+    const first = createOutbox({ store, send: down, random: () => 0.5 });
+    await first.enqueue({ key: "k9", studentId: "me", sessionId: "s1", sessionQuestionId: "q1", response: "3", answeredAt: serverNow() });
+    // The page is gone; a new one opens on the same disk.
+    const transport = new FakeTransport();
+    const second = createOutbox({ store, send: down, random: () => 0.5 });
+    const getSnapshot = vi.fn(async () => ({ ...reply({ question: firedAgo(2000) }), serverNow: serverNow() }) as StudentSessionState);
+    const handle = createSessionHandle({ sessionId: "s1", meId: "me", transport, getSnapshot, outbox: second, random: () => 0.5 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(handle.getView()).toMatchObject({ stage: "waiting_others", picked: "3", answer: "saved" });
   });
 
   it("marks the answer late, and asks what happened, when the server says the question had closed", async () => {
     const sendAnswer = vi.fn().mockRejectedValue(new ApiError("question_closed"));
-    const { handle, getSnapshot } = await openQuestion({ sendAnswer });
+    const { handle, getSnapshot } = await openQuestion({ send: sendAnswer });
     handle.answer("2");
     await vi.advanceTimersByTimeAsync(0);
     expect(handle.getView()).toMatchObject({ answer: "late", picked: null });
@@ -366,7 +442,7 @@ describe("answering", () => {
 
   it("keeps the first answer when the server already had one", async () => {
     const sendAnswer = vi.fn().mockRejectedValue(new ApiError("already_answered"));
-    const s = setup({ sendAnswer }, [reply({ question: firedAgo(1000) }), reply({ question: firedAgo(1000), myResponse: "0" })]);
+    const s = setup({ send: sendAnswer }, [reply({ question: firedAgo(1000) }), reply({ question: firedAgo(1000), myResponse: "0" })]);
     await vi.advanceTimersByTimeAsync(0);
     s.handle.answer("2");
     await vi.advanceTimersByTimeAsync(0);

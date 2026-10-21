@@ -35,6 +35,7 @@ import {
 } from "./data";
 import { translate, type Key } from "../../i18n";
 import { getLocale, setLocale, subscribeLocale } from "../../locale";
+import { net } from "../../session/net";
 import { joinMock, mockSessionFor } from "./session";
 import { startMockSignIn, verifyMockCode } from "./signin";
 import { actions, DEFAULT_STATE, getState, subscribeStore, type AppState } from "./store";
@@ -313,6 +314,8 @@ export function createMockClient(source: MockSource): ApiClient {
 
     getStudentState: (sessionId: Id) =>
       authed((): StudentSessionState => {
+        // No signal, no snapshot: the phone's connection is the mock's too (see session.ts).
+        if (net.isOffline()) throw new ApiError("network");
         const session = mockSessionFor(sessionId);
         if (!session) throw new ApiError("not_found");
         return session.studentState();
@@ -320,6 +323,7 @@ export function createMockClient(source: MockSource): ApiClient {
 
     submitAnswer: (sessionId: Id, answer: AnswerInput) =>
       authed((): AnswerReceipt => {
+        if (net.isOffline()) throw new ApiError("network");
         const session = mockSessionFor(sessionId);
         if (!session) throw new ApiError("not_found");
         return write(() => session.submit(answer));

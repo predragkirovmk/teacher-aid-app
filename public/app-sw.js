@@ -6,6 +6,13 @@
  * names are content-hashed. Icons and the manifest: cached copy, refreshed in the background.
  * The page posts { type: "warm", routes } after load; the worker then caches every route and every
  * file those pages reference, and drops what a previous deploy left behind.
+ *
+ * Answers are not the worker's business. It never sees, caches, queues or replays an API request: the
+ * fetch handler below answers GET navigations and same-origin static files and nothing else, and the API
+ * is another origin besides. The student's answers wait in the page's own outbox (IndexedDB) and the page
+ * sends them. Where the browser has Background Sync (Chromium, not iOS) the page registers the tag
+ * below; when the network returns the worker only wakes the open pages so they flush. A closed app is
+ * not woken: its answers go out the next time it opens.
  */
 
 const PAGES = "app-pages";
@@ -18,6 +25,19 @@ const NETWORK_WAIT = 3000;
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+
+/** Registered by the page (lib/app/session/background-sync.ts) when an answer is saved for later. */
+const SYNC_TAG = "teacheraid-answers";
+
+self.addEventListener("sync", (event) => {
+  if (event.tag === SYNC_TAG) event.waitUntil(wakePages());
+});
+
+/** Tell every open page to flush its answers; the page does the sending. */
+async function wakePages() {
+  const pages = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  for (const page of pages) page.postMessage({ type: "flush-outbox" });
+}
 
 self.addEventListener("message", (event) => {
   const data = event.data;
@@ -35,6 +55,7 @@ const keyOf = (u, base = self.location.origin) => {
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
+  // Only reads are ever answered from here: a POST (an answer, a sign-in) goes straight to the network.
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;

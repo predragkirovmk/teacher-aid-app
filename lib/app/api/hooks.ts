@@ -2,7 +2,8 @@
 
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { setLocale as setLocalLocale, useLocale } from "../locale";
-import { forgetSession, recallSession, rememberSession } from "../session/resume";
+import { OUTBOX_STUDENT_KEY } from "../session/outbox-store";
+import { forgetSession, recallJoin, recallSession, rememberSession } from "../session/resume";
 import { client } from "./index";
 import type { SettledPromise } from "./client";
 import { toApiError, type ApiError } from "./errors";
@@ -136,7 +137,8 @@ export function useAuth() {
 function forgetStudent() {
   try {
     for (const key of Object.keys(window.localStorage)) {
-      if (key.startsWith("teacheraid-shown-") || key === "teacheraid-achievements-seen") window.localStorage.removeItem(key);
+      // The outbox's student is only a hint for the "answers saved" count; the answers themselves stay for the next sign-in.
+      if (key.startsWith("teacheraid-shown-") || key === "teacheraid-achievements-seen" || key === OUTBOX_STUDENT_KEY) window.localStorage.removeItem(key);
     }
     window.sessionStorage.removeItem("teacheraid-home-rise");
     forgetSession();
@@ -246,7 +248,7 @@ const joinNow = (code: string): Promise<JoinResult> => {
   // Joining is the attendance, so the lists that show it are stale from here, as the mock's store already knows.
   void p.then(
     (join) => {
-      rememberSession(code, join.session.id);
+      rememberSession(code, join.session);
       invalidate("attendance", "notifications");
     },
     () => {},
@@ -283,6 +285,10 @@ export function useJoinSession(code: string, enabled: boolean): JoinState & { re
     const apply = (s: JoinState) => current && setState(s);
     const fail = (e: unknown) => {
       const error = toApiError(e);
+      // No connection, but this tab joined this lesson before (a reload with the signal gone): open it and wait
+      // for the signal, so the answer the student saved is on screen and not behind a failed join.
+      const offline = error.code === "network" ? recallJoin(code) : null;
+      if (offline) return apply({ status: "joined", join: offline });
       const earlier = error.code === "token_expired" ? recallSession(code) : null;
       if (!earlier) return apply({ status: "failed", error });
       client.getStudentState(earlier).then(

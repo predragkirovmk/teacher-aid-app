@@ -1,8 +1,9 @@
 import { ApiError, toApiError } from "../api/errors";
-import type { AnswerInput, AnswerReceipt, Id, StudentSessionState } from "../api/types";
+import type { Id, StudentSessionState } from "../api/types";
 import { sessionEvent } from "../api/wire";
 import { toLocal } from "./clock";
 import { createEngine, reduce, type Action, type EngineState } from "./engine";
+import type { AnswerOutcome, Outbox } from "./outbox";
 import { backoffDelay, type ConnectionState, type RealtimeMessage, type RealtimeTransport } from "./transport";
 import { needsTick, sameView, viewOf, type SessionView } from "./view";
 
@@ -31,8 +32,8 @@ export type SessionDeps = {
   late?: boolean;
   transport: RealtimeTransport;
   getSnapshot(sessionId: Id): Promise<StudentSessionState>;
-  /** The one way an answer leaves the app (lib/app/session/send.ts). */
-  sendAnswer(sessionId: Id, answer: AnswerInput): Promise<AnswerReceipt>;
+  /** The one way an answer leaves the app: saved on the phone first, then sent until the server has said what it makes of it (outbox.ts). */
+  outbox: Outbox;
   /** The student's channel said they signed in elsewhere. */
   onSignedInElsewhere?(): void;
   /** The student has a new notification. */
@@ -64,8 +65,8 @@ export const studentChannel = (studentId: Id) => `student.${studentId}`;
 const RESULT_GRACE_MS = 3000;
 /** After this many failed snapshot calls, events are applied to what the app has instead of waiting. */
 const UNHOLD_AFTER = 2;
-/** An answer that could not be delivered is given up this long after the question's end. */
-const DELIVER_UNTIL_MS = 10_000;
+/** An answer the server has not acknowledged by now is shown as saved on the phone rather than as being sent. */
+const SAVED_AFTER_MS = 3000;
 const TICK_MS = 250;
 
 const randomKey = () =>
@@ -86,7 +87,7 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
   let failures = 0;
   let endedTold = false;
   const listeners = new Set<() => void>();
-  const timers: { retry?: ReturnType<typeof setTimeout>; deadline?: ReturnType<typeof setTimeout>; tick?: ReturnType<typeof setInterval> } = {};
+  const timers: { retry?: ReturnType<typeof setTimeout>; deadline?: ReturnType<typeof setTimeout>; tick?: ReturnType<typeof setInterval>; saved?: ReturnType<typeof setTimeout> } = {};
   let deadlineKey = "";
 
   const compute = (): SessionRunView => ({ ...viewOf(state, now()), connection, syncing, failed });
@@ -155,6 +156,7 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
         syncing = false;
         dispatch({ type: "snapshot", snapshot, sentAt, receivedAt: now() });
         tellEnded();
+        restorePending();
         if (queued) {
           queued = false;
           refresh();
@@ -181,6 +183,50 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
     );
   }
 
+  /** After a reload the answer the student gave is still in the outbox; the question must not ask for it again. */
+  function restorePending() {
+    void deps.outbox.load().then(() => {
+      const q = state.question;
+      if (disposed || state.mine || !q) return;
+      const saved = deps.outbox.pendingFor(deps.meId, sessionId, q.id);
+      if (saved) dispatch({ type: "answer.restore", key: saved.key, sessionQuestionId: saved.sessionQuestionId, response: saved.response, at: saved.answeredAt });
+    });
+  }
+
+  /** What the outbox found out about an answer of this session. */
+  const onOutcome = (o: AnswerOutcome) => {
+    if (disposed || o.record.sessionId !== sessionId) return;
+    const { key, sessionQuestionId } = o.record;
+    const current = state.question?.id === sessionQuestionId;
+    switch (o.type) {
+      case "saved":
+        dispatch({ type: "answer.saved", key });
+        return;
+      case "delivered": {
+        // Delivered after the question moved on, or after waiting for the connection: the points and the
+        // verdict are the server's to say, so ask.
+        const behind = !current || state.question?.status !== "open" || !!state.mine?.held || o.duplicate;
+        dispatch({ type: "answer.sent", key, now: now() });
+        if (behind) refresh();
+        return;
+      }
+      case "late":
+        dispatch({ type: "answer.late", key });
+        refresh();
+        return;
+      case "ended":
+        // Too late all the same: the lesson ended before the answer arrived.
+        dispatch({ type: "answer.late", key });
+        refresh();
+        return;
+      case "dropped":
+      case "expired":
+        dispatch({ type: "answer.failed", key });
+        refresh();
+        return;
+    }
+  };
+
   const onMessage = (m: RealtimeMessage) => {
     if (disposed) return;
     let event;
@@ -203,51 +249,17 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
     transport.subscribe(studentChannel(deps.meId), onMessage),
     transport.onState((next) => {
       connection = next;
-      // Whatever happened while the link was down is gone; the link being up again is the cue to ask.
-      if (next === "open") refresh();
-      else emit();
+      // Whatever happened while the link was down is gone; the link being up again is the cue to ask,
+      // and to send what the phone has been holding.
+      if (next === "open") {
+        refresh();
+        void deps.outbox.flush();
+      } else emit();
     }),
+    deps.outbox.subscribe(onOutcome),
   ];
 
   refresh();
-
-  async function deliver(qid: Id, key: string) {
-    for (let attempt = 0; !disposed; attempt++) {
-      const mine = state.mine;
-      if (!mine || mine.key !== key || state.question?.id !== qid) return;
-      try {
-        await deps.sendAnswer(sessionId, { sessionQuestionId: qid, response: mine.response, answeredAt: mine.at, idempotencyKey: key });
-        if (!disposed) dispatch({ type: "answer.sent", key });
-        return;
-      } catch (e) {
-        if (disposed) return;
-        const code = toApiError(e).code;
-        if (code === "question_closed") {
-          dispatch({ type: "answer.late", key });
-          refresh();
-          return;
-        }
-        if (code === "already_answered") {
-          dispatch({ type: "answer.sent", key });
-          refresh();
-          return;
-        }
-        // Not a thing waiting will fix.
-        if (["session_ended", "not_found", "validation_failed", "unauthenticated", "signed_in_elsewhere"].includes(code)) {
-          refresh();
-          return;
-        }
-        // The network or the server: try again while the question can still take the answer.
-        const q = state.question;
-        const until = q?.closesAt != null ? toLocal(state.clock, q.closesAt) + DELIVER_UNTIL_MS : now();
-        if (now() > until) {
-          dispatch({ type: "answer.late", key });
-          return;
-        }
-        await new Promise((resolve) => setTimeout(resolve, backoffDelay(attempt, random)));
-      }
-    }
-  }
 
   return {
     getView: () => view,
@@ -263,7 +275,14 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
       const key = (deps.newKey ?? randomKey)();
       dispatch({ type: "answer", response, key, now: now() });
       const after: EngineState = state;
-      if (after.mine?.key === key && after.question) void deliver(after.question.id, key);
+      if (after.mine?.key !== key || !after.question) return;
+      // Saved first, sent after: the record carries the time the engine gave the tap, in the server's terms.
+      void deps.outbox.enqueue({ key, studentId: deps.meId, sessionId, sessionQuestionId: after.question.id, response, answeredAt: after.mine.at });
+      // A send that is slow is, to the student, an answer saved for later.
+      clearTimeout(timers.saved);
+      timers.saved = setTimeout(() => {
+        if (!disposed) dispatch({ type: "answer.saved", key });
+      }, SAVED_AFTER_MS);
     },
     retry() {
       failed = null;
@@ -272,6 +291,7 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
     },
     wake() {
       if (disposed) return;
+      void deps.outbox.flush();
       if (connection !== "open") transport.reconnect();
       else refresh();
     },
@@ -280,6 +300,7 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
       stops.forEach((stop) => stop());
       clearTimeout(timers.retry);
       clearTimeout(timers.deadline);
+      clearTimeout(timers.saved);
       clearInterval(timers.tick);
       listeners.clear();
       transport.close();

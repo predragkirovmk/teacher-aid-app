@@ -1,4 +1,5 @@
 import { ApiError } from "../errors";
+import { net } from "../../session/net";
 import { ChannelTransport, type Connect, type RealtimeMessage, type RealtimeTransport } from "../../session/transport";
 import { translate, type Key } from "../../i18n";
 import type {
@@ -36,7 +37,14 @@ import { actions } from "./store";
  *   EXPIRED-7B  the code has expired (token_expired)    OTHER-8A   another class's code (not_enrolled)
  *   ENDED-7B    the lesson is over (session_ended)       OFFLINE-7B no connection the first time, then MATH-7B
  *   LATE-7B     joins a lesson in progress, marked late  FLAKY-7B   the connection drops during question 1
+ *   OFFLINE-ANSWER-7B  the network drops for about 15 s the moment the student sends their first answer, so
+ *               "saved, will send when you're back online" turns into "sent" with no airplane mode (BR-NET-01);
+ *               its first question runs 45 s instead of 20, so "sent" is on screen before the question closes
  * Any other code is unknown (not_found).
+ *
+ * The mock's network is the browser's: while the phone is offline (or this demo is pretending to be), answers
+ * and snapshots fail with `network` and the lesson's link drops, so DevTools' offline switch, Playwright's
+ * `setOffline` and OFFLINE-ANSWER-7B all exercise the same path as a dead signal.
  */
 
 /** How far the mock server's clock is ahead of the phone's. */
@@ -61,7 +69,21 @@ export const SCRIPT = {
   /** FLAKY-7B: the link drops this long into the first question, and stays down this long. */
   dropAfter: 12_000,
   downFor: 6000,
+  /** OFFLINE-ANSWER-7B: how long the network stays gone after the first answer, and how long its first question lasts, so the answer is still open when "sent" arrives. */
+  answerOutage: 15_000,
+  offlineFirstQuestion: 45_000,
 } as const;
+
+/** The server's grace on an answer's own time, past the question's end (PROPOSED, BR-NET-01 and EC-TIME-01; the fake API uses the same). */
+export const ANSWER_GRACE_MS = 2000;
+
+let outage: ReturnType<typeof setTimeout> | undefined;
+/** Pretend the network is gone for `ms`, in the way the phone would notice it. */
+function dropNetwork(ms: number) {
+  clearTimeout(outage);
+  net.setForcedOffline(true);
+  outage = setTimeout(() => net.setForcedOffline(false), ms);
+}
 
 const STUDENT_ID = "student-marko";
 const N = CLASSMATES.length;
@@ -70,7 +92,7 @@ const SKILL = CLASSMATES.map((_, i) => 0.35 + ((i * 37) % 40) / 100);
 
 const text = (locale: Locale, key: string) => translate(locale, key as Key);
 
-export type Scenario = "normal" | "late" | "flaky";
+export type Scenario = "normal" | "late" | "flaky" | "offline-answer";
 
 type Live = {
   question: SessionQuestion;
@@ -116,6 +138,10 @@ export class MockSession {
   private summary: SessionSummary | null = null;
   private rank = 1;
   private revealed: { id: string; correctAnswer: string } | null = null;
+  /** Every question the lesson has opened, so an answer that arrives after the class moved on can still be counted. */
+  private lives = new Map<string, Live>();
+  /** OFFLINE-ANSWER-7B: the one outage has happened. */
+  private outageDone = false;
   private played: { id: string; prompt: string; correct: boolean; correctAnswer: string; yourAnswer: string | null }[] = [];
   private keys = new Map<string, string>();
   private listeners = new Set<(m: RealtimeMessage) => void>();
@@ -205,9 +231,14 @@ export class MockSession {
     this.after(SCRIPT.lobbyTick, tick);
   }
 
+  /** How long a question lasts. OFFLINE-ANSWER-7B gives its first one longer than the outage, so the student can watch "sent" arrive. */
+  private durationOf(q: Quiz["questions"][number]) {
+    return this.scenario === "offline-answer" && q === this.quiz.questions[0] ? SCRIPT.offlineFirstQuestion : DURATION[q.kind];
+  }
+
   private questionCopy(index: number, firedAt: number): SessionQuestion {
     const q = this.quiz.questions[index];
-    const timer = DURATION[q.kind] / 1000;
+    const timer = this.durationOf(q) / 1000;
     return {
       id: q.id,
       index,
@@ -247,7 +278,7 @@ export class MockSession {
     this.index = index;
     this.revealed = null;
     const q = this.quiz.questions[index];
-    const duration = DURATION[q.kind];
+    const duration = this.durationOf(q);
     const firedAt = serverNow() - ago;
     const question = this.questionCopy(index, firedAt);
     // Most of the class answers in the first two thirds of the time, a few leave it late.
@@ -261,6 +292,7 @@ export class MockSession {
       result: null,
       openedAt: Date.now() - ago,
     };
+    this.lives.set(question.id, this.live);
     this.toClass("question.opened", { question: this.wireQuestion(question) });
     this.after(Math.max(0, duration - ago), () => this.close(question.id));
     clearInterval(this.ticker);
@@ -294,7 +326,7 @@ export class MockSession {
     clearInterval(this.ticker);
     this.ticker = undefined;
     const q = this.quiz.questions[this.index];
-    const duration = DURATION[q.kind];
+    const duration = this.durationOf(q);
     live.question = { ...live.question, status: "closed" };
 
     const mine = live.mine;
@@ -439,15 +471,61 @@ export class MockSession {
     };
   }
 
+  /**
+   * An answer given in time but delivered after its question closed is counted (BR-NET-01, EC-NET-02): the
+   * result is worked out again with the time the student gave, and sent to them as a corrected `question.result`.
+   */
+  private creditLate(live: Live) {
+    const q = this.quiz.questions.find((x) => x.id === live.question.id)!;
+    const mine = live.mine!;
+    const duration = this.durationOf(q);
+    const correct = mine.response === live.right;
+    const left = Math.max(0, duration - (mine.at - live.question.firedAt!));
+    const bonus = correct ? speedBonus(left, duration) : 0;
+    const gain = correct ? CORRECT_POINTS + bonus : 0;
+    const before = live.result?.points ?? 0;
+    this.points += gain - before;
+    this.right += correct && !live.result?.correct ? 1 : 0;
+    this.rank = rankOf(this.points, this.theirs);
+    live.result = { ...live.result!, correct, points: gain, speedBonus: bonus, sessionRank: this.rank };
+    this.board = this.makeBoard();
+    const played = this.played.find((p) => p.id === q.id);
+    if (played) {
+      played.correct = correct;
+      played.yourAnswer = this.answerText(q, mine.response);
+    }
+    if (gain > before) actions.addQuizPoints(gain - before);
+    actions.markQuizAnswered();
+    this.toMe("question.result", {
+      session_question_id: live.question.id,
+      correct,
+      points: gain,
+      speed_bonus: bonus,
+      session_rank: this.rank,
+      session_points: this.points,
+      correct_answer: live.result.correctAnswer,
+      explanation: null,
+    });
+    this.toClass("leaderboard.updated", { rows: this.wireBoard() });
+  }
+
   /** POST /sessions/{id}/answers. */
   submit(answer: AnswerInput): AnswerReceipt {
     if (this.ended) throw new ApiError("session_ended");
     if (this.keys.has(answer.idempotencyKey)) return { accepted: true, duplicate: true };
-    const live = this.live;
-    if (!live || live.question.id !== answer.sessionQuestionId) throw new ApiError("not_found");
-    if (live.question.status !== "open") throw new ApiError("question_closed");
+    const live = this.lives.get(answer.sessionQuestionId);
+    if (!live) throw new ApiError("not_found");
+    // The one outage of OFFLINE-ANSWER-7B: the signal goes just as the first answer is sent.
+    if (this.scenario === "offline-answer" && !this.outageDone) {
+      this.outageDone = true;
+      dropNetwork(SCRIPT.answerOutage);
+      throw new ApiError("network");
+    }
+    const open = live.question.status === "open";
+    // The answer's own time decides, not when it arrived: in the window (with a little grace), it counts.
+    if (!open && answer.answeredAt > live.question.closesAt! + ANSWER_GRACE_MS) throw new ApiError("question_closed");
     if (live.mine) throw new ApiError("already_answered");
-    const q = this.quiz.questions[this.index];
+    const q = this.quiz.questions.find((x) => x.id === live.question.id)!;
     const valid = q.kind === "mc" ? ["0", "1", "2", "3"] : ["true", "false"];
     if (!valid.includes(answer.response)) throw new ApiError("validation_failed");
 
@@ -455,12 +533,16 @@ export class MockSession {
     const at = Math.min(live.question.closesAt!, Math.max(live.question.firedAt!, answer.answeredAt));
     live.mine = { response: answer.response, at, key: answer.idempotencyKey };
     this.keys.set(answer.idempotencyKey, answer.response);
+    if (!open) {
+      this.creditLate(live);
+      return { accepted: true, duplicate: false };
+    }
 
     // Once you have answered, the stragglers come in within a few seconds, and the question closes
     // when the last of them has (BR-TIME-04).
     const elapsed = Date.now() - live.openedAt;
     live.answerAt = live.answerAt.map((t) => (t > elapsed ? elapsed + 600 + Math.random() * 3200 : t));
-    const duration = DURATION[q.kind];
+    const duration = this.durationOf(q);
     const lastAt = Math.max(...live.answerAt);
     if (lastAt < duration) this.after(Math.max(0, live.openedAt + lastAt - Date.now()), () => this.close(live.question.id));
     this.progress();
@@ -482,6 +564,7 @@ const SPECIAL = {
   offline: "offline-7b",
   late: "late-7b",
   flaky: "flaky-7b",
+  offlineAnswer: "offline-answer-7b",
 } as const;
 
 const MATH = subjectByCode("MATH-7B")!;
@@ -501,6 +584,7 @@ function resolve(code: string): { subject: ClassSubject; scenario: Scenario } {
   }
   if (c === SPECIAL.late) return { subject: MATH, scenario: "late" };
   if (c === SPECIAL.flaky) return { subject: MATH, scenario: "flaky" };
+  if (c === SPECIAL.offlineAnswer) return { subject: MATH, scenario: "offline-answer" };
   const subject = subjectByCode(c);
   if (!subject || !QUIZZES[subject.id]) throw new ApiError("not_found");
   return { subject, scenario: "normal" };
@@ -535,6 +619,8 @@ export const mockSessionFor = (id: string) => sessions.get(id);
 
 /** Forget every session and every once-only failure; for tests. */
 export function resetMockSessions() {
+  clearTimeout(outage);
+  net.setForcedOffline(false);
   sessions.forEach((s) => s.stop());
   sessions.clear();
   triedOffline.clear();
@@ -552,7 +638,7 @@ export function resetMockSessions() {
 export function mockTransport(sessionId: string): RealtimeTransport {
   const session = sessions.get(sessionId);
   const connect: Connect = (channels, handlers) => {
-    if (!session || Date.now() < session.outageUntil) {
+    if (!session || Date.now() < session.outageUntil || net.isOffline()) {
       // Nothing to reach: the connection fails the way an unreachable server does.
       const failing = setTimeout(() => handlers.closed(), 50);
       return { close: () => clearTimeout(failing) };
@@ -571,11 +657,17 @@ export function mockTransport(sessionId: string): RealtimeTransport {
       }
     });
     const opening = setTimeout(() => handlers.open(), 0);
+    // A phone that loses its signal loses the link with it.
+    const lost = () => {
+      if (open && net.isOffline()) handlers.closed();
+    };
+    if (typeof window !== "undefined") window.addEventListener("offline", lost);
     return {
       close: () => {
         open = false;
         clearTimeout(opening);
         stop();
+        if (typeof window !== "undefined") window.removeEventListener("offline", lost);
       },
     };
   };

@@ -498,3 +498,84 @@ describe("events that arrive while a snapshot is awaited", () => {
     expect(s.pending).toHaveLength(200);
   });
 });
+
+describe("an answer saved for the connection", () => {
+  const q = question(1);
+  const answered = (key = "k") => from(play(snap(open(1), SKEW)), { type: "answer", response: "2", key, now: local(q.firedAt! + 4000) });
+  const closedSnap = (over = {}) => snap(snapshot({ question: { ...q, status: "closed" }, serverNow: q.closesAt! + 4000, ...over }), SKEW);
+
+  it("is saved after a failed attempt, and sent when the server has it", () => {
+    const saved = from(answered(), { type: "answer.saved", key: "k" });
+    expect(viewOf(saved, local(q.firedAt! + 5000))).toMatchObject({ answer: "saved", picked: "2", stage: "waiting_others" });
+    expect(reduce(saved, { type: "answer.sent", key: "k" }).mine).toMatchObject({ status: "sent", held: true });
+    expect(reduce(saved, { type: "answer.saved", key: "other" })).toBe(saved);
+  });
+
+  it("is still the student's answer after the question closed: the server counts it by the time given (BR-NET-01)", () => {
+    const saved = from(answered(), { type: "answer.saved", key: "k" });
+    const s = reduce(saved, closedSnap());
+    expect(s.mine).toMatchObject({ response: "2", key: "k", status: "saved" });
+  });
+
+  it("waits to say right or wrong while the answer has not reached the server, even with a result in hand", () => {
+    const saved = from(answered(), { type: "answer.saved", key: "k" }, closedSnap({ result: result(1, { correct: false, points: 0, correctAnswer: null }) }));
+    for (const ms of [100, 10_000, 120_000]) expect(stage(saved, q.closesAt! + 4000 + ms)).toBe("waiting_result");
+    expect(viewOf(saved, local(q.closesAt! + 5000))).toMatchObject({ answer: "saved", picked: "2" });
+  });
+
+  it("shows the verdict when the late answer is counted, however long after the question it is", () => {
+    const wrongForNow = from(answered(), { type: "answer.saved", key: "k" }, closedSnap({ result: result(1, { correct: false, points: 0, correctAnswer: null }) }));
+    const delivered = reduce(wrongForNow, { type: "answer.sent", key: "k", now: local(q.closesAt! + 90_000) });
+    const counted = reduce(delivered, snap(snapshot({ question: { ...q, status: "closed" }, serverNow: q.closesAt! + 90_000, result: result(1, { correct: true, points: 13 }), sessionPoints: 13, myResponse: "2" }), SKEW));
+    expect(stage(counted, q.closesAt! + 90_100)).toBe("right");
+    expect(viewOf(counted, local(q.closesAt! + 90_100))).toMatchObject({ gain: 13, points: 13, answer: "sent" });
+  });
+
+  it("reads a verdict that was waiting on the answer from the moment it arrived", () => {
+    const waiting = from(answered(), { type: "answer.saved", key: "k" }, closedSnap({ result: result(1, { correct: false, points: 0, correctAnswer: null }) }));
+    const delivered = reduce(waiting, { type: "answer.sent", key: "k", now: local(q.closesAt! + 60_000) });
+    expect(stage(delivered, q.closesAt! + 60_500)).toBe("wrong");
+  });
+
+  it("takes a corrected result from the server for the same question", () => {
+    const s = from(
+      play(snap(snapshot({ question: { ...q, status: "closed" }, serverNow: q.closesAt! + 1000, result: result(1, { correct: false, points: 0, correctAnswer: null }) }), SKEW)),
+      event(events.result(1, q.closesAt! + 50_000, { correct: true, points: 14 }, 14), local(q.closesAt! + 50_000)),
+    );
+    expect(s.result).toMatchObject({ correct: true, points: 14 });
+    expect(s.sessionPoints).toBe(14);
+    expect(s.resultAt).toBe(local(q.closesAt! + 50_000));
+  });
+
+  it("lets the answer go when the server will never take it", () => {
+    const saved = from(answered(), { type: "answer.saved", key: "k" });
+    expect(reduce(saved, { type: "answer.failed", key: "k" }).mine).toBeNull();
+    expect(reduce(saved, { type: "answer.failed", key: "other" })).toBe(saved);
+  });
+
+  it("marks a saved answer late when the server refuses it as outside the window", () => {
+    const saved = from(answered(), { type: "answer.saved", key: "k" }, { type: "answer.late", key: "k" });
+    expect(viewOf(saved, local(q.firedAt! + 5000))).toMatchObject({ answer: "late", picked: null });
+  });
+
+  describe("after a reload", () => {
+    const restore = { type: "answer.restore", key: "k9", sessionQuestionId: "q1", response: "3", at: q.firedAt! + 3000 } as const;
+
+    it("is put back on the question it was given for, as saved", () => {
+      const s = reduce(play(snap(open(1), SKEW)), restore);
+      expect(viewOf(s, local(q.firedAt! + 5000))).toMatchObject({ stage: "waiting_others", picked: "3", answer: "saved" });
+      expect(s.mine).toMatchObject({ key: "k9", at: q.firedAt! + 3000 });
+    });
+
+    it("is not put on another question, a skipped one, an ended session, or over an answer the app already has", () => {
+      const other = play(snap(open(2), SKEW));
+      expect(reduce(other, restore)).toBe(other);
+      const skipped = play(snap(snapshot({ question: { ...q, status: "skipped" }, serverNow: q.firedAt! + 5000 }), SKEW));
+      expect(reduce(skipped, restore)).toBe(skipped);
+      const ended = play(snap(snapshot({ session: session({ state: "ended" }), question: q, serverNow: q.firedAt! + 5000 }), SKEW));
+      expect(reduce(ended, restore)).toBe(ended);
+      const have = reduce(answered(), restore);
+      expect(have.mine?.key).toBe("k");
+    });
+  });
+});

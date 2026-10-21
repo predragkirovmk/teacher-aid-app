@@ -2,12 +2,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockClient, mockClient } from "@/lib/app/api/mock";
 import { CLASSMATES, CORRECT_POINTS, DURATION, QUIZZES, SPEED_POINTS, speedBonus } from "@/lib/app/api/mock/quiz";
-import { SCRIPT, SKEW_MS, joinMock, mockSessionFor, mockTransport, resetMockSessions, serverNow, type MockSession } from "@/lib/app/api/mock/session";
+import { ANSWER_GRACE_MS, SCRIPT, SKEW_MS, joinMock, mockSessionFor, mockTransport, resetMockSessions, serverNow, type MockSession } from "@/lib/app/api/mock/session";
 import { actions, getState } from "@/lib/app/api/mock/store";
 import { iso } from "@/lib/app/api/wire";
 import { setLocale } from "@/lib/app/locale";
 import type { RealtimeMessage } from "@/lib/app/session/transport";
 import { createSessionHandle } from "@/lib/app/session/controller";
+import { net } from "@/lib/app/session/net";
+import { createOutbox } from "@/lib/app/session/outbox";
+import { memoryStore } from "@/lib/app/session/outbox-store";
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -125,14 +128,40 @@ describe("answering a question", () => {
     expect(answer(l.session, right, 100, "same")).toEqual({ accepted: true, duplicate: true });
   });
 
-  it("refuses an answer once the question has closed", async () => {
+  it("refuses an answer whose own time is past the question's end and the grace", async () => {
     const l = lesson();
     await toFirstQuestion();
     const q = l.session.studentState().question!;
     await closeAfter(l.session);
-    expect(() => l.session.submit({ sessionQuestionId: q.id, response: right, answeredAt: q.firedAt!, idempotencyKey: "late" })).toThrowError(
-      expect.objectContaining({ code: "question_closed" }),
-    );
+    expect(() =>
+      l.session.submit({ sessionQuestionId: q.id, response: right, answeredAt: q.closesAt! + ANSWER_GRACE_MS + 1, idempotencyKey: "late" }),
+    ).toThrowError(expect.objectContaining({ code: "question_closed" }));
+  });
+
+  it("counts an answer that arrives after the question closed but was given inside its window (BR-NET-01)", async () => {
+    const l = lesson();
+    await toFirstQuestion();
+    const q = l.session.studentState().question!;
+    await closeAfter(l.session);
+    expect(l.session.studentState().result).toMatchObject({ correct: false, points: 0 });
+    l.session.submit({ sessionQuestionId: q.id, response: right, answeredAt: q.firedAt! + 2000, idempotencyKey: "late" });
+    // Worked out again with the time the student gave, and sent to them as a corrected result.
+    const speed = speedBonus(dur - 2000, dur);
+    expect(l.session.studentState().result).toMatchObject({ correct: true, speedBonus: speed, points: CORRECT_POINTS + speed });
+    expect(l.session.studentState().sessionPoints).toBe(CORRECT_POINTS + speed);
+    expect(l.types().filter((t) => t === "question.result")).toHaveLength(2);
+    expect(l.session.studentState().myResponse).toBe(right);
+  });
+
+  it("counts a late answer to a question the class has moved on from", async () => {
+    const l = lesson();
+    await toFirstQuestion();
+    const first = l.session.studentState().question!;
+    await closeAfter(l.session);
+    await advance(SCRIPT.next + 100);
+    expect(l.session.studentState().question!.id).not.toBe(first.id);
+    l.session.submit({ sessionQuestionId: first.id, response: right, answeredAt: first.firedAt! + 1000, idempotencyKey: "old" });
+    expect(l.session.studentState().sessionPoints).toBeGreaterThan(0);
   });
 
   it("refuses a response the question cannot have", async () => {
@@ -383,7 +412,7 @@ describe("through the session engine, the way the screen runs it", () => {
       meId: "student-marko",
       transport: mockTransport(joined.session.id),
       getSnapshot: (id) => client.getStudentState(id),
-      sendAnswer: (id, a) => (sent.push(a.sessionQuestionId), client.submitAnswer(id, a)),
+      outbox: createOutbox({ store: memoryStore(), send: (id, a) => (sent.push(a.sessionQuestionId), client.submitAnswer(id, a)) }),
     });
     const stages = new Set<string>();
     handle.subscribe(() => stages.add(handle.getView().stage));
@@ -421,7 +450,7 @@ describe("through the session engine, the way the screen runs it", () => {
       meId: "student-marko",
       transport: mockTransport(joined.session.id),
       getSnapshot,
-      sendAnswer: (id, a) => client.submitAnswer(id, a),
+      outbox: createOutbox({ store: memoryStore(), send: (id, a) => client.submitAnswer(id, a) }),
     });
     await advance(SCRIPT.start + 5000);
     expect(handle.getView().stage).toBe("answering");
@@ -443,5 +472,50 @@ describe("through the session engine, the way the screen runs it", () => {
 describe("the iso helper the events use", () => {
   it("round-trips a time", () => {
     expect(Date.parse(iso(1_800_000_000_123))).toBe(1_800_000_000_123);
+  });
+});
+
+describe("OFFLINE-ANSWER-7B and the mock's network", () => {
+  it("drops the network for 15 seconds as the first answer is sent, then lets the same answer through", async () => {
+    const l = lesson("OFFLINE-ANSWER-7B");
+    const client = createMockClient({ state: getState, locale: () => "mk", writable: true });
+    await toFirstQuestion();
+    const q = l.session.studentState().question!;
+    const input = { sessionQuestionId: q.id, response: right, answeredAt: q.firedAt! + 1000, idempotencyKey: "k1" };
+
+    expect(net.isOffline()).toBe(false);
+    await expect(client.submitAnswer(l.session.id, input)).rejects.toMatchObject({ code: "network" });
+    expect(net.isOffline()).toBe(true);
+    // While it is gone, nothing gets through: not another answer, not a snapshot.
+    await expect(client.submitAnswer(l.session.id, input)).rejects.toMatchObject({ code: "network" });
+    await expect(client.getStudentState(l.session.id)).rejects.toMatchObject({ code: "network" });
+
+    await advance(SCRIPT.answerOutage - 100);
+    expect(net.isOffline()).toBe(true);
+    await advance(200);
+    expect(net.isOffline()).toBe(false);
+    await expect(client.submitAnswer(l.session.id, input)).resolves.toEqual({ accepted: true, duplicate: false });
+    // The outage happens once.
+    expect(net.isOffline()).toBe(false);
+  });
+
+  it("other lessons are never cut off", async () => {
+    const l = lesson("MATH-7B");
+    const client = createMockClient({ state: getState, locale: () => "mk", writable: true });
+    await toFirstQuestion();
+    const q = l.session.studentState().question!;
+    await expect(client.submitAnswer(l.session.id, { sessionQuestionId: q.id, response: right, answeredAt: q.firedAt! + 1000, idempotencyKey: "k1" })).resolves.toBeTruthy();
+    expect(net.isOffline()).toBe(false);
+  });
+
+  it("the phone being offline stops answers and snapshots in the mock, and the lesson's link drops and returns", async () => {
+    const l = lesson("MATH-7B");
+    const client = createMockClient({ state: getState, locale: () => "mk", writable: true });
+    await toFirstQuestion();
+    const q = l.session.studentState().question!;
+    net.setForcedOffline(true);
+    await expect(client.submitAnswer(l.session.id, { sessionQuestionId: q.id, response: right, answeredAt: q.firedAt! + 1000, idempotencyKey: "k1" })).rejects.toMatchObject({ code: "network" });
+    net.setForcedOffline(false);
+    await expect(client.getStudentState(l.session.id)).resolves.toBeTruthy();
   });
 });

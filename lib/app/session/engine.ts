@@ -53,9 +53,18 @@ export type OwnAnswer = {
   key: string;
   /** When it was given, in server time (EC-NET-07). 0 for an answer the server had before this app did. */
   at: number;
-  /** `sending`: not yet acknowledged. `sent`: the server has it. `late`: the server refused it as outside the window. */
-  status: "sending" | "sent" | "late";
+  /**
+   * `sending`: handed to the outbox, no word from the server yet. `saved`: it is on the phone and an attempt
+   * failed or is slow, so it waits for the connection. `sent`: the server has it. `late`: the server refused
+   * it as outside the question's window.
+   */
+  status: "sending" | "saved" | "sent" | "late";
+  /** It was waiting for the connection at some point, so a verdict that arrives after it is delivered is news, however long after the question. */
+  held?: boolean;
 };
+
+/** An answer the app has not heard the server take. */
+export const undelivered = (a: OwnAnswer | null): boolean => !!a && (a.status === "sending" || a.status === "saved");
 
 export type EngineState = {
   sessionId: Id;
@@ -102,9 +111,16 @@ export type Action =
   | { type: "unhold"; receivedAt: number }
   /** The student tapped an answer at local time `now`. */
   | { type: "answer"; response: string; key: string; now: number }
-  | { type: "answer.sent"; key: string }
+  /** The outbox has the answer on the phone but could not send it yet, or is slow. */
+  | { type: "answer.saved"; key: string }
+  /** `now` is the local time it was told, so a verdict that was waiting on the answer starts its time on screen then. */
+  | { type: "answer.sent"; key: string; now?: number }
   /** The server refused the answer as outside the question's window (EC-NET-02). */
-  | { type: "answer.late"; key: string };
+  | { type: "answer.late"; key: string }
+  /** The server will never take the answer (its question is gone): forget it. */
+  | { type: "answer.failed"; key: string }
+  /** The page was reloaded with an answer still waiting in the outbox: the student has answered this question. */
+  | { type: "answer.restore"; key: string; sessionQuestionId: Id; response: string; at: number };
 
 export function createEngine(init: { sessionId: Id; meId: Id; late?: boolean }): EngineState {
   return {
@@ -238,6 +254,17 @@ function applyEvent(s: EngineState, ev: SessionEvent, at: number): EngineState {
       if (cur!.status === "skipped") return s;
       const have = s.result && s.result.sessionQuestionId === id ? s.result : null;
       if (have) {
+        // The server counted an answer that reached it late (BR-NET-01): the result is corrected, and the student is told.
+        if (have.correct !== ev.result.correct || have.points !== ev.result.points) {
+          return {
+            ...s,
+            result: { ...ev.result, correctAnswer: ev.result.correctAnswer ?? have.correctAnswer, explanation: ev.result.explanation ?? have.explanation },
+            resultAt: at,
+            sessionPoints: ev.sessionPoints,
+            sessionRank: ev.result.sessionRank,
+            progress: null,
+          };
+        }
         // The same result again. It may know more than the first did (the right answer).
         if (have.correctAnswer !== null || ev.result.correctAnswer === null) return s;
         return { ...s, result: { ...have, correctAnswer: ev.result.correctAnswer, explanation: have.explanation ?? ev.result.explanation } };
@@ -279,9 +306,11 @@ function answerAfter(prev: EngineState, snap: StudentSessionState): OwnAnswer | 
   const same = prev.question?.id === q.id ? prev.mine : null;
   if (snap.myResponse !== null) {
     // The first answer stands (BR-ANS-02), whatever the app had in mind.
-    return { response: snap.myResponse, key: same?.key ?? "", at: same?.at ?? 0, status: "sent" };
+    return { response: snap.myResponse, key: same?.key ?? "", at: same?.at ?? 0, status: "sent", held: same?.held };
   }
-  if (same && same.status === "sending" && q.status === "open") return same;
+  // An answer the server has not heard yet is still on its way, even after the question closed: the server counts
+  // it by the time it was given (BR-NET-01), and the outbox says when it has been taken or refused.
+  if (same && undelivered(same)) return same;
   if (same && same.status === "late") return same;
   return null;
 }
@@ -290,9 +319,12 @@ function applySnapshot(s: EngineState, snap: StudentSessionState, sentAt: number
   if (snap.session.id !== s.sessionId) return s;
   const q = snap.question;
   const result = q && snap.result && snap.result.sessionQuestionId === q.id ? snap.result : null;
-  const haveResult = !!result && s.result?.sessionQuestionId === result.sessionQuestionId;
+  const haveResult =
+    !!result && s.result?.sessionQuestionId === result.sessionQuestionId && s.result.correct === result.correct && s.result.points === result.points;
   // A result this phone has not shown yet is news if it is recent; one from long ago is not a verdict to show now.
-  const recent = !!q && q.status !== "skipped" && (q.closesAt === null || snap.serverNow - q.closesAt <= RECENT_VERDICT_MS);
+  // An answer that was held back and has just been counted is news however long ago the question closed.
+  const wasHeld = s.question?.id === q?.id && !!s.mine?.held;
+  const recent = !!q && q.status !== "skipped" && (wasHeld || q.closesAt === null || snap.serverNow - q.closesAt <= RECENT_VERDICT_MS);
   const sameQuestion = !!q && s.question?.id === q.id;
 
   let next: EngineState = {
@@ -355,10 +387,26 @@ export function reduce(s: EngineState, a: Action): EngineState {
       return { ...s, mine: { response: a.response, key: a.key, at: q.firedAt !== null ? Math.max(at, q.firedAt) : at, status: "sending" } };
     }
 
-    case "answer.sent":
-      return s.mine && s.mine.key === a.key && s.mine.status === "sending" ? { ...s, mine: { ...s.mine, status: "sent" } } : s;
+    case "answer.saved":
+      return s.mine && s.mine.key === a.key && s.mine.status === "sending" ? { ...s, mine: { ...s.mine, status: "saved", held: true } } : s;
+
+    case "answer.sent": {
+      if (!s.mine || s.mine.key !== a.key || !undelivered(s.mine)) return s;
+      // A verdict that waited for the answer to arrive is read now, not when the result first came.
+      const waited = s.mine.held && s.result !== null && a.now !== undefined;
+      return { ...s, mine: { ...s.mine, status: "sent" }, resultAt: waited ? a.now! : s.resultAt };
+    }
 
     case "answer.late":
-      return s.mine && s.mine.key === a.key && s.mine.status === "sending" ? { ...s, mine: { ...s.mine, status: "late" } } : s;
+      return s.mine && s.mine.key === a.key && undelivered(s.mine) ? { ...s, mine: { ...s.mine, status: "late" } } : s;
+
+    case "answer.failed":
+      return s.mine && s.mine.key === a.key && undelivered(s.mine) ? { ...s, mine: null } : s;
+
+    case "answer.restore": {
+      const q = s.question;
+      if (s.mine || !q || q.id !== a.sessionQuestionId || q.status === "skipped" || s.session?.state === "ended") return s;
+      return { ...s, mine: { response: a.response, key: a.key, at: a.at, status: "saved", held: true } };
+    }
   }
 }

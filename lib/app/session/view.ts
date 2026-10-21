@@ -1,6 +1,6 @@
 import type { BoardRow, Id, QuestionProgress, SessionQuestion, SessionState, SessionSummary, StudentStage } from "../api/types";
 import { toServer } from "./clock";
-import { RESULT_WAIT_MS, VERDICT_AFTER_REVEAL_MS, VERDICT_MAX_MS, VERDICT_MS, type EngineState } from "./engine";
+import { RESULT_WAIT_MS, VERDICT_AFTER_REVEAL_MS, VERDICT_MAX_MS, VERDICT_MS, undelivered, type EngineState } from "./engine";
 
 /**
  * What the quiz screen draws at one moment: the engine's state read at a local time. The stage is
@@ -24,8 +24,11 @@ export type SessionView = {
   last: boolean;
   /** What the student answered, in the question's response format; null when they have not. */
   picked: string | null;
-  /** `late`: the answer reached the server after the question closed, so it did not count. */
-  answer: "none" | "sending" | "sent" | "late";
+  /**
+   * Where the student's answer has got to: `sending`, `saved` (on the phone, waiting for the connection),
+   * `sent` (the server has it), or `late` (it reached the server after the question closed, so it did not count).
+   */
+  answer: "none" | "sending" | "saved" | "sent" | "late";
   /** The question's length, how much of it is gone, and the whole seconds left, all on the server's clock. */
   duration: number;
   elapsed: number;
@@ -75,6 +78,8 @@ export function stageOf(s: EngineState, now: number): StudentStage {
       return s.mine ? "waiting_others" : "answering";
     case "closed":
     case "revealed": {
+      // The student's answer has not reached the server: whatever it says about them cannot be told yet (BR-NET-01 may still count it).
+      if (undelivered(s.mine)) return "waiting_result";
       const end = verdictEnd(s);
       if (s.result) return end !== null && now < end ? (s.result.correct ? "right" : "wrong") : "waiting_next";
       // Closed and no result yet: it is on its way, for a while.
