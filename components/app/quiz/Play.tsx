@@ -3,7 +3,7 @@
 import { ArrowDownIcon, ArrowUpIcon, CheckIcon, FlagCheckeredIcon, HashIcon, HourglassIcon, LockIcon, MinusIcon, PencilSimpleIcon, UsersIcon, XIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { startTransition, useEffect, useState, ViewTransition, type CSSProperties } from "react";
+import { startTransition, useEffect, useState, ViewTransition, type CSSProperties, type ReactNode } from "react";
 import { Avatar } from "@/components/app/Avatar";
 import { AnswerDelivery, ConnectionPill } from "@/components/app/ConnectionPill";
 import { ProfileEditor } from "@/components/app/ProfileEditor";
@@ -15,10 +15,12 @@ import { errorCopy, useT } from "@/lib/app/i18n";
 import { leave } from "@/lib/app/nav";
 import { useSelf } from "@/lib/app/profile";
 import { LETTERS, initials, personName } from "@/lib/app/quiz";
+import { canAsk } from "@/lib/app/session/ask";
 import { useQT } from "@/lib/app/quiz-copy";
 import type { SessionRunView } from "@/lib/app/session/controller";
 import { useSession } from "@/lib/app/session/react";
 import { subjectLabel } from "@/lib/app/subjects";
+import { AskBody, AskEntry, FocusNotice } from "./Ask";
 import { JoinFailureScreen } from "./JoinFailure";
 import { formatNumeric } from "@/lib/app/numeric";
 import { NumericQuestion, numberText } from "./Numeric";
@@ -35,10 +37,10 @@ const JOINED_MS = 1700;
  */
 export function Play({ course, join }: { course: Course; join: JoinedSession }) {
   const router = useRouter();
-  const { confirm } = useUI();
+  const { confirm, toast } = useUI();
   const { t } = useQT();
   const { t: tt } = useT();
-  const { run, answer, reason, skipReason, retry } = useSession(join.session.id, join.attendance?.status === "late");
+  const { run, answer, reason, skipReason, ask, retry } = useSession(join.session.id, join.attendance?.status === "late");
   // Joining the session was the check-in (spec 5.4): the screen starts from its answer, for a moment.
   const [confirming, setConfirming] = useState(join.attendance !== null);
 
@@ -53,6 +55,18 @@ export function Play({ course, join }: { course: Course; join: JoinedSession }) 
     if (run.stage === "right") buzz([18, 60, 28]);
     else if (run.stage === "wrong") buzz(70);
   }, [run.stage]);
+
+  // The sheet for a question to the teacher. What is typed lives here, so a sheet closed by a question starting keeps it.
+  const [asking, setAsking] = useState(false);
+  const [draft, setDraft] = useState("");
+  // A question opening for the class is the student's job now: the sheet steps aside, and says why.
+  const mustAnswer = run.stage === "answering" || run.stage === "voting" || run.stage === "reasoning";
+  useEffect(() => {
+    if (!asking || !mustAnswer) return;
+    startTransition(() => setAsking(false));
+    toast(t("ask.paused"));
+  }, [asking, mustAnswer, toast, t]);
+  const askEntry = canAsk(run.stage) ? <AskEntry onOpen={() => setAsking(true)} /> : null;
 
   const onLeave = () =>
     confirm({ title: t("q.leaveTitle"), confirmLabel: t("q.leaveConfirm"), onConfirm: () => leave(router) });
@@ -87,14 +101,14 @@ export function Play({ course, join }: { course: Course; join: JoinedSession }) 
           <Joined course={course} join={join} />
         ) : (
           <>
-            <ConnectionPill variant="inline" answerShown={lockedScreen} />
+            <ConnectionPill variant="inline" answerShown={lockedScreen || asking} />
             {lateNote && (
               <p className="q-note q-note--late" role="status">
                 {t("q.late.note")}
               </p>
             )}
             {run.stage === "syncing" && <Connecting course={course} join={join} onLeave={onLeave} />}
-            {run.stage === "waiting_start" && <Lobby course={course} join={join} run={run} onLeave={onLeave} />}
+            {run.stage === "waiting_start" && <Lobby course={course} join={join} run={run} onLeave={onLeave} askEntry={askEntry} />}
             {run.stage === "answering" &&
               (run.question!.kind === "numeric" ? (
                 <NumericQuestion run={run} onLeave={onLeave} onPick={answer} />
@@ -105,10 +119,15 @@ export function Play({ course, join }: { course: Course; join: JoinedSession }) 
             {run.stage === "voting" && <Voting run={run} onLeave={onLeave} onPick={answer} />}
             {run.stage === "reasoning" && <Reasoning run={run} onLeave={onLeave} onSend={reason} onSkip={skipReason} />}
             {run.stage === "opener_wait" && <OpenerWait run={run} onLeave={onLeave} />}
-            {run.stage === "opener_result" && <OpenerResult run={run} onLeave={onLeave} />}
+            {run.stage === "opener_result" && <OpenerResult run={run} onLeave={onLeave} askEntry={askEntry} />}
             {(run.stage === "right" || run.stage === "wrong") && <Verdict key={run.question?.id} run={run} />}
-            {run.stage === "waiting_next" && <Between key={run.question?.id ?? "none"} course={course} join={join} run={run} onLeave={onLeave} onHome={() => router.replace("/app")} />}
+            {run.stage === "waiting_next" && <Between key={run.question?.id ?? "none"} course={course} join={join} run={run} onLeave={onLeave} onHome={() => router.replace("/app")} askEntry={askEntry} />}
             {run.stage === "ended" && <Ended run={run} onHome={() => router.replace("/app")} />}
+            {asking && (
+              <Sheet label={t("ask.title")} onClose={() => setAsking(false)}>
+                {(close) => <AskBody run={run} draft={draft} setDraft={setDraft} onSend={ask} close={close} />}
+              </Sheet>
+            )}
           </>
         )}
       </div>
@@ -177,7 +196,7 @@ function Connecting({ course, join, onLeave }: { course: Course; join: JoinedSes
   );
 }
 
-function Lobby({ course, join, run, onLeave }: { course: Course; join: JoinedSession; run: SessionRunView; onLeave: () => void }) {
+function Lobby({ course, join, run, onLeave, askEntry }: { course: Course; join: JoinedSession; run: SessionRunView; onLeave: () => void; askEntry: ReactNode }) {
   const { t } = useQT();
   const { t: tt } = useT();
   const me = useSelf();
@@ -226,6 +245,8 @@ function Lobby({ course, join, run, onLeave }: { course: Course; join: JoinedSes
           {t("q.waitTeacher")}
         </span>
         <span className="t-cap q-cap">{t("q.keepOpen")}</span>
+        <FocusNotice />
+        {askEntry}
       </div>
       {editing && (
         <Sheet label={t("p.editTitle")} onClose={() => setEditing(false)}>
@@ -499,7 +520,21 @@ function Board({ run }: { run: SessionRunView }) {
 }
 
 /** Between questions: where the student stands, and that the next one comes when the teacher sends it. */
-function Between({ course, join, run, onLeave, onHome }: { course: Course; join: JoinedSession; run: SessionRunView; onLeave: () => void; onHome: () => void }) {
+function Between({
+  course,
+  join,
+  run,
+  onLeave,
+  onHome,
+  askEntry,
+}: {
+  course: Course;
+  join: JoinedSession;
+  run: SessionRunView;
+  onLeave: () => void;
+  onHome: () => void;
+  askEntry: ReactNode;
+}) {
   const { t } = useQT();
   const { t: tt } = useT();
   const q = run.question;
@@ -519,6 +554,8 @@ function Between({ course, join, run, onLeave, onHome }: { course: Course; join:
             {t("q.next")}
           </span>
           <span className="t-cap q-cap">{t("q.nextNote")}</span>
+          <FocusNotice />
+          {askEntry}
         </div>
       </>
     );
@@ -550,8 +587,10 @@ function Between({ course, join, run, onLeave, onHome }: { course: Course; join:
               {t("q.next")}
             </span>
             <span className="t-cap q-cap">{t("q.nextNote")}</span>
+            <FocusNotice />
           </>
         )}
+        {askEntry}
       </div>
     </>
   );

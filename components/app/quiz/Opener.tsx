@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowUpIcon, CheckIcon, ChatsIcon, HourglassIcon, LockIcon, QuotesIcon, ThumbsDownIcon, ThumbsUpIcon, UserIcon, WarningCircleIcon } from "@phosphor-icons/react";
-import { startTransition, useId, useRef, useState, ViewTransition, type CSSProperties } from "react";
+import { startTransition, useId, useRef, useState, ViewTransition, type CSSProperties, type ReactNode } from "react";
 import { AnswerDelivery } from "@/components/app/ConnectionPill";
 import type { SessionQuestion } from "@/lib/app/api/types";
 import { LETTERS } from "@/lib/app/quiz";
@@ -328,7 +328,7 @@ export function OpenerWait({ run, onLeave }: Props) {
  * where nothing is right or wrong), what the vote and the reason earned, how the class voted, and what some
  * of them wrote. The right answer and the reasons arrive with the teacher's reveal, a moment after the points.
  */
-export function OpenerResult({ run, onLeave }: Props) {
+export function OpenerResult({ run, onLeave, askEntry }: Props & { askEntry: ReactNode }) {
   const q = run.question!;
   const o = run.opener!;
   const { t, debate, tag } = useOpenerLabels(q);
@@ -421,6 +421,7 @@ export function OpenerResult({ run, onLeave }: Props) {
           {t("q.next")}
         </span>
         <span className="t-cap q-cap">{t("q.nextNote")}</span>
+        {askEntry}
       </div>
     </>
   );

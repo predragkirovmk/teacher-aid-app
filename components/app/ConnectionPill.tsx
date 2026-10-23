@@ -16,7 +16,8 @@ export function ConnectionPill({ variant, answerShown = false }: { variant: "flo
 
   // When the screen already shows where the student's answer has got to, the strip does not say it again.
   const lead = net.banner ? t(`net.${net.banner}`) : net.sent && !answerShown ? t("ans.sent") : null;
-  const saved = answerShown || net.pending === 0 ? null : net.pending === 1 ? t("net.saved.one") : t("net.saved.many", { n: net.pending });
+  // Saved answers, saved questions to the teacher, or a mix: each is named as what it is.
+  const saved = answerShown || net.pending === 0 ? null : net.asks === net.pending ? t(net.asks === 1 ? "net.askSaved.one" : "net.askSaved.many", { n: net.asks }) : net.asks > 0 ? t("net.savedMix", { n: net.pending }) : net.pending === 1 ? t("net.saved.one") : t("net.saved.many", { n: net.pending });
   if (!lead && !saved) return null;
 
   const Glyph: Icon = net.banner === "offline" ? WifiSlashIcon : net.banner === "reconnecting" ? WifiLowIcon : net.banner === "back" ? WifiHighIcon : lead ? CheckIcon : CloudArrowUpIcon;

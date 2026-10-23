@@ -313,7 +313,8 @@ export function Sheet({
         behind.push(sib);
       }
     }
-    sheet?.querySelector<HTMLElement>("button:not(.sheet__handle)")?.focus();
+    // A sheet that is about typing says where focus goes (data-autofocus); otherwise its first button.
+    (sheet?.querySelector<HTMLElement>("[data-autofocus]") ?? sheet?.querySelector<HTMLElement>("button:not(.sheet__handle)"))?.focus();
     const key = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
     window.addEventListener("keydown", key);
     return () => {

@@ -834,6 +834,97 @@
   box-shadow: 0 0 0 10px rgba(255, 200, 61, 0.16);
 }
 
+/* ---- a question to the teacher, and the one line about leaving the quiz ---- */
+/* The way in is a plain button under the status line: the third level, so it never competes with an answer. */
+.q-askbtn {
+  margin-top: 4px;
+}
+/* Said once, in the lobby or between questions: part of the page, not a dialog, and quiet. */
+.q-fair {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 4px 0 0;
+  max-width: 24rem;
+  text-align: left;
+  font-size: var(--fs-label);
+  line-height: 1.4;
+  color: var(--text-2);
+}
+.q-fair svg {
+  flex: none;
+  margin-top: 1px;
+}
+.ask {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 4px 4px;
+}
+.ask__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 4px;
+}
+.ask__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  font-weight: 700;
+  line-height: 1.2;
+}
+.ask__left {
+  margin: 0;
+}
+/* Who sees the sender, in words and at body size, above the box and not under it: it is read before anything is typed. */
+.ask__honest {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: var(--fs-callout);
+  line-height: 1.4;
+  font-weight: 600;
+}
+.ask__honest svg {
+  flex: none;
+  margin-top: 1px;
+}
+.ask__result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 12px;
+  text-align: center;
+  animation: q-rise var(--spring-snappy-dur) var(--spring-snappy) backwards;
+}
+.ask__mark {
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+}
+.ask__rt {
+  margin: 8px 0 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-title1);
+  font-weight: 700;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+.ask__note {
+  margin: 0;
+  max-width: 22rem;
+  text-wrap: pretty;
+}
+
 /* ---- the opener: a vote, one line of reason, then the class ---- */
 .o-vote {
   border-radius: var(--radius-item);
@@ -1418,6 +1509,8 @@
   .q-locked,
   .o-vote,
   .o-reason,
+  .ask__honest,
+  .ask__mark,
   .n-box,
   .n-minus,
   .o-input {
