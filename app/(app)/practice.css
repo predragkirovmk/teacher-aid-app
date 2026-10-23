@@ -43,6 +43,11 @@
   opacity: 0.55;
 }
 
+/* A choice comes in a little faster than the live quiz's: a student answers many of these in a sitting. */
+.pr :is(.q-opt, .q-tf__btn) {
+  animation-delay: calc(var(--i) * 40ms + 60ms);
+}
+
 /* The Check button before there is something to check: still there, not asking to be pressed. */
 .btn[aria-disabled="true"] {
   opacity: 0.45;

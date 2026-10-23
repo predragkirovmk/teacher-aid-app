@@ -34,7 +34,7 @@ const BUILD = process.env.NEXT_PUBLIC_APP_BUILD;
 /** Set once a build's warm-up has been asked for in this session. */
 const WARMED = `teacheraid-sw-warmed-${BUILD}`;
 /** Screens where a reload would throw away a quiz or a scan in progress. */
-const BUSY = ["/app/play", "/app/scan", "/app/checkin"];
+const BUSY = ["/app/play", "/app/scan", "/app/checkin", "/app/practice/"];
 
 /**
  * A page resumed from memory, or served from the offline cache on a slow network, keeps running

@@ -39,7 +39,7 @@ export function PracticePlayer({ id }: { id: string }) {
 
   return (
     <Gate query={set} header={<Top title={t("pr.title")} />}>
-      {(s) => (s && view ? <Run set={s} view={view} answer={answer} /> : <Missing />)}
+      {(s) => (s && view ? <Run key={s.id} set={s} view={view} answer={answer} /> : <Missing />)}
     </Gate>
   );
 }
@@ -176,13 +176,16 @@ function Step({
               <button
                 className="btn btn--primary btn--block"
                 aria-disabled={picked === null}
+                aria-describedby={picked === null ? "pr-pick" : undefined}
                 onClick={() => {
                   if (picked !== null) send(responseOf(choice, picked));
                 }}
               >
                 {t("pr.check")}
               </button>
-              <p className="t-cap q-cap q-center">{picked === null ? t("pr.pick") : t("pr.saveNote")}</p>
+              <p id="pr-pick" className="t-cap q-cap q-center">
+                {picked === null ? t("pr.pick") : t("pr.saveNote")}
+              </p>
             </>
           )}
           {open && !choice && <p className="t-cap q-cap q-center">{t("pr.saveNote")}</p>}
