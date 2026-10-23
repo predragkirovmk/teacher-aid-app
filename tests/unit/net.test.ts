@@ -40,7 +40,7 @@ describe("the connection note", () => {
 
   it("starts quiet", () => {
     const { store } = watch();
-    expect(store.getView()).toEqual({ banner: null, pending: 0, sent: false });
+    expect(store.getView()).toEqual({ banner: null, pending: 0, asks: 0, sent: false });
   });
 
   it("goes offline at once, and says back online for a moment when it returns", () => {

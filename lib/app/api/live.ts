@@ -22,9 +22,11 @@ type Options = {
   query?: Record<string, string | undefined>;
   /** A JSON body, or a Blob sent as it is. */
   body?: unknown;
+  /** Let the request finish even if the page is hidden or closed on the way (a small body only). */
+  keepalive?: boolean;
 };
 
-async function request<T>(method: string, path: string, { query, body }: Options = {}): Promise<T> {
+async function request<T>(method: string, path: string, { query, body, keepalive }: Options = {}): Promise<T> {
   const params = new URLSearchParams();
   for (const [k, v] of Object.entries(query ?? {})) if (v !== undefined) params.set(k, v);
   const url = `${apiBase}${path}${params.size ? `?${params}` : ""}`;
@@ -43,7 +45,7 @@ async function request<T>(method: string, path: string, { query, body }: Options
   const timer = setTimeout(() => abort.abort(), TIMEOUT_MS);
   let res: Response;
   try {
-    res = await fetch(url, { method, headers, body: payload, credentials: "include", signal: abort.signal });
+    res = await fetch(url, { method, headers, body: payload, credentials: "include", signal: abort.signal, keepalive });
   } catch (e) {
     // Offline, blocked, refused or timed out: the app treats them alike.
     throw new ApiError("network", { cause: e });
@@ -130,6 +132,15 @@ export function createLiveClient(): ApiClient {
           body: wire.reasonBody(reason),
         }),
       ),
+    submitAsk: async (sessionId, ask) =>
+      wire.answerReceipt(
+        await request<wire.WireAnswerReceipt>("POST", `/sessions/${encodeURIComponent(sessionId)}/anon-questions`, {
+          body: wire.askBody(ask),
+        }),
+      ),
+    // keepalive: a `lost` is often sent as the page is being hidden, and should still get there.
+    sendFocusEvents: (sessionId, events) =>
+      request<void>("POST", `/sessions/${encodeURIComponent(sessionId)}/focus-events`, { body: wire.focusBody(events), keepalive: true }),
 
     // Realtime (spec 11.2) arrives with the live session engine; until then nothing pushes changes.
     subscribe: () => () => {},

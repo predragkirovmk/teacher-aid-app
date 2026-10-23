@@ -3,10 +3,12 @@ import { ApiError, toApiError } from "../errors";
 import type {
   AnswerInput,
   AnswerReceipt,
+  AskInput,
   AttendanceEntry,
   AttendanceSummary,
   Badge,
   Course,
+  FocusEventInput,
   Id,
   JoinInput,
   Leaderboard,
@@ -343,6 +345,22 @@ export function createMockClient(source: MockSource): ApiClient {
         const session = mockSessionFor(sessionId);
         if (!session) throw new ApiError("not_found");
         return write(() => session.submitReason(reason));
+      }),
+
+    submitAsk: (sessionId: Id, ask: AskInput) =>
+      authed((): AnswerReceipt => {
+        if (net.isOffline()) throw new ApiError("network");
+        const session = mockSessionFor(sessionId);
+        if (!session) throw new ApiError("not_found");
+        return write(() => session.submitAsk(ask));
+      }),
+
+    sendFocusEvents: (sessionId: Id, events: FocusEventInput[]) =>
+      authed((): void => {
+        if (net.isOffline()) throw new ApiError("network");
+        const session = mockSessionFor(sessionId);
+        if (!session) throw new ApiError("not_found");
+        write(() => session.recordFocus(events));
       }),
 
     subscribe: (listener) => {

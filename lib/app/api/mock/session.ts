@@ -3,10 +3,13 @@ import { net } from "../../session/net";
 import { ChannelTransport, type Connect, type RealtimeMessage, type RealtimeTransport } from "../../session/transport";
 import { translate, type Key } from "../../i18n";
 import type {
+  AnonCount,
   AnswerInput,
   AnswerReceipt,
+  AskInput,
   AttendanceEntry,
   BoardRow,
+  FocusEventInput,
   JoinResult,
   Locale,
   OpenerPhase,
@@ -20,6 +23,7 @@ import type {
 } from "../types";
 import { formatNumeric, parseNumeric, withUnit, withinTolerance } from "../../numeric";
 import { cleanReason } from "../../session/engine";
+import { ANON_LIMIT, ANON_MAX_LENGTH, cleanAsk } from "../../session/ask";
 import { iso } from "../wire";
 import { subjectByCode, type ClassSubject } from "./data";
 import { CLASSMATES, CORRECT_POINTS, DURATION, OPENER_TIMES, QUIZZES, REASON_MAX, REASON_POINTS, speedBonus, type Quiz } from "./quiz";
@@ -51,7 +55,13 @@ import { actions } from "./store";
  *   OPENER-7B   the maths lesson, straight into its prediction opener (no lobby)
  *   DEBATE-7B   the English lesson, straight into its debate opener, which has no right side (OPEN-07)
  *   NUMERIC-7B  the physics lesson, straight into its numeric question (a unit, a minus, a decimal, a tolerance)
+ *   ASK-7B      the maths lesson as usual, with a limit of 2 questions to the teacher (the usual limit is 3), so the limit is easy to reach
+ *   FOCUS-7B    the maths lesson from the lobby (where the focus notice is shown) into a first question that lasts a minute,
+ *               so there is time to leave the quiz and come back (the web focus flag, 7.10)
  * Any other code is unknown (not_found).
+ *
+ * What the "teacher's console" received (the questions with the sender, the focus events and which were flagged) is kept in
+ * localStorage under `teacheraid-mock-console`, so the demo and the tests can look at it; there is no console screen yet.
  *
  * The mock's network is the browser's: while the phone is offline (or this demo is pretending to be), answers
  * and snapshots fail with `network` and the lesson's link drops, so DevTools' offline switch, Playwright's
@@ -85,6 +95,8 @@ export const SCRIPT = {
   /** OFFLINE-ANSWER-7B: how long the network stays gone after the first answer, and how long its first question lasts, so the answer is still open when "sent" arrives. */
   answerOutage: 15_000,
   offlineFirstQuestion: 45_000,
+  /** FOCUS-7B: its first question lasts this long, so there is time to leave the quiz during it. */
+  focusFirstQuestion: 60_000,
 } as const;
 
 /** The server's grace on an answer's own time, past the question's end (PROPOSED, BR-NET-01 and EC-TIME-01; the fake API uses the same). */
@@ -105,7 +117,18 @@ const SKILL = CLASSMATES.map((_, i) => 0.35 + ((i * 37) % 40) / 100);
 
 const text = (locale: Locale, key: string) => translate(locale, key as Key);
 
-export type Scenario = "normal" | "late" | "flaky" | "offline-answer" | "opener" | "debate" | "numeric";
+export type Scenario = "normal" | "late" | "flaky" | "offline-answer" | "opener" | "debate" | "numeric" | "ask" | "focus";
+
+/** Where the mock keeps what its teacher's console received. */
+export const MOCK_CONSOLE_KEY = "teacheraid-mock-console";
+
+export type MockConsole = {
+  sessionId: string;
+  /** Questions to the teacher, with the sender's name: the teacher sees it, classmates never do (BR-ANON-01). */
+  asks: { text: string; sender: string; at: number }[];
+  /** Focus events, and whether each raised a flag: only a `lost` inside an open question does (AC-FOC-01, AC-FOC-02). */
+  focus: { type: string; at: number; sessionQuestionId: string; flagged: boolean }[];
+};
 
 /** The opener as the server holds it: the class's schedule, the student's vote and reason, and where the phase is. */
 type OpenerLive = {
@@ -188,6 +211,9 @@ export class MockSession {
   private lives = new Map<string, Live>();
   /** OFFLINE-ANSWER-7B: the one outage has happened. */
   private outageDone = false;
+  /** Questions to the teacher, by key, so a resend is not counted twice (BR-NET-04). */
+  private asks = new Map<string, string>();
+  private console_: MockConsole;
   private played: { id: string; prompt: string; correct: boolean; correctAnswer: string; yourAnswer: string | null }[] = [];
   private keys = new Map<string, string>();
   private listeners = new Set<(m: RealtimeMessage) => void>();
@@ -207,6 +233,8 @@ export class MockSession {
     readonly locale: Locale,
   ) {
     this.channels = { public: `session.${id}.public`, student: `student.${STUDENT_ID}` };
+    this.console_ = { sessionId: id, asks: [], focus: [] };
+    this.saveConsole();
     if (scenario === "late") {
       // The lesson is already under way: a question has been open for six seconds.
       this.joined = N + 1;
@@ -223,7 +251,7 @@ export class MockSession {
     } else {
       this.lobbyTick();
       // The two scenarios about the connection are about the pop-ups, so they go straight to the first one.
-      this.after(SCRIPT.start, () => (scenario === "flaky" || scenario === "offline-answer" ? this.fire(0) : this.fireOpener()));
+      this.after(SCRIPT.start, () => (scenario === "flaky" || scenario === "offline-answer" || scenario === "focus" ? this.fire(0) : this.fireOpener()));
     }
   }
 
@@ -288,7 +316,11 @@ export class MockSession {
 
   /** How long a question lasts. OFFLINE-ANSWER-7B gives its first one longer than the outage, so the student can watch "sent" arrive. */
   private durationOf(q: Quiz["questions"][number]) {
-    return this.scenario === "offline-answer" && q === this.quiz.questions[0] ? SCRIPT.offlineFirstQuestion : DURATION[q.kind];
+    if (q === this.quiz.questions[0]) {
+      if (this.scenario === "offline-answer") return SCRIPT.offlineFirstQuestion;
+      if (this.scenario === "focus") return SCRIPT.focusFirstQuestion;
+    }
+    return DURATION[q.kind];
   }
 
   private questionCopy(index: number, firedAt: number): SessionQuestion {
@@ -732,6 +764,53 @@ export class MockSession {
     return { accepted: true, duplicate: false };
   }
 
+  // ---- Questions to the teacher and the focus flag ------------------------------------------------
+
+  /** How many questions to the teacher the student may send in this lesson (BR-ANON-02). ASK-7B lowers it to 2. */
+  get anonLimit() {
+    return this.scenario === "ask" ? 2 : ANON_LIMIT;
+  }
+
+  anonCount(): AnonCount {
+    return { used: this.asks.size, limit: this.anonLimit };
+  }
+
+  private saveConsole() {
+    if (typeof localStorage === "undefined") return;
+    try {
+      localStorage.setItem(MOCK_CONSOLE_KEY, JSON.stringify(this.console_));
+    } catch {
+      // blocked storage: only the look into the console is lost
+    }
+  }
+
+  /** POST /sessions/{id}/anon-questions. Stored with the sender; nothing is sent to the class (FR-ANON-02). */
+  submitAsk(ask: AskInput): AnswerReceipt {
+    if (this.ended) throw new ApiError("session_ended");
+    if (this.asks.has(ask.idempotencyKey)) return { accepted: true, duplicate: true };
+    const text = cleanAsk(ask.text, ANON_MAX_LENGTH);
+    if (text === "") throw new ApiError("validation_failed");
+    if (this.asks.size >= this.anonLimit) throw new ApiError("limit_reached");
+    this.asks.set(ask.idempotencyKey, text);
+    this.console_.asks.push({ text, sender: STUDENT_ID, at: ask.askedAt });
+    this.saveConsole();
+    return { accepted: true, duplicate: false };
+  }
+
+  /** POST /sessions/{id}/focus-events. A `lost` raises a flag only inside the question's open window (AC-FOC-01, AC-FOC-02). */
+  recordFocus(events: FocusEventInput[]) {
+    if (this.ended) throw new ApiError("session_ended");
+    for (const e of events) {
+      const q = this.lives.get(e.sessionQuestionId)?.question ?? this.openers.get(e.sessionQuestionId)?.question;
+      if (!q) throw new ApiError("not_found");
+      const flagged = e.type === "lost" && q.firedAt !== null && q.closesAt !== null && e.at >= q.firedAt && e.at <= q.closesAt;
+      // The same event again (same type, time and question) is one event.
+      if (this.console_.focus.some((f) => f.type === e.type && f.at === e.at && f.sessionQuestionId === e.sessionQuestionId)) continue;
+      this.console_.focus.push({ type: e.type, at: e.at, sessionQuestionId: e.sessionQuestionId, flagged });
+    }
+    this.saveConsole();
+  }
+
   // ---- The API ---------------------------------------------------------------------------------
 
   snapshotOf(): SessionSnapshot {
@@ -762,6 +841,7 @@ export class MockSession {
         board: this.board,
         progress: opener.phase === "voting" ? { answered: this.countVotes(opener, false).reduce((a, b) => a + b, 0), joined: N + 1 } : null,
         summary: this.summary,
+        anon: this.anonCount(),
         opener: {
           phase: opener.question.status === "revealed" ? "revealed" : opener.phase,
           votes: this.countVotes(opener, opener.phase !== "voting"),
@@ -782,6 +862,7 @@ export class MockSession {
       board: this.board,
       progress: live && live.question.status === "open" ? this.progressOf(live) : null,
       summary: this.summary,
+      anon: this.anonCount(),
     };
   }
 
@@ -891,6 +972,8 @@ const SPECIAL = {
   opener: "opener-7b",
   debate: "debate-7b",
   numeric: "numeric-7b",
+  ask: "ask-7b",
+  focus: "focus-7b",
 } as const;
 
 /** The scenarios that open on a given question with the student already in the room. */
@@ -919,6 +1002,8 @@ function resolve(code: string): { subject: ClassSubject; scenario: Scenario } {
   if (c === SPECIAL.opener) return { subject: MATH, scenario: "opener" };
   if (c === SPECIAL.debate) return { subject: ENGLISH, scenario: "debate" };
   if (c === SPECIAL.numeric) return { subject: PHYSICS, scenario: "numeric" };
+  if (c === SPECIAL.ask) return { subject: MATH, scenario: "ask" };
+  if (c === SPECIAL.focus) return { subject: MATH, scenario: "focus" };
   const subject = subjectByCode(c);
   if (!subject || !QUIZZES[subject.id]) throw new ApiError("not_found");
   return { subject, scenario: "normal" };

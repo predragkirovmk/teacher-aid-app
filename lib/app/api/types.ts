@@ -343,7 +343,12 @@ export type StudentSessionState = {
   myReason: string | null;
   /** The opener in `question`: its phase, the class's votes once voting has closed, and the anonymous reasons (PROPOSED). */
   opener: OpenerSnapshot | null;
+  /** How many questions to the teacher this student has sent in this lesson, and how many they may (BR-ANON-02, PROPOSED); null from a server that does not say. */
+  anon: AnonCount | null;
 };
+
+/** The student's questions to the teacher in one lesson: sent so far and the limit (BR-ANON-02). */
+export type AnonCount = { used: number; limit: number };
 
 /** What the class did in an opener, without names (FR-OPN-03). `votes` lines up with the options, or is [agree, disagree]. */
 export type OpenerSnapshot = { phase: OpenerPhase; votes: number[] | null; reasons: string[] };
@@ -371,8 +376,12 @@ export type StudentStage =
   /** An opener: the result, the class's votes and the reasons. */
   | "opener_result";
 
-/** What the phone sends to the server: an answer, an opener vote (`/opener/vote`) or an opener reason (`/opener/reason`, `response` holds its text). */
-export type SubmissionKind = "answer" | "vote" | "reason";
+/**
+ * What the phone sends to the server: an answer, an opener vote (`/opener/vote`), an opener reason (`/opener/reason`,
+ * `response` holds its text) or a question to the teacher (`/anon-questions`, `response` holds its text and there is
+ * no question to answer, so `sessionQuestionId` is empty).
+ */
+export type SubmissionKind = "answer" | "vote" | "reason" | "ask";
 
 export type AnswerInput = {
   sessionQuestionId: Id;
@@ -382,6 +391,15 @@ export type AnswerInput = {
   /** One per answer, so a retry is stored once (EC-NET-06). */
   idempotencyKey: string;
 };
+
+/** A question to the teacher (F-09), as the phone sends it: the text, when it was written in server-clock terms, and the key that makes a resend harmless. */
+export type AskInput = { text: string; askedAt: number; idempotencyKey: string };
+
+/** A student left the quiz (`lost`) or came back (`back`) during an open question (spec 7.10, pilot). */
+export type FocusEventType = "lost" | "back";
+
+/** One focus event: when, in server-clock terms, and during which question. Nothing else is ever reported. */
+export type FocusEventInput = { type: FocusEventType; at: number; sessionQuestionId: Id };
 
 export type AnswerReceipt = {
   accepted: boolean;

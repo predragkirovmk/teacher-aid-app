@@ -1,5 +1,7 @@
 import type {
   AnswerInput,
+  AskInput,
+  FocusEventInput,
   AnswerReceipt,
   AttendanceSummary,
   Badge,
@@ -95,6 +97,13 @@ export interface ApiClient {
   submitVote(sessionId: Id, vote: AnswerInput): Promise<AnswerReceipt>;
   /** POST /sessions/{id}/opener/reason: the one-line reason; `response` holds the text (PROPOSED). Idempotent on `idempotencyKey`. */
   submitReason(sessionId: Id, reason: AnswerInput): Promise<AnswerReceipt>;
+  /**
+   * POST /sessions/{id}/anon-questions: a question to the teacher (F-09). The teacher sees the sender; classmates never do
+   * (BR-ANON-01). Idempotent on `idempotencyKey`. Rejects `limit_reached` (BR-ANON-02), `session_ended`, `validation_failed`.
+   */
+  submitAsk(sessionId: Id, ask: AskInput): Promise<AnswerReceipt>;
+  /** POST /sessions/{id}/focus-events: the times the student left the quiz and came back during open questions (PROPOSED, 7.10). */
+  sendFocusEvents(sessionId: Id, events: FocusEventInput[]): Promise<void>;
 
   /**
    * Called when what the client knows may have changed behind the app's back: the mock when its

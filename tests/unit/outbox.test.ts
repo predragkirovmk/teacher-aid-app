@@ -86,7 +86,7 @@ describe("what the server says", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(heard.map((h) => h.type)).toEqual(["delivered"]);
     expect(await store.all()).toEqual([]);
-    expect(outbox.getStatus()).toEqual({ pending: 0, failing: false });
+    expect(outbox.getStatus()).toEqual({ pending: 0, pendingAsks: 0, failing: false });
   });
 
   it("already_answered is delivered: the server has an answer, and the first one stands", async () => {
@@ -159,7 +159,7 @@ describe("retrying", () => {
     await outbox.enqueue(answer("k1"));
     await vi.advanceTimersByTimeAsync(0);
     expect(sender).toHaveBeenCalledTimes(1);
-    expect(outbox.getStatus()).toEqual({ pending: 1, failing: true });
+    expect(outbox.getStatus()).toEqual({ pending: 1, pendingAsks: 0, failing: true });
     expect(heard[0]).toMatchObject({ type: "saved" });
     const waits = [1, 2, 4, 8].map((n) => backoffDelay(Math.log2(n), () => 0.5));
     expect(waits).toEqual([1000, 2000, 4000, 8000]);
@@ -260,7 +260,7 @@ describe("order and dedupe", () => {
     await outbox.start("me");
     expect(sender).toHaveBeenCalledTimes(1);
     expect(sender.mock.calls[0][1].idempotencyKey).toBe("a");
-    expect(outbox.getStatus()).toEqual({ pending: 2, failing: true });
+    expect(outbox.getStatus()).toEqual({ pending: 2, pendingAsks: 0, failing: true });
   });
 
   it("holds one record per key: the same answer saved twice while it waits is one answer", async () => {
@@ -471,5 +471,56 @@ describe("surviving a reload", () => {
     await store.put({ ...answer("k1"), savedAt: T0 });
     spy.mockRestore();
     expect((await store.all()).map((r) => r.key)).toEqual(["k1"]);
+  });
+});
+
+describe("questions to the teacher", () => {
+  const ask = (key: string, at = T0, text = "Why?"): NewAnswer => ({ kind: "ask", key, studentId: "me", sessionId: "s1", sessionQuestionId: "", response: text, answeredAt: at });
+
+  it("travel as their own kind, with no question to answer, and are counted apart from answers", async () => {
+    const { outbox, sender } = setup(down);
+    await outbox.start("me");
+    await outbox.enqueue(ask("a1"));
+    await outbox.enqueue(answer("k1", T0 + 1));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sender.mock.calls[0][2]).toBe("ask");
+    expect(sender.mock.calls[0][1]).toEqual({ sessionQuestionId: "", response: "Why?", answeredAt: T0, idempotencyKey: "a1" });
+    expect(outbox.getStatus()).toEqual({ pending: 2, pendingAsks: 1, failing: true });
+  });
+
+  it("are listed for their session, oldest first, and not mixed with answers", async () => {
+    const { outbox } = setup(down);
+    await outbox.start("me");
+    await outbox.enqueue(ask("a2", T0 + 10));
+    await outbox.enqueue(ask("a1", T0 + 5));
+    await outbox.enqueue(answer("k1"));
+    await outbox.enqueue({ ...ask("b1"), sessionId: "s2" });
+    expect(outbox.pendingOf("me", "s1", "ask").map((r) => r.key)).toEqual(["a1", "a2"]);
+    expect(outbox.pendingOf("me", "s1", "answer").map((r) => r.key)).toEqual(["k1"]);
+  });
+
+  it("drop for good at limit_reached: the count will not fall, so waiting would not help", async () => {
+    const { outbox, heard, sender } = setup(refuses("limit_reached"));
+    await outbox.start("me");
+    await outbox.enqueue(ask("a1"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(heard.at(-1)).toMatchObject({ type: "dropped", code: "limit_reached" });
+    expect(outbox.getStatus()).toEqual({ pending: 0, pendingAsks: 0, failing: false });
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(sender).toHaveBeenCalledTimes(1);
+  });
+
+  it("are told the lesson has ended, and a repeat of the key is delivered as a duplicate", async () => {
+    const ended = setup(refuses("session_ended"));
+    await ended.outbox.start("me");
+    await ended.outbox.enqueue(ask("a1"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(ended.heard.at(-1)).toMatchObject({ type: "ended" });
+
+    const dup = setup(async () => ({ accepted: true, duplicate: true }));
+    await dup.outbox.start("me");
+    await dup.outbox.enqueue(ask("a1"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(dup.heard.at(-1)).toMatchObject({ type: "delivered", duplicate: true });
   });
 });

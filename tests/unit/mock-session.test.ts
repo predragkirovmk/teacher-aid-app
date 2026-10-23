@@ -837,3 +837,86 @@ describe("a numeric question", () => {
     expect(session.studentState().summary).toEqual({ right: 0, total: 3 });
   });
 });
+
+describe("questions to the teacher and the focus flag", () => {
+  const consoleLog = () => JSON.parse(window.localStorage.getItem("teacheraid-mock-console") ?? "{}") as import("@/lib/app/api/mock/session").MockConsole;
+  const ask = (s: MockSession, text: string, key: string) => s.submitAsk({ text, askedAt: serverNow(), idempotencyKey: key });
+
+  it("ASK-7B is the maths lesson with a limit of 2 questions, where every other lesson has 3", () => {
+    const a = mockSessionFor(joinMock("ASK-7B", "mk").session.id)!;
+    expect(a.studentState().anon).toEqual({ used: 0, limit: 2 });
+    expect(joinMock("ASK-7B", "mk").session.courseId).toBe("math");
+    const normal = mockSessionFor(joinMock("MATH-7B", "mk").session.id)!;
+    expect(normal.studentState().anon).toEqual({ used: 0, limit: 3 });
+    expect(normal.id).not.toBe(a.id);
+  });
+
+  it("stores a question with its sender for the console only, and never sends it to the class", () => {
+    const { session, types } = lesson("ASK-7B");
+    ask(session, "  Can you   repeat that? ", "k1");
+    expect(consoleLog().asks).toEqual([{ text: "Can you repeat that?", sender: "student-marko", at: expect.any(Number) }]);
+    expect(types()).not.toContain("anon_question.received");
+    expect(JSON.stringify(session.studentState())).not.toContain("Can you repeat");
+  });
+
+  it("takes a repeat of a key once, refuses a third past the limit of 2, and an empty one", () => {
+    const { session } = lesson("ASK-7B");
+    expect(ask(session, "one", "k1")).toEqual({ accepted: true, duplicate: false });
+    expect(ask(session, "one", "k1")).toEqual({ accepted: true, duplicate: true });
+    expect(ask(session, "two", "k2")).toEqual({ accepted: true, duplicate: false });
+    expect(() => ask(session, "three", "k3")).toThrowError(expect.objectContaining({ code: "limit_reached" }));
+    // A repeat is still a repeat once the limit is reached.
+    expect(ask(session, "two", "k2")).toEqual({ accepted: true, duplicate: true });
+    expect(() => ask(session, "  ", "k4")).toThrowError(expect.objectContaining({ code: "validation_failed" }));
+    expect(session.studentState().anon).toEqual({ used: 2, limit: 2 });
+  });
+
+  it("refuses a question after the lesson has ended", async () => {
+    const { session } = lesson("ASK-7B");
+    await advance(SCRIPT.start + OPENER_MS + SCRIPT.afterOpener + 60_000 * 10);
+    expect(session.ended).toBe(true);
+    expect(() => ask(session, "late", "k1")).toThrowError(expect.objectContaining({ code: "session_ended" }));
+  });
+
+  it("FOCUS-7B goes from the lobby straight into a first question that lasts a minute", async () => {
+    const { session, types } = lesson("FOCUS-7B");
+    expect(session.state).toBe("lobby");
+    await toFirstQuestionDirect();
+    const q = session.studentState().question!;
+    expect(q).toMatchObject({ status: "open", opener: null });
+    expect(q.closesAt! - q.firedAt!).toBe(SCRIPT.focusFirstQuestion);
+    // No opener first: the lobby goes to teaching.
+    expect(session.state).toBe("teaching");
+    expect(types()).toContain("question.opened");
+  });
+
+  it("flags a lost inside the open question, records the back, and raises no flag outside it (AC-FOC-01, AC-FOC-02)", async () => {
+    const { session } = lesson("FOCUS-7B");
+    await toFirstQuestionDirect();
+    const q = session.studentState().question!;
+    session.recordFocus([
+      { type: "lost", at: q.firedAt! + 5000, sessionQuestionId: q.id },
+      { type: "back", at: q.firedAt! + 12_000, sessionQuestionId: q.id },
+      // Before it was open, and after it closed: stored, never flagged.
+      { type: "lost", at: q.firedAt! - 1000, sessionQuestionId: q.id },
+      { type: "lost", at: q.closesAt! + 5000, sessionQuestionId: q.id },
+    ]);
+    expect(consoleLog().focus.map((f) => [f.type, f.flagged])).toEqual([
+      ["lost", true],
+      ["back", false],
+      ["lost", false],
+      ["lost", false],
+    ]);
+  });
+
+  it("takes the same focus event twice as one, and refuses a question that is not the lesson's", async () => {
+    const { session } = lesson("FOCUS-7B");
+    await toFirstQuestionDirect();
+    const q = session.studentState().question!;
+    const e = { type: "lost" as const, at: q.firedAt! + 5000, sessionQuestionId: q.id };
+    session.recordFocus([e]);
+    session.recordFocus([e]);
+    expect(consoleLog().focus).toHaveLength(1);
+    expect(() => session.recordFocus([{ ...e, sessionQuestionId: "nope" }])).toThrowError(expect.objectContaining({ code: "not_found" }));
+  });
+});

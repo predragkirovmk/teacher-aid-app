@@ -6,6 +6,8 @@
 import { ApiError } from "./errors";
 import type {
   AnswerInput,
+  AskInput,
+  FocusEventInput,
   AnswerReceipt,
   AttendanceEntry,
   AttendanceStatus,
@@ -202,6 +204,8 @@ export type WireStudentState = {
   summary?: { right: number; total: number } | null;
   my_reason?: string | null;
   opener?: { phase: OpenerPhase; votes: number[] | null; reasons: string[] } | null;
+  /** PROPOSED: the student's questions to the teacher in this lesson, sent so far and the limit (BR-ANON-02). */
+  anon_questions?: { used: number; limit: number } | null;
 };
 
 export type WireBoardRow = { student_id: string; name: string; points: number; rank: number };
@@ -426,6 +430,7 @@ export const studentState = (w: WireStudentState): StudentSessionState => ({
   summary: w.summary ?? null,
   myReason: w.my_reason ?? null,
   opener: w.opener ? { phase: w.opener.phase, votes: w.opener.votes ?? null, reasons: w.opener.reasons ?? [] } : null,
+  anon: w.anon_questions ? { used: w.anon_questions.used, limit: w.anon_questions.limit } : null,
 });
 
 export const answerReceipt = (w: WireAnswerReceipt): AnswerReceipt => ({ accepted: w.accepted, duplicate: w.duplicate });
@@ -562,3 +567,13 @@ export const reasonBody = (a: AnswerInput) => ({
   answered_at: iso(a.answeredAt),
   idempotency_key: a.idempotencyKey,
 });
+
+/** `POST /sessions/{id}/anon-questions`: the text, when it was written, and the key that makes a resend harmless (BR-NET-04). */
+export const askBody = (a: AskInput) => ({ text: a.text, asked_at: iso(a.askedAt), idempotency_key: a.idempotencyKey });
+
+/**
+ * `POST /sessions/{id}/focus-events`: a bare array, one item for each time the student left the quiz or came back during
+ * an open question. A time and a question and nothing else (spec 7.10): no address, no app name, no page.
+ */
+export const focusBody = (events: FocusEventInput[]) =>
+  events.map((e) => ({ type: e.type, at: iso(e.at), session_question_id: e.sessionQuestionId }));

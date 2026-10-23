@@ -197,6 +197,11 @@ describe("wire to domain", () => {
     });
     expect(idle.question).toBeNull();
     expect(idle.result).toBeNull();
+    // A server that does not say how many questions to the teacher are left leaves the count unknown.
+    expect(idle.anon).toBeNull();
+    expect(
+      wire.studentState({ session, server_now: AT, question: null, my_response: null, result: null, session_points: 0, session_rank: 1, anon_questions: { used: 1, limit: 3 } }).anon,
+    ).toEqual({ used: 1, limit: 3 });
 
     const live = wire.studentState({
       session,
@@ -271,6 +276,22 @@ describe("domain to wire (request bodies)", () => {
       answered_at: AT,
       idempotency_key: "k-1",
     });
+  });
+
+  it("writes a question to the teacher with its text, the time it was written and its key", () => {
+    expect(wire.askBody({ text: "Why?", askedAt: AT_MS, idempotencyKey: "k-3" })).toEqual({ text: "Why?", asked_at: AT, idempotency_key: "k-3" });
+  });
+
+  it("writes focus events as a bare array of a type, a time and a question, and nothing else", () => {
+    const body = wire.focusBody([
+      { type: "lost", at: AT_MS, sessionQuestionId: "sq1" },
+      { type: "back", at: AT_MS + 5000, sessionQuestionId: "sq1" },
+    ]);
+    expect(body).toEqual([
+      { type: "lost", at: AT, session_question_id: "sq1" },
+      { type: "back", at: new Date(AT_MS + 5000).toISOString(), session_question_id: "sq1" },
+    ]);
+    for (const e of body) expect(Object.keys(e).sort()).toEqual(["at", "session_question_id", "type"]);
   });
 
   it("writes an opener vote like an answer and a reason with its text under `text`", () => {

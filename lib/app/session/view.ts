@@ -1,6 +1,7 @@
 import type { BoardRow, Id, OpenerPhase, QuestionProgress, SessionQuestion, SessionState, SessionSummary, StudentStage } from "../api/types";
 import { toServer } from "./clock";
-import { RESULT_WAIT_MS, VERDICT_AFTER_REVEAL_MS, VERDICT_MAX_MS, VERDICT_MS, undelivered, votingOpen, type EngineState } from "./engine";
+import { askRemaining } from "./ask";
+import { RESULT_WAIT_MS, VERDICT_AFTER_REVEAL_MS, VERDICT_MAX_MS, VERDICT_MS, askWaiting, undelivered, votingOpen, type EngineState, type OwnAsk } from "./engine";
 
 /**
  * What the quiz screen draws at one moment: the engine's state read at a local time. The stage is
@@ -74,6 +75,13 @@ export type SessionView = {
   board: BoardRow[] | null;
   meId: Id;
   summary: SessionSummary | null;
+
+  /** How many questions to the teacher the student may send in this lesson; null until the server says (BR-ANON-02). */
+  askLimit: number | null;
+  /** How many more: the limit less what the server holds and what waits on the phone. Null with the limit. */
+  askRemaining: number | null;
+  /** What the student wrote to the teacher in this visit, oldest first, and where each has got to. */
+  asks: OwnAsk[];
 };
 
 /** When the verdict (right or wrong) stops being the screen, in local time; null when there is none to show. */
@@ -203,6 +211,9 @@ export function viewOf(s: EngineState, now: number): SessionView {
     board: s.board,
     meId: s.meId,
     summary: s.summary,
+    askLimit: s.anon?.limit ?? null,
+    askRemaining: askRemaining(s.anon, s.asks.filter(askWaiting).length),
+    asks: s.asks,
   };
 }
 

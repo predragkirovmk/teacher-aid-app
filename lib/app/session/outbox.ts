@@ -25,6 +25,9 @@ import { backoffDelay } from "./transport";
  * answers too, and the same things go wrong with them. A reason sent before its vote is not a risk, because the
  * line is in the order they were given and stops at the first failure.
  *
+ * A question to the teacher (`kind` "ask", F-09) travels the same way, under its own endpoint, with no question to answer.
+ * Besides the codes above it can be refused `limit_reached` (BR-ANON-02): final, because the count will not fall.
+ *
  * The answer's time is the engine's server-clock time, taken when the student tapped, so it is the same
  * however late the answer arrives.
  */
@@ -35,7 +38,7 @@ export const MAX_AGE_MS = 24 * 3_600_000;
 /** A student who is not signed in cannot send; their answers wait for them. */
 const AUTH_CODES: ApiErrorCode[] = ["unauthenticated", "signed_in_elsewhere"];
 /** Codes after which the server will never take this answer. */
-const GIVE_UP_CODES: ApiErrorCode[] = ["validation_failed", "not_found"];
+const GIVE_UP_CODES: ApiErrorCode[] = ["validation_failed", "not_found", "limit_reached"];
 
 export type AnswerOutcome =
   /** An attempt failed and the answer is kept: "saved, will send when you're back online". */
@@ -52,8 +55,10 @@ export type AnswerOutcome =
   | { type: "expired"; record: OutboxRecord };
 
 export type OutboxStatus = {
-  /** Answers of the signed-in student that have not reached the server. */
+  /** Answers, votes, reasons and questions to the teacher of the signed-in student that have not reached the server. */
   pending: number;
+  /** Of those, the questions to the teacher, which the connection note names apart from answers. */
+  pendingAsks: number;
   /** The last attempt failed for want of a connection (or a server), and another is waiting. */
   failing: boolean;
 };
@@ -89,6 +94,8 @@ export type Outbox = {
   load(): Promise<void>;
   /** What this student saved for this question and is still waiting, of one `kind` (any, when not given). */
   pendingFor(studentId: Id, sessionId: Id, sessionQuestionId: Id, kind?: SubmissionKind): OutboxRecord | null;
+  /** Everything this student saved in this session and has still to send, of one `kind`. */
+  pendingOf(studentId: Id, sessionId: Id, kind: SubmissionKind): OutboxRecord[];
   subscribe(listener: (outcome: AnswerOutcome) => void): () => void;
   onStatus(listener: () => void): () => void;
   getStatus(): OutboxStatus;
@@ -110,7 +117,7 @@ export function createOutbox(deps: OutboxDeps): Outbox {
   let flushing: Promise<void> | null = null;
   let again = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let status: OutboxStatus = { pending: 0, failing: false };
+  let status: OutboxStatus = { pending: 0, pendingAsks: 0, failing: false };
 
   const mine = () =>
     [...records.values()]
@@ -119,9 +126,11 @@ export function createOutbox(deps: OutboxDeps): Outbox {
 
   const refreshStatus = () => {
     const who = studentId ?? peeked;
-    const pending = [...records.values()].filter((r) => r.studentId === who).length;
-    if (pending === status.pending && failing === status.failing) return;
-    status = { pending, failing };
+    const mineNow = [...records.values()].filter((r) => r.studentId === who);
+    const pending = mineNow.length;
+    const pendingAsks = mineNow.filter((r) => r.kind === "ask").length;
+    if (pending === status.pending && pendingAsks === status.pendingAsks && failing === status.failing) return;
+    status = { pending, pendingAsks, failing };
     statusListeners.forEach((l) => l());
   };
 
@@ -265,6 +274,11 @@ export function createOutbox(deps: OutboxDeps): Outbox {
           (r) => r.studentId === student && r.sessionId === sessionId && r.sessionQuestionId === sessionQuestionId && (kind === undefined || r.kind === kind),
         ) ?? null
       );
+    },
+    pendingOf(student, sessionId, kind) {
+      return [...records.values()]
+        .filter((r) => r.studentId === student && r.sessionId === sessionId && r.kind === kind)
+        .sort((a, b) => a.answeredAt - b.answeredAt || a.savedAt - b.savedAt);
     },
     subscribe(listener) {
       outcomes.add(listener);

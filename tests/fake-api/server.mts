@@ -31,6 +31,7 @@
  *   POST /__control/session/opener-voting-end                  voting closes: the class's final votes go out
  *   POST /__control/session/opener-close                       the opener ends: the student's vote and reason are worked out and sent
  *   POST /__control/session/opener-reveal                      the teacher reveals: the right answer, the final votes, the anonymous reasons
+ *   POST /__control/session/anon-limit { limit }               how many questions to the teacher a student may send (3, BR-ANON-02)
  *   POST /__control/session/elsewhere                          tell the student's channel they signed in on another device
  *   POST /__control/skew              { ms }                   the server's clock runs this far ahead of the machine's
  *   POST /__control/drop-streams                               cut every event stream (the app reconnects)
@@ -49,6 +50,12 @@
  * a key seen before is `duplicate`. A reason needs a vote. A right prediction is worth 10, a written reason 8
  * whatever the vote (BR-PTS-02), a debate has no right side (OPEN-07). The fourth question of the lesson is a
  * number: 7 divided by 4, within 0.01, no minus. The server reads a comma or a point and keeps the number as text.
+ * A question to the teacher (F-09) is `POST /sessions/{id}/anon-questions` (`text`, `asked_at`, `idempotency_key`): stored with the
+ * sender (state.session.asks), a key seen before is `duplicate`, one past the limit is `limit_reached` (409), an empty text
+ * `validation_failed`, a finished lesson `session_ended`; the text is trimmed, its white space collapsed and cut to ASK_MAX. The
+ * snapshot says how many are used and the limit (`anon_questions`). The focus flag is `POST /sessions/{id}/focus-events`, a bare
+ * array of `{ type, at, session_question_id }`: a `lost` inside that question's window is flagged, anything else is only stored
+ * (AC-FOC-01, AC-FOC-02), the same event twice is one, and every batch is kept in state.session.focusBatches to see how they came.
  * Class codes: LIVE-7B joins; EXPIRED-7B, OTHER-8A and ENDED-7B are refused as the API would; any other is unknown.
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
@@ -125,6 +132,8 @@ const OPENERS = {
   },
 } as const;
 const REASON_MAX = 80;
+/** The longest question to the teacher (PROPOSED, the app's ANON_MAX_LENGTH). */
+const ASK_MAX = 280;
 const SESSION_ID = "se-live-1";
 const STUDENT_ID = "st-1";
 type SessionStateName = "lobby" | "opener" | "teaching" | "review" | "ended";
@@ -150,6 +159,13 @@ function newSession() {
     summary: null as null | { right: number; total: number },
     /** The opener the teacher started, while it is the lesson's current question. */
     opener: null as null | OpenerLive,
+    /** Questions to the teacher, with the sender (the teacher sees it; no student endpoint returns it). */
+    asks: [] as { key: string; text: string; askedAt: number; sender: string }[],
+    askLimit: 3,
+    /** Focus events, and whether each raised a flag on the console. */
+    focus: [] as { type: string; at: number; sessionQuestionId: string; flagged: boolean }[],
+    /** Every request that carried focus events, as it came: to see that they were batched. */
+    focusBatches: [] as { type: string; at: string; session_question_id: string }[][],
   };
 }
 
@@ -443,6 +459,7 @@ function snapshot() {
       board: o.result ? board() : null,
       progress: o.phase === "voting" ? { answered: countsOf(o).reduce((a, b) => a + b, 0), joined: sess.joined } : null,
       summary: sess.summary,
+      anon_questions: { used: sess.asks.length, limit: sess.askLimit },
       opener: {
         phase: o.phase,
         votes: countsOf(o),
@@ -461,6 +478,7 @@ function snapshot() {
     board: sess.points > 0 || Object.keys(sess.results).length > 0 ? board() : null,
     progress: cur?.status === "open" ? { answered: sess.answered, joined: sess.joined } : null,
     summary: sess.summary,
+    anon_questions: { used: sess.asks.length, limit: sess.askLimit },
   };
 }
 
@@ -537,6 +555,47 @@ function answer(res: ServerResponse, body: { session_question_id?: string; respo
   // It arrived after the question closed: the result the student already has was worked out without it.
   if (cur.status !== "open") settle(cur, true);
   return send(res, 200, { accepted: true, duplicate: false });
+}
+
+/** POST /sessions/{id}/anon-questions. */
+function ask(res: ServerResponse, body: { text?: string; asked_at?: string; idempotency_key?: string }) {
+  const sess = state.session;
+  if (sess.state === "ended") return fail(res, 410, "session_ended");
+  const key = body.idempotency_key ?? "";
+  if (sess.asks.some((a) => a.key === key)) return send(res, 200, { accepted: true, duplicate: true });
+  const text = Array.from((body.text ?? "").replace(/\s+/g, " ").trim()).slice(0, ASK_MAX).join("").trim();
+  if (text === "") return fail(res, 422, "validation_failed");
+  if (sess.asks.length >= sess.askLimit) return fail(res, 409, "limit_reached");
+  const claimed = Date.parse(body.asked_at ?? "");
+  sess.asks.push({ key, text, askedAt: Number.isNaN(claimed) ? nowMs() : claimed, sender: STUDENT_ID });
+  return send(res, 200, { accepted: true, duplicate: false });
+}
+
+/** The time window a question was open in, or null for one this lesson never had. */
+function windowOf(id: string): { from: number; to: number } | null {
+  const sess = state.session;
+  const q = sess.fired[id];
+  if (q) return { from: q.firedAt, to: q.closesAt };
+  const o = sess.opener;
+  return o && OPENERS[o.kind].id === id ? { from: o.firedAt, to: o.closesAt } : null;
+}
+
+/** POST /sessions/{id}/focus-events. */
+function focusEvents(res: ServerResponse, body: unknown) {
+  const sess = state.session;
+  if (sess.state === "ended") return fail(res, 410, "session_ended");
+  if (!Array.isArray(body)) return fail(res, 422, "validation_failed");
+  const batch = body as { type?: string; at?: string; session_question_id?: string }[];
+  const parsed = batch.map((e) => ({ type: e.type ?? "", at: Date.parse(e.at ?? ""), id: e.session_question_id ?? "" }));
+  if (parsed.some((e) => (e.type !== "lost" && e.type !== "back") || Number.isNaN(e.at))) return fail(res, 422, "validation_failed");
+  if (parsed.some((e) => !windowOf(e.id))) return fail(res, 404, "not_found");
+  sess.focusBatches.push(batch as { type: string; at: string; session_question_id: string }[]);
+  for (const e of parsed) {
+    if (sess.focus.some((f) => f.type === e.type && f.at === e.at && f.sessionQuestionId === e.id)) continue;
+    const w = windowOf(e.id)!;
+    sess.focus.push({ type: e.type, at: e.at, sessionQuestionId: e.id, flagged: e.type === "lost" && e.at >= w.from && e.at <= w.to });
+  }
+  return send(res, 204);
 }
 
 /** GET /realtime?channels=: the event stream. A pinger keeps a quiet lesson from looking dead. */
@@ -646,6 +705,9 @@ function teacher(action: string, body: Record<string, unknown>) {
       broadcast("public", "opener.reasons", { session_question_id: def.id, reasons: [...def.reasons] });
       return broadcast("public", "question.revealed", { session_question_id: def.id, correct_answer: def.correct, explanation: null });
     }
+    case "anon-limit":
+      sess.askLimit = Number(body.limit ?? 3);
+      return;
     case "elsewhere":
       return broadcast("student", "signed_in_elsewhere");
     case "end": {
@@ -850,6 +912,14 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     const body = (await readJson(req)) as Record<string, string> | undefined;
     state.bodies[`${method} ${api}`] = body;
     return openerGive(res, opener[2] as "vote" | "reason", body ?? {});
+  }
+
+  const extra = /^\/sessions\/([^/]+)\/(anon-questions|focus-events)$/.exec(api);
+  if (extra && method === "POST") {
+    if (decodeURIComponent(extra[1]) !== SESSION_ID) return fail(res, 404, "not_found");
+    const body = await readJson(req);
+    state.bodies[`${method} ${api}`] = body;
+    return extra[2] === "anon-questions" ? ask(res, (body ?? {}) as Record<string, string>) : focusEvents(res, body);
   }
 
   const live = /^\/sessions\/([^/]+)\/(student-state|answers)$/.exec(api);

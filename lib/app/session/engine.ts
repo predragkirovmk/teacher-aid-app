@@ -1,4 +1,5 @@
 import type {
+  AnonCount,
   BoardRow,
   Id,
   OpenerPhase,
@@ -13,6 +14,7 @@ import type {
   StudentSessionState,
   SubmissionKind,
 } from "../api/types";
+import { askRemaining, cleanAsk } from "./ask";
 import { mergeClock, sampleClock, toServer, type ClockSample } from "./clock";
 
 /**
@@ -29,6 +31,9 @@ import { mergeClock, sampleClock, toServer, type ClockSample } from "./clock";
  *   event that would move it back is a late duplicate and changes nothing, so the same event twice is
  *   the same as once, and two events in the wrong order end in the same place.
  * - An event about a question the app has never had is a sign it missed one: it asks for a snapshot.
+ *
+ * A question to the teacher (spec F-09) belongs to the session and not to a question: `asks` are the ones this phone has
+ * written, each saved and sent on its own, and `anon` is the server's count of what it holds (BR-ANON-02).
  *
  * An opener (spec 4.3) is a question like the others, with two things to give: the vote (`mine`, the answer
  * slot) and a one-line reason (`reason`), each saved and sent on its own. Voting closes at the opener's
@@ -78,6 +83,24 @@ export type OwnAnswer = {
 /** An answer the app has not heard the server take. */
 export const undelivered = (a: OwnAnswer | null): boolean => !!a && (a.status === "sending" || a.status === "saved");
 
+/** Where a question to the teacher has got to. The last three are final: the server will not take it. */
+export type AskStatus = "sending" | "saved" | "sent" | "limit_reached" | "session_ended" | "failed";
+
+/** A question the student wrote to the teacher in this visit (F-09). */
+export type OwnAsk = {
+  key: string;
+  /** As it is sent: cleaned, trimmed and capped. */
+  text: string;
+  /** When it was written, in server time. */
+  at: number;
+  status: AskStatus;
+};
+
+/** A question to the teacher the server has not yet taken: it is on the phone and will count against the limit. */
+export const askWaiting = (a: OwnAsk): boolean => a.status === "sending" || a.status === "saved";
+
+const ASKS_MAX = 20;
+
 export type EngineState = {
   sessionId: Id;
   /** The student's id, to find their row on the ranking. */
@@ -116,6 +139,10 @@ export type EngineState = {
   progress: QuestionProgress | null;
   recent: string[];
   summary: SessionSummary | null;
+  /** The student's questions to the teacher: how many the server holds and the limit. Null until the server says. */
+  anon: AnonCount | null;
+  /** What the student wrote to the teacher in this visit, oldest first. */
+  asks: OwnAsk[];
   /** Ids of questions that were current and are not now, so a late event about one is not mistaken for a new question. */
   seen: Id[];
 };
@@ -142,7 +169,16 @@ export type Action =
   /** The server will never take the answer (its question is gone): forget it. */
   | { type: "answer.failed"; key: string }
   /** The page was reloaded with an answer, vote or reason still waiting in the outbox: the student has given it. */
-  | { type: "answer.restore"; kind: SubmissionKind; key: string; sessionQuestionId: Id; response: string; at: number };
+  | { type: "answer.restore"; kind: SubmissionKind; key: string; sessionQuestionId: Id; response: string; at: number }
+  /** The student wrote a question to the teacher at local time `now`. Cleaned and capped here, and refused when the limit is reached. */
+  | { type: "ask"; text: string; key: string; now: number }
+  | { type: "ask.saved"; key: string }
+  /** The server has it. A `duplicate` was counted when it first arrived, so it adds nothing to the count here. */
+  | { type: "ask.sent"; key: string; duplicate: boolean }
+  /** The server will not take it: the limit is reached, the lesson has ended, or it was refused for good. */
+  | { type: "ask.refused"; key: string; reason: "limit_reached" | "session_ended" | "failed" }
+  /** The page was reloaded with a question to the teacher still waiting in the outbox. */
+  | { type: "ask.restore"; key: string; text: string; at: number };
 
 export function createEngine(init: { sessionId: Id; meId: Id; late?: boolean }): EngineState {
   return {
@@ -170,6 +206,8 @@ export function createEngine(init: { sessionId: Id; meId: Id; late?: boolean }):
     progress: null,
     recent: [],
     summary: null,
+    anon: null,
+    asks: [],
     seen: [],
   };
 }
@@ -421,6 +459,7 @@ function applySnapshot(s: EngineState, snap: StudentSessionState, sentAt: number
     board: snap.board ?? s.board,
     progress: q?.status === "open" ? snap.progress : null,
     summary: snap.summary ?? s.summary,
+    anon: snap.anon,
     seen: sameQuestion || !s.question ? s.seen : remember(s.seen, s.question.id),
   };
   // What arrived while the snapshot was on its way goes on top of it, oldest first; the older ones are dropped inside.
@@ -428,6 +467,11 @@ function applySnapshot(s: EngineState, snap: StudentSessionState, sentAt: number
   for (const ev of held) next = applyEvent(next, ev, receivedAt);
   return next;
 }
+
+const mapAsk = (s: EngineState, key: string, fn: (a: OwnAsk) => OwnAsk): EngineState => ({
+  ...s,
+  asks: s.asks.map((x) => (x.key === key ? fn(x) : x)),
+});
 
 export function reduce(s: EngineState, a: Action): EngineState {
   switch (a.type) {
@@ -501,6 +545,38 @@ export function reduce(s: EngineState, a: Action): EngineState {
     case "answer.failed": {
       const own = ownerOf(s, a.key);
       return own && undelivered(s[own]) ? { ...s, [own]: null } : s;
+    }
+
+    case "ask": {
+      if (!s.session || s.session.state === "ended") return s;
+      const text = cleanAsk(a.text);
+      if (text === "" || s.asks.some((x) => x.key === a.key)) return s;
+      const room = askRemaining(s.anon, s.asks.filter(askWaiting).length);
+      if (room !== null && room <= 0) return s;
+      return { ...s, asks: [...s.asks, { key: a.key, text, at: toServer(s.clock, a.now), status: "sending" as const }].slice(-ASKS_MAX) };
+    }
+
+    case "ask.saved":
+      return mapAsk(s, a.key, (x) => (x.status === "sending" ? { ...x, status: "saved" } : x));
+
+    case "ask.sent": {
+      const was = s.asks.find((x) => x.key === a.key);
+      if (!was || !askWaiting(was)) return s;
+      const counted = !a.duplicate && s.anon ? { ...s.anon, used: Math.min(s.anon.limit, s.anon.used + 1) } : s.anon;
+      return { ...mapAsk(s, a.key, (x) => ({ ...x, status: "sent" })), anon: counted };
+    }
+
+    case "ask.refused": {
+      const was = s.asks.find((x) => x.key === a.key);
+      if (!was || !askWaiting(was)) return s;
+      // The server says the limit is reached: whatever the phone believed, there is no room.
+      const full = a.reason === "limit_reached" && s.anon ? { ...s.anon, used: s.anon.limit } : s.anon;
+      return { ...mapAsk(s, a.key, (x) => ({ ...x, status: a.reason })), anon: full };
+    }
+
+    case "ask.restore": {
+      if (s.asks.some((x) => x.key === a.key)) return s;
+      return { ...s, asks: [...s.asks, { key: a.key, text: a.text, at: a.at, status: "saved" as const }].slice(-ASKS_MAX) };
     }
 
     case "answer.restore": {

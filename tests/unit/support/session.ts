@@ -65,6 +65,7 @@ export const snapshot = (over: Partial<StudentSessionState> = {}): StudentSessio
   summary: null,
   myReason: null,
   opener: null,
+  anon: null,
   ...over,
 });
 

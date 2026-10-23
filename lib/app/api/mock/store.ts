@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { resetFocusNotice } from "../../session/focus-notice";
 import { DEFAULT_PROFILE, isPhoto, type Profile } from "./avatars";
 import { CLOCKS, demoTime, type ClockId } from "../../demo/schedule";
 import { SUBJECTS, type SubjectId } from "./data";
@@ -240,6 +241,8 @@ export const actions = {
         // ignore
       }
     }
+    // The line about leaving the quiz is new again too.
+    resetFocusNotice();
     // Starting the demo over is not signing out: whoever is in stays in.
     set({ ...DEFAULT, signedIn: state.signedIn });
   },

@@ -9,8 +9,9 @@ import type { Id } from "../api/types";
 import { createTransport } from "./connect";
 import { createSessionHandle, type SessionHandle, type SessionRunView } from "./controller";
 import { createEngine } from "./engine";
+import { focusNoticeSeen } from "./focus-notice";
 import { net } from "./net";
-import { outbox } from "./send";
+import { focusQueue, outbox } from "./send";
 import { viewOf } from "./view";
 
 const IDLE: SessionRunView = { ...viewOf(createEngine({ sessionId: "", meId: "" }), 0), connection: "connecting", syncing: false, failed: null };
@@ -61,6 +62,8 @@ export function useSession(sessionId: Id, late: boolean) {
       transport: createTransport(sessionId),
       getSnapshot: (id) => client.getStudentState(id),
       outbox,
+      focus: focusQueue,
+      focusEnabled: focusNoticeSeen,
       onSignedInElsewhere: () => endSession("signed_in_elsewhere"),
       onNotification: () => invalidate("notifications"),
       // Points are settled and attendance and results written when the session ends (BR-PTS-10, F-10).
@@ -74,10 +77,25 @@ export function useSession(sessionId: Id, late: boolean) {
     document.addEventListener("visibilitychange", wake);
     window.addEventListener("online", wake);
     window.addEventListener("pageshow", wake);
+    // The web focus flag (spec 7.10) hears only whether the page is shown and whether the window has focus: nothing else about the phone.
+    const shown = () => h.focus(document.visibilityState === "hidden" ? "hidden" : "visible");
+    const hide = () => h.focus("hidden");
+    const blur = (e: Event) => e.target === window && h.focus("blur");
+    const focus = (e: Event) => e.target === window && h.focus("focus");
+    document.addEventListener("visibilitychange", shown);
+    window.addEventListener("pagehide", hide);
+    window.addEventListener("pageshow", shown);
+    window.addEventListener("blur", blur);
+    window.addEventListener("focus", focus);
     return () => {
       document.removeEventListener("visibilitychange", wake);
       window.removeEventListener("online", wake);
       window.removeEventListener("pageshow", wake);
+      document.removeEventListener("visibilitychange", shown);
+      window.removeEventListener("pagehide", hide);
+      window.removeEventListener("pageshow", shown);
+      window.removeEventListener("blur", blur);
+      window.removeEventListener("focus", focus);
       h.dispose();
       holder.set(null);
     };
@@ -97,6 +115,7 @@ export function useSession(sessionId: Id, late: boolean) {
     answer: (response: string) => holder.get()?.answer(response),
     reason: (text: string) => holder.get()?.reason(text),
     skipReason: () => holder.get()?.skipReason(),
+    ask: (text: string) => holder.get()?.ask(text) ?? null,
     retry: () => holder.get()?.retry(),
   };
 }

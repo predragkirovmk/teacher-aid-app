@@ -1,8 +1,10 @@
 import { ApiError, toApiError } from "../api/errors";
 import type { Id, StudentSessionState, SubmissionKind } from "../api/types";
 import { sessionEvent } from "../api/wire";
-import { toLocal } from "./clock";
+import { toLocal, toServer } from "./clock";
 import { createEngine, reduce, type Action, type EngineState } from "./engine";
+import { createFocusTracker, type FocusSignal, type FocusTracker } from "./focus";
+import type { FocusQueue } from "./focus-queue";
 import type { AnswerOutcome, Outbox } from "./outbox";
 import { backoffDelay, type ConnectionState, type RealtimeMessage, type RealtimeTransport } from "./transport";
 import { needsTick, sameView, viewOf, type SessionView } from "./view";
@@ -34,6 +36,13 @@ export type SessionDeps = {
   getSnapshot(sessionId: Id): Promise<StudentSessionState>;
   /** The one way an answer leaves the app: saved on the phone first, then sent until the server has said what it makes of it (outbox.ts). */
   outbox: Outbox;
+  /**
+   * Where the focus events go (spec 7.10). Without it the student leaving the quiz is not noticed at all, which is what
+   * the tests that are not about it want.
+   */
+  focus?: FocusQueue;
+  /** Whether the student has been told that leaving is visible to the teacher (default: yes). Nothing is recorded before they have. */
+  focusEnabled?(): boolean;
   /** The student's channel said they signed in elsewhere. */
   onSignedInElsewhere?(): void;
   /** The student has a new notification. */
@@ -55,6 +64,13 @@ export type SessionHandle = {
   reason(text: string): void;
   /** The student gives no reason. */
   skipReason(): void;
+  /**
+   * The student sends a question to the teacher (F-09). Returns its key, to find it in the view's `asks`, or null when it
+   * was not taken: nothing written, the limit reached, or the lesson over.
+   */
+  ask(text: string): string | null;
+  /** The page was hidden, came back, lost the window's focus or got it again (focus.ts). */
+  focus(signal: FocusSignal): void;
   /** Load again after the session failed to load. */
   retry(): void;
   /** The phone came back to the foreground or the network came back. */
@@ -193,7 +209,10 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
   function restorePending() {
     void deps.outbox.load().then(() => {
       const q = state.question;
-      if (disposed || !q) return;
+      if (disposed) return;
+      // Questions to the teacher belong to the lesson, not to a question.
+      for (const saved of deps.outbox.pendingOf(deps.meId, sessionId, "ask")) dispatch({ type: "ask.restore", key: saved.key, text: saved.response, at: saved.answeredAt });
+      if (!q) return;
       // The vote first: a reason is only restored on a question the student has voted on.
       for (const kind of q.opener ? (["vote", "reason"] as const) : (["answer"] as const)) {
         const saved = deps.outbox.pendingFor(deps.meId, sessionId, q.id, kind);
@@ -205,6 +224,7 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
   /** What the outbox found out about an answer of this session. */
   const onOutcome = (o: AnswerOutcome) => {
     if (disposed || o.record.sessionId !== sessionId) return;
+    if (o.record.kind === "ask") return onAskOutcome(o);
     const { key, sessionQuestionId } = o.record;
     const current = state.question?.id === sessionQuestionId;
     switch (o.type) {
@@ -236,6 +256,33 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
     }
   };
 
+  /** What the outbox found out about a question to the teacher. */
+  function onAskOutcome(o: AnswerOutcome) {
+    const { key } = o.record;
+    switch (o.type) {
+      case "saved":
+        dispatch({ type: "ask.saved", key });
+        return;
+      case "delivered":
+        dispatch({ type: "ask.sent", key, duplicate: o.duplicate });
+        // The server's count is the truth (a repeat, or another device, may have changed it).
+        refresh();
+        return;
+      case "ended":
+        dispatch({ type: "ask.refused", key, reason: "session_ended" });
+        refresh();
+        return;
+      case "dropped":
+        dispatch({ type: "ask.refused", key, reason: o.code === "limit_reached" ? "limit_reached" : "failed" });
+        refresh();
+        return;
+      case "late":
+      case "expired":
+        dispatch({ type: "ask.refused", key, reason: "failed" });
+        return;
+    }
+  }
+
   const onMessage = (m: RealtimeMessage) => {
     if (disposed) return;
     let event;
@@ -252,6 +299,28 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
     dispatch({ type: "event", event, receivedAt: now() });
     tellEnded();
   };
+
+  /**
+   * The question that is open for this student at a local time, for the focus flag: open by the engine's state and by the
+   * server's clock, so a question whose time has run out but whose `closed` has not arrived is not counted.
+   */
+  const openQuestion = (at: number): Id | null => {
+    const q = state.question;
+    if (!q || q.status !== "open" || !state.session || state.session.state === "ended") return null;
+    const server = toServer(state.clock, at);
+    if (q.firedAt !== null && server < q.firedAt) return null;
+    if (q.closesAt !== null && server >= q.closesAt) return null;
+    return q.id;
+  };
+  const tracker: FocusTracker | null = deps.focus
+    ? createFocusTracker({
+        openQuestion,
+        toServer: (at) => toServer(state.clock, at),
+        emit: (e) => deps.focus!.add({ ...e, studentId: deps.meId, sessionId }),
+        enabled: deps.focusEnabled ?? (() => true),
+        now,
+      })
+    : null;
 
   const stops = [
     transport.subscribe(publicChannel(sessionId), onMessage),
@@ -308,6 +377,23 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
     skipReason() {
       dispatch({ type: "reason.skip" });
     },
+    ask(text) {
+      const key = (deps.newKey ?? randomKey)();
+      dispatch({ type: "ask", text, key, now: now() });
+      const own = state.asks.find((a) => a.key === key);
+      if (!own) return null;
+      // Saved on the phone first, then sent until the server has spoken (outbox.ts). There is no question to answer, so none is named.
+      void deps.outbox.enqueue({ kind: "ask", key, studentId: deps.meId, sessionId, sessionQuestionId: "", response: own.text, answeredAt: own.at });
+      const timer = setTimeout(() => {
+        savedTimers.delete(timer);
+        if (!disposed) dispatch({ type: "ask.saved", key });
+      }, SAVED_AFTER_MS);
+      savedTimers.add(timer);
+      return key;
+    },
+    focus(signal) {
+      tracker?.signal(signal);
+    },
     retry() {
       failed = null;
       failures = 0;
@@ -326,6 +412,7 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
       clearTimeout(timers.deadline);
       savedTimers.forEach(clearTimeout);
       savedTimers.clear();
+      tracker?.dispose();
       clearInterval(timers.tick);
       listeners.clear();
       transport.close();

@@ -32,8 +32,10 @@ export type NetInput = {
 
 export type NetView = {
   banner: Banner | null;
-  /** Answers saved and not yet sent. */
+  /** Answers (and questions to the teacher) saved and not yet sent. */
   pending: number;
+  /** Of those, the questions to the teacher. */
+  asks: number;
   /** Answers that were waiting have just arrived. */
   sent: boolean;
 };
@@ -49,14 +51,15 @@ export function badOf(i: NetInput): "offline" | "reconnecting" | null {
   return i.link === "reconnecting" || i.syncing || i.failing ? "reconnecting" : null;
 }
 
-export const QUIET: NetView = { banner: null, pending: 0, sent: false };
+export const QUIET: NetView = { banner: null, pending: 0, asks: 0, sent: false };
 
-const sameView = (a: NetView, b: NetView) => a.banner === b.banner && a.pending === b.pending && a.sent === b.sent;
+const sameView = (a: NetView, b: NetView) => a.banner === b.banner && a.pending === b.pending && a.asks === b.asks && a.sent === b.sent;
 
 export function createNetStore(now: () => number = Date.now) {
   let input: NetInput = { online: true, link: null, syncing: false, failing: false };
   let forcedOffline = false;
   let pending = 0;
+  let asks = 0;
   let badSince: number | null = null;
   let shown: "offline" | "reconnecting" | null = null;
   let backUntil = 0;
@@ -84,7 +87,7 @@ export function createNetStore(now: () => number = Date.now) {
     }
     for (const until of [backUntil, sentUntil]) if (until > t) next = next === null ? until : Math.min(next, until);
 
-    const out: NetView = { banner: shown ?? (t < backUntil ? "back" : null), pending, sent: t < sentUntil };
+    const out: NetView = { banner: shown ?? (t < backUntil ? "back" : null), pending, asks, sent: t < sentUntil };
     if (!sameView(view, out)) {
       view = out;
       listeners.forEach((l) => l());
@@ -125,9 +128,10 @@ export function createNetStore(now: () => number = Date.now) {
       recompute();
     },
     /** The outbox reports how many answers wait, and whether it is failing to send them. */
-    setOutbox(status: { pending: number; failing: boolean }) {
+    setOutbox(status: { pending: number; pendingAsks?: number; failing: boolean }) {
       const emptied = pending > 0 && status.pending === 0 && !status.failing;
       pending = status.pending;
+      asks = status.pendingAsks ?? 0;
       input = { ...input, failing: status.failing };
       if (emptied) sentUntil = now() + FLASH_MS;
       recompute();

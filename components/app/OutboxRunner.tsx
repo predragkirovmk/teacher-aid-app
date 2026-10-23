@@ -6,7 +6,7 @@ import { useQT } from "@/lib/app/quiz-copy";
 import { onSyncWake } from "@/lib/app/session/background-sync";
 import { net } from "@/lib/app/session/net";
 import { OUTBOX_STUDENT_KEY } from "@/lib/app/session/outbox-store";
-import { outbox } from "@/lib/app/session/send";
+import { focusQueue, outbox } from "@/lib/app/session/send";
 
 /**
  * Keeps the answer outbox going for as long as the app is open (spec F-08). When a student is signed in
@@ -36,15 +36,20 @@ export function OutboxRunner({ meId }: { meId: string | undefined }) {
         // blocked storage: only the count while the server is out of reach is lost
       }
       void outbox.start(meId);
+      focusQueue.start(meId);
     } else {
       outbox.stop();
+      focusQueue.stop();
       const last = remembered();
       if (last) void outbox.peek(last);
     }
   }, [meId]);
 
   useEffect(() => {
-    const flush = () => void outbox.flush();
+    const flush = () => {
+      void outbox.flush();
+      void focusQueue.flush();
+    };
     const visible = () => document.visibilityState === "visible" && flush();
     window.addEventListener("online", flush);
     window.addEventListener("pageshow", flush);

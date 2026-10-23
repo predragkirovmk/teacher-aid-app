@@ -12,7 +12,7 @@ export const OUTBOX_STUDENT_KEY = "teacheraid-outbox-student";
 
 /** One answer, opener vote or opener reason waiting to reach the server. */
 export type OutboxRecord = {
-  /** Which endpoint it goes to: `/answers`, `/opener/vote` or `/opener/reason`. For a reason `response` is the text. */
+  /** Which endpoint it goes to: `/answers`, `/opener/vote`, `/opener/reason` or `/anon-questions`. For a reason or a question to the teacher `response` is the text (and a question to the teacher has no `sessionQuestionId`). */
   kind: SubmissionKind;
   /** The idempotency key: the server stores one answer per key, so a resend is safe (EC-NET-06). */
   key: string;
