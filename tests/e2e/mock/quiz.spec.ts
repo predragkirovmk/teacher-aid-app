@@ -59,6 +59,8 @@ test("a whole lesson: answer every question, see each verdict, the ending and th
   await expect(page).toHaveURL(/\/app\/summary\/mock-session-math/);
   await expect(page.getByText("Линеарни равенки")).toBeVisible();
   await expect(page.getByRole("listitem")).toHaveCount(5);
+  // The teacher's practice set from the questions the class missed is one row away, new.
+  await expect(page.getByRole("link", { name: new RegExp(mk.t("pr.fromLesson")) })).toContainText(mk.t("pr.state.new"));
 
   // The first answer unlocks its achievement, right or wrong; Home's latest result is this lesson.
   await page.goto("/app/achievements");

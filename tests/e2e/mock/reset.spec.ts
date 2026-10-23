@@ -17,5 +17,6 @@ test("reset demo clears check-ins and read alerts", async ({ page }) => {
   await page.goto("/app");
   await expect(page.getByRole("link", { name: new RegExp(mk.t("home.attendance")) })).toContainText("87%");
   await page.goto("/app/notifications");
-  await expect(page.locator(".item--unread")).toHaveCount(2);
+  // Two alerts and the practice set the teacher sent.
+  await expect(page.locator(".item--unread")).toHaveCount(3);
 });
