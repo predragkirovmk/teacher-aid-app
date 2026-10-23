@@ -1243,3 +1243,143 @@ test.describe("a live session with questions to the teacher and the focus flag",
     });
   });
 });
+
+/**
+ * Practice sets and the results history against the API (F-12, US-S07, US-S08). The fake server holds the right answers and says right or wrong
+ * for each answer as it comes; the first set is three questions on the maths lesson: 2x = 6 (the second choice), a square's sides (true) and
+ * 9 divided by 4 (2.25). A right answer is 5 points.
+ */
+test.describe("practice and the history of results", () => {
+  type Req = import("@playwright/test").APIRequestContext;
+  const SET = "/app/practice/ps-1";
+  const progress = (n: number) => mk.t("pr.progress", { n, total: 3 });
+  const bodies = async (request: Req) => (await serverState(request)) as unknown as { practiceBodies: { id: string; body: { answers: { question_id: string; response: string }[] } }[]; queries: Record<string, string> };
+  const check = (page: Page) => page.getByRole("button", { name: mk.t("pr.check") });
+
+  test("Home offers the set the API lists, and a subject draws its lessons and topics from the API", async ({ page, request }) => {
+    await page.goto("/app");
+    await expect(page.getByRole("link", { name: new RegExp(`^${mk.t("pr.title")}`) })).toContainText(mk.t("pr.home.new1", { subject: mk.t("subj.math") }));
+
+    await page.goto("/app/subject/c-math");
+    // The lessons of this course only, asked of the API with the course; the other course's lesson is not here.
+    const lessons = page.getByRole("heading", { name: mk.t("res.recent") }).locator("xpath=ancestor::section[1]");
+    await expect(lessons.getByRole("listitem")).toHaveCount(2);
+    await expect(lessons).toContainText("Linear equations");
+    await expect(lessons).toContainText("Fractions");
+    await expect(lessons).not.toContainText("Motion");
+    expect((await bodies(request)).queries["GET /me/results"]).toBe("?course=c-math");
+
+    // A topic with three lessons is a line, with its numbers behind it.
+    const equations = page.getByRole("figure").filter({ hasText: "Linear equations" });
+    await expect(equations.getByText(mk.t("topic.range", { from: 40, to: 80, n: 3 }))).toBeVisible();
+    await expect(equations.getByRole("table").getByRole("row")).toHaveCount(4);
+    await expect(page.getByRole("figure").filter({ hasText: "Motion" })).toHaveCount(0);
+    // The set is in its subject, new.
+    await expect(page.getByRole("link", { name: new RegExp(mk.t("pr.state.new")) })).toBeVisible();
+
+    await page.goto("/app/subject/c-phys");
+    const motion = page.getByRole("figure").filter({ hasText: "Motion" });
+    await expect(motion.getByText(mk.t("topic.one", { right: 3, total: 4 }))).toBeVisible();
+    await expect(motion.locator(".tc__chart")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: mk.t("pr.title") })).toHaveCount(0);
+  });
+
+  test("a set is answered one question at a time, each verdict from the server, and the progress is the server's", async ({ page, request }) => {
+    await page.goto(SET);
+    await expect(page.getByText(progress(1))).toBeVisible();
+    // Reading the set tells nothing of the right answers.
+    await page.locator(".q-opt").nth(1).click();
+    await check(page).click();
+    const verdict = page.getByRole("status").filter({ hasText: mk.t("pr.right") });
+    await expect(verdict).toContainText(mk.t("pr.gain", { n: 5 }));
+    await expect(verdict).toContainText("Divide both sides by 2");
+    expect((await bodies(request)).practiceBodies).toEqual([{ id: "ps-1", body: { answers: [{ question_id: "pq-1", response: "1" }] } }]);
+
+    // Leave and come back: the API has the first answer, so the set opens on the second question.
+    await page.reload();
+    await expect(page.getByText(progress(2))).toBeVisible();
+    await page.locator(".q-tf__btn").nth(1).click();
+    await check(page).click();
+    const wrong = page.getByRole("status").filter({ hasText: mk.t("pr.wrong") });
+    await expect(wrong).toContainText(mk.t("pr.correctIs", { a: mk.q("q.true") }));
+    await expect(page.locator(".q-tf__btn").nth(0)).toHaveAttribute("data-state", "right");
+    await expect(page.locator(".q-tf__btn").nth(1)).toHaveAttribute("data-state", "miss");
+    await page.getByRole("button", { name: mk.t("pr.next") }).click();
+
+    // A number typed with a comma goes as plain text with a point.
+    await expect(page.getByText(progress(3))).toBeVisible();
+    await page.locator(".n-input").fill("2,25");
+    await page.locator(".n-input").press("Enter");
+    await expect(page.getByRole("status").filter({ hasText: mk.t("pr.right") })).toBeVisible();
+    await page.getByRole("button", { name: mk.t("pr.result") }).click();
+
+    await expect(page.getByRole("heading", { name: mk.t("pr.done.score", { score: 2, total: 3 }) })).toBeVisible();
+    await expect(page.getByText(mk.t("pr.gain", { n: 10 }))).toBeVisible();
+    const sent = (await bodies(request)).practiceBodies.map((b) => b.body.answers[0]);
+    expect(sent).toEqual([
+      { question_id: "pq-1", response: "1" },
+      { question_id: "pq-2", response: "false" },
+      { question_id: "pq-3", response: "2.25" },
+    ]);
+
+    // Done is done: Home no longer offers it, and the list says how it went.
+    await page.getByRole("button", { name: mk.t("close"), exact: true }).click();
+    await page.goto("/app");
+    await expect(page.getByRole("link", { name: new RegExp(`^${mk.t("pr.title")}`) })).toHaveCount(0);
+    await page.goto("/app/practice");
+    await expect(page.getByRole("link", { name: new RegExp(mk.t("pr.state.done", { score: 2, n: 3 })) })).toBeVisible();
+  });
+
+  test("a set finished somewhere else opens on its result", async ({ page, request }) => {
+    const answers = [
+      { question_id: "pq-1", response: "1" },
+      { question_id: "pq-2", response: "true" },
+      { question_id: "pq-3", response: "2.25" },
+    ];
+    const res = await request.post(`${API}/api/v1/practice-sets/ps-1/answers`, { data: { answers } });
+    expect(await res.json()).toMatchObject({ score: 3, total: 3, points: 15, completed: true });
+    await page.goto(SET);
+    await expect(page.getByRole("heading", { name: mk.t("pr.done.score", { score: 3, total: 3 }) })).toBeVisible();
+    await expect(page.getByText(mk.t("pr.done.all"))).toBeVisible();
+  });
+
+  test.describe("with no signal", () => {
+    // The browser logs the requests that a dead signal refuses.
+    test.use({ allowConsoleErrors: [/Failed to load resource: net::ERR_/] });
+
+    test("an answer given with no signal waits on the phone and is sent, with its verdict shown, when the signal is back", async ({ page, request, context }) => {
+      await page.goto(SET);
+      await expect(page.getByText(progress(1))).toBeVisible();
+      await context.setOffline(true);
+      await expect(page.getByText(mk.q("net.offline"))).toBeVisible();
+
+      await page.locator(".q-opt").nth(1).click();
+      await check(page).click();
+      // Saved and said so, nothing called right or wrong, and the way on is offered.
+      await expect(page.getByText(mk.t("pr.saved"))).toBeVisible();
+      await expect(page.getByText(mk.t("pr.wrong"))).toHaveCount(0);
+      await expect(page.locator(".q-opt").nth(1)).toBeDisabled();
+      expect((await bodies(request)).practiceBodies).toEqual([]);
+
+      await context.setOffline(false);
+      await expect(page.getByRole("status").filter({ hasText: mk.t("pr.right") })).toBeVisible({ timeout: 15_000 });
+      expect((await bodies(request)).practiceBodies).toHaveLength(1);
+      await expect(page.locator(".q-opt").nth(1)).toHaveAttribute("data-state", "right");
+    });
+  });
+
+  test("a set the teacher sends arrives as an alert, and opens", async ({ page, request }) => {
+    await request.post(`${API}/__control/practice/send`);
+    await page.goto("/app/notifications");
+    await page.getByRole("link", { name: new RegExp(mk.t("notif.practice_set_sent.title", { subject: mk.t("subj.math") })) }).click();
+    await page.getByRole("link", { name: mk.t("notif.open.practice") }).click();
+    await expect(page).toHaveURL(/\/app\/practice\/ps-2$/);
+    await expect(page.getByText(progress(1))).toBeVisible();
+    await expect(page.getByRole("heading", { name: "2x = 10. What is x?" })).toBeVisible();
+    // Two sets now, the newest first, and opening it read its alert.
+    await page.goto("/app/practice");
+    await expect(page.getByRole("list").first().getByRole("listitem")).toHaveCount(2);
+    await page.goto("/app/notifications");
+    await expect(page.locator(".item--unread")).toHaveCount(2);
+  });
+});

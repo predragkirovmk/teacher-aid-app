@@ -56,6 +56,13 @@
  * snapshot says how many are used and the limit (`anon_questions`). The focus flag is `POST /sessions/{id}/focus-events`, a bare
  * array of `{ type, at, session_question_id }`: a `lost` inside that question's window is flagged, anything else is only stored
  * (AC-FOC-01, AC-FOC-02), the same event twice is one, and every batch is kept in state.session.focusBatches to see how they came.
+ *
+ * The history and practice (F-12, spec 11.3): `GET /me/results` (`?course=` filters it, the query of each call is kept in state.queries), `GET /me/topics`,
+ * `GET /me/practice-sets` and `POST /practice-sets/{id}/answers`. The server holds the right answers: a set lists a question with what the student answered
+ * and the verdict once there is one, and nothing before. An answer body is `{ answers: [{ question_id, response }] }`; the first answer to a question stands, a
+ * repeat gets the stored verdict with `duplicate`, a right answer is PRACTICE_POINTS, a response the question cannot have is `validation_failed` (422), a question
+ * that is not the set's is `not_found` (404); a number is read with a comma or a point. Every body is kept in state.practiceBodies, in order.
+ *   POST /__control/practice/send     the teacher sends a set from the live lesson's questions: a new set, and its alert
  * Class codes: LIVE-7B joins; EXPIRED-7B, OTHER-8A and ENDED-7B are refused as the API would; any other is unknown.
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
@@ -183,6 +190,89 @@ type OpenerLive = {
   result: null | { correct: boolean | null; points: number; reasonPoints: number };
 };
 
+// ---- Practice sets (F-12) --------------------------------------------------------------------------------
+
+type PracticeQuestionData = {
+  id: string;
+  kind: "multiple_choice" | "true_false" | "numeric";
+  prompt: string;
+  options: string[] | null;
+  numeric: { unit: string | null; allow_negative: boolean } | null;
+  /** In the encoding of spec 3.2. */
+  correct: string;
+  tolerance: number;
+  explanation: string | null;
+};
+type PracticeSetData = {
+  id: string;
+  session_id: string;
+  course_id: string;
+  subject: { id: string; name: string };
+  lesson_title: string;
+  created_at: string;
+  questions: PracticeQuestionData[];
+};
+/** What a right answer is worth (PROPOSED, BR-PTS-03). */
+const PRACTICE_POINTS = 5;
+
+/** The set the student starts with: three questions on the maths lesson that ended yesterday. */
+function practiceSetOne(): PracticeSetData {
+  return {
+    id: "ps-1",
+    session_id: "se-1",
+    course_id: "c-math",
+    subject: subject("math", "Mathematics"),
+    lesson_title: "Linear equations",
+    created_at: iso(DAY / 2),
+    questions: [
+      {
+        id: "pq-1",
+        kind: "multiple_choice",
+        prompt: "2x = 6. What is x?",
+        options: ["2", "3", "6", "12"],
+        numeric: null,
+        correct: "1",
+        tolerance: 0,
+        explanation: "Divide both sides by 2: x = 3.",
+      },
+      {
+        id: "pq-2",
+        kind: "true_false",
+        prompt: "A square has four equal sides.",
+        options: null,
+        numeric: null,
+        correct: "true",
+        tolerance: 0,
+        explanation: null,
+      },
+      {
+        id: "pq-3",
+        kind: "numeric",
+        prompt: "What is 9 divided by 4?",
+        options: null,
+        numeric: { unit: null, allow_negative: false },
+        correct: "2.25",
+        tolerance: 0.01,
+        explanation: "9 ÷ 4 is 2 and a quarter: 2.25.",
+      },
+    ],
+  };
+}
+
+/** The topics: how the student did on each, lesson by lesson. */
+const TOPICS = () => [
+  {
+    topic: "Linear equations",
+    subject_id: "math",
+    points: [
+      { at: iso(20 * DAY), right: 2, total: 5 },
+      { at: iso(13 * DAY), right: 3, total: 5 },
+      { at: iso(DAY), right: 4, total: 5 },
+    ],
+  },
+  { topic: "Motion", subject_id: "physics", points: [{ at: iso(5 * DAY), right: 3, total: 4 }] },
+];
+
 const initial = () => ({
   /** Why every call is refused, or null while the student is signed in. */
   signedOut: null as null | "unauthenticated" | "signed_in_elsewhere",
@@ -236,6 +326,14 @@ const initial = () => ({
   calls: [] as string[],
   /** The last body of each write, by "METHOD path". */
   bodies: {} as Record<string, unknown>,
+  /** The query string of the last call of each "METHOD path". */
+  queries: {} as Record<string, string>,
+  /** The practice sets the teacher sent, oldest first, and what the student answered in each. */
+  practiceSets: [practiceSetOne()] as PracticeSetData[],
+  practiceAnswers: {} as Record<string, Record<string, string>>,
+  practiceDone: {} as Record<string, string>,
+  /** Every body of `POST /practice-sets/{id}/answers`, in the order they came, with the set's id. */
+  practiceBodies: [] as { id: string; body: unknown }[],
 });
 
 let state = initial();
@@ -264,6 +362,26 @@ const RESULTS: WireResult[] = [
       { id: "q-1", prompt: "2x = 10, x = ?", correct: true, correct_answer: "5", your_answer: "5" },
       { id: "q-2", prompt: "3x + 1 = 10, x = ?", correct: false, correct_answer: "3", your_answer: "4" },
     ],
+  },
+  {
+    session_id: "se-0",
+    course_id: "c-math",
+    subject: subject("math", "Mathematics"),
+    lesson_title: "Fractions",
+    ended_at: iso(8 * DAY),
+    right: 3,
+    total: 5,
+    questions: [{ id: "q-0", prompt: "1/2 + 1/4 = ?", correct: true, correct_answer: "3/4", your_answer: "3/4" }],
+  },
+  {
+    session_id: "se-p1",
+    course_id: "c-phys",
+    subject: subject("physics", "Physics"),
+    lesson_title: "Motion",
+    ended_at: iso(5 * DAY),
+    right: 3,
+    total: 4,
+    questions: [{ id: "q-p", prompt: "Speed is distance over what?", correct: true, correct_answer: "Time", your_answer: "Time" }],
   },
 ];
 
@@ -739,6 +857,120 @@ function teacher(action: string, body: Record<string, unknown>) {
   }
 }
 
+// ---- Practice ---------------------------------------------------------------------------------------------
+
+/** Whether `response` is right for the question: the same choice, or a number within the tolerance. */
+const practiceRight = (q: PracticeQuestionData, response: string) =>
+  q.kind === "numeric" ? Math.abs(Number(response) - Number(q.correct)) <= q.tolerance + 1e-9 : response === q.correct;
+
+/** What the question keeps of a response, or null when it cannot be one: a number is read with a comma or a point. */
+function practiceClean(q: PracticeQuestionData, response: unknown): string | null {
+  if (typeof response !== "string") return null;
+  if (q.kind === "true_false") return response === "true" || response === "false" ? response : null;
+  if (q.kind === "multiple_choice") return /^\d+$/.test(response) && Number(response) < (q.options?.length ?? 0) ? response : null;
+  const m = /^(-)?(\d+)(?:[.,](\d+))?$/.exec(response.trim());
+  if (!m || (m[1] && !q.numeric?.allow_negative)) return null;
+  return `${m[1] ?? ""}${Number(m[2])}${m[3] ? `.${m[3].replace(/0+$/, "")}`.replace(/\.$/, "") : ""}`;
+}
+
+const practiceVerdict = (q: PracticeQuestionData, response: string) => ({
+  correct: practiceRight(q, response),
+  correct_answer: q.correct,
+  explanation: q.explanation,
+});
+
+/** A set as the student sees it: each question with the answer and verdict if there is one, and nothing else about the right answer. */
+function practiceWire(set: PracticeSetData) {
+  const answers = state.practiceAnswers[set.id] ?? {};
+  const questions = set.questions.map((q) => ({
+    id: q.id,
+    kind: q.kind,
+    prompt: q.prompt,
+    options: q.options,
+    numeric: q.numeric,
+    answer: answers[q.id] === undefined ? null : { response: answers[q.id], ...practiceVerdict(q, answers[q.id]) },
+  }));
+  const right = set.questions.filter((q) => answers[q.id] !== undefined && practiceRight(q, answers[q.id])).length;
+  return {
+    id: set.id,
+    session_id: set.session_id,
+    course_id: set.course_id,
+    subject_id: set.subject.id,
+    lesson_title: set.lesson_title,
+    created_at: set.created_at,
+    completed_at: state.practiceDone[set.id] ?? null,
+    score: Object.keys(answers).length > 0 ? right : null,
+    points: right * PRACTICE_POINTS,
+    questions,
+  };
+}
+
+async function practiceAnswer(res: ServerResponse, req: IncomingMessage, id: string) {
+  const body = (await readJson(req)) as { answers?: { question_id?: string; response?: unknown }[] } | undefined;
+  state.bodies[`POST /practice-sets/${id}/answers`] = body;
+  state.practiceBodies.push({ id, body });
+  const set = state.practiceSets.find((p) => p.id === id);
+  if (!set) return fail(res, 404, "not_found");
+  if (!Array.isArray(body?.answers) || body.answers.length === 0) return fail(res, 422, "validation_failed");
+  const held = state.practiceAnswers[id] ?? {};
+  const fresh: Record<string, string> = {};
+  for (const a of body.answers) {
+    const q = set.questions.find((x) => x.id === a.question_id);
+    if (!q) return fail(res, 404, "not_found");
+    if (held[q.id] === undefined && fresh[q.id] === undefined) {
+      const clean = practiceClean(q, a.response);
+      if (clean === null) return fail(res, 422, "validation_failed");
+      fresh[q.id] = clean;
+    }
+  }
+  const all = { ...held, ...fresh };
+  state.practiceAnswers[id] = all;
+  if (set.questions.every((q) => all[q.id] !== undefined)) state.practiceDone[id] ??= new Date().toISOString();
+  const wire = practiceWire(set);
+  return send(res, 200, {
+    score: wire.score ?? 0,
+    total: set.questions.length,
+    points: wire.points,
+    completed: wire.completed_at !== null,
+    results: body.answers.map((a) => {
+      const q = set.questions.find((x) => x.id === a.question_id)!;
+      return { question_id: q.id, duplicate: held[q.id] !== undefined, ...practiceVerdict(q, all[q.id]) };
+    }),
+  });
+}
+
+/** The teacher sends the class a set built from the live lesson's questions (F-12), and the student gets an alert. */
+function practiceSend() {
+  const id = `ps-${state.practiceSets.length + 1}`;
+  const pick = (q: LessonQuestion): PracticeQuestionData => ({
+    id: `${id}-${q.id}`,
+    kind: q.kind,
+    prompt: q.prompt,
+    options: q.options,
+    numeric: q.numeric ? { unit: q.numeric.unit, allow_negative: q.numeric.allow_negative } : null,
+    correct: q.correct,
+    tolerance: q.numeric?.tolerance ?? 0,
+    explanation: null,
+  });
+  state.practiceSets.push({
+    id,
+    session_id: SESSION_ID,
+    course_id: "c-math",
+    subject: subject("math", "Mathematics"),
+    lesson_title: "Linear equations",
+    created_at: new Date().toISOString(),
+    questions: [LESSON[0], LESSON[2], LESSON[3]].map(pick),
+  });
+  state.notifications.unshift({
+    id: `n-${id}`,
+    kind: "practice_set_sent",
+    payload: { course_id: "c-math", subject_id: "math", subject_name: "Mathematics", practice_set_id: id },
+    created_at: new Date().toISOString(),
+    read_at: null,
+  });
+  broadcast("student", "notification.created");
+}
+
 function send(res: ServerResponse, status: number, body?: unknown) {
   if (body === undefined) {
     res.writeHead(status).end();
@@ -805,6 +1037,10 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     state.tokenExpired = true;
     return send(res, 204);
   }
+  if (path === "/__control/practice/send" && method === "POST") {
+    practiceSend();
+    return send(res, 204);
+  }
   if (path.startsWith("/__control/session/") && method === "POST") {
     teacher(path.slice("/__control/session/".length), ((await readJson(req)) as Record<string, unknown> | undefined) ?? {});
     return send(res, 204);
@@ -818,6 +1054,7 @@ async function route(req: IncomingMessage, res: ServerResponse) {
   if (!path.startsWith("/api/v1/")) return fail(res, 404, "not_found");
   const api = path.slice("/api/v1".length);
   state.calls.push(`${method} ${api}`);
+  state.queries[`${method} ${api}`] = url.search;
 
   if (method === "POST" && api === "/auth/student/start") {
     const body = (await readJson(req)) as { school_email?: string; return_to?: string } | undefined;
@@ -861,13 +1098,19 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     if (api === "/me") return send(res, 200, state.student);
     if (api === "/me/courses") return send(res, 200, COURSES);
     if (api === "/me/attendance") return send(res, 200, ATTENDANCE);
-    if (api === "/me/results") return send(res, 200, [...state.endedResults, ...RESULTS]);
-    if (api === "/me/topics") return send(res, 200, []);
+    if (api === "/me/results") {
+      const course = url.searchParams.get("course");
+      return send(res, 200, [...state.endedResults, ...RESULTS].filter((r) => !course || r.course_id === course));
+    }
+    if (api === "/me/topics") return send(res, 200, TOPICS());
     if (api === "/me/leaderboard") return send(res, 200, LEADERBOARD());
     if (api === "/me/badges") return send(res, 200, BADGES);
     if (api === "/me/notifications") return send(res, 200, [...state.notifications].sort((a, b) => b.created_at.localeCompare(a.created_at)));
-    if (api === "/me/practice-sets") return send(res, 200, []);
+    if (api === "/me/practice-sets") return send(res, 200, [...state.practiceSets].reverse().map(practiceWire));
   }
+
+  const practice = /^\/practice-sets\/([^/]+)\/answers$/.exec(api);
+  if (practice && method === "POST") return practiceAnswer(res, req, decodeURIComponent(practice[1]));
 
   if (method === "POST" && api === "/me/notifications/read") {
     const body = (await readJson(req)) as { all?: boolean; ids?: string[] } | undefined;
