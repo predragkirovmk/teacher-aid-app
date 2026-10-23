@@ -6,6 +6,7 @@ import { ViewTransition } from "react";
 import { notFound, useParams } from "next/navigation";
 import { Gate } from "@/components/app/QueryState";
 import { SubjectCard } from "@/components/app/SubjectCard";
+import { SubjectPractice, SubjectResults, SubjectTopics } from "@/components/app/SubjectHistory";
 import { Top } from "@/components/app/Top";
 import { demoOnly } from "@/lib/app/api";
 import { useAttendance, useCourse } from "@/lib/app/api/hooks";
@@ -74,6 +75,9 @@ function CourseView({ course }: { course: Course }) {
             {t("subject.checkin")}
           </Link>
         )}
+        <SubjectPractice course={course} />
+        <SubjectResults course={course} />
+        <SubjectTopics course={course} />
       </div>
     </main>
   );

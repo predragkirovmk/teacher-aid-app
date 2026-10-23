@@ -1,17 +1,29 @@
 "use client";
 
 import { Gate } from "@/components/app/QueryState";
-import { SummaryEmpty, SummaryResult } from "@/components/app/Summary";
+import { ResultList } from "@/components/app/Results";
 import { Top } from "@/components/app/Top";
-import { useLatestResult } from "@/lib/app/api/hooks";
+import { useResults } from "@/lib/app/api/hooks";
 import { useT } from "@/lib/app/i18n";
 
-export default function Summary() {
+/** Every finished lesson, newest first; each opens its summary. */
+export default function Results() {
   const { t } = useT();
-  const latest = useLatestResult();
+  const results = useResults();
   return (
-    <Gate query={latest} header={<Top title={t("sum.title")} />}>
-      {(result) => (result ? <SummaryResult result={result} /> : <SummaryEmpty />)}
+    <Gate query={results} header={<Top title={t("res.title")} />}>
+      {(all) => (
+        <main className="screen">
+          <Top title={t("res.title")} />
+          {all.length === 0 ? (
+            <p className="muted" style={{ textAlign: "center", marginTop: 60 }}>
+              {t("sum.empty")}
+            </p>
+          ) : (
+            <ResultList results={all} />
+          )}
+        </main>
+      )}
     </Gate>
   );
 }

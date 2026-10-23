@@ -25,24 +25,6 @@ export function NumericQuestion({ run, onLeave, onPick }: { run: SessionRunView;
   const { t } = useQT();
   const q = run.question!;
   const info = q.numeric ?? { unit: null, tolerance: 0, allowNegative: false };
-  const [text, setText] = useState("");
-  const [problem, setProblem] = useState<NumericProblem | null>(null);
-  const input = useRef<HTMLInputElement>(null);
-  const id = useId();
-  const hintId = `${id}-hint`;
-  const errorId = `${id}-error`;
-
-  const lock = () => {
-    const parsed = parseNumeric(text, info.allowNegative);
-    if (!parsed.ok) {
-      setProblem(parsed.problem);
-      buzz(40);
-      input.current?.focus();
-      return;
-    }
-    buzz(14);
-    startTransition(() => onPick(parsed.value));
-  };
 
   return (
     <>
@@ -55,82 +37,149 @@ export function NumericQuestion({ run, onLeave, onPick }: { run: SessionRunView;
       />
       <div className="q-body q-ask q-ask--num" key={`ask-${q.id}`}>
         <h1 className="q-question q-question--num">{q.prompt}</h1>
-        <form
-          className="n-form"
-          noValidate
-          onSubmit={(e) => {
-            e.preventDefault();
-            lock();
+        <NumberField
+          unit={info.unit}
+          allowNegative={info.allowNegative}
+          submitLabel={t("n.lock")}
+          morph
+          onSubmit={(value) => {
+            buzz(14);
+            startTransition(() => onPick(value));
           }}
-        >
-          <label className="t-label n-label" htmlFor={id}>
-            {t("n.label")}
-          </label>
-          <div className="n-row">
-            {info.allowNegative && (
-              <button
-                type="button"
-                className="n-minus"
-                aria-label={t("n.minus")}
-                onClick={() => {
-                  setText(toggleMinus(text));
-                  setProblem(null);
-                  // Keeps the keypad up: the tap would otherwise take the focus with it.
-                  input.current?.focus();
-                }}
-              >
-                <MinusIcon size={26} weight="bold" aria-hidden="true" />
-              </button>
-            )}
-            <ViewTransition name="q-pick-n" share="q-morph" default="none">
-              <div className="n-box" data-invalid={problem !== null}>
-                <input
-                  ref={input}
-                  id={id}
-                  className="n-input"
-                  type="text"
-                  inputMode="decimal"
-                  enterKeyHint="send"
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  autoFocus
-                  maxLength={20}
-                  value={text}
-                  aria-invalid={problem !== null}
-                  aria-describedby={problem ? errorId : hintId}
-                  onChange={(e) => {
-                    setText(e.target.value);
-                    setProblem(null);
-                  }}
-                />
-                {info.unit && (
-                  <span className="n-unit" aria-hidden="true">
-                    {info.unit}
-                  </span>
-                )}
-              </div>
-            </ViewTransition>
-          </div>
-          {/* One slot for the hint and the problem, so the lock button does not move when a problem appears. */}
-          <div className="n-slot">
-            {problem ? (
-              <p id={errorId} className="n-err" role="alert">
-                <WarningCircleIcon size={20} weight="bold" aria-hidden="true" />
-                {t(PROBLEM[problem])}
-              </p>
-            ) : (
-              <p id={hintId} className="t-cap n-hint">
-                {info.unit ? t("n.hintUnit", { unit: info.unit }) : t("n.hint")}
-              </p>
-            )}
-          </div>
-          <button type="submit" className="btn btn--primary btn--block n-lock">
-            {t("n.lock")}
-          </button>
-        </form>
+        />
       </div>
     </>
+  );
+}
+
+/**
+ * The number field and the button that sends it, shared by the live quiz and practice. It reads what was typed
+ * (lib/app/numeric.ts) and hands the canonical text to `onSubmit`, or says in words what is wrong with it.
+ * `morph` names the field for the view transition into the locked card; `locked` shows a number already given.
+ */
+export function NumberField({
+  unit,
+  allowNegative,
+  submitLabel,
+  onSubmit,
+  morph = false,
+  locked = null,
+  autoFocus = true,
+}: {
+  unit: string | null;
+  allowNegative: boolean;
+  submitLabel: string;
+  onSubmit: (value: string) => void;
+  morph?: boolean;
+  /** A number the student has given, shown in the field, which is then closed. */
+  locked?: string | null;
+  autoFocus?: boolean;
+}) {
+  const { t } = useQT();
+  const [text, setText] = useState("");
+  const [problem, setProblem] = useState<NumericProblem | null>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const id = useId();
+  const hintId = `${id}-hint`;
+  const errorId = `${id}-error`;
+
+  const lock = () => {
+    const parsed = parseNumeric(text, allowNegative);
+    if (!parsed.ok) {
+      setProblem(parsed.problem);
+      buzz(40);
+      input.current?.focus();
+      return;
+    }
+    onSubmit(parsed.value);
+  };
+
+  const box = (
+    <div className="n-box" data-invalid={problem !== null}>
+      <input
+        ref={input}
+        id={id}
+        className="n-input"
+        type="text"
+        inputMode="decimal"
+        enterKeyHint="send"
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        autoFocus={autoFocus && locked === null}
+        maxLength={20}
+        value={locked ?? text}
+        readOnly={locked !== null}
+        aria-invalid={problem !== null}
+        aria-describedby={problem ? errorId : hintId}
+        onChange={(e) => {
+          setText(e.target.value);
+          setProblem(null);
+        }}
+      />
+      {unit && (
+        <span className="n-unit" aria-hidden="true">
+          {unit}
+        </span>
+      )}
+    </div>
+  );
+
+  return (
+    <form
+      className="n-form"
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (locked === null) lock();
+      }}
+    >
+      <label className="t-label n-label" htmlFor={id}>
+        {t("n.label")}
+      </label>
+      <div className="n-row">
+        {allowNegative && locked === null && (
+          <button
+            type="button"
+            className="n-minus"
+            aria-label={t("n.minus")}
+            onClick={() => {
+              setText(toggleMinus(text));
+              setProblem(null);
+              // Keeps the keypad up: the tap would otherwise take the focus with it.
+              input.current?.focus();
+            }}
+          >
+            <MinusIcon size={26} weight="bold" aria-hidden="true" />
+          </button>
+        )}
+        {morph ? (
+          <ViewTransition name="q-pick-n" share="q-morph" default="none">
+            {box}
+          </ViewTransition>
+        ) : (
+          box
+        )}
+      </div>
+      {/* One slot for the hint and the problem, so the lock button does not move when a problem appears. */}
+      <div className="n-slot">
+        {problem ? (
+          <p id={errorId} className="n-err" role="alert">
+            <WarningCircleIcon size={20} weight="bold" aria-hidden="true" />
+            {t(PROBLEM[problem])}
+          </p>
+        ) : (
+          <p id={hintId} className="t-cap n-hint">
+            {unit ? t("n.hintUnit", { unit }) : t("n.hint")}
+          </p>
+        )}
+      </div>
+      {locked === null && (
+        <button type="submit" className="btn btn--primary btn--block n-lock">
+          {submitLabel}
+        </button>
+      )}
+    </form>
   );
 }

@@ -50,8 +50,11 @@ export function QuizTop({
   done,
   total,
   right,
+  leaveLabel,
 }: {
   onLeave: () => void;
+  /** What the close button is called for a screen reader; the live quiz's by default. */
+  leaveLabel?: string;
   label?: string;
   done?: number;
   total?: number;
@@ -60,7 +63,7 @@ export function QuizTop({
   const { t } = useQT();
   return (
     <header className="q-top">
-      <button className="round" aria-label={t("q.leave")} onClick={onLeave}>
+      <button className="round" aria-label={leaveLabel ?? t("q.leave")} onClick={onLeave}>
         <XIcon size={24} aria-hidden="true" />
       </button>
       <div className="q-top__mid">

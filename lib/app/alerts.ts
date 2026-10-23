@@ -75,7 +75,7 @@ export function alertCopy(t: TFn, locale: Locale, n: AlertItem): AlertCopy {
       return {
         title: t("notif.result_ready.title", { subject }),
         body: t("notif.result_ready.body", { right: n.payload.right ?? 0, total: n.payload.total ?? 0 }),
-        link: "/app/summary",
+        link: n.payload.sessionId ? `/app/summary/${encodeURIComponent(n.payload.sessionId)}` : "/app/summary",
         action: t("notif.open.summary"),
       };
     case "marked_late":
@@ -86,7 +86,12 @@ export function alertCopy(t: TFn, locale: Locale, n: AlertItem): AlertCopy {
         action: t("notif.open.attendance"),
       };
     case "practice_set_sent":
-      return { title: t("notif.practice_set_sent.title", { subject }), body: t("notif.practice_set_sent.body"), link: toSubject, action: openSubject };
+      return {
+        title: t("notif.practice_set_sent.title", { subject }),
+        body: t("notif.practice_set_sent.body"),
+        link: n.payload.practiceSetId ? `/app/practice/${encodeURIComponent(n.payload.practiceSetId)}` : toSubject,
+        action: n.payload.practiceSetId ? t("notif.open.practice") : openSubject,
+      };
     case "badge_earned":
       return { title: t("notif.badge_earned.title"), body: t("notif.badge_earned.body"), link: "/app/achievements", action: t("notif.open.achievements") };
     case "generic":

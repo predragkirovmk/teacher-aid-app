@@ -3,6 +3,7 @@ import { Golos_Text } from "next/font/google";
 import { ServiceWorker } from "@/components/app/ServiceWorker";
 import "./app.css";
 import "./quiz.css";
+import "./practice.css";
 
 const golos = Golos_Text({
   variable: "--font-golos",

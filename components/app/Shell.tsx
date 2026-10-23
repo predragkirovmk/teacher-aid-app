@@ -103,7 +103,9 @@ export function Shell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("pageshow", show);
   }, []);
 
-  const showTabs = view === "screen" && !NO_TABS.includes(pathname) && !pathname.startsWith("/app/checkin") && !pathname.startsWith("/app/play");
+  // One set at a time is a screen of its own, like the quiz; the list of sets is an ordinary screen.
+  const inPractice = pathname.startsWith("/app/practice/");
+  const showTabs = view === "screen" && !NO_TABS.includes(pathname) && !pathname.startsWith("/app/checkin") && !pathname.startsWith("/app/play") && !inPractice;
   const content =
     view === "screen" ? (
       children
@@ -116,7 +118,7 @@ export function Shell({ children }: { children: ReactNode }) {
     );
 
   // The quiz draws the connection itself, as a strip in its own layout.
-  const inQuiz = view === "screen" && (pathname.startsWith("/app/play") || pathname.startsWith("/app/checkin"));
+  const inQuiz = view === "screen" && (pathname.startsWith("/app/play") || pathname.startsWith("/app/checkin") || inPractice);
 
   return (
     <UIContext.Provider value={ui}>

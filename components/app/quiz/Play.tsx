@@ -1,20 +1,20 @@
 "use client";
 
-import { ArrowDownIcon, ArrowUpIcon, CheckIcon, FlagCheckeredIcon, HashIcon, HourglassIcon, LockIcon, MinusIcon, PencilSimpleIcon, UsersIcon, XIcon } from "@phosphor-icons/react";
+import { ArrowDownIcon, ArrowUpIcon, CheckIcon, FlagCheckeredIcon, HashIcon, HourglassIcon, LockIcon, MinusIcon, PencilSimpleIcon, UsersIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { startTransition, useEffect, useState, ViewTransition, type CSSProperties, type ReactNode } from "react";
+import { startTransition, useEffect, useState, ViewTransition, type ReactNode } from "react";
 import { Avatar } from "@/components/app/Avatar";
 import { AnswerDelivery, ConnectionPill } from "@/components/app/ConnectionPill";
 import { ProfileEditor } from "@/components/app/ProfileEditor";
 import { Sheet } from "@/components/app/Shell";
 import { useUI } from "@/components/app/ui";
-import type { Course, JoinedSession, SessionQuestion } from "@/lib/app/api/types";
+import type { Course, JoinedSession } from "@/lib/app/api/types";
 import { formatTime } from "@/lib/app/format";
 import { errorCopy, useT } from "@/lib/app/i18n";
 import { leave } from "@/lib/app/nav";
 import { useSelf } from "@/lib/app/profile";
-import { LETTERS, initials, personName } from "@/lib/app/quiz";
+import { initials, personName } from "@/lib/app/quiz";
 import { canAsk } from "@/lib/app/session/ask";
 import { useQT } from "@/lib/app/quiz-copy";
 import type { SessionRunView } from "@/lib/app/session/controller";
@@ -24,6 +24,7 @@ import { AskBody, AskEntry, FocusNotice } from "./Ask";
 import { JoinFailureScreen } from "./JoinFailure";
 import { formatNumeric } from "@/lib/app/numeric";
 import { NumericQuestion, numberText } from "./Numeric";
+import { Choices, choiceOf, responseOf, useChoiceLabels, type ChoiceQuestion } from "./choices";
 import { OpenerResult, OpenerWait, Reasoning, Voting } from "./Opener";
 import { Burst, CheckDraw, CrossDraw, QuizCard, QuizTop, TimerRing, buzz, useCountUp } from "./parts";
 
@@ -133,19 +134,6 @@ export function Play({ course, join }: { course: Course; join: JoinedSession }) 
       </div>
     </main>
   );
-}
-
-/** The index of the option a response names: the option number, or 0 for true and 1 for false. */
-const choiceOf = (q: SessionQuestion, response: string) => (q.kind === "true_false" ? (response === "true" ? 0 : 1) : Number(response));
-
-function useChoiceLabels(q: SessionQuestion) {
-  const { t, locale } = useQT();
-  return {
-    letters: LETTERS[locale],
-    label: (i: number) => (q.kind === "true_false" ? t(i === 0 ? "q.true" : "q.false") : (q.options?.[i] ?? "")),
-    mark: (i: number) =>
-      q.kind === "true_false" ? i === 0 ? <CheckIcon size={22} weight="bold" aria-hidden="true" /> : <XIcon size={22} weight="bold" aria-hidden="true" /> : LETTERS[locale][i],
-  };
 }
 
 function Joined({ course, join }: { course: Course; join: JoinedSession }) {
@@ -260,10 +248,10 @@ function Lobby({ course, join, run, onLeave, askEntry }: { course: Course; join:
 function Question({ run, onLeave, onPick }: { run: SessionRunView; onLeave: () => void; onPick: (response: string) => void }) {
   const { t } = useQT();
   const q = run.question!;
-  const { letters, label } = useChoiceLabels(q);
+  const choice = q as ChoiceQuestion;
   const pick = (i: number) => {
     buzz(14);
-    startTransition(() => onPick(q.kind === "true_false" ? (i === 0 ? "true" : "false") : String(i)));
+    startTransition(() => onPick(responseOf(choice, i)));
   };
 
   return (
@@ -281,29 +269,7 @@ function Question({ run, onLeave, onPick }: { run: SessionRunView; onLeave: () =
       </div>
       <div className="q-foot">
         <p className="t-cap q-cap q-center">{t("q.tapHint")}</p>
-        {q.kind === "multiple_choice" ? (
-          <div className="q-options">
-            {(q.options ?? []).map((o, i) => (
-              <ViewTransition key={i} name={`q-pick-${i}`} share="q-morph" default="none">
-                <button className="q-opt" style={{ "--i": i } as CSSProperties} onClick={() => pick(i)}>
-                  <span className="q-letter">{letters[i]}</span>
-                  <span>{o}</span>
-                </button>
-              </ViewTransition>
-            ))}
-          </div>
-        ) : (
-          <div className="q-tf">
-            {[0, 1].map((i) => (
-              <ViewTransition key={i} name={`q-pick-${i}`} share="q-morph" default="none">
-                <button className="q-tf__btn" style={{ "--i": i } as CSSProperties} onClick={() => pick(i)}>
-                  <span className="q-tf__icon">{i === 0 ? <CheckIcon size={38} weight="bold" aria-hidden="true" /> : <XIcon size={38} weight="bold" aria-hidden="true" />}</span>
-                  <span className="q-tf__label">{label(i)}</span>
-                </button>
-              </ViewTransition>
-            ))}
-          </div>
-        )}
+        <Choices q={choice} onPick={pick} morph />
       </div>
     </>
   );

@@ -1,10 +1,13 @@
 "use client";
 
-import { CheckCircleIcon, XCircleIcon } from "@phosphor-icons/react";
+import { CheckCircleIcon, NotePencilIcon, XCircleIcon } from "@phosphor-icons/react";
 import { useEffect } from "react";
+import { stateText } from "@/components/app/practice/PracticeRows";
+import { Row } from "@/components/app/Row";
 import { Top } from "@/components/app/Top";
-import { markNotificationsRead, useNotifications } from "@/lib/app/api/hooks";
+import { markNotificationsRead, usePracticeSets, useNotifications } from "@/lib/app/api/hooks";
 import type { SessionResult } from "@/lib/app/api/types";
+import { formatLongDate } from "@/lib/app/format";
 import { useT } from "@/lib/app/i18n";
 
 export function SummaryEmpty() {
@@ -20,7 +23,8 @@ export function SummaryEmpty() {
 }
 
 export function SummaryResult({ result }: { result: SessionResult }) {
-  const { t } = useT();
+  const { t, locale } = useT();
+  const practice = usePracticeSets().data?.find((p) => p.sessionId === result.sessionId);
   const { data: notifications } = useNotifications();
   const announcement = notifications?.find(
     (n) => n.kind === "result_ready" && n.payload.sessionId === result.sessionId && n.readAt === null,
@@ -38,8 +42,17 @@ export function SummaryResult({ result }: { result: SessionResult }) {
         <span className="tile-big">
           {result.right}/{result.total}
         </span>
-        <span className="t-cap">{t("sum.sub")}</span>
+        <span className="t-cap">
+          {t("sum.sub")} · {formatLongDate(result.endedAt, locale)}
+        </span>
       </div>
+
+      {/* The set the teacher built from this lesson's missed questions, when there is one: optional, so a row and not a button. */}
+      {practice && (
+        <div className="list" style={{ marginBottom: 16 }}>
+          <Row icon={NotePencilIcon} label={t("pr.fromLesson")} value={stateText(t, practice)} href={`/app/practice/${encodeURIComponent(practice.id)}`} />
+        </div>
+      )}
 
       <ol className="list">
         {result.questions.map((q, i) => (
@@ -60,6 +73,11 @@ export function SummaryResult({ result }: { result: SessionResult }) {
               {!q.correct && (
                 <span className="t-cap" style={{ display: "block", marginTop: 4 }}>
                   {t("sum.answer", { a: q.correctAnswer })}
+                </span>
+              )}
+              {!q.correct && q.yourAnswer !== null && (
+                <span className="t-cap" style={{ display: "block", marginTop: 4 }}>
+                  {t("sum.yours", { a: q.yourAnswer })}
                 </span>
               )}
             </span>

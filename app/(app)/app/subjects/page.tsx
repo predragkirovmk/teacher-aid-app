@@ -14,7 +14,8 @@ import { personName } from "@/lib/app/quiz";
 
 const PAGES: [string, Key][] = [
   ["/app/attendance", "att.title"],
-  ["/app/summary", "sum.title"],
+  ["/app/summary", "res.title"],
+  ["/app/practice", "pr.title"],
   ["/app/leaderboard", "lb.title"],
   ...(demoOnly
     ? ([

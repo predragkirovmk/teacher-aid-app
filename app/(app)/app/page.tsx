@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, ViewTransition, type CSSProperties } from "react";
 import { Avatar } from "@/components/app/Avatar";
 import { Mark } from "@/components/app/Mark";
+import { PracticeHomeRow } from "@/components/app/practice/PracticeRows";
 import { QueryState } from "@/components/app/QueryState";
 import { Row } from "@/components/app/Row";
 import { SubjectMark, SubjectRow } from "@/components/app/SubjectCard";
@@ -152,6 +153,7 @@ function LiveCards() {
         </div>
       </div>
       <div {...rise(2)}>
+        <PracticeHomeRow space="below" />
         <AllSubjects />
       </div>
     </>
@@ -232,7 +234,7 @@ function ResultTile({ wide = false }: { wide?: boolean }) {
     !!notifications.data?.some((n) => n.kind === "result_ready" && n.payload.sessionId === result.sessionId && n.readAt === null);
   const subject = result ? subjectLabel(t, result.subjectId, result.subjectName) : "";
   return (
-    <Link href="/app/summary" className="card tile" style={wide ? { gridColumn: "1 / -1" } : undefined}>
+    <Link href={result ? `/app/summary/${encodeURIComponent(result.sessionId)}` : "/app/summary"} className="card tile" style={wide ? { gridColumn: "1 / -1" } : undefined}>
       <span className="tile__head">
         <span className="t-label">{t("home.summary")}</span>
         <CaretRightIcon size={16} aria-hidden="true" />
@@ -389,6 +391,7 @@ function DemoCards({ now, live }: { now: number; live: boolean }) {
           <AttendanceTile />
           <ResultTile />
         </div>
+        <PracticeHomeRow space="above" />
       </div>
 
       <div {...rise(3)}>

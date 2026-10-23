@@ -1,0 +1,297 @@
+/* ---- practice sets and results history ----
+ * Practice borrows the quiz's screen and its question buttons and takes the clock and the class out. The Check
+ * button is the one yellow thing on a question; a picked choice is a white edge, never yellow. A checked answer
+ * is an icon and a word as well as a look (see choices.tsx), so right and wrong never rest on colour.
+ */
+
+/* A choice picked and not yet checked. */
+.q-opt[aria-pressed="true"],
+.q-tf__btn[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 3px #fff;
+}
+.q-opt[aria-pressed="true"] .q-letter,
+.q-tf__btn[aria-pressed="true"] .q-tf__icon {
+  background: #fff;
+  color: var(--ink);
+}
+
+/* Checked: the right choice is a light card with a check, the student's wrong one an open dashed edge with a cross, the rest recede. */
+.q-opt:disabled,
+.q-tf__btn:disabled {
+  cursor: default;
+}
+:is(.q-opt, .q-tf__btn)[data-state] {
+  transition:
+    background 240ms,
+    color 240ms,
+    opacity 240ms;
+}
+:is(.q-opt, .q-tf__btn)[data-state="right"] {
+  background: var(--ice);
+  color: var(--ink);
+}
+:is(.q-opt, .q-tf__btn)[data-state="right"] :is(.q-letter, .q-tf__icon) {
+  background: var(--ink);
+  color: var(--ice);
+}
+:is(.q-opt, .q-tf__btn)[data-state="miss"] {
+  background: transparent;
+  outline: 2px dashed #fff;
+  outline-offset: -2px;
+}
+:is(.q-opt, .q-tf__btn)[data-state="rest"] {
+  opacity: 0.55;
+}
+
+/* The Check button before there is something to check: still there, not asking to be pressed. */
+.btn[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+}
+.btn[aria-disabled="true"]:active {
+  transform: none;
+  background: var(--yellow);
+}
+
+/* Practice is read, not raced: the question, its choices and what follows stay where they are and flow down, so the choices do not
+   jump when the verdict arrives. */
+.pr .q-body {
+  flex: none;
+}
+.pr .q-body--center {
+  flex: 1;
+}
+.pr .q-body:not(.q-body--center):not(.q-body--tight) {
+  padding-bottom: 8px;
+}
+.pr-foot {
+  margin: 0;
+  padding: 16px 0 8px;
+}
+.pr-verdict {
+  border-radius: var(--radius-item);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--line);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: q-rise var(--spring-smooth-dur) var(--spring-smooth) backwards;
+}
+.pr-verdict__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-title3);
+  line-height: 1.2;
+  font-weight: 700;
+}
+.pr-verdict__head svg {
+  flex: none;
+}
+.pr-verdict__gain {
+  flex: none;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(7, 22, 47, 0.3);
+  font-size: var(--fs-callout);
+  font-variant-numeric: tabular-nums;
+}
+.pr-verdict__line,
+.pr-verdict__why {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+.pr-verdict__why b {
+  display: block;
+  margin-bottom: 2px;
+  font-size: var(--fs-label);
+  font-weight: 650;
+  color: var(--text-2);
+}
+/* Where a checked-and-saved answer has got to when the verdict is not in yet. */
+.pr-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0 4px;
+  font-size: var(--fs-label);
+  line-height: 1.35;
+  font-weight: 600;
+  animation: q-rise var(--spring-snappy-dur) var(--spring-snappy) backwards;
+}
+.pr-note svg {
+  flex: none;
+}
+.pr-review {
+  margin-top: 8px;
+  padding-bottom: 8px;
+  animation: q-rise var(--spring-smooth-dur) var(--spring-smooth) 200ms backwards;
+}
+.pr-review .section-h {
+  margin-top: 0;
+}
+
+/* ---- a topic's chart ----
+ * A small figure of its own: a line of how much was right in each lesson, on a quiet grid. The line, the dots
+ * and the values are white on the card; the latest lesson is the solid dot. */
+.tc {
+  margin: 0;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tc__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.tc__head .item__title {
+  margin: 0;
+}
+.tc__now {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  line-height: 1;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.tc__chart {
+  position: relative;
+  height: 9.5rem;
+  margin-top: 8px;
+  padding-bottom: 1.75rem;
+}
+.tc__plot {
+  position: absolute;
+  left: 3.25rem;
+  right: 1rem;
+  top: 1.75rem;
+  bottom: 1.75rem;
+}
+/* Gridlines at 0, 50 and 100, hairlines a step off the card, with their value to the left of the plot. */
+.tc__tick {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--v);
+  height: 1px;
+  background: rgba(255, 255, 255, 0.14);
+}
+.tc__tick-label {
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  padding-right: 0.5rem;
+  font-size: var(--fs-caption);
+  line-height: 1;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.tc__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.tc__line {
+  stroke: #fff;
+  stroke-width: 2px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tc__area {
+  fill: rgba(255, 255, 255, 0.1);
+  stroke: none;
+}
+.tc__dot {
+  position: absolute;
+  left: var(--x);
+  bottom: var(--y);
+  width: 2.75rem;
+  height: 2.75rem;
+  transform: translate(-50%, 50%);
+  display: grid;
+  place-items: center;
+}
+.tc__dot i {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px var(--card);
+  transition: transform var(--spring-snappy-dur) var(--spring-snappy);
+}
+.tc__dot[data-last="true"] i {
+  width: 0.875rem;
+  height: 0.875rem;
+  background: #fff;
+  box-shadow: 0 0 0 2px var(--card);
+}
+.tc__dot[data-active="true"] i {
+  transform: scale(1.35);
+}
+.tc__value {
+  position: absolute;
+  left: var(--x);
+  bottom: var(--y);
+  transform: translate(-50%, -1.25rem);
+  font-size: var(--fs-label);
+  line-height: 1;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.tc__x {
+  position: absolute;
+  left: 3.25rem;
+  right: 1rem;
+  bottom: 0;
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-caption);
+  color: var(--text-2);
+}
+.tc__cap {
+  margin: 0;
+  min-height: 2.5em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tc__dot i {
+    transition: none;
+  }
+  .tc__dot[data-active="true"] i {
+    transform: none;
+    outline: 2px solid #fff;
+    outline-offset: 3px;
+  }
+}
+@media (forced-colors: active) {
+  .tc__line {
+    stroke: CanvasText;
+  }
+  .tc__area {
+    fill: none;
+  }
+  .tc__dot i {
+    forced-color-adjust: none;
+    background: Canvas;
+    box-shadow: 0 0 0 2px CanvasText;
+  }
+  .tc__dot[data-last="true"] i {
+    background: CanvasText;
+  }
+}

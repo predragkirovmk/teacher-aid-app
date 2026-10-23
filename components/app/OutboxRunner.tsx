@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useUI } from "@/components/app/ui";
+import { onPracticeOutcome } from "@/lib/app/practice-run";
 import { useQT } from "@/lib/app/quiz-copy";
 import { onSyncWake } from "@/lib/app/session/background-sync";
 import { net } from "@/lib/app/session/net";
@@ -65,6 +66,9 @@ export function OutboxRunner({ meId }: { meId: string | undefined }) {
       stopStatus();
     };
   }, []);
+
+  // A practice answer's verdict is kept for the screen that asks for it, wherever the student is when it arrives.
+  useEffect(() => outbox.subscribe(onPracticeOutcome), []);
 
   useEffect(
     () =>

@@ -14,6 +14,7 @@ const ROUTES = [
   "/app/profile",
   "/app/attendance",
   "/app/summary",
+  "/app/practice",
   "/app/leaderboard",
   "/app/schedule",
   "/app/settings",

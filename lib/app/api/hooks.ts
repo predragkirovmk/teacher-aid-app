@@ -2,9 +2,10 @@
 
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { setLocale as setLocalLocale, useLocale } from "../locale";
+import { forgetSets, loadSets } from "../practice-cache";
 import { OUTBOX_STUDENT_KEY } from "../session/outbox-store";
 import { forgetSession, recallJoin, recallSession, rememberSession } from "../session/resume";
-import { client } from "./index";
+import { client, demoOnly } from "./index";
 import type { SettledPromise } from "./client";
 import { toApiError, type ApiError } from "./errors";
 import { endSession, onSessionEnd, startSession, useSessionEnd, type SessionEnd } from "./session";
@@ -22,11 +23,13 @@ import type {
   Locale,
   Notification,
   PhotoUpload,
+  PracticeSet,
   SessionResult,
   Student,
   SignInChallenge,
   StudentSignIn,
   StudentSignInCode,
+  TopicProgress,
 } from "./types";
 
 export type { Query } from "./query";
@@ -45,6 +48,13 @@ export const useAttendance = (enabled = true): Query<AttendanceSummary> =>
 
 export const useResults = (courseId?: Id): Query<SessionResult[]> =>
   useQuery(courseId ? `results:${courseId}` : "results", (c) => c.listResults(courseId));
+
+/** The results of finished lessons, newest first; the topics the student has been tested on; the practice sets the teacher sent. */
+export const useTopics = (): Query<TopicProgress[]> => useQuery("topics", (c) => c.listTopics());
+
+/** The mock answers at once; the live API's sets are kept on the phone, so a set can still be opened with no signal. */
+export const usePracticeSets = (): Query<PracticeSet[]> =>
+  useQuery("practice", (c) => (demoOnly ? c.listPracticeSets() : loadSets(c)));
 
 export const useBadges = (): Query<Badge[]> => useQuery("badges", (c) => c.listBadges());
 
@@ -151,6 +161,7 @@ function forgetStudent() {
 onSessionEnd(() => {
   resetQueries();
   forgetStudent();
+  forgetSets();
 });
 
 /** F-02, first stage: the school email. Answers with what comes next (a code to type, or a redirect). */

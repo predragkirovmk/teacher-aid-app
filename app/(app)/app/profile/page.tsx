@@ -84,7 +84,7 @@ function ProfileView({ student }: { student: Student }) {
           </span>
           <span className="tile-big">{attendance.data ? `${attendance.data.percent}%` : "–"}</span>
         </Link>
-        <Link href="/app/summary" className="card tile">
+        <Link href={latest.data ? `/app/summary/${encodeURIComponent(latest.data.sessionId)}` : "/app/summary"} className="card tile">
           <span className="tile__head t-label">
             {t("home.summary")}
             <CaretRightIcon size={20} aria-hidden="true" />
