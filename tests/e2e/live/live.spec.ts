@@ -127,7 +127,7 @@ test.describe("what the live build leaves out or refuses", () => {
     expect(scripts.length).toBeGreaterThan(0);
     // Strings only the mock adapter, its leaderboard and its quiz driver contain. A count rather than
     // the script in the failure message: one chunk is a quarter of a megabyte.
-    for (const needle of ["mock-session-", "flaky-7b", "mock-classmate-", "student-marko", "Виктор Илиевски", "Њутнови закони", "marko.trajkovski@student", "teacheraid-mock-challenge", "opener-7b", "debate-7b", "numeric-7b", "Spelling matters, even in a message to a friend"]) {
+    for (const needle of ["mock-session-", "flaky-7b", "mock-classmate-", "student-marko", "Виктор Илиевски", "Њутнови закони", "marko.trajkovski@student", "teacheraid-mock-challenge", "opener-7b", "debate-7b", "numeric-7b", "ask-7b", "focus-7b", "teacheraid-mock-console", "Spelling matters, even in a message to a friend"]) {
       expect(scripts.filter((source) => source.includes(needle)).length, `scripts containing "${needle}"`).toBe(0);
     }
   });
@@ -1000,5 +1000,245 @@ test.describe("a live session with an opener and a number", () => {
     await expect(page.locator(".q-correct")).toContainText("1,75");
     await expect(page.locator(".q-correct")).toContainText(mk.q("n.tolerance", { tol: "0,01" }));
     await expect(page.getByText(mk.q("n.yours", { text: "2" }))).toBeVisible();
+  });
+});
+
+/**
+ * A question to the teacher (F-09) and the web focus flag (7.10), against the fake API: `POST /sessions/{id}/anon-questions`
+ * and `POST /sessions/{id}/focus-events`. The fake keeps what its teacher's console would have (state.session.asks, .focus).
+ */
+test.describe("a live session with questions to the teacher and the focus flag", () => {
+  test.use({ allowConsoleErrors: [/Failed to load resource: (the server responded with a status of (403|404|409|410|422|503)|net::ERR_)/] });
+
+  type Req = import("@playwright/test").APIRequestContext;
+  type Context = import("@playwright/test").BrowserContext;
+  type Held = {
+    asks: { key: string; text: string; askedAt: number; sender: string }[];
+    askLimit: number;
+    focus: { type: string; at: number; sessionQuestionId: string; flagged: boolean }[];
+    focusBatches: { type: string; at: string; session_question_id: string }[][];
+  };
+  const teacher = (request: Req, action: string, data: object = {}) => request.post(`${API}/__control/session/${action}`, { data });
+  const held = async (request: Req) => ((await (await request.get(`${API}/__control/state`)).json()) as { session: Held }).session;
+  const ASK = "POST /sessions/se-live-1/anon-questions";
+  const FOCUS = "POST /sessions/se-live-1/focus-events";
+  const OPTION = ".q-opt, .q-tf__btn";
+
+  async function inLobby(page: Page, request: Req) {
+    await page.goto("/app/checkin/LIVE-7B");
+    await expect(page.getByText(mk.q("q.waitTeacher"))).toBeVisible();
+    await expect.poll(async () => (await (await request.get(`${API}/__control/state`)).json()).streams).toBeGreaterThan(0);
+  }
+
+  const entry = (page: Page) => page.getByRole("button", { name: mk.q("ask.entry") });
+  const sheet = (page: Page) => page.getByRole("dialog", { name: mk.q("ask.title") });
+  const box = (page: Page) => sheet(page).getByRole("textbox", { name: mk.q("ask.label") });
+  const setHidden = (page: Page, hidden: boolean) =>
+    page.evaluate((h) => {
+      Object.defineProperty(document, "visibilityState", { value: h ? "hidden" : "visible", configurable: true });
+      Object.defineProperty(document, "hidden", { value: h, configurable: true });
+      document.dispatchEvent(new Event("visibilitychange"));
+    }, hidden);
+  const offline = async (context: Context, request: Req) => {
+    await request.post(`${API}/__control/block-streams`, { data: { on: true } });
+    await context.setOffline(true);
+    await request.post(`${API}/__control/drop-streams`);
+  };
+  const online = async (context: Context, request: Req) => {
+    await context.setOffline(false);
+    await request.post(`${API}/__control/block-streams`, { data: { on: false } });
+  };
+
+  test.describe("a question to the teacher", () => {
+    test("goes to its endpoint with the text, the time it was written and a key, is stored with the sender, and the student's own endpoints never give it back", async ({ page, request }) => {
+      await inLobby(page, request);
+      // The snapshot says what the limit is, and the sheet shows what is left.
+      await entry(page).click();
+      await expect(sheet(page).getByText(mk.q("ask.left.many", { n: 3 }))).toBeVisible();
+      await box(page).fill("  Зошто е x = 5?  ");
+      await box(page).press("Enter");
+      await expect(sheet(page).getByRole("heading", { name: mk.q("ask.sent") })).toBeVisible();
+
+      const { bodies } = await serverState(request);
+      const body = bodies[ASK] as { text: string; asked_at: string; idempotency_key: string };
+      expect(body.text).toBe("Зошто е x = 5?");
+      expect(Number.isNaN(Date.parse(body.asked_at))).toBe(false);
+      expect(body.idempotency_key).toMatch(/\S{8,}/);
+      expect(Object.keys(body).sort()).toEqual(["asked_at", "idempotency_key", "text"]);
+      const server = await held(request);
+      expect(server.asks).toMatchObject([{ text: "Зошто е x = 5?", sender: "st-1" }]);
+
+      // AC-ANON-01: the sender is the teacher's to see, and nothing a student can read has the question or its sender.
+      const snapshot = await (await request.get(`${API}/api/v1/sessions/se-live-1/student-state`)).text();
+      expect(snapshot).toContain('"anon_questions":{"used":1,"limit":3}');
+      expect(snapshot).not.toContain("Зошто");
+      expect(snapshot).not.toContain("sender");
+
+      // Two left, as the server counts them.
+      await sheet(page).getByRole("button", { name: mk.q("ask.another") }).click();
+      await expect(sheet(page).getByText(mk.q("ask.left.many", { n: 2 }))).toBeVisible();
+    });
+
+    test("the server's limit is shown as what is left, and a student who has used it is told so", async ({ page, request }) => {
+      await teacher(request, "anon-limit", { limit: 1 });
+      await inLobby(page, request);
+      await entry(page).click();
+      await expect(sheet(page).getByText(mk.q("ask.left.one"))).toBeVisible();
+      await box(page).fill("Единствено");
+      await box(page).press("Enter");
+      await expect(sheet(page).getByRole("heading", { name: mk.q("ask.sent") })).toBeVisible();
+      await expect(sheet(page).getByRole("button", { name: mk.q("ask.another") })).toHaveCount(0);
+      await sheet(page).getByRole("button", { name: mk.q("ask.done") }).click();
+      await entry(page).click();
+      await expect(sheet(page).getByRole("heading", { name: mk.q("ask.limit.title") })).toBeVisible();
+      expect((await held(request)).asks).toHaveLength(1);
+    });
+
+    test("one written with no signal is kept, and sent with its first key when the signal returns", async ({ page, request, context }) => {
+      await inLobby(page, request);
+      await entry(page).click();
+      await offline(context, request);
+      await expect(page.getByText(mk.q("net.offline"))).toBeVisible();
+      await box(page).fill("Без интернет");
+      await box(page).press("Enter");
+      await expect(sheet(page).getByRole("heading", { name: mk.q("ans.saved") })).toBeVisible();
+      expect((await held(request)).asks).toHaveLength(0);
+
+      await online(context, request);
+      await expect(sheet(page).getByRole("heading", { name: mk.q("ask.sent") })).toBeVisible({ timeout: 20_000 });
+      const server = await held(request);
+      expect(server.asks).toMatchObject([{ text: "Без интернет" }]);
+      // However many tries it took, it is one question.
+      expect(server.asks).toHaveLength(1);
+    });
+
+    test("refused for the limit when the server has less room than the phone thought: the sheet says so and the count shows none left", async ({ page, request, context }) => {
+      await inLobby(page, request);
+      await entry(page).click();
+      await offline(context, request);
+      await box(page).fill("Прво");
+      await box(page).press("Enter");
+      await sheet(page).getByRole("button", { name: mk.q("ask.another") }).click();
+      await box(page).fill("Второ");
+      await box(page).press("Enter");
+      await expect(sheet(page).getByRole("heading", { name: mk.q("ans.saved") })).toBeVisible();
+
+      // Meanwhile another device used the room the phone thought it had.
+      await teacher(request, "anon-limit", { limit: 1 });
+      await online(context, request);
+      await expect(sheet(page).getByRole("heading", { name: mk.q("ask.limit.title") })).toBeVisible({ timeout: 20_000 });
+      const server = await held(request);
+      expect(server.asks.map((a) => a.text)).toEqual(["Прво"]);
+    });
+
+    test("one that reaches the server after the lesson ended is refused, and the student is told", async ({ page, request, context }) => {
+      await inLobby(page, request);
+      await entry(page).click();
+      await offline(context, request);
+      await box(page).fill("Предоцна");
+      await box(page).press("Enter");
+      await expect(sheet(page).getByRole("heading", { name: mk.q("ans.saved") })).toBeVisible();
+      await teacher(request, "end");
+      await online(context, request);
+      await expect(sheet(page).getByRole("heading", { name: mk.q("ask.ended.title") })).toBeVisible({ timeout: 20_000 });
+      expect((await held(request)).asks).toHaveLength(0);
+    });
+
+    test("is not offered while a question is open, and a sheet that is open when one starts steps aside", async ({ page, request }) => {
+      await inLobby(page, request);
+      await entry(page).click();
+      await box(page).fill("Не го испрати");
+      await teacher(request, "fire", { index: 0, timer: 60 });
+      await expect(page.locator(OPTION).first()).toBeVisible();
+      await expect(sheet(page)).toHaveCount(0);
+      await expect(entry(page)).toHaveCount(0);
+      expect((await held(request)).asks).toHaveLength(0);
+    });
+  });
+
+  test.describe("the focus flag", () => {
+    // Real time: the threshold for a departure is 3 s.
+    test.setTimeout(90_000);
+
+    test("a departure during a question is sent as lost and back with server-clock times and the question's id, and the student can still answer", async ({ page, request }) => {
+      await inLobby(page, request);
+      await expect(page.getByRole("note")).toContainText(mk.q("fair.note"));
+      await teacher(request, "fire", { index: 0, timer: 60 });
+      await expect(page.locator(OPTION).first()).toBeVisible();
+
+      await setHidden(page, true);
+      // Confirmed while still away, so the console shows it at once: lost goes before the student is back.
+      await expect.poll(async () => (await held(request)).focus.map((f) => f.type), { timeout: 15_000 }).toEqual(["lost"]);
+      await setHidden(page, false);
+      await expect.poll(async () => (await held(request)).focus.map((f) => f.type), { timeout: 15_000 }).toEqual(["lost", "back"]);
+
+      const server = await held(request);
+      expect(server.focus[0]).toMatchObject({ type: "lost", sessionQuestionId: "fq1", flagged: true });
+      expect(server.focus[1]).toMatchObject({ type: "back", sessionQuestionId: "fq1", flagged: false });
+      expect(server.focus[1].at - server.focus[0].at).toBeGreaterThanOrEqual(3000);
+      // Each item is a type, a time and the question, nothing more.
+      for (const batch of server.focusBatches) for (const e of batch) expect(Object.keys(e).sort()).toEqual(["at", "session_question_id", "type"]);
+      expect(await serverState(request).then((s) => s.calls)).toContain(FOCUS);
+
+      // Nobody was blocked.
+      await page.locator(OPTION).nth(1).click();
+      await expect(page.getByText(mk.q("q.locked"))).toBeVisible();
+    });
+
+    test("a flicker is nothing, and neither is leaving between questions", async ({ page, request }) => {
+      await inLobby(page, request);
+      await teacher(request, "fire", { index: 0, timer: 60 });
+      await expect(page.locator(OPTION).first()).toBeVisible();
+      await setHidden(page, true);
+      await page.waitForTimeout(1000);
+      await setHidden(page, false);
+      await page.waitForTimeout(3500);
+      expect((await held(request)).focus).toEqual([]);
+
+      // The question closes: the time between questions is the student's own.
+      await teacher(request, "close");
+      await expect(page.getByRole("heading", { name: mk.q("q.timeout") })).toBeVisible();
+      await setHidden(page, true);
+      await page.waitForTimeout(4000);
+      await setHidden(page, false);
+      await page.waitForTimeout(500);
+      expect((await held(request)).focus).toEqual([]);
+      expect((await serverState(request)).calls).not.toContain(FOCUS);
+    });
+
+    test("leaving with no signal is kept with its own times, and sent together when the signal returns (EC-FOC-04)", async ({ page, request, context }) => {
+      await inLobby(page, request);
+      await teacher(request, "fire", { index: 0, timer: 120 });
+      await expect(page.locator(OPTION).first()).toBeVisible();
+
+      await offline(context, request);
+      await setHidden(page, true);
+      await page.waitForTimeout(4000);
+      await setHidden(page, false);
+      await page.waitForTimeout(500);
+      expect((await held(request)).focus).toEqual([]);
+
+      await online(context, request);
+      await expect.poll(async () => (await held(request)).focus.map((f) => f.type), { timeout: 20_000 }).toEqual(["lost", "back"]);
+      const server = await held(request);
+      // The times are those of the departure, not of the delivery; and what had piled up went in one request.
+      expect(server.focus[1].at - server.focus[0].at).toBeGreaterThanOrEqual(3500);
+      expect(Date.now() - server.focus[0].at).toBeGreaterThanOrEqual(3500);
+      expect(server.focusBatches.at(-1)!.map((e) => e.type)).toEqual(["lost", "back"]);
+    });
+
+    test("a student who has not seen the line has not been told, so nothing is recorded until they have", async ({ page, request }) => {
+      // Joined in the middle of a question: no lobby, so no line yet.
+      await teacher(request, "state", { state: "teaching" });
+      await teacher(request, "fire", { index: 0, timer: 120 });
+      await page.goto("/app/checkin/LIVE-7B");
+      await expect(page.locator(OPTION).first()).toBeVisible();
+      await expect(page.getByRole("note")).toHaveCount(0);
+      await setHidden(page, true);
+      await page.waitForTimeout(4000);
+      await setHidden(page, false);
+      await page.waitForTimeout(500);
+      expect((await held(request)).focus).toEqual([]);
+    });
   });
 });
