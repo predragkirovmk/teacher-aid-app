@@ -1089,6 +1089,7 @@ test.describe("a live session with questions to the teacher and the focus flag",
       await expect(sheet(page).getByRole("heading", { name: mk.q("ask.sent") })).toBeVisible();
       await expect(sheet(page).getByRole("button", { name: mk.q("ask.another") })).toHaveCount(0);
       await sheet(page).getByRole("button", { name: mk.q("ask.done") }).click();
+      await expect(sheet(page)).toHaveCount(0);
       await entry(page).click();
       await expect(sheet(page).getByRole("heading", { name: mk.q("ask.limit.title") })).toBeVisible();
       expect((await held(request)).asks).toHaveLength(1);
