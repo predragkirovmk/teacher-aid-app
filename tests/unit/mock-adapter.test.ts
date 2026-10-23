@@ -314,16 +314,17 @@ describe("profile and settings", () => {
 describe("notifications", () => {
   const unread = async () => (await mockClient.listNotifications()).filter((n) => n.readAt === null);
 
-  it("starts with two unread: a late mark is a record, not news", async () => {
+  it("starts with three unread: a late mark is a record, not news, and the fractions set is news", async () => {
     const all = await mockClient.listNotifications();
-    expect(all).toHaveLength(NOTIFS.length);
-    expect((await unread()).map((n) => n.id).sort()).toEqual(["n-math", "n-physics"]);
+    // The demo's own alerts, and one for each of the two practice sets the teacher sent before it starts.
+    expect(all).toHaveLength(NOTIFS.length + 2);
+    expect((await unread()).map((n) => n.id).sort()).toEqual(["n-math", "n-physics", "n-practice-ps-session-math-1"]);
     expect(all.find((n) => n.id === "n-late")!.kind).toBe("marked_late");
   });
 
   it("marks one read, then all", async () => {
     await mockClient.markNotificationsRead(["n-math"]);
-    expect((await unread()).map((n) => n.id)).toEqual(["n-physics"]);
+    expect((await unread()).map((n) => n.id).sort()).toEqual(["n-physics", "n-practice-ps-session-math-1"]);
     await mockClient.markNotificationsRead("all");
     expect(await unread()).toHaveLength(0);
   });
@@ -349,12 +350,15 @@ describe("answers", () => {
 });
 
 describe("results and badges", () => {
-  it("starts with one finished quiz, 4 of 5, and can filter it by course", async () => {
+  it("starts with its history, newest first, the last maths lesson 4 of 5, and can filter it by course", async () => {
     const all = await mockClient.listResults();
-    expect(all).toHaveLength(1);
-    expect(all[0]).toMatchObject({ right: 4, total: 5, courseId: "math" });
-    expect(await mockClient.listResults("physics")).toHaveLength(0);
-    expect(await mockClient.listResults("math")).toHaveLength(1);
+    expect(all).toHaveLength(8);
+    expect(all[0]).toMatchObject({ sessionId: "session-math-1", right: 4, total: 5, courseId: "math" });
+    const times = all.map((r) => r.endedAt);
+    expect(times).toEqual([...times].sort((a, b) => b - a));
+    expect((await mockClient.listResults("physics")).map((r) => r.right)).toEqual([4, 3]);
+    expect(await mockClient.listResults("math")).toHaveLength(4);
+    expect(await mockClient.listResults("german")).toHaveLength(0);
   });
 
   it("unlocks First answer and Perfect quiz when the student earns them", async () => {

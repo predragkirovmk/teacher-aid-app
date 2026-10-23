@@ -20,6 +20,17 @@ export type FinishedSession = {
   questions: { id: string; prompt: string; correct: boolean; correctAnswer: string; yourAnswer: string | null }[];
 };
 
+/** A practice set the mock "teacher" sent after a lesson played in the demo (mock/practice.ts adds the ones the demo starts with). */
+export type StoredPracticeSet = {
+  id: string;
+  sessionId: string;
+  courseId: SubjectId;
+  lessonTitle: string;
+  createdAt: number;
+  /** The ids of the lesson's questions in the set, in the lesson's order. */
+  questionIds: string[];
+};
+
 export type AppState = {
   signedIn: boolean;
   /** Why the student is signed out, when it was not their own doing: another device signed in (BR-AUTH-03). */
@@ -39,6 +50,12 @@ export type AppState = {
   clock: ClockId;
   /** Live sessions played to the end, newest first: what the summary and Home's latest result show. */
   finished: FinishedSession[];
+  /** Practice sets sent after the lessons played here, newest first. */
+  practiceSets: StoredPracticeSet[];
+  /** What the student answered in a practice set, by set and then question; the first answer stands. */
+  practiceAnswers: Record<string, Record<string, string>>;
+  /** When each practice set was finished. */
+  practiceDone: Record<string, number>;
 };
 
 const KEY = "teacheraid-app-v1";
@@ -56,6 +73,9 @@ const DEFAULT: AppState = {
   perfectQuiz: false,
   clock: "real",
   finished: [],
+  practiceSets: [],
+  practiceAnswers: {},
+  practiceDone: {},
 };
 
 const isCheckin = (c: unknown): c is Checkin => {
@@ -77,6 +97,26 @@ const isFinished = (f: unknown): f is FinishedSession => {
     x.questions.every((q) => !!q && typeof q.id === "string" && typeof q.prompt === "string" && typeof q.correct === "boolean" && typeof q.correctAnswer === "string")
   );
 };
+
+const isPracticeSet = (p: unknown): p is StoredPracticeSet => {
+  const x = p as Partial<StoredPracticeSet> | null;
+  return (
+    !!x &&
+    typeof x.id === "string" &&
+    typeof x.sessionId === "string" &&
+    SUBJECTS.some((s) => s.id === x.courseId) &&
+    typeof x.lessonTitle === "string" &&
+    Number.isFinite(x.createdAt) &&
+    Array.isArray(x.questionIds) &&
+    x.questionIds.every((q) => typeof q === "string")
+  );
+};
+
+/** A record of strings by string, or of such records, kept only as far as it is well formed. */
+function stringRecord(saved: unknown): Record<string, string> {
+  if (!saved || typeof saved !== "object") return {};
+  return Object.fromEntries(Object.entries(saved).filter((e): e is [string, string] => typeof e[1] === "string"));
+}
 
 /**
  * Rebuild the state field by field from whatever was saved. A save from an older build, or one
@@ -100,6 +140,15 @@ function sanitize(saved: unknown): AppState {
     perfectQuiz: typeof s.perfectQuiz === "boolean" ? s.perfectQuiz : DEFAULT.perfectQuiz,
     clock: CLOCKS.includes(s.clock as ClockId) ? (s.clock as ClockId) : DEFAULT.clock,
     finished: Array.isArray(s.finished) ? s.finished.filter(isFinished).slice(0, 20) : DEFAULT.finished,
+    practiceSets: Array.isArray(s.practiceSets) ? s.practiceSets.filter(isPracticeSet).slice(0, 20) : DEFAULT.practiceSets,
+    practiceAnswers:
+      s.practiceAnswers && typeof s.practiceAnswers === "object"
+        ? Object.fromEntries(Object.entries(s.practiceAnswers).map(([id, answers]) => [id, stringRecord(answers)]))
+        : DEFAULT.practiceAnswers,
+    practiceDone:
+      s.practiceDone && typeof s.practiceDone === "object"
+        ? Object.fromEntries(Object.entries(s.practiceDone).filter((e): e is [string, number] => typeof e[1] === "number" && Number.isFinite(e[1])))
+        : DEFAULT.practiceDone,
   };
 }
 
@@ -231,6 +280,21 @@ export const actions = {
   finishSession: (record: FinishedSession) => {
     load();
     set({ finished: [record, ...state.finished.filter((f) => f.sessionId !== record.sessionId)].slice(0, 20) });
+  },
+  /** The mock teacher sends a practice set for a lesson (F-12). One per lesson: sending again does nothing. */
+  addPracticeSet: (entry: StoredPracticeSet) => {
+    load();
+    if (state.practiceSets.some((p) => p.id === entry.id)) return;
+    set({ practiceSets: [entry, ...state.practiceSets].slice(0, 20) });
+  },
+  /** Record the answers to a practice set, the points they earned, and when the set was finished (null: not yet). */
+  answerPractice: (id: string, answers: Record<string, string>, points: number, doneAt: number | null) => {
+    load();
+    set({
+      practiceAnswers: { ...state.practiceAnswers, [id]: { ...state.practiceAnswers[id], ...answers } },
+      quizPoints: state.quizPoints + Math.max(0, Math.round(points)),
+      ...(doneAt !== null && { practiceDone: { ...state.practiceDone, [id]: doneAt } }),
+    });
   },
   reset: () => {
     load();

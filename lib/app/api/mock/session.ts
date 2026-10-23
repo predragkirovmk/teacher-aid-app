@@ -27,6 +27,7 @@ import { ANON_LIMIT, ANON_MAX_LENGTH, cleanAsk } from "../../session/ask";
 import { iso } from "../wire";
 import { subjectByCode, type ClassSubject } from "./data";
 import { CLASSMATES, CORRECT_POINTS, DURATION, OPENER_TIMES, QUIZZES, REASON_MAX, REASON_POINTS, speedBonus, type Quiz } from "./quiz";
+import { pickPracticeQuestions } from "./practice";
 import { actions } from "./store";
 
 /**
@@ -522,8 +523,31 @@ export class MockSession {
       total,
       questions: this.played,
     });
+    this.sendPracticeSet();
     this.toClass("state.changed", { state: "ended" });
     this.toMe("session.ended", { session_points: this.points, session_rank: this.rank, summary: this.summary });
+  }
+
+  /**
+   * After End the teacher sends the practice set (F-12): one for the class, from the pop-ups the class missed (OPEN-08, mock/practice.ts).
+   * The mock's class is the student and the simulated classmates; a classmate who would have got a question wrong counts as missing it.
+   */
+  private sendPracticeSet() {
+    const stats = this.played.map((p) => {
+      const live = this.lives.get(p.id);
+      const classmates = live ? live.rightness.filter((right) => !right).length : 0;
+      return { id: p.id, missed: classmates + (p.correct ? 0 : 1), joined: N + 1 };
+    });
+    const questionIds = pickPracticeQuestions(stats);
+    if (questionIds.length === 0) return;
+    actions.addPracticeSet({
+      id: `ps-${this.id}`,
+      sessionId: this.id,
+      courseId: this.subject.id,
+      lessonTitle: this.quiz.title[this.locale],
+      createdAt: Date.now() + 1000,
+      questionIds,
+    });
   }
 
   private makeBoard(): BoardRow[] {

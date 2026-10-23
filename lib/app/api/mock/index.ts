@@ -17,7 +17,6 @@ import type {
   Notification,
   PhotoUpload,
   ProfileUpdate,
-  SessionResult,
   SettingsUpdate,
   Student,
   StudentSessionState,
@@ -31,13 +30,14 @@ import {
   LAST_WEEK_TOTAL,
   LEADERBOARD,
   NOTIFS,
-  QUIZ,
   SUBJECTS,
   type SubjectId,
 } from "./data";
 import { translate, type Key } from "../../i18n";
 import { getLocale, setLocale, subscribeLocale } from "../../locale";
 import { net } from "../../session/net";
+import { buildResults, buildTopics } from "./history";
+import { answerPractice, buildPracticeSets } from "./practice";
 import { joinMock, mockSessionFor } from "./session";
 import { startMockSignIn, verifyMockCode } from "./signin";
 import { actions, DEFAULT_STATE, getState, subscribeStore, type AppState } from "./store";
@@ -140,40 +140,6 @@ function buildAttendance(state: AppState, locale: Locale): AttendanceSummary {
   };
 }
 
-/** The live sessions played in the demo, newest first, then the last maths lesson the demo starts with (4 of 5 correct). */
-function buildResults(state: AppState, locale: Locale): SessionResult[] {
-  return [
-    ...state.finished.map((f) => ({
-      sessionId: f.sessionId,
-      courseId: f.courseId,
-      subjectId: f.courseId,
-      subjectName: text(locale, `subj.${f.courseId}`),
-      lessonTitle: f.lessonTitle,
-      endedAt: f.endedAt,
-      right: f.right,
-      total: f.total,
-      questions: f.questions,
-    })),
-    {
-      sessionId: "session-math-1",
-      courseId: "math",
-      subjectId: "math",
-      subjectName: text(locale, "subj.math"),
-      lessonTitle: text(locale, "sum.lesson"),
-      endedAt: new Date("2026-10-12T09:40").getTime(),
-      right: QUIZ.filter((q) => q.correct).length,
-      total: QUIZ.length,
-      questions: QUIZ.map((q) => ({
-        id: q.id,
-        prompt: text(locale, `q.${q.id}`),
-        correct: q.correct,
-        correctAnswer: text(locale, `a.${q.id}`),
-        yourAnswer: null,
-      })),
-    },
-  ];
-}
-
 const BADGE_POINTS = 20;
 /** Achievements the demo starts with; their points are already in the starting totals. */
 const STARTING_BADGES: readonly string[] = ["ontime"];
@@ -209,10 +175,10 @@ function buildLeaderboard(state: AppState, locale: Locale): Leaderboard {
   return { scope: "class", season: null, rows };
 }
 
-/** The alerts a student starts with. A notice the student has read, or one that is only a record, has a read time. */
+/** The alerts a student starts with, and a notice for each practice set the teacher sent. A notice the student has read, or one that is only a record, has a read time. */
 function buildNotifications(state: AppState, locale: Locale): Notification[] {
   const subject = (id: SubjectId) => text(locale, `subj.${id}`);
-  return NOTIFS.map((n): Notification => {
+  const fromData = NOTIFS.map((n): Notification => {
     const createdAt = new Date(n.when).getTime();
     // A late mark is a record of the student's own morning, listed but never news.
     const readAt = state.read.includes(n.id) || n.id === "n-late" ? createdAt : null;
@@ -230,6 +196,18 @@ function buildNotifications(state: AppState, locale: Locale): Notification[] {
       payload: { ...course, title: text(locale, `notif.${n.id}.title`), body: text(locale, `notif.${n.id}.body`) },
     };
   });
+  // A practice set is announced when it is sent; starting it reads the notice, as opening a summary reads its notice.
+  const practice = buildPracticeSets(state, locale).map((p): Notification => {
+    const id = `n-practice-${p.id}`;
+    return {
+      id,
+      kind: "practice_set_sent",
+      createdAt: p.createdAt,
+      readAt: state.read.includes(id) || p.score !== null ? p.createdAt : null,
+      payload: { courseId: p.courseId, subjectId: p.subjectId, subjectName: subject(p.subjectId as SubjectId), practiceSetId: p.id },
+    };
+  });
+  return [...fromData, ...practice].sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export function createMockClient(source: MockSource): ApiClient {
@@ -292,7 +270,7 @@ export function createMockClient(source: MockSource): ApiClient {
     listCourses: () => authed(() => buildCourses(locale())),
     getAttendance: () => authed(() => buildAttendance(state(), locale())),
     listResults: (courseId?: Id) => authed(() => buildResults(state(), locale()).filter((r) => !courseId || r.courseId === courseId)),
-    listTopics: () => authed(() => []),
+    listTopics: () => authed(() => buildTopics(state(), locale())),
     getLeaderboard: () => authed(() => buildLeaderboard(state(), locale())),
     listBadges: () => authed(() => buildBadges(state(), locale())),
 
@@ -308,8 +286,13 @@ export function createMockClient(source: MockSource): ApiClient {
         }),
       ),
 
-    listPracticeSets: () => authed(() => []),
-    submitPracticeAnswers: () => fail(new ApiError("not_found")),
+    listPracticeSets: () => authed(() => buildPracticeSets(state(), locale())),
+    submitPracticeAnswers: (id, answers) =>
+      authed(() => {
+        // The verdict is the server's: with no signal there is none, and the answer waits in the outbox.
+        if (net.isOffline()) throw new ApiError("network");
+        return write(() => answerPractice(state(), id, answers, locale()));
+      }),
 
     joinSession: (input: JoinInput) =>
       authed(() => write(() => joinMock("token" in input ? input.token : input.shortCode, locale()))),

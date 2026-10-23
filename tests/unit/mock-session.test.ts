@@ -306,6 +306,25 @@ describe("the script", () => {
     expect(results[0]).toMatchObject({ sessionId: l.session.id, right: 1 });
   });
 
+  it("sends the class a practice set from the pop-ups it missed once the lesson has ended (F-12, OPEN-08)", async () => {
+    const l = lesson();
+    expect(getState().practiceSets).toHaveLength(0);
+    await advance(15 * 60_000);
+    const [set] = getState().practiceSets;
+    expect(set).toMatchObject({ id: `ps-${l.session.id}`, sessionId: l.session.id, courseId: "math" });
+    // Only pop-ups, never the opener, in the order of the lesson, and at least the minimum.
+    const lessonIds = quiz.questions.map((q) => q.id);
+    expect(set.questionIds.length).toBeGreaterThanOrEqual(2);
+    expect(set.questionIds.every((id) => lessonIds.includes(id))).toBe(true);
+    expect(set.questionIds).toEqual(lessonIds.filter((id) => set.questionIds.includes(id)));
+    // The student never answered, so every question was missed by them as well as by part of the class.
+    const sent = (await mockClient.listPracticeSets()).find((p) => p.id === set.id)!;
+    expect(sent).toMatchObject({ score: null, completedAt: null, courseId: "math" });
+    expect(sent.questions.map((q) => q.id)).toEqual(set.questionIds);
+    const notice = (await mockClient.listNotifications()).find((n) => n.payload.practiceSetId === set.id)!;
+    expect(notice).toMatchObject({ kind: "practice_set_sent", readAt: null });
+  });
+
   it("earns no points for joining (BR-PTS-01)", () => {
     lesson();
     expect(getState().quizPoints).toBe(0);

@@ -75,4 +75,6 @@ export const demoRoutes = () => [
   ...SUBJECTS.map((s) => `/app/subject/${s.id}`),
   ...CLASS_SUBJECTS.flatMap((s) => [`/app/play/${s.code}`, `/app/checkin/${s.code}`]),
   ...NOTIFS.map((n) => `/app/notifications/${n.id}`),
+  "/app/practice/ps-session-math-1",
+  "/app/practice/ps-session-phys-2",
 ];

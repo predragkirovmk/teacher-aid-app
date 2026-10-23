@@ -4,11 +4,12 @@ import type { Locale } from "./api/types";
 
 export type Text = Record<Locale, string>;
 
+/** `explanation` is why the answer is what it is: shown in practice, after the student has answered (spec 3.1). */
 export type Question =
-  | { id: string; kind: "mc"; text: Text; options: [Text, Text, Text, Text]; answer: 0 | 1 | 2 | 3 }
-  | { id: string; kind: "tf"; text: Text; answer: 0 | 1 }
+  | { id: string; kind: "mc"; text: Text; options: [Text, Text, Text, Text]; answer: 0 | 1 | 2 | 3; explanation?: Text }
+  | { id: string; kind: "tf"; text: Text; answer: 0 | 1; explanation?: Text }
   /** A number; `answer` is plain text with a point (lib/app/numeric.ts), `tolerance` an absolute distance it may be off by. */
-  | { id: string; kind: "num"; text: Text; answer: string; tolerance: number; unit?: string; allowNegative?: boolean };
+  | { id: string; kind: "num"; text: Text; answer: string; tolerance: number; unit?: string; allowNegative?: boolean; explanation?: Text };
 
 /**
  * The lesson's opener (spec 4.3). A prediction has 3 or 4 options and a right one; a debate is a claim to
