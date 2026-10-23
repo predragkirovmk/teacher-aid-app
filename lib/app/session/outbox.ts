@@ -25,6 +25,9 @@ import { backoffDelay } from "./transport";
  * answers too, and the same things go wrong with them. A reason sent before its vote is not a risk, because the
  * line is in the order they were given and stops at the first failure.
  *
+ * An answer in a practice set (`kind` "practice", F-12) travels the same way, with the set's id as `sessionId` and no time that matters: the
+ * server judges it by nothing but whether the question has been answered, and keeps the first answer. Its receipt carries the verdict.
+ *
  * A question to the teacher (`kind` "ask", F-09) travels the same way, under its own endpoint, with no question to answer.
  * Besides the codes above it can be refused `limit_reached` (BR-ANON-02): final, because the count will not fall.
  *
@@ -34,6 +37,8 @@ import { backoffDelay } from "./transport";
 
 /** A saved answer older than this is dropped unsent: the lesson it belonged to is long over. */
 export const MAX_AGE_MS = 24 * 3_600_000;
+/** An answer in a practice set has no lesson to be over and no time to be judged by, so the phone keeps it much longer. */
+export const PRACTICE_MAX_AGE_MS = 30 * 24 * 3_600_000;
 
 /** A student who is not signed in cannot send; their answers wait for them. */
 const AUTH_CODES: ApiErrorCode[] = ["unauthenticated", "signed_in_elsewhere"];
@@ -43,8 +48,8 @@ const GIVE_UP_CODES: ApiErrorCode[] = ["validation_failed", "not_found", "limit_
 export type AnswerOutcome =
   /** An attempt failed and the answer is kept: "saved, will send when you're back online". */
   | { type: "saved"; record: OutboxRecord }
-  /** The server has it. `duplicate` when it already had it under this key or another. */
-  | { type: "delivered"; record: OutboxRecord; duplicate: boolean }
+  /** The server has it. `duplicate` when it already had it under this key or another; `receipt` is what it answered. */
+  | { type: "delivered"; record: OutboxRecord; duplicate: boolean; receipt?: AnswerReceipt }
   /** Refused as outside the question's window: it arrived too late. */
   | { type: "late"; record: OutboxRecord }
   /** Refused because the session has ended. */
@@ -156,7 +161,7 @@ export function createOutbox(deps: OutboxDeps): Outbox {
   /** One pass over the line. Returns when the line is empty or has stopped on a failure. */
   async function pass() {
     for (const record of mine()) {
-      if (now() - record.savedAt > MAX_AGE_MS) {
+      if (now() - record.savedAt > (record.kind === "practice" ? PRACTICE_MAX_AGE_MS : MAX_AGE_MS)) {
         await forget(record);
         tell({ type: "expired", record });
         continue;
@@ -174,7 +179,7 @@ export function createOutbox(deps: OutboxDeps): Outbox {
         );
         failing = false;
         await forget(record);
-        tell({ type: "delivered", record, duplicate: receipt.duplicate });
+        tell({ type: "delivered", record, duplicate: receipt.duplicate, receipt });
       } catch (e) {
         const error = toApiError(e);
         const code = error.code;

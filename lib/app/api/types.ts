@@ -205,10 +205,26 @@ export type Notification = {
 
 // ---- Practice sets (F-12) -----------------------------------------------------------------------------------------
 
+/** The kinds a practice set can hold: an opener is a live thing and is never practised. */
+export type PracticeKind = "multiple_choice" | "true_false" | "numeric";
+
+/**
+ * What the server says about an answered practice question (PROPOSED, spec 11.3). `correctAnswer` is in the
+ * encoding of `response` (3.2). The right answer stays on the server until the student has answered, so reading
+ * the set gives nothing away (points are earned per right answer, BR-PTS-03).
+ */
+export type PracticeVerdict = { correct: boolean; correctAnswer: string; explanation: string | null };
+
 export type PracticeQuestion = {
   id: Id;
+  kind: PracticeKind;
   prompt: string;
-  options: string[];
+  /** The choices of a multiple-choice question, else null. */
+  options: string[] | null;
+  /** For a numeric question the unit to show and whether a minus key is offered (as in a live question), else null. */
+  numeric: { unit: string | null; allowNegative: boolean } | null;
+  /** What the student answered and the server's verdict on it; null while the question is unanswered (the server keeps the progress). */
+  answer: ({ response: string } & PracticeVerdict) | null;
 };
 
 export type PracticeSet = {
@@ -216,15 +232,32 @@ export type PracticeSet = {
   sessionId: Id;
   courseId: Id;
   subjectId: string;
+  /** The title of the lesson the set was built from, when the server says. */
+  lessonTitle: string | null;
+  /** When the teacher sent it. There is no deadline (OPEN-08 assumption). */
   createdAt: number;
   completedAt: number | null;
-  /** Right answers of the last attempt, when there was one. */
+  /** Right answers so far; null before the first answer. */
   score: number | null;
+  /** Points earned in this set so far (BR-PTS-03). */
+  points: number;
   questions: PracticeQuestion[];
 };
 
 export type PracticeAnswer = { questionId: Id; response: string };
-export type PracticeAttempt = { score: number; total: number; points: number };
+
+/** The server's word on one answer; `duplicate` when the question had been answered already (the first answer stands). */
+export type PracticeResult = { questionId: Id; duplicate: boolean } & PracticeVerdict;
+
+/** The answer to `POST /practice-sets/{id}/answers`: a verdict for each answer sent, and the set's tally now. */
+export type PracticeAttempt = {
+  score: number;
+  total: number;
+  points: number;
+  /** Every question of the set has been answered. */
+  completed: boolean;
+  results: PracticeResult[];
+};
 
 // ---- Live session, student side (F-07, F-08, section 4.4) ---------------------------------------------------------
 
@@ -378,10 +411,11 @@ export type StudentStage =
 
 /**
  * What the phone sends to the server: an answer, an opener vote (`/opener/vote`), an opener reason (`/opener/reason`,
- * `response` holds its text) or a question to the teacher (`/anon-questions`, `response` holds its text and there is
- * no question to answer, so `sessionQuestionId` is empty).
+ * `response` holds its text), a question to the teacher (`/anon-questions`, `response` holds its text and there is
+ * no question to answer, so `sessionQuestionId` is empty) or an answer in a practice set (`/practice-sets/{id}/answers`:
+ * `sessionId` holds the set's id and `sessionQuestionId` the practice question's).
  */
-export type SubmissionKind = "answer" | "vote" | "reason" | "ask";
+export type SubmissionKind = "answer" | "vote" | "reason" | "ask" | "practice";
 
 export type AnswerInput = {
   sessionQuestionId: Id;
@@ -405,6 +439,8 @@ export type AnswerReceipt = {
   accepted: boolean;
   /** True when the key had been seen before: the first answer stands. */
   duplicate: boolean;
+  /** For a practice answer: what the server said (its verdict and the set's tally). */
+  practice?: PracticeAttempt;
 };
 
 // ---- Realtime events, student side (spec 11.2) -----------------------------------------------------------------------

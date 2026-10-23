@@ -157,20 +157,55 @@ describe("wire to domain", () => {
     });
   });
 
-  it("maps a practice set and an attempt", () => {
+  it("maps a practice set with its progress, and an attempt with its verdicts", () => {
     const set = wire.practiceSet({
       id: "p1",
       session_id: "se1",
       course_id: "k1",
       subject_id: "math",
+      lesson_title: "Fractions",
       created_at: AT,
       completed_at: null,
-      score: null,
-      questions: [{ id: "q1", prompt: "2+2", options: ["3", "4"] }],
+      score: 1,
+      points: 5,
+      questions: [
+        {
+          id: "q1",
+          kind: "multiple_choice",
+          prompt: "2+2",
+          options: ["3", "4"],
+          numeric: null,
+          answer: { response: "1", correct: true, correct_answer: "1", explanation: "Two and two." },
+        },
+        { id: "q2", kind: "numeric", prompt: "7/4", options: null, numeric: { unit: "m", allow_negative: false }, answer: null },
+      ],
     });
-    expect(set).toMatchObject({ sessionId: "se1", courseId: "k1", subjectId: "math", createdAt: AT_MS, completedAt: null, score: null });
-    expect(set.questions).toEqual([{ id: "q1", prompt: "2+2", options: ["3", "4"] }]);
-    expect(wire.practiceAttempt({ score: 3, total: 4, points: 12 })).toEqual({ score: 3, total: 4, points: 12 });
+    expect(set).toMatchObject({ sessionId: "se1", courseId: "k1", subjectId: "math", lessonTitle: "Fractions", createdAt: AT_MS, completedAt: null, score: 1, points: 5 });
+    expect(set.questions[0]).toEqual({
+      id: "q1",
+      kind: "multiple_choice",
+      prompt: "2+2",
+      options: ["3", "4"],
+      numeric: null,
+      answer: { response: "1", correct: true, correctAnswer: "1", explanation: "Two and two." },
+    });
+    expect(set.questions[1]).toMatchObject({ kind: "numeric", numeric: { unit: "m", allowNegative: false }, answer: null });
+
+    expect(
+      wire.practiceAttempt({
+        score: 1,
+        total: 2,
+        points: 5,
+        completed: false,
+        results: [{ question_id: "q1", duplicate: false, correct: true, correct_answer: "1", explanation: null }],
+      }),
+    ).toEqual({
+      score: 1,
+      total: 2,
+      points: 5,
+      completed: false,
+      results: [{ questionId: "q1", duplicate: false, correct: true, correctAnswer: "1", explanation: null }],
+    });
   });
 
   it("maps a join with its server clock", () => {

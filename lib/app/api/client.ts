@@ -81,9 +81,13 @@ export interface ApiClient {
   markNotificationsRead(ids: Id[] | "all"): Promise<void>;
 
   // Practice sets
-  /** GET /me/practice-sets. */
+  /** GET /me/practice-sets, newest first: the sets the teacher sent, with the student's progress in each. */
   listPracticeSets(): Promise<PracticeSet[]>;
-  /** POST /practice-sets/{id}/answers. */
+  /**
+   * POST /practice-sets/{id}/answers (PROPOSED: one answer or several). The first answer to a question stands: a repeat
+   * answers with the stored verdict and `duplicate`. Rejects `not_found` for a question that is not the set's and
+   * `validation_failed` for a response the question cannot have.
+   */
   submitPracticeAnswers(id: Id, answers: PracticeAnswer[]): Promise<PracticeAttempt>;
 
   // Live session, student side

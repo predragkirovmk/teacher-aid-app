@@ -104,7 +104,7 @@ function setup(over: { snapshot?: Partial<StudentSessionState>; send?: Parameter
   // The fake server counts what it takes, as the real one does, so the snapshot after a send agrees with it.
   const server = { used: rest.anon?.used ?? 0 };
   const getSnapshot = vi.fn(async () => ({ ...rest, anon: rest.anon && { ...rest.anon, used: server.used }, serverNow: serverNow() }) as StudentSessionState);
-  const inner = over.send ?? (async () => ({ accepted: true, duplicate: false }));
+  const inner: NonNullable<typeof over.send> = over.send ?? (async () => ({ accepted: true, duplicate: false }));
   const send = vi.fn(async (...args: Parameters<typeof inner>) => {
     try {
       const receipt = await inner(...args);

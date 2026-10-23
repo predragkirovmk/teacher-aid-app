@@ -24,8 +24,10 @@ import type {
   OpenerPhase,
   NotificationPayload,
   PracticeAttempt,
+  PracticeKind,
   PracticeQuestion,
   PracticeSet,
+  PracticeVerdict,
   QuestionKind,
   QuestionResult,
   QuestionStatus,
@@ -137,18 +139,35 @@ export type WireNotification = {
   read_at: string | null;
 };
 
+export type WirePracticeVerdict = { correct: boolean; correct_answer: string; explanation: string | null };
+
 export type WirePracticeSet = {
   id: string;
   session_id: string;
   course_id: string;
   subject_id: string;
+  lesson_title: string | null;
   created_at: string;
   completed_at: string | null;
   score: number | null;
-  questions: { id: string; prompt: string; options: string[] }[];
+  points: number;
+  questions: {
+    id: string;
+    kind: PracticeKind;
+    prompt: string;
+    options: string[] | null;
+    numeric: { unit: string | null; allow_negative: boolean } | null;
+    answer: ({ response: string } & WirePracticeVerdict) | null;
+  }[];
 };
 
-export type WirePracticeAttempt = { score: number; total: number; points: number };
+export type WirePracticeAttempt = {
+  score: number;
+  total: number;
+  points: number;
+  completed: boolean;
+  results: ({ question_id: string; duplicate: boolean } & WirePracticeVerdict)[];
+};
 
 export type WireSession = {
   id: string;
@@ -351,10 +370,19 @@ export const notification = (w: WireNotification): Notification => {
   };
 };
 
+const practiceVerdict = (w: WirePracticeVerdict): PracticeVerdict => ({
+  correct: w.correct,
+  correctAnswer: w.correct_answer,
+  explanation: w.explanation ?? null,
+});
+
 const practiceQuestion = (w: WirePracticeSet["questions"][number]): PracticeQuestion => ({
   id: w.id,
+  kind: w.kind,
   prompt: w.prompt,
   options: w.options,
+  numeric: w.numeric && { unit: w.numeric.unit, allowNegative: w.numeric.allow_negative },
+  answer: w.answer && { response: w.answer.response, ...practiceVerdict(w.answer) },
 });
 
 export const practiceSet = (w: WirePracticeSet): PracticeSet => ({
@@ -362,9 +390,11 @@ export const practiceSet = (w: WirePracticeSet): PracticeSet => ({
   sessionId: w.session_id,
   courseId: w.course_id,
   subjectId: w.subject_id,
+  lessonTitle: w.lesson_title ?? null,
   createdAt: ms(w.created_at),
   completedAt: msOrNull(w.completed_at),
   score: w.score,
+  points: w.points,
   questions: w.questions.map(practiceQuestion),
 });
 
@@ -372,6 +402,8 @@ export const practiceAttempt = (w: WirePracticeAttempt): PracticeAttempt => ({
   score: w.score,
   total: w.total,
   points: w.points,
+  completed: w.completed,
+  results: w.results.map((r) => ({ questionId: r.question_id, duplicate: r.duplicate, ...practiceVerdict(r) })),
 });
 
 export const session = (w: WireSession): SessionSnapshot => ({
