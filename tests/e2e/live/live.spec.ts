@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, mk, test } from "../fixtures";
 import type { Page } from "@playwright/test";
 
@@ -122,7 +123,10 @@ test.describe("what the live build leaves out or refuses", () => {
     });
     for (const path of ["/app", "/app/notifications", "/app/profile", "/app/settings", "/app/checkin/MATH-7B"]) {
       await page.goto(path);
-      await page.waitForLoadState("networkidle");
+      // Not "networkidle": the app holds the student's event stream open on every screen, so the network is never quiet.
+      await page.waitForLoadState("load");
+      await expect(page.locator("main").first()).toBeVisible();
+      await page.waitForTimeout(500);
     }
     expect(scripts.length).toBeGreaterThan(0);
     // Strings only the mock adapter, its leaderboard and its quiz driver contain. A count rather than
@@ -1381,5 +1385,312 @@ test.describe("practice and the history of results", () => {
     await expect(page.getByRole("list").first().getByRole("listitem")).toHaveCount(2);
     await page.goto("/app/notifications");
     await expect(page.locator(".item--unread")).toHaveCount(2);
+  });
+});
+
+/**
+ * Notifications (FR-NOT-01..03, US-S10) against the API: the feed read a page at a time, a new alert arriving on the student's own channel
+ * wherever the app is open, and web push. A headless browser has no push service, so `PushManager` is played here (what it is asked for is
+ * recorded and the server's own VAPID key is checked); the phone itself, an installed iPhone's push above all, is for a real device.
+ */
+test.describe("alerts and push", () => {
+  const control = (request: import("@playwright/test").APIRequestContext, what: string, data: object = {}) =>
+    request.post(`${API}/__control/${what}`, { data });
+  const calls = async (request: import("@playwright/test").APIRequestContext) => (await serverState(request)).calls;
+  const tabs = (page: Page) => page.getByRole("navigation", { name: mk.t("nav.main") });
+  const unread = (n: number | string) => mk.t("notif.unreadCount", { n });
+
+  test.describe("the feed", () => {
+    test("listens to the student's own channel, and only that, wherever the app is", async ({ page, request }) => {
+      await page.goto("/app");
+      await expect(page.getByRole("heading", { level: 1 })).toContainText("Live");
+      await expect.poll(async () => ((await (await request.get(`${API}/__control/state`)).json()) as { streams: number }).streams).toBe(1);
+    });
+
+    test("a new alert ticks the badge on a screen that is not Alerts", async ({ page, request }) => {
+      await page.goto("/app");
+      await expect(tabs(page)).toContainText(unread(2));
+      await control(request, "notify", { title: "Quiz moved", body: "To Friday." });
+      await expect(tabs(page)).toContainText(unread(3));
+      await page.getByRole("link", { name: mk.t("nav.alerts"), exact: false }).first().click();
+      await expect(page.getByRole("link", { name: /Quiz moved/ })).toBeVisible();
+    });
+
+    test("a new alert slides into the open list, on top, and is said to a screen reader", async ({ page, request }) => {
+      await page.goto("/app/notifications");
+      await expect(page.locator(".item--unread")).toHaveCount(2);
+      await expect(page.locator(".item--fresh")).toHaveCount(0);
+      await control(request, "notify", { title: "Quiz moved" });
+      const first = page.getByRole("list").first().getByRole("listitem").first();
+      await expect(first).toContainText("Quiz moved");
+      await expect(first.locator("a")).toHaveClass(/item--fresh/);
+      await expect(page.locator(".item--unread")).toHaveCount(3);
+      await expect(page.getByRole("status").filter({ hasText: mk.t("notif.arrived", { n: 3 }) })).toBeAttached();
+      // Older ones do not slide in again: the second alert is one more at the top.
+      await control(request, "notify", { title: "Another" });
+      await expect(page.locator(".item--fresh")).toHaveCount(2);
+    });
+
+    test.describe("a link that is cut", () => {
+      test.use({ allowConsoleErrors: [/https:\/\/vercel\.live\/|ERR_INCOMPLETE_CHUNKED_ENCODING/] });
+    test("after the link drops and comes back, what was missed is read", async ({ page, request }) => {
+      await page.goto("/app");
+      await expect(tabs(page)).toContainText(unread(2));
+      await control(request, "block-streams", { on: true });
+      await control(request, "drop-streams");
+      await control(request, "notify", { title: "While away" });
+      await control(request, "block-streams", { on: false });
+      await expect(tabs(page)).toContainText(unread(3), { timeout: 20_000 });
+    });
+    });
+
+    test("signed in elsewhere is the full screen at once, with no request to be refused first", async ({ page, request }) => {
+      await page.goto("/app");
+      await expect(page.getByRole("heading", { level: 1 })).toContainText("Live");
+      await control(request, "session/elsewhere");
+      await expect(page.getByRole("alert").filter({ hasText: mk.t("elsewhere.title") })).toBeVisible();
+    });
+
+    test("marking one alert read shows at once and is told to the API", async ({ page, request }) => {
+      await page.goto("/app/notifications");
+      await expect(page.locator(".item--unread")).toHaveCount(2);
+      await page.getByRole("link", { name: new RegExp(mk.t("notif.result_ready.title", { subject: mk.t("subj.math") })) }).click();
+      await expect(page).toHaveURL(/\/app\/notifications\/n-1$/);
+      await page.getByRole("link", { name: mk.t("nav.alerts") }).click();
+      await expect(page.locator(".item--unread")).toHaveCount(1);
+      expect((await serverState(request)).bodies["POST /me/notifications/read"]).toEqual({ ids: ["n-1"] });
+    });
+  });
+
+  test.describe("paging", () => {
+    test("reads the newest 30, offers the older ones, and reads each next page from where the last ended", async ({ page, request }) => {
+      await control(request, "notifications/seed", { count: 70 });
+      await page.goto("/app/notifications");
+      const rows = page.getByRole("list").first().getByRole("listitem");
+      await expect(rows).toHaveCount(30);
+      const queries = async () => ((await serverState(request)) as unknown as { queries: Record<string, string> }).queries["GET /me/notifications"];
+      expect(await queries()).toBe("?limit=30");
+
+      const more = page.getByRole("button", { name: mk.t("notif.more") });
+      await more.click();
+      await expect(rows).toHaveCount(60);
+      expect(await queries()).toMatch(/^\?limit=30&before=n-/);
+      await more.click();
+      // 73 in all: the last page is short, so there is no more to ask for.
+      await expect(rows).toHaveCount(73);
+      await expect(more).toHaveCount(0);
+      await expect(page.getByText("Older alert 70")).toBeAttached();
+    });
+
+    test("a full feed of unread alerts says 30+ on the badge, and marking all read tells the API once", async ({ page, request }) => {
+      for (let i = 0; i < 30; i++) await control(request, "notify", { title: `Burst ${i}` });
+      await page.goto("/app/notifications");
+      await expect(tabs(page)).toContainText(unread("30+"));
+      await page.getByRole("button", { name: mk.t("notif.markAll") }).click();
+      await expect(page.locator(".item--unread")).toHaveCount(0);
+      await expect(tabs(page)).not.toContainText(unread("30+"));
+      expect(((await calls(request)).filter((c) => c === "POST /me/notifications/read"))).toHaveLength(1);
+    });
+
+    test("one page of a short feed offers nothing more", async ({ page }) => {
+      await page.goto("/app/notifications");
+      await expect(page.getByRole("link", { name: /Parents evening/ })).toBeVisible();
+      await expect(page.getByRole("button", { name: mk.t("notif.more") })).toHaveCount(0);
+    });
+  });
+
+  test.describe("web push", () => {
+    // An Android phone: on the iPhone of the config the switch asks for the Home Screen first (the mock suite covers that).
+    test.use({
+      userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36",
+      serviceWorkers: "allow",
+      // A session that ends is a 401 the browser logs; an API that refuses a subscription is a 500.
+      allowConsoleErrors: [/https:\/\/vercel\.live\/|Failed to load resource: the server responded with a status of (401|500)/],
+    });
+
+    const vapid = JSON.parse(readFileSync("tests/fake-api/vapid.json", "utf8")) as { publicKey: string };
+    const SUB = { p256dh: "BP-test-key", auth: "test-auth" };
+
+    /**
+     * The browser's permission and push manager, played: what the student answers to the prompt, the subscription the phone holds (kept for the
+     * tab, as a browser keeps it), the key it was subscribed with, and how many times a subscription was cancelled.
+     */
+    async function phone(page: Page, permission: NotificationPermission, answer: NotificationPermission = "granted") {
+      await page.addInitScript(
+        ({ permission, answer, keys }) => {
+          const get = (k: string) => sessionStorage.getItem(k);
+          const set = (k: string, v: string) => sessionStorage.setItem(k, v);
+          Object.defineProperty(Notification, "permission", { get: () => (get("__e2e_permission") as NotificationPermission | null) ?? permission, configurable: true });
+          Notification.requestPermission = async () => {
+            set("__e2e_asked", String(Number(get("__e2e_asked") ?? 0) + 1));
+            set("__e2e_permission", answer);
+            return answer;
+          };
+          const make = (endpoint: string) => ({
+            endpoint,
+            toJSON: () => ({ endpoint, expirationTime: null, keys }),
+            unsubscribe: async () => {
+              sessionStorage.removeItem("__e2e_sub");
+              set("__e2e_unsubscribed", String(Number(get("__e2e_unsubscribed") ?? 0) + 1));
+              return true;
+            },
+          });
+          PushManager.prototype.getSubscription = async () => (get("__e2e_sub") ? (make(get("__e2e_sub")!) as unknown as PushSubscription) : null);
+          PushManager.prototype.subscribe = async function (options?: PushSubscriptionOptionsInit) {
+            set("__e2e_key", Array.from(new Uint8Array(options!.applicationServerKey as ArrayBuffer)).join(","));
+            set("__e2e_userVisibleOnly", String(options!.userVisibleOnly));
+            const endpoint = `https://push.example/sub-${Number(get("__e2e_subs") ?? 0) + 1}`;
+            set("__e2e_subs", String(Number(get("__e2e_subs") ?? 0) + 1));
+            set("__e2e_sub", endpoint);
+            return make(endpoint) as unknown as PushSubscription;
+          };
+        },
+        { permission, answer, keys: SUB },
+      );
+    }
+    const seen = (page: Page, key: string) => page.evaluate((k) => sessionStorage.getItem(k), key);
+    const toggle = (page: Page) => page.getByRole("switch", { name: mk.t("settings.notifications") });
+    const hint = (page: Page) => page.locator("#push-hint");
+    const bytes = (b64url: string) => Array.from(Buffer.from(b64url, "base64url")).join(",");
+    const held = async (request: import("@playwright/test").APIRequestContext) => ((await serverState(request)) as unknown as { pushToken: { endpoint: string } | null }).pushToken;
+    /** Turn it on and wait until the API has the subscription: the switch moves at once, the API answers after. */
+    async function turnOn(page: Page, request: import("@playwright/test").APIRequestContext) {
+      await toggle(page).click();
+      await expect(toggle(page)).toHaveAttribute("aria-checked", "true");
+      await expect.poll(() => held(request)).not.toBeNull();
+    }
+
+    test("turning it on saves the setting, subscribes with the server's key, and sends the subscription to PUT /me/push-token", async ({ page, request }) => {
+      await phone(page, "default");
+      await page.goto("/app/settings");
+      await expect(toggle(page)).toHaveAttribute("aria-checked", "false");
+      await turnOn(page, request);
+      await expect(hint(page)).toHaveText(mk.t("settings.push.on"));
+
+      const { bodies, pushToken } = (await serverState(request)) as unknown as { bodies: Record<string, unknown>; pushToken: unknown };
+      expect(bodies["PATCH /me/settings"]).toEqual({ notifications_on: true });
+      expect(bodies["PUT /me/push-token"]).toEqual({ endpoint: "https://push.example/sub-1", expirationTime: null, keys: { p256dh: SUB.p256dh, auth: SUB.auth }, platform: "android" });
+      expect(pushToken).toMatchObject({ endpoint: "https://push.example/sub-1" });
+      // The setting first, then the subscription (so a failed subscription is retried the next time the app opens).
+      const all = await calls(request);
+      expect(all.indexOf("PATCH /me/settings")).toBeLessThan(all.indexOf("PUT /me/push-token"));
+      // The key the phone subscribed with is the server's, and the subscription is for notifications the student sees.
+      expect(await seen(page, "__e2e_key")).toBe(bytes(vapid.publicKey));
+      expect(await seen(page, "__e2e_userVisibleOnly")).toBe("true");
+      expect(await seen(page, "__e2e_asked")).toBe("1");
+    });
+
+    test("turning it off saves the setting, has the API forget the subscription, and cancels the phone's", async ({ page, request }) => {
+      await phone(page, "default");
+      await page.goto("/app/settings");
+      await turnOn(page, request);
+      await toggle(page).click();
+      // The switch moves at once; the API has the last word once it has answered.
+      await expect(toggle(page)).toHaveAttribute("aria-checked", "false");
+      await expect(hint(page)).toHaveText(mk.t("settings.push.off"));
+      await expect.poll(async () => ((await serverState(request)) as unknown as { pushToken: unknown }).pushToken).toBeNull();
+
+      const { bodies } = (await serverState(request)) as unknown as { bodies: Record<string, unknown> };
+      expect(bodies["PATCH /me/settings"]).toEqual({ notifications_on: false });
+      const all = await calls(request);
+      expect(all.indexOf("PATCH /me/settings")).toBeLessThan(all.lastIndexOf("DELETE /me/push-token"));
+      expect(await seen(page, "__e2e_unsubscribed")).toBe("1");
+    });
+
+    test("signing out has the API forget it first, and leaves nothing on the phone", async ({ page, request }) => {
+      await phone(page, "default");
+      await page.goto("/app/settings");
+      await turnOn(page, request);
+
+      await page.goto("/app/profile");
+      await page.getByRole("main").getByRole("button", { name: mk.t("drawer.logout") }).click();
+      await page.getByRole("dialog", { name: mk.t("confirm.logout") }).getByRole("button", { name: mk.t("drawer.logout") }).click();
+      await expect(page).toHaveURL(/\/app\/welcome$/);
+
+      const all = await calls(request);
+      // The API needs the session to forget the subscription: it is asked before the session is ended.
+      expect(all.indexOf("DELETE /me/push-token")).toBeGreaterThan(-1);
+      expect(all.indexOf("DELETE /me/push-token")).toBeLessThan(all.indexOf("POST /auth/logout"));
+      expect(((await serverState(request)) as unknown as { pushToken: unknown }).pushToken).toBeNull();
+      expect(await seen(page, "__e2e_sub")).toBeNull();
+      expect(await seen(page, "__e2e_unsubscribed")).toBe("1");
+    });
+
+    test("a session that ends behind the app's back still cancels the phone's subscription, with no call it would only be refused", async ({ page, request }) => {
+      test.info().annotations.push({ type: "note", description: "allow the 401s the server answers" });
+      await phone(page, "default");
+      await page.goto("/app/settings");
+      await turnOn(page, request);
+
+      await control(request, "elsewhere");
+      await page.reload();
+      await expect(page.getByRole("alert").filter({ hasText: mk.t("elsewhere.title") })).toBeVisible();
+      await expect.poll(() => seen(page, "__e2e_unsubscribed")).toBe("1");
+      expect((await calls(request)).filter((c) => c === "DELETE /me/push-token")).toHaveLength(0);
+    });
+
+    test("opening the app again does not tell the API about the same subscription twice, and tells it about one that changed", async ({ page, request }) => {
+      await phone(page, "default");
+      await page.goto("/app/settings");
+      await turnOn(page, request);
+      await page.reload();
+      await expect(toggle(page)).toHaveAttribute("aria-checked", "true");
+      expect((await calls(request)).filter((c) => c === "PUT /me/push-token")).toHaveLength(1);
+
+      // The browser rotated the subscription behind the app's back.
+      await page.evaluate(() => sessionStorage.setItem("__e2e_sub", "https://push.example/rotated"));
+      await page.reload();
+      await expect.poll(async () => ((await serverState(request)) as unknown as { pushToken: { endpoint: string } | null }).pushToken?.endpoint).toBe("https://push.example/rotated");
+      expect((await calls(request)).filter((c) => c === "PUT /me/push-token")).toHaveLength(2);
+    });
+
+    test("a subscription nobody asked for on this phone is cancelled, and never sent to the API", async ({ page, request }) => {
+      await phone(page, "granted");
+      await page.addInitScript(() => {
+        // Left over from someone else: the phone holds a subscription this student never turned on.
+        if (!sessionStorage.getItem("__e2e_seeded_sub")) {
+          sessionStorage.setItem("__e2e_seeded_sub", "1");
+          sessionStorage.setItem("__e2e_sub", "https://push.example/leftover");
+        }
+      });
+      await page.goto("/app/settings");
+      await expect(toggle(page)).toHaveAttribute("aria-checked", "false");
+      await expect.poll(() => seen(page, "__e2e_unsubscribed")).toBe("1");
+      expect((await calls(request)).filter((c) => c === "PUT /me/push-token" || c === "DELETE /me/push-token")).toHaveLength(0);
+    });
+
+    test("a permission already given, for a student who never turned it on here, is not a reason to subscribe", async ({ page, request }) => {
+      await phone(page, "granted");
+      await page.goto("/app/settings");
+      await expect(toggle(page)).toHaveAttribute("aria-checked", "false");
+      await page.waitForTimeout(1000);
+      expect(await seen(page, "__e2e_subs")).toBeNull();
+      expect((await calls(request)).filter((c) => c === "PUT /me/push-token")).toHaveLength(0);
+    });
+
+    test("a no from the browser calls nothing, and the switch says it is blocked", async ({ page, request }) => {
+      await phone(page, "default", "denied");
+      await page.goto("/app/settings");
+      await toggle(page).click();
+      await expect(hint(page)).toHaveText(mk.t("settings.push.blocked"));
+      const all = await calls(request);
+      expect(all.filter((c) => c === "PATCH /me/settings" || c.endsWith("/me/push-token"))).toEqual([]);
+    });
+
+    test("an API that refuses the subscription leaves the switch off and says so", async ({ page, request }) => {
+      await phone(page, "default");
+      // The server will not take a subscription with no platform.
+      await page.route("**/api/v1/me/push-token", (route) => (route.request().method() === "PUT" ? route.fulfill({ status: 500, body: JSON.stringify({ error: { code: "server_error", message: "x" } }), contentType: "application/json" }) : route.continue()));
+      await page.goto("/app/settings");
+      await toggle(page).click();
+      await expect(page.getByRole("status").filter({ hasText: mk.t("push.failed") })).toBeAttached();
+      await expect(toggle(page)).toHaveAttribute("aria-checked", "false");
+      expect(await calls(request)).toContain("PATCH /me/settings");
+    });
+
+    test("the demo's test notification is not offered", async ({ page }) => {
+      await page.goto("/app/settings");
+      await expect(page.getByRole("button", { name: new RegExp(mk.t("settings.testPush")) })).toHaveCount(0);
+    });
   });
 });

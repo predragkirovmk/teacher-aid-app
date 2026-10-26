@@ -48,6 +48,9 @@ describe("what this phone can do about web push", () => {
     expect(iosVersion(IPHONE_17)).toEqual([17, 4]);
     expect(iosVersion(IPHONE_16_3)).toEqual([16, 3]);
     expect(iosVersion(ANDROID)).toBeNull();
+    // A newer Safari freezes the OS token; its own version is the one that counts. Chrome on iOS has only the token.
+    expect(iosVersion("Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1")).toEqual([26, 0]);
+    expect(iosVersion("Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/130.0 Mobile/15E148 Safari/604.1")).toEqual([17, 2]);
   });
 
   it("takes an iPad asking for the desktop site for an iPad, and a Mac for a Mac", () => {

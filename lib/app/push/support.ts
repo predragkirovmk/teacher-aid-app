@@ -32,9 +32,12 @@ const IOS_PUSH: readonly [number, number] = [16, 4];
 export const isApple = (env: Pick<PushEnv, "ua" | "touchPoints">) =>
   /iPhone|iPad|iPod/.test(env.ua) || (/Macintosh/.test(env.ua) && env.touchPoints > 1);
 
-/** The iOS version in a user agent as [major, minor]; null when it does not say (an iPad asking for the desktop site). */
+/**
+ * The iOS version in a user agent as [major, minor]; null when it does not say. Safari's own `Version/` comes first: the
+ * `OS 18_6` token of a newer iPhone is frozen and no longer says which iOS it is. Other browsers on iOS only have the token.
+ */
 export function iosVersion(ua: string): [number, number] | null {
-  const m = /OS (\d+)[_.](\d+)/.exec(ua) ?? /Version\/(\d+)\.(\d+)/.exec(ua);
+  const m = /Version\/(\d+)\.(\d+)/.exec(ua) ?? /OS (\d+)[_.](\d+)/.exec(ua);
   return m ? [Number(m[1]), Number(m[2])] : null;
 }
 

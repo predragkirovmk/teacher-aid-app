@@ -241,16 +241,16 @@ function Dock({ pathname }: { pathname: string }) {
   const feed = useNotifications().data;
   const count = (feed ?? []).filter((n) => n.readAt === null).length;
   // A feed of a full page that is all unread may have more behind it: say "30+" rather than a number that is too low.
-  const label = count >= NOTIFICATIONS_PAGE ? `${NOTIFICATIONS_PAGE}+` : count;
+  const shownCount = count >= NOTIFICATIONS_PAGE ? `${NOTIFICATIONS_PAGE}+` : count;
   // Keep the last non-zero count so the badge can shrink away showing it, instead of vanishing.
-  const [lastCount, setLastCount] = useState(label);
-  if (count > 0 && label !== lastCount) setLastCount(label);
+  const [lastCount, setLastCount] = useState(shownCount);
+  if (count > 0 && shownCount !== lastCount) setLastCount(shownCount);
   // A new alert while the app is open is said out loud once, politely. The first load is not news.
   const [seen, setSeen] = useState<number | null>(feed === undefined ? null : count);
   const [arrived, setArrived] = useState("");
   if (feed !== undefined && seen !== count) {
     setSeen(count);
-    if (seen !== null && count > seen) setArrived(t("notif.arrived", { n: label }));
+    if (seen !== null && count > seen) setArrived(t("notif.arrived", { n: shownCount }));
   }
 
   const tab = (href: string, label: string, Icon: Icon, active: boolean, badge?: number) => (
@@ -266,7 +266,7 @@ function Dock({ pathname }: { pathname: string }) {
               {lastCount}
             </span>
           </span>
-          {badge > 0 && <span className="sr">{t("notif.unreadCount", { n: label })}</span>}
+          {badge > 0 && <span className="sr">{t("notif.unreadCount", { n: shownCount })}</span>}
         </>
       )}
     </Link>

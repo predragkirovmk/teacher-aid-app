@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
 
 /**
@@ -20,8 +21,11 @@ const apiUrl = `http://127.0.0.1:${apiPort}`;
 const skipBuild = process.env.E2E_SKIP_BUILD === "1";
 const ci = !!process.env.CI;
 
+// The live build is given the public half of the fake API's own VAPID pair (tests/fake-api/vapid.json); the mock build has no push server.
+const vapid = JSON.parse(readFileSync("tests/fake-api/vapid.json", "utf8")) as { publicKey: string };
+
 const buildEnv: Record<string, string> = live
-  ? { NEXT_PUBLIC_E2E: "1", NEXT_PUBLIC_API_MODE: "live", NEXT_PUBLIC_API_URL: apiUrl, NEXT_DIST_DIR: ".next-live" }
+  ? { NEXT_PUBLIC_E2E: "1", NEXT_PUBLIC_API_MODE: "live", NEXT_PUBLIC_API_URL: apiUrl, NEXT_PUBLIC_VAPID_PUBLIC_KEY: vapid.publicKey, NEXT_DIST_DIR: ".next-live" }
   : { NEXT_PUBLIC_E2E: "1" };
 
 const app = {

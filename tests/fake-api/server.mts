@@ -63,6 +63,13 @@
  * repeat gets the stored verdict with `duplicate`, a right answer is PRACTICE_POINTS, a response the question cannot have is `validation_failed` (422), a question
  * that is not the set's is `not_found` (404); a number is read with a comma or a point. Every body is kept in state.practiceBodies, in order.
  *   POST /__control/practice/send     the teacher sends a set from the live lesson's questions: a new set, and its alert
+ *
+ * Notifications (FR-NOT-01..03, spec 11.3): `GET /me/notifications` takes `?limit=` and `?before=` (the id of the last one of the page before,
+ * PROPOSED paging); `PUT /me/push-token` takes the browser's subscription (`endpoint`, `expirationTime`, `keys`) and a `platform` and replaces the
+ * student's one, `DELETE` removes it, and signing out removes it too (state.pushToken, the calls are in state.calls). The student's channel
+ * carries `notification.created`.
+ *   POST /__control/notify            { kind?, title?, body? }   the server creates a notification for the student and tells the stream
+ *   POST /__control/notifications/seed { count }                 `count` older read notifications, to page through
  * Class codes: LIVE-7B joins; EXPIRED-7B, OTHER-8A and ENDED-7B are refused as the API would; any other is unknown.
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
@@ -332,6 +339,8 @@ const initial = () => ({
   practiceSets: [practiceSetOne()] as PracticeSetData[],
   practiceAnswers: {} as Record<string, Record<string, string>>,
   practiceDone: {} as Record<string, string>,
+  /** The push subscription the API holds for the student, or null. */
+  pushToken: null as null | Record<string, unknown>,
   /** Every body of `POST /practice-sets/{id}/answers`, in the order they came, with the set's id. */
   practiceBodies: [] as { id: string; body: unknown }[],
 });
@@ -1037,6 +1046,33 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     state.tokenExpired = true;
     return send(res, 204);
   }
+  if (path === "/__control/notify" && method === "POST") {
+    const body = ((await readJson(req)) as { kind?: string; title?: string; body?: string } | undefined) ?? {};
+    const n = state.notifications.length + 1;
+    state.notifications.unshift({
+      id: `n-new-${n}`,
+      kind: body.kind ?? "generic",
+      payload: { title: body.title ?? `Alert ${n}`, body: body.body ?? "Something new." },
+      created_at: new Date().toISOString(),
+      read_at: null,
+    });
+    broadcast("student", "notification.created");
+    return send(res, 204);
+  }
+  if (path === "/__control/notifications/seed" && method === "POST") {
+    const { count = 0 } = ((await readJson(req)) as { count?: number } | undefined) ?? {};
+    for (let i = 0; i < count; i++) {
+      const at = new Date(NOW - (10 + i) * DAY);
+      state.notifications.push({
+        id: `n-old-${String(i + 1).padStart(3, "0")}`,
+        kind: "generic",
+        payload: { title: `Older alert ${i + 1}`, body: "From a while ago." },
+        created_at: at.toISOString(),
+        read_at: at.toISOString(),
+      });
+    }
+    return send(res, 204);
+  }
   if (path === "/__control/practice/send" && method === "POST") {
     practiceSend();
     return send(res, 204);
@@ -1105,7 +1141,13 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     if (api === "/me/topics") return send(res, 200, TOPICS());
     if (api === "/me/leaderboard") return send(res, 200, LEADERBOARD());
     if (api === "/me/badges") return send(res, 200, BADGES);
-    if (api === "/me/notifications") return send(res, 200, [...state.notifications].sort((a, b) => b.created_at.localeCompare(a.created_at)));
+    if (api === "/me/notifications") {
+      const sorted = [...state.notifications].sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id));
+      const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit")) || 30));
+      const before = url.searchParams.get("before");
+      const from = before ? sorted.findIndex((n) => n.id === before) + 1 : 0;
+      return send(res, 200, before && from === 0 ? [] : sorted.slice(from, from + limit));
+    }
     if (api === "/me/practice-sets") return send(res, 200, [...state.practiceSets].reverse().map(practiceWire));
   }
 
@@ -1138,8 +1180,27 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     return send(res, 200, state.student);
   }
 
+  if (api === "/me/push-token" && method === "PUT") {
+    const body = (await readJson(req)) as { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown }; platform?: unknown } | undefined;
+    state.bodies[`${method} ${api}`] = body;
+    const valid =
+      typeof body?.endpoint === "string" &&
+      typeof body.keys?.p256dh === "string" &&
+      typeof body.keys.auth === "string" &&
+      ["ios", "android", "desktop"].includes(body.platform as string);
+    if (!valid) return fail(res, 422, "validation_failed");
+    state.pushToken = body as Record<string, unknown>;
+    return send(res, 204);
+  }
+  if (api === "/me/push-token" && method === "DELETE") {
+    state.pushToken = null;
+    return send(res, 204);
+  }
+
   if (method === "POST" && api === "/auth/logout") {
     state.signedOut = "unauthenticated";
+    // A student who signs out has no push subscription left (PROPOSED rule).
+    state.pushToken = null;
     return send(res, 204);
   }
 
