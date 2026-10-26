@@ -51,8 +51,11 @@ class Slot<T> {
     public load: (c: ApiClient) => Promise<T>,
   ) {}
 
-  /** Ask the client. `notify` is false while a render is reading, which must not tell anyone. */
-  fetch(notify: boolean) {
+  /**
+   * Ask the client. `notify` is false while a render is reading, which must not tell anyone. Resolves with the failure
+   * once the answer (or the failure) has been applied, so a caller that needs to know can wait; a render never does.
+   */
+  fetch(notify: boolean): Promise<ApiError | null> {
     const seq = ++this.seq;
     const apply = (s: Settled<T>, announce: boolean) => {
       if (seq !== this.seq) return; // a newer ask has taken over
@@ -76,18 +79,18 @@ class Slot<T> {
       p = this.load(client);
     } catch (e) {
       apply({ ok: false, error: e }, notify);
-      return;
+      return Promise.resolve(this.entry.error);
     }
     const settled = (p as Partial<SettledPromise<T>>).settled;
     if (settled) {
       this.sync = true;
       apply(settled, notify);
-      return;
+      return Promise.resolve(this.entry.error);
     }
-    p.then(
+    return p.then(
       (value) => apply({ ok: true, value }, true),
       (error) => apply({ ok: false, error }, true),
-    );
+    ).then(() => this.entry.error);
   }
 
   private emit() {
@@ -180,6 +183,12 @@ export function invalidate(...prefixes: string[]) {
   });
 }
 
+/** Ask for one slot again now, and wait for the answer: the failure if it failed, else null. A slot nobody has read yet has nothing to refresh. */
+export function reload(key: string): Promise<ApiError | null> {
+  const slot = slots.get(key);
+  return slot ? slot.fetch(true) : Promise.resolve(null);
+}
+
 /** Drop every answer, so nothing one student saw is shown to the next. */
 export function resetQueries() {
   slots.forEach((slot) => slot.reset());
@@ -188,6 +197,17 @@ export function resetQueries() {
 /** Put an answer straight into a slot, for a call that returns the fresh data. */
 export function seed<T>(key: string, data: T) {
   (slots.get(key) as Slot<T> | undefined)?.put(data);
+}
+
+/**
+ * Change the answer a slot holds, when it holds one: for showing a change at once, before the server has confirmed it.
+ * Returns what the slot held, to put back if the server refuses.
+ */
+export function amend<T>(key: string, fn: (data: T) => T): T | undefined {
+  const slot = slots.get(key) as Slot<T> | undefined;
+  const before = slot?.entry.data;
+  if (slot && before !== undefined) slot.put(fn(before));
+  return before;
 }
 
 export type Query<T> = {
@@ -222,7 +242,7 @@ export function useQuery<T>(key: string, load: (c: ApiClient) => Promise<T>, ena
       status: entry.data !== undefined ? "ready" : entry.error ? "error" : "loading",
       data: entry.data,
       error: entry.error,
-      refetch: () => slot.fetch(true),
+      refetch: () => void slot.fetch(true),
     }),
     [entry, slot],
   );

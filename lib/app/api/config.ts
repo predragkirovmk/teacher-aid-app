@@ -16,3 +16,6 @@ export const demoOnly: boolean = apiMode === "mock";
 
 /** The API's root: NEXT_PUBLIC_API_URL plus `/api/v1`. Empty origin means same-origin. */
 export const apiBase = `${(process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "")}/api/v1`;
+
+/** How many notifications one page of the Alerts feed holds (PROPOSED, spec 11.3). The badge counts the unread ones among the pages the app holds. */
+export const NOTIFICATIONS_PAGE = 30;

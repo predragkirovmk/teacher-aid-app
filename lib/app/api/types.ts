@@ -203,6 +203,29 @@ export type Notification = {
   readAt: number | null;
 };
 
+/**
+ * One page of the feed (PROPOSED, spec 11.3): the newest `limit` notifications, or the `limit` that come after the one
+ * named by `before` (the last of the page before). A page shorter than `limit` is the last.
+ */
+export type NotificationPage = { limit?: number; before?: Id };
+
+/**
+ * What the browser hands over when a phone subscribes to web push: where the push service takes a message for it and the
+ * keys that encrypt the message. The names are the browser's own (`PushSubscription.toJSON()`), so the API can hand the
+ * object to a web-push library as it is.
+ */
+export type PushSubscriptionData = {
+  endpoint: string;
+  expirationTime: number | null;
+  keys: { p256dh: string; auth: string };
+};
+
+/** The kind of phone a subscription is on: enough for the API to know what a push must be able to carry, not a device identifier (BR-SEC-05). */
+export type PushPlatform = "ios" | "android" | "desktop";
+
+/** PUT /me/push-token (PROPOSED): the subscription and the platform it is on. */
+export type PushRegistration = PushSubscriptionData & { platform: PushPlatform };
+
 // ---- Practice sets (F-12) -----------------------------------------------------------------------------------------
 
 /** The kinds a practice set can hold: an opener is a live thing and is never practised. */

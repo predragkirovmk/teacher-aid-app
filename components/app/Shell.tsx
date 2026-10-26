@@ -1,23 +1,30 @@
 "use client";
 
-import { BellSimpleIcon, CheckIcon, ExportIcon, HouseSimpleIcon, PlusSquareIcon, ScanIcon, UserIcon, type Icon } from "@phosphor-icons/react";
+import { BellSimpleIcon, CheckIcon, HouseSimpleIcon, ScanIcon, UserIcon, type Icon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { NOTIFICATIONS_PAGE } from "@/lib/app/api/config";
 import { invalidate } from "@/lib/app/api/query";
 import { useAuth, useNotifications, useSettings } from "@/lib/app/api/hooks";
 import { useT } from "@/lib/app/i18n";
+import { useAsk, usePush } from "@/lib/app/push";
 import { welcomeUrl } from "@/lib/app/signin";
 import type { Locale } from "@/lib/app/api/types";
 import { ClockOptions } from "./ClockOptions";
 import { ConnectionPill } from "./ConnectionPill";
 import { OutboxRunner } from "./OutboxRunner";
 import { Pager } from "./Pager";
+import { IosInstallSteps, PushAskSheet, PushHelpSheet } from "./PushSheets";
+import { PushRunner } from "./PushRunner";
+import { StudentStream } from "./StudentStream";
 import { SignedElsewhere, Splash, Unreachable } from "./SessionScreens";
 import { UIContext, type ConfirmOptions } from "./ui";
 
 const NO_TABS = ["/app/scan", "/app/welcome"];
 const WELCOME = "/app/welcome";
+/** How long after landing on a calm screen the ask about notifications appears: the result is read first. */
+const ASK_DELAY_MS = 1200;
 
 const noop = () => () => {};
 
@@ -32,14 +39,20 @@ export function Shell({ children }: { children: ReactNode }) {
   const [langAt, setLangAt] = useState<string | null>(null);
   const [clockAt, setClockAt] = useState<string | null>(null);
   const [confirmState, setConfirmState] = useState<{ at: string; options: ConfirmOptions } | null>(null);
-  const [installState, setInstallState] = useState<{ at: string; how: "ios" | "manual" } | null>(null);
+  const [installState, setInstallState] = useState<{ at: string; how: "ios" | "manual"; push: boolean } | null>(null);
+  const [pushHelpAt, setPushHelpAt] = useState<string | null>(null);
+  const [askAt, setAskAt] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [toastOut, setToastOut] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lang = langAt === pathname;
   const clockOpen = clockAt === pathname;
   const confirmOptions = confirmState?.at === pathname ? confirmState.options : null;
-  const installHow = installState?.at === pathname ? installState.how : null;
+  const install = installState?.at === pathname ? installState : null;
+  const pushHelp = pushHelpAt === pathname;
+  const askOpen = askAt === pathname;
+  const push = usePush();
+  const ask = useAsk(pathname);
 
   // Time-boxed UI is hard for some people, so the toast stays long and a tap dismisses it.
   const dismissToast = useCallback(() => {
@@ -66,7 +79,8 @@ export function Shell({ children }: { children: ReactNode }) {
       openLang: () => setLangAt(pathname),
       confirm: (options: ConfirmOptions) => setConfirmState({ at: pathname, options }),
       toast,
-      openInstall: (how: "ios" | "manual") => setInstallState({ at: pathname, how }),
+      openInstall: (how: "ios" | "manual", reason?: "push") => setInstallState({ at: pathname, how, push: reason === "push" }),
+      openPushHelp: () => setPushHelpAt(pathname),
       openClock: () => setClockAt(pathname),
     }),
     [toast, pathname],
@@ -75,6 +89,17 @@ export function Shell({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
+
+  // A lesson or a practice set has just finished and the student is on a calm screen: after a beat, ask once about notifications.
+  const { eligible, shown } = ask;
+  useEffect(() => {
+    if (!eligible) return;
+    const timer = setTimeout(() => {
+      shown();
+      setAskAt(pathname);
+    }, ASK_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [eligible, shown, pathname]);
 
   // The route guard. Every screen but the welcome screen is shown only to a signed-in student: until the
   // session is known there is the launch picture, and a signed-out student is sent to sign in (carrying
@@ -123,6 +148,8 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <UIContext.Provider value={ui}>
       <OutboxRunner meId={status === "signedIn" ? me.data?.id : undefined} />
+      <StudentStream meId={status === "signedIn" ? me.data?.id : undefined} />
+      <PushRunner student={status === "signedIn" && me.data ? { id: me.data.id, notificationsOn: me.data.settings.notificationsOn } : undefined} />
       <div className="stage">
         <div className="phone">
           <Pager pathname={pathname}>{content}</Pager>
@@ -169,28 +196,28 @@ export function Shell({ children }: { children: ReactNode }) {
               )}
             </Sheet>
           )}
-          {installHow && (
+          {install && (
             <Sheet label={t("install.title")} onClose={() => setInstallState(null)}>
               {(close) => (
                 <>
                   <p className="sheet__title">{t("install.title")}</p>
-                  {installHow === "ios" ? (
-                    <>
-                      <ol className="steps">
-                        <InstallStep icon={ExportIcon} text={t("install.ios.share")} />
-                        <InstallStep icon={PlusSquareIcon} text={t("install.ios.add")} />
-                        <InstallStep icon={CheckIcon} text={t("install.ios.confirm")} />
-                      </ol>
-                      <p className="t-cap steps__note">{t("install.ios.safari")}</p>
-                    </>
-                  ) : (
-                    <p className="t-body steps__note">{t("install.other")}</p>
-                  )}
+                  {install.how === "ios" ? <IosInstallSteps /> : <p className="t-body steps__note">{t("install.other")}</p>}
+                  {install.push && <p className="t-body steps__note">{t("install.pushNote")}</p>}
                   <button className="btn btn--primary btn--block" onClick={close}>
                     {t("install.ok")}
                   </button>
                 </>
               )}
+            </Sheet>
+          )}
+          {pushHelp && (
+            <Sheet label={t("push.help.title")} onClose={() => setPushHelpAt(null)}>
+              {(close) => <PushHelpSheet close={close} />}
+            </Sheet>
+          )}
+          {askOpen && (
+            <Sheet label={t("push.ask.title")} onClose={() => setAskAt(null)}>
+              {(close) => <PushAskSheet kind={ask.kind} close={close} turnOn={push.turnOn} />}
             </Sheet>
           )}
           {/* A live region that is always present announces the toast; one that appears together
@@ -211,10 +238,20 @@ export function Shell({ children }: { children: ReactNode }) {
 
 function Dock({ pathname }: { pathname: string }) {
   const { t } = useT();
-  const unread = (useNotifications().data ?? []).filter((n) => n.readAt === null).length;
+  const feed = useNotifications().data;
+  const count = (feed ?? []).filter((n) => n.readAt === null).length;
+  // A feed of a full page that is all unread may have more behind it: say "30+" rather than a number that is too low.
+  const label = count >= NOTIFICATIONS_PAGE ? `${NOTIFICATIONS_PAGE}+` : count;
   // Keep the last non-zero count so the badge can shrink away showing it, instead of vanishing.
-  const [lastCount, setLastCount] = useState(unread);
-  if (unread > 0 && unread !== lastCount) setLastCount(unread);
+  const [lastCount, setLastCount] = useState(label);
+  if (count > 0 && label !== lastCount) setLastCount(label);
+  // A new alert while the app is open is said out loud once, politely. The first load is not news.
+  const [seen, setSeen] = useState<number | null>(feed === undefined ? null : count);
+  const [arrived, setArrived] = useState("");
+  if (feed !== undefined && seen !== count) {
+    setSeen(count);
+    if (seen !== null && count > seen) setArrived(t("notif.arrived", { n: label }));
+  }
 
   const tab = (href: string, label: string, Icon: Icon, active: boolean, badge?: number) => (
     // Switching tabs replaces the history entry, so Back leaves the section instead of replaying tabs.
@@ -229,7 +266,7 @@ function Dock({ pathname }: { pathname: string }) {
               {lastCount}
             </span>
           </span>
-          {badge > 0 && <span className="sr">{t("notif.unreadCount", { n: badge })}</span>}
+          {badge > 0 && <span className="sr">{t("notif.unreadCount", { n: label })}</span>}
         </>
       )}
     </Link>
@@ -239,6 +276,9 @@ function Dock({ pathname }: { pathname: string }) {
 
   return (
     <div className="dock">
+      <span className="sr" role="status">
+        {arrived}
+      </span>
       <nav className="tabbar glass" aria-label={t("nav.main")}>
         <span
           className="tab-ind"
@@ -246,7 +286,7 @@ function Dock({ pathname }: { pathname: string }) {
           style={{ transform: `translateX(${Math.max(index, 0) * 100}%)`, opacity: index < 0 ? 0 : 1 }}
         />
         {tab("/app", t("nav.home"), HouseSimpleIcon, pathname === "/app")}
-        {tab("/app/notifications", t("nav.alerts"), BellSimpleIcon, pathname.startsWith("/app/notifications"), unread)}
+        {tab("/app/notifications", t("nav.alerts"), BellSimpleIcon, pathname.startsWith("/app/notifications"), count)}
         {tab("/app/profile", t("nav.profile"), UserIcon, pathname === "/app/profile")}
       </nav>
       {/* The scan is an action, not a section, so it sits beside the tab bar instead of in it. */}
@@ -399,17 +439,6 @@ export function Sheet({
         {children(close)}
       </div>
     </>
-  );
-}
-
-function InstallStep({ icon: Icon, text }: { icon: Icon; text: string }) {
-  return (
-    <li>
-      <span className="item__icon">
-        <Icon size={22} aria-hidden="true" />
-      </span>
-      {text}
-    </li>
   );
 }
 

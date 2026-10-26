@@ -2046,3 +2046,19 @@ button.pill {
     right: max(12px, calc(50% - 272px));
   }
 }
+
+/* ---- notifications ---- */
+/* An alert that arrives while the list is open slides in once (the keyframes fade instead when motion is reduced). */
+.item--fresh {
+  animation: rise var(--spring-smooth-dur) var(--spring-smooth) both;
+}
+/* Something that cannot be pressed right now says so by dimming; it keeps its place in the layout. */
+.btn:disabled,
+.switch:disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+/* The switch for a state the phone cannot reach (no push at all) is the only one that stays dimmed for good. */
+.switch[aria-disabled="true"] {
+  opacity: 0.55;
+}

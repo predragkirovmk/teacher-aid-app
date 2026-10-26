@@ -15,6 +15,7 @@ import type {
   LeaderboardRow,
   Locale,
   Notification,
+  NotificationPage,
   PhotoUpload,
   ProfileUpdate,
   SettingsUpdate,
@@ -35,6 +36,7 @@ import {
 } from "./data";
 import { translate, type Key } from "../../i18n";
 import { getLocale, setLocale, subscribeLocale } from "../../locale";
+import { NOTIFICATIONS_PAGE } from "../config";
 import { net } from "../../session/net";
 import { buildResults, buildTopics } from "./history";
 import { answerPractice, buildPracticeSets } from "./practice";
@@ -207,7 +209,28 @@ function buildNotifications(state: AppState, locale: Locale): Notification[] {
       payload: { courseId: p.courseId, subjectId: p.subjectId, subjectName: subject(p.subjectId as SubjectId), practiceSetId: p.id },
     };
   });
-  return [...fromData, ...practice].sort((a, b) => b.createdAt - a.createdAt);
+  // The result of a lesson played here is announced when the lesson ends (F-10); opening the summary reads the alert.
+  const results = state.finished
+    .filter((f) => f.total > 0)
+    .map((f): Notification => {
+      const id = `n-result-${f.sessionId}`;
+      return {
+        id,
+        kind: "result_ready",
+        createdAt: f.endedAt,
+        readAt: state.read.includes(id) ? f.endedAt : null,
+        payload: { courseId: f.courseId, subjectId: f.courseId, subjectName: subject(f.courseId), sessionId: f.sessionId, right: f.right, total: f.total },
+      };
+    });
+  return [...fromData, ...results, ...practice].sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** One page of the feed, as the API cuts it: after the notification `before` names, at most `limit` (PROPOSED, spec 11.3). */
+export function pageOf(all: Notification[], { limit = NOTIFICATIONS_PAGE, before }: NotificationPage = {}): Notification[] {
+  const from = before === undefined ? 0 : all.findIndex((n) => n.id === before) + 1;
+  // A cursor the server does not know is a page past the end, not the first page again.
+  if (before !== undefined && from === 0) return [];
+  return all.slice(from, from + limit);
 }
 
 export function createMockClient(source: MockSource): ApiClient {
@@ -274,7 +297,7 @@ export function createMockClient(source: MockSource): ApiClient {
     getLeaderboard: () => authed(() => buildLeaderboard(state(), locale())),
     listBadges: () => authed(() => buildBadges(state(), locale())),
 
-    listNotifications: () => authed(() => buildNotifications(state(), locale())),
+    listNotifications: (page) => authed(() => pageOf(buildNotifications(state(), locale()), page)),
     markNotificationsRead: (ids) =>
       authed(() =>
         write(() => {
@@ -285,6 +308,10 @@ export function createMockClient(source: MockSource): ApiClient {
           else actions.markAllRead(target);
         }),
       ),
+
+    // The demo has no push server: the phone's permission is real, a subscription is not, so there is nothing to store.
+    setPushToken: () => authed((): void => undefined),
+    removePushToken: () => authed((): void => undefined),
 
     listPracticeSets: () => authed(() => buildPracticeSets(state(), locale())),
     submitPracticeAnswers: (id, answers) =>

@@ -12,11 +12,13 @@ import type {
   Leaderboard,
   LeaderboardScope,
   Notification,
+  NotificationPage,
   PhotoUpload,
   PracticeAnswer,
   PracticeAttempt,
   PracticeSet,
   ProfileUpdate,
+  PushRegistration,
   SessionResult,
   SettingsUpdate,
   Student,
@@ -75,10 +77,16 @@ export interface ApiClient {
   listBadges(): Promise<Badge[]>;
 
   // Notifications
-  /** GET /me/notifications, newest first. */
-  listNotifications(): Promise<Notification[]>;
+  /** GET /me/notifications, newest first, a page at a time (PROPOSED: `?limit=&before=`). */
+  listNotifications(page?: NotificationPage): Promise<Notification[]>;
   /** POST /me/notifications/read: some ids, or "all". */
   markNotificationsRead(ids: Id[] | "all"): Promise<void>;
+
+  // Web push
+  /** PUT /me/push-token (PROPOSED): this phone's push subscription replaces the student's previous one. */
+  setPushToken(registration: PushRegistration): Promise<void>;
+  /** DELETE /me/push-token (PROPOSED): no more pushes to this student. Not an error when there was none. */
+  removePushToken(): Promise<void>;
 
   // Practice sets
   /** GET /me/practice-sets, newest first: the sets the teacher sent, with the student's progress in each. */

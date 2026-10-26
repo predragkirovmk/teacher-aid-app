@@ -6,9 +6,11 @@ import { Gate } from "@/components/app/QueryState";
 import Link from "next/link";
 import { markNotificationsRead } from "@/lib/app/api/hooks";
 import { alertCopy, useAlerts, type AlertItem } from "@/lib/app/alerts";
+import { useFeedMore } from "@/lib/app/feed";
 import { formatDate } from "@/lib/app/format";
 import { useUI } from "@/components/app/ui";
 import { errorCopy, useT } from "@/lib/app/i18n";
+import { useState } from "react";
 
 export default function Notifications() {
   const { t } = useT();
@@ -29,6 +31,10 @@ function List({ items, title }: { items: AlertItem[]; title: React.ReactNode }) 
   const { t, locale } = useT();
   const { toast } = useUI();
   const unread = items.filter((n) => n.unread);
+  const more = useFeedMore();
+  // An alert that arrives while the list is open slides in; the ones already here, and the older ones asked for, do not.
+  const [opened] = useState(() => Math.max(0, ...items.map((n) => n.when)));
+  const [known] = useState(() => new Set(items.map((n) => n.id)));
 
   return (
     <main className="screen">
@@ -52,7 +58,10 @@ function List({ items, title }: { items: AlertItem[]; title: React.ReactNode }) 
         <ul className="list">
           {items.map((n) => (
             <li key={n.id}>
-              <Link href={`/app/notifications/${n.id}`} className={`item${n.unread ? " item--unread" : ""}`}>
+              <Link
+                href={`/app/notifications/${n.id}`}
+                className={`item${n.unread ? " item--unread" : ""}${!known.has(n.id) && n.when > opened ? " item--fresh" : ""}`}
+              >
                 <span className="item__icon">
                   <NotifIcon n={n} />
                 </span>
@@ -72,6 +81,18 @@ function List({ items, title }: { items: AlertItem[]; title: React.ReactNode }) 
             </li>
           ))}
         </ul>
+      )}
+
+      {more.hasMore && (
+        <button
+          className="btn btn--ghost btn--block"
+          style={{ minHeight: 48, fontSize: "var(--fs-callout)", marginTop: 16 }}
+          disabled={more.loading}
+          aria-busy={more.loading}
+          onClick={() => more.loadMore().then((failure) => failure && toast(errorCopy(t, failure)))}
+        >
+          {more.loading ? t("state.loading") : t("notif.more")}
+        </button>
       )}
     </main>
   );

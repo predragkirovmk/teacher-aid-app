@@ -14,6 +14,7 @@ import { formatTime } from "@/lib/app/format";
 import { errorCopy, useT } from "@/lib/app/i18n";
 import { leave } from "@/lib/app/nav";
 import { useSelf } from "@/lib/app/profile";
+import { noteMoment } from "@/lib/app/push";
 import { initials, personName } from "@/lib/app/quiz";
 import { canAsk } from "@/lib/app/session/ask";
 import { useQT } from "@/lib/app/quiz-copy";
@@ -566,6 +567,8 @@ function Between({
 function Ended({ run, onHome }: { run: SessionRunView; onHome: () => void }) {
   const { t } = useQT();
   const total = useCountUp(run.points, 0, 900);
+  // A finished lesson is the first moment worth asking about notifications; the ask waits for a calm screen (lib/app/push).
+  useEffect(() => noteMoment("lesson_end"), []);
   return (
     <>
       {/* An answer saved offline that reached the server only after the End did not count. */}

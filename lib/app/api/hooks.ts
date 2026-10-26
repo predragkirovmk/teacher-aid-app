@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { loadFeed, resetFeed } from "../feed";
 import { setLocale as setLocalLocale, useLocale } from "../locale";
 import { forgetSets, loadSets } from "../practice-cache";
 import { OUTBOX_STUDENT_KEY } from "../session/outbox-store";
@@ -9,7 +10,7 @@ import { client, demoOnly } from "./index";
 import type { SettledPromise } from "./client";
 import { toApiError, type ApiError } from "./errors";
 import { endSession, onSessionEnd, startSession, useSessionEnd, type SessionEnd } from "./session";
-import { change, invalidate, mapQuery, resetQueries, seed, useQuery, type Query } from "./query";
+import { amend, change, invalidate, mapQuery, resetQueries, seed, useQuery, type Query } from "./query";
 import type {
   AttendanceSummary,
   Badge,
@@ -58,7 +59,8 @@ export const usePracticeSets = (): Query<PracticeSet[]> =>
 
 export const useBadges = (): Query<Badge[]> => useQuery("badges", (c) => c.listBadges());
 
-export const useNotifications = (): Query<Notification[]> => useQuery("notifications", (c) => c.listNotifications());
+/** The Alerts feed, newest first: the newest page, and the older ones the student has asked for (feed.ts). */
+export const useNotifications = (): Query<Notification[]> => useQuery("notifications", (c) => loadFeed(c));
 
 export const useLeaderboard = (scope: LeaderboardScope = "class"): Query<Leaderboard> =>
   useQuery(`leaderboard:${scope}`, (c) => c.getLeaderboard(scope));
@@ -160,6 +162,7 @@ function forgetStudent() {
 // Whatever ends a session, nothing the student saw stays to be shown to the next one.
 onSessionEnd(() => {
   resetQueries();
+  resetFeed();
   forgetStudent();
   forgetSets();
 });
@@ -176,7 +179,21 @@ export async function completeSignIn(input: StudentSignInCode): Promise<Student>
   return student;
 }
 
+const beforeSignOut = new Set<() => Promise<void>>();
+
+/**
+ * Run something while the student is still signed in, just before they sign out by choice: the push subscription is
+ * removed from the API here, which needs the session that the sign-out is about to end. A failure never stops the sign-out.
+ */
+export function onBeforeSignOut(cb: () => Promise<void>) {
+  beforeSignOut.add(cb);
+  return () => {
+    beforeSignOut.delete(cb);
+  };
+}
+
 export async function signOut(): Promise<void> {
+  await Promise.all([...beforeSignOut].map((cb) => cb().catch(() => {})));
   try {
     await change((c) => c.signOut());
   } catch (e) {
@@ -207,8 +224,7 @@ export async function saveProfile({ displayName, photo }: ProfileChange): Promis
 
 /**
  * The language is the phone's own setting first, so it changes at once and offline, and is told to
- * the API after when someone is signed in. Notifications are the API's setting, shown at once and
- * put back if the API refuses.
+ * the API after when someone is signed in.
  */
 export function useSettings() {
   const locale = useLocale();
@@ -223,26 +239,41 @@ export function useSettings() {
     [me.status],
   );
 
-  const setNotificationsOn = useCallback(
-    async (on: boolean) => {
-      const before = me.data;
-      if (before) seed("me", { ...before, settings: { ...before.settings, notificationsOn: on } });
-      try {
-        seed("me", await change((c) => c.updateSettings({ notificationsOn: on })));
-      } catch (e) {
-        if (before) seed("me", before);
-        throw toApiError(e);
-      }
-    },
-    [me.data],
-  );
+  return { locale, notificationsOn, setLocale };
+}
 
-  return { locale, notificationsOn, setLocale, setNotificationsOn };
+/**
+ * Save the notifications switch (`notifications_on`, FR-NOT-03). It shows at once and is put back if the API refuses. Turning
+ * notifications on or off for this phone is lib/app/push's job, which calls this as one of its steps.
+ */
+export async function saveNotificationsOn(on: boolean): Promise<void> {
+  const before = amend<Student>("me", (me) => ({ ...me, settings: { ...me.settings, notificationsOn: on } }));
+  try {
+    seed("me", await change((c) => c.updateSettings({ notificationsOn: on })));
+  } catch (e) {
+    if (before) seed("me", before);
+    throw toApiError(e);
+  }
 }
 
 // ---- Notifications ----------------------------------------------------------------------------------------------
 
-export const markNotificationsRead = (ids: Id[] | "all") => change((c) => c.markNotificationsRead(ids), ["notifications"]);
+/**
+ * Mark alerts read. The feed shows them read at once, as the student expects of a tap, and is read again from the server
+ * after: that settles it if the server disagreed, and puts it back if the call failed.
+ */
+export async function markNotificationsRead(ids: Id[] | "all"): Promise<void> {
+  const at = Date.now();
+  amend<Notification[]>("notifications", (all) =>
+    all.map((n) => (n.readAt === null && (ids === "all" || ids.includes(n.id)) ? { ...n, readAt: at } : n)),
+  );
+  try {
+    await change((c) => c.markNotificationsRead(ids), ["notifications"]);
+  } catch (e) {
+    invalidate("notifications");
+    throw e;
+  }
+}
 
 // ---- Joining a session -------------------------------------------------------------------------------------------
 

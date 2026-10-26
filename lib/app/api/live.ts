@@ -94,9 +94,17 @@ export function createLiveClient(): ApiClient {
       wire.leaderboard(await request<wire.WireLeaderboard>("GET", "/me/leaderboard", { query: { scope } })),
     listBadges: async () => (await request<wire.WireBadge[]>("GET", "/me/badges")).map(wire.badge),
 
-    listNotifications: async () => (await request<wire.WireNotification[]>("GET", "/me/notifications")).map(wire.notification),
+    listNotifications: async (page) =>
+      (
+        await request<wire.WireNotification[]>("GET", "/me/notifications", {
+          query: { limit: page?.limit === undefined ? undefined : String(page.limit), before: page?.before },
+        })
+      ).map(wire.notification),
     markNotificationsRead: (ids) =>
       request<void>("POST", "/me/notifications/read", { body: ids === "all" ? { all: true } : { ids } }),
+
+    setPushToken: (registration) => request<void>("PUT", "/me/push-token", { body: wire.pushTokenBody(registration) }),
+    removePushToken: () => request<void>("DELETE", "/me/push-token"),
 
     listPracticeSets: async () => (await request<wire.WirePracticeSet[]>("GET", "/me/practice-sets")).map(wire.practiceSet),
     submitPracticeAnswers: async (id, answers) =>

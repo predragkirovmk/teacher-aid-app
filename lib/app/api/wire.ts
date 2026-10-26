@@ -28,6 +28,7 @@ import type {
   PracticeQuestion,
   PracticeSet,
   PracticeVerdict,
+  PushRegistration,
   QuestionKind,
   QuestionResult,
   QuestionStatus,
@@ -580,6 +581,17 @@ export function sessionEvent(type: string, data: unknown): SessionEvent | null {
 export const settingsBody = (u: SettingsUpdate) => ({
   ...(u.notificationsOn !== undefined && { notifications_on: u.notificationsOn }),
   ...(u.locale !== undefined && { locale: u.locale }),
+});
+
+/**
+ * `PUT /me/push-token`: the browser's own subscription object (`endpoint`, `expirationTime`, `keys`) and the platform it
+ * is on, nothing else. The names stay the browser's so the API can pass the object to a web-push library as it is.
+ */
+export const pushTokenBody = (r: PushRegistration) => ({
+  endpoint: r.endpoint,
+  expirationTime: r.expirationTime,
+  keys: { p256dh: r.keys.p256dh, auth: r.keys.auth },
+  platform: r.platform,
 });
 
 export const answerBody = (a: AnswerInput) => ({

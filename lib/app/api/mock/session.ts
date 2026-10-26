@@ -526,6 +526,8 @@ export class MockSession {
     this.sendPracticeSet();
     this.toClass("state.changed", { state: "ended" });
     this.toMe("session.ended", { session_points: this.points, session_rank: this.rank, summary: this.summary });
+    // The server writes the alerts for the result and the practice set (FR-NOT-01) and tells the app wherever it is open.
+    emitToStudent("notification.created");
   }
 
   /**
@@ -1111,6 +1113,50 @@ export function mockTransport(sessionId: string): RealtimeTransport {
         open = false;
         clearTimeout(opening);
         stop();
+        if (typeof window !== "undefined") window.removeEventListener("offline", lost);
+      },
+    };
+  };
+  return new ChannelTransport(connect);
+}
+
+// ---- The student's own channel -------------------------------------------------------------------
+
+/** Who listens to the student's channel outside any lesson: the app's own stream (student-stream.ts). */
+const studentListeners = new Set<(m: RealtimeMessage) => void>();
+
+/** One message on `student.{id}`, as the server sends it (spec 11.2). */
+function emitToStudent(type: string, data: Record<string, unknown> = {}) {
+  const channel = `student.${STUDENT_ID}`;
+  const message = { channel, type, data: { channel, server_now: iso(serverNow()), ...data } };
+  studentListeners.forEach((l) => l(message));
+}
+
+/**
+ * The link the app keeps to the student's channel while it is open, whatever screen it is on (spec 11.2): the real
+ * `ChannelTransport` over a link to the mock, so a dropped signal reconnects the way the live one does.
+ */
+export function mockStudentTransport(): RealtimeTransport {
+  const connect: Connect = (channels, handlers) => {
+    if (net.isOffline()) {
+      const failing = setTimeout(() => handlers.closed(), 50);
+      return { close: () => clearTimeout(failing) };
+    }
+    let open = true;
+    studentListeners.add(listener);
+    function listener(m: RealtimeMessage) {
+      if (open && channels.includes(m.channel)) handlers.message(m);
+    }
+    const opening = setTimeout(() => handlers.open(), 0);
+    const lost = () => {
+      if (open && net.isOffline()) handlers.closed();
+    };
+    if (typeof window !== "undefined") window.addEventListener("offline", lost);
+    return {
+      close: () => {
+        open = false;
+        clearTimeout(opening);
+        studentListeners.delete(listener);
         if (typeof window !== "undefined") window.removeEventListener("offline", lost);
       },
     };

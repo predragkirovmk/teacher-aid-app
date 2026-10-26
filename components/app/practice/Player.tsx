@@ -17,6 +17,7 @@ import { leave } from "@/lib/app/nav";
 import { formatNumeric, withUnit } from "@/lib/app/numeric";
 import { PRACTICE_POINTS, type PracticeView, type QuestionState } from "@/lib/app/practice";
 import { usePracticeRun } from "@/lib/app/practice-run";
+import { noteMoment } from "@/lib/app/push";
 import { useQT } from "@/lib/app/quiz-copy";
 import { useNet } from "@/lib/app/session/net";
 import { subjectLabel } from "@/lib/app/subjects";
@@ -250,6 +251,11 @@ function End({ set, view, onLeave }: { set: PracticeSet; view: PracticeView; onL
   const score = useCountUp(view.right, 0, 700);
   const points = useCountUp(view.points, 0, 900);
   const text = useAnswerText();
+  // A finished set is a moment worth asking about notifications; the ask waits for a calm screen (lib/app/push).
+  const finished = view.finished;
+  useEffect(() => {
+    if (finished) noteMoment("practice_done");
+  }, [finished]);
 
   if (!view.finished) {
     return (
