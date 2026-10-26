@@ -334,6 +334,46 @@ describe("notifications", () => {
     const times = all.map((n) => n.createdAt);
     expect(times).toEqual([...times].sort((a, b) => b - a));
   });
+
+  it("cuts the feed into pages by a cursor: the next `limit` after the last one the page before ended on", async () => {
+    const all = await mockClient.listNotifications();
+    const first = await mockClient.listNotifications({ limit: 2 });
+    expect(first.map((n) => n.id)).toEqual(all.slice(0, 2).map((n) => n.id));
+    const second = await mockClient.listNotifications({ limit: 2, before: first[1].id });
+    expect(second.map((n) => n.id)).toEqual(all.slice(2, 4).map((n) => n.id));
+    expect(await mockClient.listNotifications({ limit: 2, before: all[all.length - 1].id })).toEqual([]);
+    // A cursor the server does not know is a page past the end, not the first page again.
+    expect(await mockClient.listNotifications({ before: "nope" })).toEqual([]);
+  });
+
+  it("announces the result of a lesson played here, with its score and no more than the API's payload", async () => {
+    actions.finishSession({
+      sessionId: "mock-session-1",
+      courseId: "math",
+      lessonTitle: "Fractions",
+      endedAt: Date.now(),
+      right: 3,
+      total: 4,
+      questions: [],
+    });
+    const [newest] = await mockClient.listNotifications();
+    expect(newest).toMatchObject({ id: "n-result-mock-session-1", kind: "result_ready", readAt: null, payload: { sessionId: "mock-session-1", right: 3, total: 4, courseId: "math" } });
+    await mockClient.markNotificationsRead([newest.id]);
+    expect((await mockClient.listNotifications()).find((n) => n.id === newest.id)!.readAt).not.toBeNull();
+  });
+
+  it("announces nothing for a lesson with no question in it", async () => {
+    actions.finishSession({ sessionId: "empty", courseId: "math", lessonTitle: "Nothing", endedAt: Date.now(), right: 0, total: 0, questions: [] });
+    expect((await mockClient.listNotifications()).some((n) => n.id === "n-result-empty")).toBe(false);
+  });
+
+  it("takes a push subscription and forgets it, with nothing to store, only for a signed-in student", async () => {
+    const registration = { endpoint: "https://push.example/s", expirationTime: null, keys: { p256dh: "a", auth: "b" }, platform: "android" as const };
+    await expect(mockClient.setPushToken(registration)).resolves.toBeUndefined();
+    await expect(mockClient.removePushToken()).resolves.toBeUndefined();
+    actions.signOut();
+    await expect(mockClient.setPushToken(registration)).rejects.toMatchObject({ code: "unauthenticated" });
+  });
 });
 
 describe("answers", () => {
