@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
  * request, and its Background Sync handler only wakes the open pages.
  */
 const source = readFileSync(new URL("../../public/app-sw.js", import.meta.url), "utf8");
+const pushSource = readFileSync(new URL("../../public/app-push.js", import.meta.url), "utf8");
 
 function load() {
   const handlers: Record<string, (event: unknown) => void> = {};
@@ -19,7 +20,9 @@ function load() {
     skipWaiting: vi.fn(),
     clients: { claim: vi.fn(), matchAll: vi.fn(async () => pages) },
   };
-  runInNewContext(source, { self, caches: { open: cacheTouched, match: cacheTouched }, fetch: vi.fn(), URL, Response, setTimeout, Promise });
+  // importScripts runs the push helpers in the same scope, which is where they put TeacherAidPush.
+  const importScripts = () => runInNewContext(pushSource, { self, URL });
+  runInNewContext(source, { self, importScripts, caches: { open: cacheTouched, match: cacheTouched }, fetch: vi.fn(), URL, Response, setTimeout, Promise });
   return { handlers, posted, cacheTouched, self };
 }
 
