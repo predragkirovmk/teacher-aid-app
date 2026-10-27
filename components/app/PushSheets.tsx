@@ -1,6 +1,7 @@
 "use client";
 
 import { BellSimpleIcon, CheckIcon, ExportIcon, GearSixIcon, PlusSquareIcon, type Icon } from "@phosphor-icons/react";
+import Link from "next/link";
 import { useState } from "react";
 import { useUI } from "@/components/app/ui";
 import { useT, type Key } from "@/lib/app/i18n";
@@ -69,6 +70,11 @@ export function PushAskSheet({
     <>
       <p className="sheet__title">{t("push.ask.title")}</p>
       <p className="t-body steps__note">{t("push.ask.body")}</p>
+      <p className="t-cap steps__note">
+        <Link href="/app/privacy#alerts" className="doc__link">
+          {t("privacy.alertsLink")}
+        </Link>
+      </p>
       <button
         className="btn btn--primary btn--block"
         disabled={busy}

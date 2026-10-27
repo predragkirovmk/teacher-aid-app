@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowCounterClockwiseIcon, BellRingingIcon, DevicesIcon, DownloadSimpleIcon, LockSimpleIcon, QrCodeIcon, TranslateIcon } from "@phosphor-icons/react";
+import { ArrowCounterClockwiseIcon, BellRingingIcon, DatabaseIcon, DevicesIcon, DownloadSimpleIcon, LockKeyIcon, LockSimpleIcon, NotePencilIcon, QrCodeIcon, TranslateIcon } from "@phosphor-icons/react";
+import Link from "next/link";
 import { useState } from "react";
 import { ClockOptions } from "@/components/app/ClockOptions";
 import { turnOnMessage } from "@/components/app/PushSheets";
@@ -9,7 +10,7 @@ import { Top } from "@/components/app/Top";
 import { useUI } from "@/components/app/ui";
 import { demoOnly } from "@/lib/app/api";
 import { useSettings } from "@/lib/app/api/hooks";
-import { resetDemo, signInElsewhere } from "@/lib/app/demo";
+import { resetDemo, showNoticeAgain, signInElsewhere } from "@/lib/app/demo";
 import { errorCopy, useT, type Key } from "@/lib/app/i18n";
 import { useInstall } from "@/lib/app/install";
 import { sendTestNotification, usePush } from "@/lib/app/push";
@@ -73,6 +74,9 @@ export default function SettingsPage() {
             <span className="t-cap" id="push-hint">
               {t(HINT[status === "on" && !checked ? "off" : checked && status !== "on" ? "on" : status])}
             </span>
+            <Link href="/app/privacy#alerts" className="doc__link t-cap settings__more">
+              {t("privacy.alertsLink")}
+            </Link>
           </span>
           <button
             className="switch"
@@ -88,6 +92,12 @@ export default function SettingsPage() {
         {/* What the phone itself has to do before the switch can work. */}
         {status === "blocked" && <Row icon={LockSimpleIcon} label={t("settings.push.helpRow")} onClick={openPushHelp} />}
         {status === "needs-install" && <Row icon={DownloadSimpleIcon} label={t("settings.push.installRow")} onClick={() => openInstall("ios", "push")} />}
+      </div>
+
+      <h2 className="section-h">{t("settings.privacy")}</h2>
+      <div className="list">
+        <Row icon={DatabaseIcon} label={t("data.row")} value={t("data.rowHint")} href="/app/data" />
+        <Row icon={LockKeyIcon} label={t("privacy.row")} href="/app/privacy" />
       </div>
 
       {demoOnly && <DemoSection />}
@@ -148,6 +158,21 @@ function DemoSection() {
               {t("settings.reset")}
             </span>
             <span className="t-cap">{t("settings.resetHint")}</span>
+          </span>
+        </button>
+        <button
+          className="item"
+          // Back to a new student's first sign-in: the notice shows at once.
+          onClick={showNoticeAgain}
+        >
+          <span className="item__icon">
+            <NotePencilIcon size={22} aria-hidden="true" />
+          </span>
+          <span className="grow">
+            <span className="item__title" style={{ display: "block" }}>
+              {t("settings.demo.notice")}
+            </span>
+            <span className="t-cap">{t("settings.demo.noticeHint")}</span>
           </span>
         </button>
         <button className="item" onClick={signInElsewhere}>

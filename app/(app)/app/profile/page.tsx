@@ -1,6 +1,19 @@
 "use client";
 
-import { CaretRightIcon, DownloadSimpleIcon, FileIcon, GearSixIcon, QuestionIcon, ShieldCheckIcon, SignOutIcon, TranslateIcon, TrophyIcon } from "@phosphor-icons/react";
+import {
+  CaretRightIcon,
+  DatabaseIcon,
+  DownloadSimpleIcon,
+  FileIcon,
+  FileTextIcon,
+  GearSixIcon,
+  LockKeyIcon,
+  QuestionIcon,
+  ShieldCheckIcon,
+  SignOutIcon,
+  TranslateIcon,
+  TrophyIcon,
+} from "@phosphor-icons/react";
 import Link from "next/link";
 import { useState } from "react";
 import { Avatar } from "@/components/app/Avatar";
@@ -118,6 +131,11 @@ function ProfileView({ student }: { student: Student }) {
           <Row icon={GearSixIcon} label={t("drawer.settings")} href="/app/settings" />
           <Row icon={TranslateIcon} label={t("profile.language")} value={t("profile.langValue")} onClick={openLang} />
           <Row icon={QuestionIcon} label={t("profile.faq")} href="/app/faq" />
+        </div>
+        <div className="list">
+          <Row icon={DatabaseIcon} label={t("data.row")} value={t("data.rowHint")} href="/app/data" />
+          <Row icon={LockKeyIcon} label={t("privacy.row")} href="/app/privacy" />
+          <Row icon={FileTextIcon} label={t("terms.row")} href="/app/terms" />
         </div>
         <div className="list">
           <Row

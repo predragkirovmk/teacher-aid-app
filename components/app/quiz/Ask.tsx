@@ -1,7 +1,11 @@
 "use client";
 
 import { CheckIcon, CloudArrowUpIcon, EyeIcon, FlagCheckeredIcon, HandPalmIcon, WarningCircleIcon, type Icon } from "@phosphor-icons/react";
+import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
+import { Inline } from "@/components/app/Document";
+import { useT } from "@/lib/app/i18n";
+import { PRIVACY } from "@/lib/app/privacy-copy";
 import { ANON_MAX_LENGTH, cleanAsk } from "@/lib/app/session/ask";
 import type { SessionRunView } from "@/lib/app/session/controller";
 import { focusNoticeSeen, markFocusNoticeSeen } from "@/lib/app/session/focus-notice";
@@ -32,17 +36,33 @@ export function AskEntry({ onOpen }: { onOpen: () => void }) {
  */
 export function FocusNotice() {
   const { t } = useQT();
+  const { t: tt, locale } = useT();
   // Read once, when the screen opens: marking it seen must not take it away from the student who is reading it.
   const [show] = useState(() => !focusNoticeSeen());
   useEffect(() => {
     if (show) markFocusNoticeSeen();
   }, [show]);
   if (!show) return null;
+  // The detail is the privacy notice's own paragraph on this (section `focus`), opened in place: a link out would leave the lesson.
+  const detail = PRIVACY[locale].sections.find((s) => s.id === "focus")?.blocks.flatMap((b) => ("p" in b ? [b.p] : [])) ?? [];
   return (
-    <p className="q-fair" role="note">
+    <div className="q-fair" role="note">
       <EyeIcon size={20} aria-hidden="true" />
-      <span>{t("fair.note")}</span>
-    </p>
+      <div>
+        <span>{t("fair.note")}</span>
+        <details className="q-fair__more">
+          <summary>{tt("privacy.focusLink")}</summary>
+          {detail.map((text) => (
+            <p key={text}>
+              <Inline text={text} />
+            </p>
+          ))}
+          <Link href="/app/privacy#focus" className="doc__link">
+            {tt("privacy.fullNotice")}
+          </Link>
+        </details>
+      </div>
+    </div>
   );
 }
 
