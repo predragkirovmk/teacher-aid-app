@@ -18,7 +18,7 @@ export function Avatar({
     >
       {photo ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={photo} alt="" className="avatar__img" draggable={false} />
+        <img src={photo} alt="" width={size} height={size} className="avatar__img" draggable={false} />
       ) : (
         initials
       )}

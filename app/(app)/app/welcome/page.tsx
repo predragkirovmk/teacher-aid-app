@@ -78,10 +78,10 @@ export default function Welcome() {
               <span className="brand__name">TeacherAid</span>
             </span>
             <div className="row" style={{ gap: 8 }}>
-              <button className="pill" lang="mk" aria-label="Македонски" aria-pressed={locale === "mk"} onClick={() => setLocale("mk")}>
+              <button className="pill" lang="mk" aria-label="МК, Македонски" aria-pressed={locale === "mk"} onClick={() => setLocale("mk")}>
                 МК
               </button>
-              <button className="pill" lang="en" aria-label="English" aria-pressed={locale === "en"} onClick={() => setLocale("en")}>
+              <button className="pill" lang="en" aria-label="EN, English" aria-pressed={locale === "en"} onClick={() => setLocale("en")}>
                 EN
               </button>
             </div>

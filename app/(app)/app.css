@@ -332,6 +332,26 @@ button.card:active {
   transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
+/* A pointer on a desktop window (the phone frame) gets the same answer as a press, without the scale. */
+@media (hover: hover) and (pointer: fine) {
+  .btn--primary:not(:disabled, [aria-disabled="true"]):hover {
+    background: var(--yellow-soft);
+  }
+  .btn--ghost:not(:disabled):hover,
+  .round:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  .btn--plain:hover {
+    color: var(--text);
+  }
+  a.item:hover,
+  button.item:hover,
+  a.card:hover,
+  .q-opt:not(:disabled):hover {
+    background: var(--card-press);
+  }
+}
+
 /* ---- search ---- */
 .search {
   position: relative;
