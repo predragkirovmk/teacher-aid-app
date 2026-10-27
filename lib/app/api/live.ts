@@ -9,8 +9,8 @@ import type { Id, LeaderboardScope } from "./types";
  * codes, bodies mapped by wire.ts. The paths are spec 11.1; the response shapes are the PROPOSED
  * ones of spec 11.3.
  *
- * Sign-in is email first and the stage after the email is the server's to name (OPEN-01): the
- * proposed `/auth/student/start` and `/auth/student/verify` of spec 11.1. The session is an httpOnly
+ * Sign-in is the school's Google or Microsoft account: `/auth/student/start` answers with the provider's address and the API's
+ * callback signs the student in (spec 11.1; the emailed code is retired). The session is an httpOnly
  * cookie the API sets; every request goes out with cookies (`credentials: "include"`) and no token
  * header, so the app never holds the session token. If OPEN-01 ends in bearer tokens, `request` is the
  * one place that changes.

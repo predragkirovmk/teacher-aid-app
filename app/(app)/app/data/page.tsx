@@ -45,7 +45,7 @@ function Fact({ label, value }: { label: string; value: string }) {
       <span className="grow data__stack">
         <span className="t-cap">{label}</span>
         <span className="item__title">
-          {value.split(/(?<=[@.])/).map((part, i) => (
+          {(value.match(/[^@.]+[@.]?|[@.]/g) ?? [value]).map((part, i) => (
             <span key={i}>
               {i > 0 && <wbr />}
               {part}

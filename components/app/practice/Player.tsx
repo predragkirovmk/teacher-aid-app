@@ -212,7 +212,7 @@ function Step({
 
           {verdict && (
             <>
-              <section className="pr-verdict" role="status" data-right={verdict.correct}>
+              <section id="pr-verdict" className="pr-verdict" role="status" data-right={verdict.correct}>
                 <h2 className="pr-verdict__head">
                   {verdict.correct ? <CheckCircleIcon size={26} weight="bold" aria-hidden="true" /> : <XCircleIcon size={26} weight="bold" aria-hidden="true" />}
                   <span className="grow">{verdict.correct ? t("pr.right") : t("pr.wrong")}</span>
@@ -224,7 +224,8 @@ function Step({
                   </p>
                 )}
               </section>
-              <button className="btn btn--primary btn--block" onClick={onNext} autoFocus>
+              {/* Focus lands here as the verdict appears, so the button reads the verdict out with its own name. */}
+              <button className="btn btn--primary btn--block" aria-describedby="pr-verdict" onClick={onNext} autoFocus>
                 {last ? t("pr.result") : t("pr.next")}
               </button>
             </>

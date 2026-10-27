@@ -85,7 +85,8 @@ export function usePracticeRun(setId: Id): { set: Query<PracticeSet | null>; vie
       // Written to the phone before it is sent: a lost signal, a reload or a closed app does not lose it.
       await outbox.enqueue({
         kind: "practice",
-        key: `practice:${setId}:${questionId}`,
+        // The student is in the key: two students on one phone answering the same question must not replace each other's waiting answer.
+        key: `practice:${studentId}:${setId}:${questionId}`,
         studentId,
         sessionId: setId,
         sessionQuestionId: questionId,
