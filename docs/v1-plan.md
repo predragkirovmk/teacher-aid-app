@@ -30,6 +30,9 @@ streak badge, class 7B): keep it, but show it only in mock mode behind one `demo
    worker push handler, `PUT /me/push-token`, settings switch.
 10. Privacy and consent: in-app privacy notice, first-sign-in consent, "your data" screen, terms;
     ZZLP / GDPR, minors.
+10b. Align with the owner's decisions of 27 Oct 2026: no opener anywhere, Google or Microsoft
+    sign-in for students (no emailed code), practice sets give no points, wording that covers
+    universities as well as secondary schools, support is an email link plus the FAQ.
 11. Final gate: accessibility, design and motion review of everything new, text hygiene, code
     review.
 
@@ -55,7 +58,10 @@ Teacher console and class view (the live lesson end to end) are the next phase, 
   from a clean tree (everything committed). Verify the change on the https preview with the
   built-in browser or headless Chrome (a prod build over http://localhost is unstyled because of
   the CSP). Return the preview URL ending in `/app` plus the most relevant deep link.
-- Backend handoff: if a step changes what the API must provide (new field, endpoint, event, rule,
+- Backend handoff (from step 10b on): another session owns the two handoff docs and is
+  rewriting them to 2.0. Do not edit them. Write what the API must change to
+  `docs/handoff-pending-<step>.md` in the worktree and commit it.
+- Backend handoff (steps 1 to 10, historical): if a step changes what the API must provide (new field, endpoint, event, rule,
   state), update both `backend-spec-for-agents.md` and `backend-guide-for-developer.md` in
   `~/Desktop/teacher-aid-brain/Areas/product/backend-handoff/` (bump version, changelog row,
   label new things PROPOSED), following `~/Desktop/teacher-aid-brain/CLAUDE.md`. Do not commit
