@@ -69,14 +69,8 @@ export function createLiveClient(): ApiClient {
   };
 
   return {
-    startSignIn: async ({ schoolEmail, returnTo }) =>
-      wire.signInChallenge(
-        await request<wire.WireSignInChallenge>("POST", "/auth/student/start", {
-          body: { school_email: schoolEmail, ...(returnTo ? { return_to: returnTo } : {}) },
-        }),
-      ),
-    completeSignIn: async ({ schoolEmail, code }) =>
-      wire.student(await request<wire.WireStudent>("POST", "/auth/student/verify", { body: { school_email: schoolEmail, code } })),
+    startSignIn: async (input) =>
+      wire.signInRedirect(await request<wire.WireSignInRedirect>("POST", "/auth/student/start", { body: wire.signInBody(input) })),
     signOut: () => request<void>("POST", "/auth/logout"),
     getMe: async () => wire.student(await request<wire.WireStudent>("GET", "/me")),
 
@@ -129,18 +123,6 @@ export function createLiveClient(): ApiClient {
       wire.answerReceipt(
         await request<wire.WireAnswerReceipt>("POST", `/sessions/${encodeURIComponent(sessionId)}/answers`, {
           body: wire.answerBody(answer),
-        }),
-      ),
-    submitVote: async (sessionId, vote) =>
-      wire.answerReceipt(
-        await request<wire.WireAnswerReceipt>("POST", `/sessions/${encodeURIComponent(sessionId)}/opener/vote`, {
-          body: wire.voteBody(vote),
-        }),
-      ),
-    submitReason: async (sessionId, reason) =>
-      wire.answerReceipt(
-        await request<wire.WireAnswerReceipt>("POST", `/sessions/${encodeURIComponent(sessionId)}/opener/reason`, {
-          body: wire.reasonBody(reason),
         }),
       ),
     submitAsk: async (sessionId, ask) =>

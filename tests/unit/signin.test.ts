@@ -1,30 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanCode, emailError, normalizeEmail, safeNext, welcomeUrl } from "@/lib/app/signin";
-
-describe("the email field", () => {
-  it("is empty, incomplete or fine", () => {
-    expect(emailError("")).toBe("empty");
-    expect(emailError("   ")).toBe("empty");
-    for (const bad of ["marko", "marko@", "@school.mk", "marko@school", "mar ko@school.mk", "a@b@c.mk", "marko@school."]) {
-      expect(emailError(bad), bad).toBe("invalid");
-    }
-    for (const ok of ["marko.trajkovski@student.gnaumov.edu.mk", " Marko@School.MK ", "m+tag@a.mk"]) expect(emailError(ok), ok).toBeNull();
-  });
-
-  it("is sent trimmed and in lower case", () => {
-    expect(normalizeEmail("  Marko.T@School.MK ")).toBe("marko.t@school.mk");
-  });
-});
-
-describe("the code field", () => {
-  it("keeps only digits, as many as the code has", () => {
-    expect(cleanCode("123456", 6)).toBe("123456");
-    expect(cleanCode("12 34-56", 6)).toBe("123456");
-    expect(cleanCode("1234567", 6)).toBe("123456");
-    expect(cleanCode("code: 98", 6)).toBe("98");
-    expect(cleanCode("abc", 6)).toBe("");
-  });
-});
+import { PROVIDERS, isAppPath, isProvider, providerName, safeNext, welcomeUrl, withError } from "@/lib/app/signin";
 
 describe("where signing in goes next", () => {
   it("is a screen of the app, such as a check-in link", () => {
@@ -64,5 +39,29 @@ describe("where signing in goes next", () => {
     // and read back unchanged
     const url = new URL(welcomeUrl("/app/checkin/MATH-7B"), "https://x.test");
     expect(safeNext(url.searchParams.get("next"))).toBe("/app/checkin/MATH-7B");
+  });
+});
+
+describe("the providers", () => {
+  it("are Google and Microsoft, in that order, and nothing else", () => {
+    expect(PROVIDERS.map((p) => p.id)).toEqual(["google", "microsoft"]);
+    expect(providerName("microsoft")).toBe("Microsoft");
+    expect(isProvider("google")).toBe(true);
+    for (const other of ["yahoo", "", null, undefined, "Google"]) expect(isProvider(other), String(other)).toBe(false);
+  });
+});
+
+describe("where a sign-in may come back to", () => {
+  it("is a path of the app, with a query if it has one", () => {
+    expect(isAppPath("/app")).toBe(true);
+    expect(isAppPath("/app/welcome?next=%2Fapp%2Fcheckin%2FMATH-7B")).toBe(true);
+    for (const bad of [null, undefined, "", "/", "/appx", "/app-x", "//evil.example/app", "https://evil.example/app", "app/welcome"]) {
+      expect(isAppPath(bad), String(bad)).toBe(false);
+    }
+  });
+
+  it("is told of a refusal in the query, added to one that is there", () => {
+    expect(withError("/app/welcome", "unknown_email")).toBe("/app/welcome?error=unknown_email");
+    expect(withError("/app/welcome?next=%2Fapp", "sign_in_failed")).toBe("/app/welcome?next=%2Fapp&error=sign_in_failed");
   });
 });

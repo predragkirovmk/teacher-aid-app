@@ -15,7 +15,7 @@ import type { PracticeQuestion, PracticeSet } from "@/lib/app/api/types";
 import { useT } from "@/lib/app/i18n";
 import { leave } from "@/lib/app/nav";
 import { formatNumeric, withUnit } from "@/lib/app/numeric";
-import { PRACTICE_POINTS, type PracticeView, type QuestionState } from "@/lib/app/practice";
+import type { PracticeView, QuestionState } from "@/lib/app/practice";
 import { usePracticeRun } from "@/lib/app/practice-run";
 import { noteMoment } from "@/lib/app/push";
 import { useQT } from "@/lib/app/quiz-copy";
@@ -76,7 +76,6 @@ function Run({ set, view, answer }: { set: PracticeSet; view: PracticeView; answ
       set={set}
       q={q}
       state={view.items[at]}
-      view={view}
       index={at}
       onAnswer={(response) => answer(q.id, response)}
       onNext={() => setAt(at + 1)}
@@ -99,7 +98,6 @@ function Step({
   set,
   q,
   state,
-  view,
   index,
   onAnswer,
   onNext,
@@ -108,7 +106,6 @@ function Step({
   set: PracticeSet;
   q: PracticeQuestion;
   state: QuestionState;
-  view: PracticeView;
   index: number;
   onAnswer: (response: string) => Promise<void>;
   onNext: () => void;
@@ -130,8 +127,6 @@ function Step({
     void onAnswer(response);
   };
 
-  // Points a right answer was worth, as the server credited them.
-  const perRight = view.right > 0 ? Math.round(view.points / view.right) : PRACTICE_POINTS;
   const verdict = state.status === "checked" ? state.verdict : null;
   const given = state.status === "open" ? null : state.response;
 
@@ -221,7 +216,6 @@ function Step({
                 <h2 className="pr-verdict__head">
                   {verdict.correct ? <CheckCircleIcon size={26} weight="bold" aria-hidden="true" /> : <XCircleIcon size={26} weight="bold" aria-hidden="true" />}
                   <span className="grow">{verdict.correct ? t("pr.right") : t("pr.wrong")}</span>
-                  {verdict.correct && perRight > 0 && <span className="pr-verdict__gain">{t("pr.gain", { n: perRight })}</span>}
                 </h2>
                 {!verdict.correct && <p className="pr-verdict__line">{t("pr.correctIs", { a: text(q, verdict.correctAnswer) })}</p>}
                 {verdict.explanation && (
@@ -249,7 +243,6 @@ function End({ set, view, onLeave }: { set: PracticeSet; view: PracticeView; onL
   const label = course ? subjectLabel(t, course.subjectId, course.subjectName) : (set.lessonTitle ?? "");
   const total = set.questions.length;
   const score = useCountUp(view.right, 0, 700);
-  const points = useCountUp(view.points, 0, 900);
   const text = useAnswerText();
   // A finished set is a moment worth asking about notifications; the ask waits for a calm screen (lib/app/push).
   const finished = view.finished;
@@ -291,7 +284,6 @@ function End({ set, view, onLeave }: { set: PracticeSet; view: PracticeView; onL
           </span>
           <h1 className="q-hero">{t("pr.done.score", { score, total })}</h1>
           <p className="q-strong">{t("pr.done.sub")}</p>
-          {view.points > 0 && <span className="q-chip">{t("pr.gain", { n: points })}</span>}
           {view.right === total && <p className="t-cap q-cap">{t("pr.done.all")}</p>}
         </div>
         <div className="pr-foot">

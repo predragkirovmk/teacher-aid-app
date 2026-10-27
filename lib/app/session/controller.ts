@@ -1,5 +1,5 @@
 import { ApiError, toApiError } from "../api/errors";
-import type { Id, StudentSessionState, SubmissionKind } from "../api/types";
+import type { Id, StudentSessionState } from "../api/types";
 import { sessionEvent } from "../api/wire";
 import { toLocal, toServer } from "./clock";
 import { createEngine, reduce, type Action, type EngineState } from "./engine";
@@ -58,12 +58,8 @@ export type SessionHandle = {
   getView(): SessionRunView;
   getState(): EngineState;
   subscribe(listener: () => void): () => void;
-  /** The student taps an answer, or votes on an opener. Final once sent (BR-ANS-02). */
+  /** The student taps an answer. Final once sent (BR-ANS-02). */
   answer(response: string): void;
-  /** The student sends the opener's one-line reason. Final once sent. */
-  reason(text: string): void;
-  /** The student gives no reason. */
-  skipReason(): void;
   /**
    * The student sends a question to the teacher (F-09). Returns its key, to find it in the view's `asks`, or null when it
    * was not taken: nothing written, the limit reached, or the lesson over.
@@ -108,7 +104,7 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
   let endedTold = false;
   const listeners = new Set<() => void>();
   const timers: { retry?: ReturnType<typeof setTimeout>; deadline?: ReturnType<typeof setTimeout>; tick?: ReturnType<typeof setInterval> } = {};
-  /** One per answer, vote or reason that has been handed to the outbox and not yet heard back on. */
+  /** One per answer that has been handed to the outbox and not yet heard back on. */
   const savedTimers = new Set<ReturnType<typeof setTimeout>>();
   let deadlineKey = "";
 
@@ -205,7 +201,7 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
     );
   }
 
-  /** After a reload the answer (or vote, or reason) the student gave is still in the outbox; the question must not ask for it again. */
+  /** After a reload the answer the student gave is still in the outbox; the question must not ask for it again. */
   function restorePending() {
     void deps.outbox.load().then(() => {
       const q = state.question;
@@ -213,11 +209,8 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
       // Questions to the teacher belong to the lesson, not to a question.
       for (const saved of deps.outbox.pendingOf(deps.meId, sessionId, "ask")) dispatch({ type: "ask.restore", key: saved.key, text: saved.response, at: saved.answeredAt });
       if (!q) return;
-      // The vote first: a reason is only restored on a question the student has voted on.
-      for (const kind of q.opener ? (["vote", "reason"] as const) : (["answer"] as const)) {
-        const saved = deps.outbox.pendingFor(deps.meId, sessionId, q.id, kind);
-        if (saved) dispatch({ type: "answer.restore", kind, key: saved.key, sessionQuestionId: saved.sessionQuestionId, response: saved.response, at: saved.answeredAt });
-      }
+      const saved = deps.outbox.pendingFor(deps.meId, sessionId, q.id, "answer");
+      if (saved) dispatch({ type: "answer.restore", key: saved.key, sessionQuestionId: saved.sessionQuestionId, response: saved.response, at: saved.answeredAt });
     });
   }
 
@@ -234,7 +227,7 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
       case "delivered": {
         // Delivered after the question moved on, or after waiting for the connection: the points and the
         // verdict are the server's to say, so ask.
-        const behind = !current || state.question?.status !== "open" || !!state.mine?.held || !!state.reason?.held || o.duplicate;
+        const behind = !current || state.question?.status !== "open" || !!state.mine?.held || o.duplicate;
         dispatch({ type: "answer.sent", key, now: now() });
         if (behind) refresh();
         return;
@@ -338,17 +331,14 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
   ];
 
   /**
-   * The student gave an answer (or a vote), or a reason. It goes into the engine first, which cleans it and
-   * stamps it with the server-clock time of the tap; what the engine kept is saved in the outbox, then sent.
+   * The student gave an answer. It goes into the engine first, which stamps it with the server-clock time of the tap;
+   * what the engine kept is saved in the outbox, then sent.
    */
-  function give(kind: "answer" | "reason", action: (key: string) => Action) {
-    const key = (deps.newKey ?? randomKey)();
-    dispatch(action(key));
+  function give(key: string) {
     const q = state.question;
-    const own = kind === "reason" ? state.reason : state.mine;
+    const own = state.mine;
     if (own?.key !== key || !q) return;
-    const submission: SubmissionKind = kind === "reason" ? "reason" : q.opener ? "vote" : "answer";
-    void deps.outbox.enqueue({ kind: submission, key, studentId: deps.meId, sessionId, sessionQuestionId: q.id, response: own.response, answeredAt: own.at });
+    void deps.outbox.enqueue({ kind: "answer", key, studentId: deps.meId, sessionId, sessionQuestionId: q.id, response: own.response, answeredAt: own.at });
     // A send that is slow is, to the student, an answer saved for later.
     const timer = setTimeout(() => {
       savedTimers.delete(timer);
@@ -369,13 +359,10 @@ export function createSessionHandle(deps: SessionDeps): SessionHandle {
       };
     },
     answer(response) {
-      if (!state.mine) give("answer", (key) => ({ type: "answer", response, key, now: now() }));
-    },
-    reason(text) {
-      if (!state.reason) give("reason", (key) => ({ type: "reason", text, key, now: now() }));
-    },
-    skipReason() {
-      dispatch({ type: "reason.skip" });
+      if (state.mine) return;
+      const key = (deps.newKey ?? randomKey)();
+      dispatch({ type: "answer", response, key, now: now() });
+      give(key);
     },
     ask(text) {
       const key = (deps.newKey ?? randomKey)();

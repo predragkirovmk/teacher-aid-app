@@ -54,18 +54,14 @@ describe("where the way to ask is shown", () => {
     "wrong",
     "waiting_next",
     "ended",
-    "voting",
-    "reasoning",
-    "opener_wait",
-    "opener_result",
   ];
 
   it("is on the screens where nothing is asked of the student", () => {
-    expect(ALL.filter(canAsk).sort()).toEqual(["opener_result", "waiting_next", "waiting_start"]);
+    expect(ALL.filter(canAsk).sort()).toEqual(["waiting_next", "waiting_start"]);
   });
 
   it("is never on a screen where a question is open, answered or not", () => {
-    for (const stage of ["answering", "waiting_others", "waiting_result", "voting", "reasoning", "opener_wait"] as const) {
+    for (const stage of ["answering", "waiting_others", "waiting_result"] as const) {
       expect(canAsk(stage), stage).toBe(false);
     }
   });

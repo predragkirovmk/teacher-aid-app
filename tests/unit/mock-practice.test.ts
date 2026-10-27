@@ -7,7 +7,6 @@ import { resetMockSessions } from "@/lib/app/api/mock/session";
 import { actions, getState } from "@/lib/app/api/mock/store";
 import { QUIZZES } from "@/lib/app/api/mock/quiz";
 import { setLocale } from "@/lib/app/locale";
-import { PRACTICE_POINTS } from "@/lib/app/practice";
 import { PRACTICE_CACHE_KEY, loadSets, recallSets } from "@/lib/app/practice-cache";
 import { ApiError } from "@/lib/app/api/errors";
 import { createOutbox, type AnswerOutcome, PRACTICE_MAX_AGE_MS } from "@/lib/app/session/outbox";
@@ -76,11 +75,12 @@ describe("the sets the demo starts with", () => {
     const all = await sets();
     expect(all.map((s) => s.id)).toEqual([FRACTIONS, "ps-session-phys-2"]);
     const [maths, physics] = all;
-    expect(maths).toMatchObject({ courseId: "math", sessionId: "session-math-1", completedAt: null, score: null, points: 0 });
+    expect(maths).toMatchObject({ courseId: "math", sessionId: "session-math-1", completedAt: null, score: null });
     expect(maths.questions).toHaveLength(4);
     expect(maths.questions.map((q) => q.kind)).toEqual(["multiple_choice", "multiple_choice", "true_false", "numeric"]);
     expect(maths.questions.every((q) => q.answer === null)).toBe(true);
-    expect(physics).toMatchObject({ score: 2, points: 2 * PRACTICE_POINTS });
+    expect(physics).toMatchObject({ score: 2 });
+    expect(physics).not.toHaveProperty("points");
     expect(physics.completedAt).not.toBeNull();
     expect(physics.questions.map((q) => q.answer?.correct)).toEqual([false, true, true]);
   });
@@ -111,16 +111,17 @@ describe("the sets the demo starts with", () => {
 });
 
 describe("answering a set", () => {
-  it("says right with the reason, and credits the points once", async () => {
+  it("says right with the reason, and gives no points", async () => {
     const before = myPoints();
     const attempt = await mockClient.submitPracticeAnswers(FRACTIONS, [{ questionId: "pf1", response: "1" }]);
-    expect(attempt).toMatchObject({ score: 1, total: 4, points: PRACTICE_POINTS, completed: false });
+    expect(attempt).toMatchObject({ score: 1, total: 4, completed: false });
+    expect(attempt).not.toHaveProperty("points");
     expect(attempt.results).toEqual([
       { questionId: "pf1", duplicate: false, correct: true, correctAnswer: "1", explanation: expect.stringContaining("12") },
     ]);
-    expect(myPoints()).toBe(before + PRACTICE_POINTS);
+    expect(myPoints()).toBe(before);
     const set = await fractions();
-    expect(set).toMatchObject({ score: 1, points: PRACTICE_POINTS, completedAt: null });
+    expect(set).toMatchObject({ score: 1, completedAt: null });
     expect(set.questions[0].answer).toMatchObject({ response: "1", correct: true });
   });
 
@@ -128,7 +129,6 @@ describe("answering a set", () => {
     const before = myPoints();
     const attempt = await mockClient.submitPracticeAnswers(FRACTIONS, [{ questionId: "pf2", response: "2" }]);
     expect(attempt.results[0]).toMatchObject({ correct: false, correctAnswer: "0" });
-    expect(attempt.points).toBe(0);
     expect(myPoints()).toBe(before);
   });
 
@@ -142,7 +142,7 @@ describe("answering a set", () => {
     expect((await fractions()).questions[0].answer).toMatchObject({ response: "0", correct: false });
   });
 
-  it("finishes the set with the last answer, with 5 points for each right one", async () => {
+  it("finishes the set with the last answer, and a finished set earns nothing either", async () => {
     const before = myPoints();
     // right, wrong, right, and a number read with a comma as well as a point
     await mockClient.submitPracticeAnswers(FRACTIONS, [
@@ -152,12 +152,12 @@ describe("answering a set", () => {
     ]);
     expect((await fractions()).completedAt).toBeNull();
     const last = await mockClient.submitPracticeAnswers(FRACTIONS, [{ questionId: "pf4", response: "15,0" }]);
-    expect(last).toMatchObject({ score: 3, total: 4, points: 3 * PRACTICE_POINTS, completed: true });
+    expect(last).toMatchObject({ score: 3, total: 4, completed: true });
     const set = await fractions();
     expect(set.completedAt).not.toBeNull();
-    expect(set).toMatchObject({ score: 3, points: 15 });
+    expect(set).toMatchObject({ score: 3 });
     expect(set.questions[3].answer).toMatchObject({ response: "15", correct: true });
-    expect(myPoints()).toBe(before + 15);
+    expect(myPoints()).toBe(before);
   });
 
   it("refuses what the question cannot have, and a question that is not the set's, writing nothing", async () => {

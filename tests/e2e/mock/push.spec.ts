@@ -365,12 +365,7 @@ test.describe("when a lesson ends", () => {
     const ended = page.getByRole("heading", { name: mk.q("q.ended.title") });
     for (let i = 0; i < 400 && !(await ended.isVisible()); i++) {
       const s = await stage(page).catch(() => null);
-      if (s === "voting") await page.locator(OPTION).first().click();
-      else if (s === "reasoning") {
-        const reason = page.getByRole("textbox");
-        await reason.fill("Same on both sides keeps the balance.");
-        await reason.press("Enter");
-      } else if (s === "answering") {
+      if (s === "answering") {
         const number = page.locator(".n-input");
         if (await number.isVisible()) {
           await number.fill("3,25");

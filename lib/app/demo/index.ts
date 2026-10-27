@@ -62,6 +62,9 @@ export const resetDemo = () => actions.reset();
 /** The demo's stand-in for the same account signing in on another phone (BR-AUTH-03): this one is signed out. */
 export const signInElsewhere = () => actions.signOutElsewhere();
 
+/** The demo's stand-in for the provider's sign-in page and the API's callback behind it (mock/signin.ts). */
+export { finishMockSignIn as finishDemoSignIn, type DemoAccount } from "../api/mock/signin";
+
 /** Take back the acknowledgement of the privacy notice, as for a student who has not signed in before: the notice shows again. */
 export const showNoticeAgain = () => actions.acknowledgeNotice(null);
 

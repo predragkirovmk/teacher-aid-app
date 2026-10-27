@@ -9,7 +9,7 @@ import { forgetSession, recallJoin, recallSession, rememberSession } from "../se
 import { client, demoOnly } from "./index";
 import type { SettledPromise } from "./client";
 import { toApiError, type ApiError } from "./errors";
-import { endSession, onSessionEnd, startSession, useSessionEnd, type SessionEnd } from "./session";
+import { endSession, onSessionEnd, useSessionEnd, type SessionEnd } from "./session";
 import { amend, change, invalidate, mapQuery, resetQueries, seed, useQuery, type Query } from "./query";
 import type {
   AttendanceSummary,
@@ -28,9 +28,8 @@ import type {
   PracticeSet,
   SessionResult,
   Student,
-  SignInChallenge,
+  SignInRedirect,
   StudentSignIn,
-  StudentSignInCode,
   TopicProgress,
 } from "./types";
 
@@ -171,17 +170,8 @@ onSessionEnd(() => {
   forgetSets();
 });
 
-/** F-02, first stage: the school email. Answers with what comes next (a code to type, or a redirect). */
-export const startSignIn = (input: StudentSignIn): Promise<SignInChallenge> => client.startSignIn(input);
-
-/** F-02, last stage: the code from the mailbox. The student is signed in, on a clean cache. */
-export async function completeSignIn(input: StudentSignInCode): Promise<Student> {
-  const student = await change((c) => c.completeSignIn(input));
-  startSession();
-  resetQueries();
-  seed("me", student);
-  return student;
-}
+/** F-02: the provider the student chose. Answers with where to send the browser; the student comes back signed in, to a page loaded afresh. */
+export const startSignIn = (input: StudentSignIn): Promise<SignInRedirect> => client.startSignIn(input);
 
 const beforeSignOut = new Set<() => Promise<void>>();
 

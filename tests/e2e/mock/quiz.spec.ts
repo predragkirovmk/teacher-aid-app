@@ -16,18 +16,13 @@ async function answerNow(page: Page) {
   }
 }
 
-/** Play on: vote and give a reason in the opener, answer every question, and let the clock run, until `done`. */
+/** Play on: answer every question, and let the clock run, until `done`. */
 async function playUntil(page: Page, done: () => Promise<boolean>, seen = new Set<string>()) {
   let answered = 0;
   for (let i = 0; i < 400 && !(await done()); i++) {
     const s = await stage(page).catch(() => null);
     if (s) seen.add(s);
-    if (s === "voting") await page.locator(OPTION).first().click();
-    else if (s === "reasoning") {
-      const reason = page.getByRole("textbox");
-      await reason.fill("Same on both sides keeps the balance.");
-      await reason.press("Enter");
-    } else if (s === "answering") {
+    if (s === "answering") {
       await answerNow(page);
       answered++;
     }
@@ -48,7 +43,7 @@ test("a whole lesson: answer every question, see each verdict, the ending and th
   expect(answered).toBe(5);
   seen.add((await stage(page)) ?? "");
   // Every state of the student's lesson came by (spec 4.4).
-  for (const s of ["joined", "waiting_start", "voting", "reasoning", "opener_wait", "opener_result", "answering", "waiting_others", "waiting_next", "ended"]) expect(seen, s).toContain(s);
+  for (const s of ["joined", "waiting_start", "answering", "waiting_others", "waiting_next", "ended"]) expect(seen, s).toContain(s);
   expect(seen.has("right") || seen.has("wrong")).toBe(true);
 
   // The ending: the tally, the place, the points, and the way to the summary.
@@ -101,6 +96,7 @@ test("the countdown follows the server's clock, which the demo runs a few second
   await page.clock.install();
   await page.goto("/app/checkin/MATH-7B");
   await untilStage(page, "answering");
+  await page.clock.fastForward(3_000);
   const label = (await page.getByRole("timer").getAttribute("aria-label")) ?? "";
   const seconds = Number(label.match(/\d+/)?.[0]);
   // A 20-second question, some seconds in (the suite runs in parallel, so not exactly how many): if the app

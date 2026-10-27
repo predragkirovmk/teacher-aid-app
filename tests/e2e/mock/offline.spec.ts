@@ -9,7 +9,7 @@ import type { Page } from "@playwright/test";
 const OPTION = ".q-opt, .q-tf__btn";
 const stage = (page: Page) => page.locator("main.q").getAttribute("data-stage");
 
-/** Run the demo's clock on until a pop-up question is open: past the lobby and the opener. */
+/** Run the demo's clock on until a pop-up question is open: past the lobby. */
 const toQuestion = (page: Page) => untilStage(page, "answering");
 
 test("an answer given with no signal is saved, and sent and counted when the signal returns", async ({ page, context }) => {

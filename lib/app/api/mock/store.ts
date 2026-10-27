@@ -315,12 +315,11 @@ export const actions = {
     if (state.practiceSets.some((p) => p.id === entry.id)) return;
     set({ practiceSets: [entry, ...state.practiceSets].slice(0, 20) });
   },
-  /** Record the answers to a practice set, the points they earned, and when the set was finished (null: not yet). */
-  answerPractice: (id: string, answers: Record<string, string>, points: number, doneAt: number | null) => {
+  /** Record the answers to a practice set, and when the set was finished (null: not yet). */
+  answerPractice: (id: string, answers: Record<string, string>, doneAt: number | null) => {
     load();
     set({
       practiceAnswers: { ...state.practiceAnswers, [id]: { ...state.practiceAnswers[id], ...answers } },
-      quizPoints: state.quizPoints + Math.max(0, Math.round(points)),
       ...(doneAt !== null && { practiceDone: { ...state.practiceDone, [id]: doneAt } }),
     });
   },

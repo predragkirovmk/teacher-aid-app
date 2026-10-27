@@ -24,9 +24,8 @@ import type {
   SettingsUpdate,
   Student,
   StudentSessionState,
-  SignInChallenge,
+  SignInRedirect,
   StudentSignIn,
-  StudentSignInCode,
   TopicProgress,
 } from "./types";
 
@@ -38,16 +37,12 @@ import type {
 export interface ApiClient {
   // Auth
   /**
-   * POST /auth/student/start: the school email begins a sign-in (F-02). Answers with the next stage,
-   * a code to type or a redirect (OPEN-01). Rejects `unknown_email` for an email on no roster (EC-AUTH-02).
+   * POST /auth/student/start: the provider the student chose (Google or Microsoft) begins a sign-in (F-02). Always answers with
+   * a redirect to that provider; the student comes back through `GET /auth/callback/{provider}`, which signs them in and sends the
+   * browser to `return_to`, with `?error=unknown_email` or `?error=sign_in_failed` when it could not (EC-AUTH-02, -09, -10).
+   * Rejects `rate_limited`.
    */
-  startSignIn(input: StudentSignIn): Promise<SignInChallenge>;
-  /**
-   * POST /auth/student/verify: the code from the mailbox. Signs the student in, ending any other
-   * session of theirs (BR-AUTH-03), and answers with the student. Rejects `invalid_code`,
-   * `code_expired` or `rate_limited`.
-   */
-  completeSignIn(input: StudentSignInCode): Promise<Student>;
+  startSignIn(input: StudentSignIn): Promise<SignInRedirect>;
   /** POST /auth/logout. */
   signOut(): Promise<void>;
   /** GET /me. Rejects with `unauthenticated` when nobody is signed in. */
@@ -115,10 +110,6 @@ export interface ApiClient {
   getStudentState(sessionId: Id): Promise<StudentSessionState>;
   /** POST /sessions/{id}/answers. Idempotent on `idempotencyKey` (EC-NET-06). */
   submitAnswer(sessionId: Id, answer: AnswerInput): Promise<AnswerReceipt>;
-  /** POST /sessions/{id}/opener/vote: the student's vote on the opener (PROPOSED body: an answer's). Idempotent on `idempotencyKey`. */
-  submitVote(sessionId: Id, vote: AnswerInput): Promise<AnswerReceipt>;
-  /** POST /sessions/{id}/opener/reason: the one-line reason; `response` holds the text (PROPOSED). Idempotent on `idempotencyKey`. */
-  submitReason(sessionId: Id, reason: AnswerInput): Promise<AnswerReceipt>;
   /**
    * POST /sessions/{id}/anon-questions: a question to the teacher (F-09). The teacher sees the sender; classmates never do
    * (BR-ANON-01). Idempotent on `idempotencyKey`. Rejects `limit_reached` (BR-ANON-02), `session_ended`, `validation_failed`.

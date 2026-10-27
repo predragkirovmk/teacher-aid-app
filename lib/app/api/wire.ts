@@ -22,7 +22,6 @@ import type {
   Locale,
   Notification,
   NotificationKind,
-  OpenerPhase,
   NotificationPayload,
   PracticeAttempt,
   PracticeKind,
@@ -42,18 +41,17 @@ import type {
   SessionSnapshot,
   SessionState,
   SettingsUpdate,
-  SignInChallenge,
+  SignInRedirect,
   Student,
   StudentSessionState,
+  StudentSignIn,
   TopicProgress,
 } from "./types";
 
 // ---- Wire types ---------------------------------------------------------------------------------
 
-/** POST /auth/student/start (PROPOSED): what the sign-in does next. */
-export type WireSignInChallenge =
-  | { method: "code"; code_length: number; expires_at: string; resend_at: string }
-  | { method: "redirect"; url: string };
+/** POST /auth/student/start (PROPOSED): where to send the browser. It is always a redirect (2026-10-27). */
+export type WireSignInRedirect = { method: "redirect"; url: string };
 
 export type WireStudent = {
   id: string;
@@ -165,7 +163,6 @@ export type WirePracticeSet = {
   created_at: string;
   completed_at: string | null;
   score: number | null;
-  points: number;
   questions: {
     id: string;
     kind: PracticeKind;
@@ -179,7 +176,6 @@ export type WirePracticeSet = {
 export type WirePracticeAttempt = {
   score: number;
   total: number;
-  points: number;
   completed: boolean;
   results: ({ question_id: string; duplicate: boolean } & WirePracticeVerdict)[];
 };
@@ -208,16 +204,12 @@ export type WireQuestion = {
   closes_at: string | null;
   /** PROPOSED: for `numeric`. Absent or null from a server that has none. */
   numeric?: { unit: string | null; tolerance: number; allow_negative: boolean } | null;
-  /** PROPOSED: for the opener kinds. */
-  opener?: { vote_closes_at: string; reason_max_length: number } | null;
 };
 
 export type WireQuestionResult = {
   session_question_id: string;
-  correct: boolean | null;
+  correct: boolean;
   points: number;
-  /** PROPOSED: the part of `points` a written reason earned (opener only). */
-  reason_points?: number;
   speed_bonus: number;
   session_rank: number;
   correct_answer: string | null;
@@ -236,8 +228,6 @@ export type WireStudentState = {
   board?: WireBoardRow[] | null;
   progress?: { answered: number; joined: number } | null;
   summary?: { right: number; total: number } | null;
-  my_reason?: string | null;
-  opener?: { phase: OpenerPhase; votes: number[] | null; reasons: string[] } | null;
   /** PROPOSED: the student's questions to the teacher in this lesson, sent so far and the limit (BR-ANON-02). */
   anon_questions?: { used: number; limit: number } | null;
 };
@@ -281,10 +271,7 @@ export const dataSummary = (w: WireDataSummary): DataSummary => ({
   pushSubscription: w.push_subscription,
 });
 
-export const signInChallenge = (w: WireSignInChallenge): SignInChallenge =>
-  w.method === "redirect"
-    ? { method: "redirect", url: w.url }
-    : { method: "code", codeLength: w.code_length, expiresAt: ms(w.expires_at), resendAt: ms(w.resend_at) };
+export const signInRedirect = (w: WireSignInRedirect): SignInRedirect => ({ method: "redirect", url: w.url });
 
 export const course = (w: WireCourse): Course => ({
   id: w.id,
@@ -420,14 +407,12 @@ export const practiceSet = (w: WirePracticeSet): PracticeSet => ({
   createdAt: ms(w.created_at),
   completedAt: msOrNull(w.completed_at),
   score: w.score,
-  points: w.points,
   questions: w.questions.map(practiceQuestion),
 });
 
 export const practiceAttempt = (w: WirePracticeAttempt): PracticeAttempt => ({
   score: w.score,
   total: w.total,
-  points: w.points,
   completed: w.completed,
   results: w.results.map((r) => ({ questionId: r.question_id, duplicate: r.duplicate, ...practiceVerdict(r) })),
 });
@@ -459,14 +444,12 @@ const question = (w: WireQuestion): SessionQuestion => ({
   firedAt: msOrNull(w.fired_at),
   closesAt: msOrNull(w.closes_at),
   numeric: w.numeric ? { unit: w.numeric.unit ?? null, tolerance: w.numeric.tolerance, allowNegative: w.numeric.allow_negative === true } : null,
-  opener: w.opener ? { voteClosesAt: ms(w.opener.vote_closes_at), reasonMax: w.opener.reason_max_length } : null,
 });
 
 const questionResult = (w: WireQuestionResult): QuestionResult => ({
   sessionQuestionId: w.session_question_id,
   correct: w.correct,
   points: w.points,
-  reasonPoints: w.reason_points ?? 0,
   speedBonus: w.speed_bonus,
   sessionRank: w.session_rank,
   correctAnswer: w.correct_answer,
@@ -486,8 +469,6 @@ export const studentState = (w: WireStudentState): StudentSessionState => ({
   board: w.board?.map(boardRow) ?? null,
   progress: w.progress ?? null,
   summary: w.summary ?? null,
-  myReason: w.my_reason ?? null,
-  opener: w.opener ? { phase: w.opener.phase, votes: w.opener.votes ?? null, reasons: w.opener.reasons ?? [] } : null,
   anon: w.anon_questions ? { used: w.anon_questions.used, limit: w.anon_questions.limit } : null,
 });
 
@@ -505,8 +486,6 @@ export const SESSION_EVENT_TYPES = [
   "question.revealed",
   "question.skipped",
   "leaderboard.updated",
-  "opener.counts",
-  "opener.reasons",
   "question.result",
   "session.ended",
   "signed_in_elsewhere",
@@ -514,8 +493,6 @@ export const SESSION_EVENT_TYPES = [
 ] as const;
 
 type Body = Record<string, unknown>;
-
-const OPENER_PHASES: readonly OpenerPhase[] = ["voting", "reasoning", "revealed"];
 
 const bad = (type: string): never => {
   throw new ApiError("invalid_response", { message: `bad ${type} event` });
@@ -557,18 +534,9 @@ export function sessionEvent(type: string, data: unknown): SessionEvent | null {
         type,
         serverNow,
         sessionQuestionId: str("session_question_id"),
-        // Null for a debate, which has no right side (EC-Q-03).
         correctAnswer: d.correct_answer === null ? null : str("correct_answer"),
         explanation: typeof d.explanation === "string" ? d.explanation : null,
       };
-    case "opener.counts": {
-      const phase = str("phase");
-      if (!OPENER_PHASES.includes(phase as OpenerPhase) || !Array.isArray(d.votes) || !d.votes.every((n) => typeof n === "number")) return bad(type);
-      return { type, serverNow, sessionQuestionId: str("session_question_id"), phase: phase as OpenerPhase, votes: d.votes as number[] };
-    }
-    case "opener.reasons":
-      if (!Array.isArray(d.reasons)) return bad(type);
-      return { type, serverNow, sessionQuestionId: str("session_question_id"), reasons: d.reasons.filter((r): r is string => typeof r === "string") };
     case "leaderboard.updated":
       return Array.isArray(d.rows) ? { type, serverNow, rows: (d.rows as WireBoardRow[]).map(boardRow) } : bad(type);
     case "question.result":
@@ -577,9 +545,8 @@ export function sessionEvent(type: string, data: unknown): SessionEvent | null {
         serverNow,
         result: questionResult({
           session_question_id: str("session_question_id"),
-          correct: d.correct === null ? null : d.correct === true,
+          correct: d.correct === true,
           points: num("points"),
-          reason_points: typeof d.reason_points === "number" ? d.reason_points : 0,
           speed_bonus: typeof d.speed_bonus === "number" ? d.speed_bonus : 0,
           session_rank: num("session_rank"),
           correct_answer: typeof d.correct_answer === "string" ? d.correct_answer : null,
@@ -603,6 +570,9 @@ export function sessionEvent(type: string, data: unknown): SessionEvent | null {
 
 // ---- Domain to wire (request bodies) -------------------------------------------------------------------------
 
+/** `POST /auth/student/start` (PROPOSED): the provider the student chose and the app path to come back to. */
+export const signInBody = (i: StudentSignIn) => ({ provider: i.provider, ...(i.returnTo ? { return_to: i.returnTo } : {}) });
+
 /** `POST /me/acknowledgements`: the version of the notice the student saw, and nothing else (the server stamps the time). */
 export const acknowledgementBody = (version: string) => ({ notice_version: version });
 
@@ -625,17 +595,6 @@ export const pushTokenBody = (r: PushRegistration) => ({
 export const answerBody = (a: AnswerInput) => ({
   session_question_id: a.sessionQuestionId,
   response: a.response,
-  answered_at: iso(a.answeredAt),
-  idempotency_key: a.idempotencyKey,
-});
-
-/** `POST /sessions/{id}/opener/vote`: the same body as an answer; `response` is an option index or "agree" / "disagree". */
-export const voteBody = answerBody;
-
-/** `POST /sessions/{id}/opener/reason`: the reason is `text`, with the answer's time and key. */
-export const reasonBody = (a: AnswerInput) => ({
-  session_question_id: a.sessionQuestionId,
-  text: a.response,
   answered_at: iso(a.answeredAt),
   idempotency_key: a.idempotencyKey,
 });

@@ -26,7 +26,6 @@ import { JoinFailureScreen } from "./JoinFailure";
 import { formatNumeric } from "@/lib/app/numeric";
 import { NumericQuestion, numberText } from "./Numeric";
 import { Choices, choiceOf, responseOf, useChoiceLabels, type ChoiceQuestion } from "./choices";
-import { OpenerResult, OpenerWait, Reasoning, Voting } from "./Opener";
 import { Burst, CheckDraw, CrossDraw, QuizCard, QuizTop, TimerRing, buzz, useCountUp } from "./parts";
 
 /** How long the "you're in" confirmation holds before the lesson itself is the screen. */
@@ -42,7 +41,7 @@ export function Play({ course, join }: { course: Course; join: JoinedSession }) 
   const { confirm, toast } = useUI();
   const { t } = useQT();
   const { t: tt } = useT();
-  const { run, answer, reason, skipReason, ask, retry } = useSession(join.session.id, join.attendance?.status === "late");
+  const { run, answer, ask, retry } = useSession(join.session.id, join.attendance?.status === "late");
   // Joining the session was the check-in (spec 5.4): the screen starts from its answer, for a moment.
   const [confirming, setConfirming] = useState(join.attendance !== null);
 
@@ -62,7 +61,7 @@ export function Play({ course, join }: { course: Course; join: JoinedSession }) 
   const [asking, setAsking] = useState(false);
   const [draft, setDraft] = useState("");
   // A question opening for the class is the student's job now: the sheet steps aside, and says why.
-  const mustAnswer = run.stage === "answering" || run.stage === "voting" || run.stage === "reasoning";
+  const mustAnswer = run.stage === "answering";
   useEffect(() => {
     if (!asking || !mustAnswer) return;
     startTransition(() => setAsking(false));
@@ -92,8 +91,7 @@ export function Play({ course, join }: { course: Course; join: JoinedSession }) 
   }
 
   // The answer's own state is drawn under the locked card; the strip need not say it a second time.
-  const lockedScreen =
-    ((run.stage === "waiting_others" || run.stage === "waiting_result") && run.picked !== null) || run.stage === "reasoning" || run.stage === "opener_wait";
+  const lockedScreen = (run.stage === "waiting_others" || run.stage === "waiting_result") && run.picked !== null;
   // Said while the student is on the first question they came to, and gone once the lesson has ranked anyone.
   const lateNote = run.late && run.board === null && run.points === 0 && (run.stage === "answering" || run.stage === "waiting_others" || run.stage === "waiting_result");
   return (
@@ -118,10 +116,6 @@ export function Play({ course, join }: { course: Course; join: JoinedSession }) 
                 <Question run={run} onLeave={onLeave} onPick={answer} />
               ))}
             {(run.stage === "waiting_others" || run.stage === "waiting_result") && <Locked run={run} onLeave={onLeave} />}
-            {run.stage === "voting" && <Voting run={run} onLeave={onLeave} onPick={answer} />}
-            {run.stage === "reasoning" && <Reasoning run={run} onLeave={onLeave} onSend={reason} onSkip={skipReason} />}
-            {run.stage === "opener_wait" && <OpenerWait run={run} onLeave={onLeave} />}
-            {run.stage === "opener_result" && <OpenerResult run={run} onLeave={onLeave} askEntry={askEntry} />}
             {(run.stage === "right" || run.stage === "wrong") && <Verdict key={run.question?.id} run={run} />}
             {run.stage === "waiting_next" && <Between key={run.question?.id ?? "none"} course={course} join={join} run={run} onLeave={onLeave} onHome={() => router.replace("/app")} askEntry={askEntry} />}
             {run.stage === "ended" && <Ended run={run} onHome={() => router.replace("/app")} />}
@@ -507,8 +501,8 @@ function Between({
   const q = run.question;
   const wrapping = run.sessionState === "review" || (run.last && q !== null);
 
-  // No question yet (the lesson is still on the opener, or has just begun): nothing to rank.
-  if (!q || q.opener || run.rank === null) {
+  // No question yet (the lesson has just begun): nothing to rank.
+  if (!q || run.rank === null) {
     return (
       <>
         <QuizTop onLeave={onLeave} label={subjectLabel(tt, course.subjectId, course.subjectName)} />

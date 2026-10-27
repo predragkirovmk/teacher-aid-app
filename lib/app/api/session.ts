@@ -70,7 +70,7 @@ export function noteFailure(error: unknown, startedAt: number = epoch) {
   if (error.code === "signed_in_elsewhere" || error.code === "unauthenticated") endSession(error.code);
 }
 
-const WATCHED_NOT: readonly (keyof ApiClient)[] = ["subscribe", "startSignIn", "completeSignIn", "signOut"];
+const WATCHED_NOT: readonly (keyof ApiClient)[] = ["subscribe", "startSignIn", "signOut"];
 
 /**
  * The same client, with every call that could say "your session is over" listened to. The promise

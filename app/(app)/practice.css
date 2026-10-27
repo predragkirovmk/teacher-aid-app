@@ -96,14 +96,6 @@
 .pr-verdict__head svg {
   flex: none;
 }
-.pr-verdict__gain {
-  flex: none;
-  padding: 4px 12px;
-  border-radius: 999px;
-  background: rgba(7, 22, 47, 0.3);
-  font-size: var(--fs-callout);
-  font-variant-numeric: tabular-nums;
-}
 .pr-verdict__line,
 .pr-verdict__why {
   margin: 0;

@@ -42,7 +42,7 @@ import { net } from "../../session/net";
 import { buildResults, buildTopics } from "./history";
 import { answerPractice, buildPracticeSets } from "./practice";
 import { joinMock, mockSessionFor } from "./session";
-import { startMockSignIn, verifyMockCode } from "./signin";
+import { startMockSignIn } from "./signin";
 import { actions, DEFAULT_STATE, getState, subscribeStore, type AppState } from "./store";
 import { cleanName, nameError } from "../../profile-rules";
 
@@ -274,15 +274,7 @@ export function createMockClient(source: MockSource): ApiClient {
   };
 
   return {
-    startSignIn: ({ schoolEmail }) => run(() => startMockSignIn(schoolEmail)),
-    completeSignIn: ({ schoolEmail, code }) =>
-      run(() =>
-        write(() => {
-          verifyMockCode(schoolEmail, code);
-          actions.signIn();
-          return me();
-        }),
-      ),
+    startSignIn: ({ provider, returnTo }) => run(() => startMockSignIn(provider, returnTo)),
     signOut: () => run(() => write(() => actions.signOut())),
     getMe: () => run(me),
 
@@ -366,22 +358,6 @@ export function createMockClient(source: MockSource): ApiClient {
         const session = mockSessionFor(sessionId);
         if (!session) throw new ApiError("not_found");
         return write(() => session.submit(answer));
-      }),
-
-    submitVote: (sessionId: Id, vote: AnswerInput) =>
-      authed((): AnswerReceipt => {
-        if (net.isOffline()) throw new ApiError("network");
-        const session = mockSessionFor(sessionId);
-        if (!session) throw new ApiError("not_found");
-        return write(() => session.submitVote(vote));
-      }),
-
-    submitReason: (sessionId: Id, reason: AnswerInput) =>
-      authed((): AnswerReceipt => {
-        if (net.isOffline()) throw new ApiError("network");
-        const session = mockSessionFor(sessionId);
-        if (!session) throw new ApiError("not_found");
-        return write(() => session.submitReason(reason));
       }),
 
     submitAsk: (sessionId: Id, ask: AskInput) =>

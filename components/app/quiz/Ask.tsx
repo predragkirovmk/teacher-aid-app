@@ -173,7 +173,7 @@ export function AskBody({ run, draft, setDraft, onSend, close }: BodyProps) {
       </p>
       <textarea
         ref={field}
-        className="o-input"
+        className="ask__field"
         rows={3}
         maxLength={ANON_MAX_LENGTH}
         enterKeyHint="send"
@@ -197,7 +197,7 @@ export function AskBody({ run, draft, setDraft, onSend, close }: BodyProps) {
         }}
       />
       {(used >= ANON_MAX_LENGTH * COUNT_FROM || empty) && (
-        <div className="o-meta">
+        <div className="ask__meta">
           {empty ? (
             <p className="n-err" role="alert">
               <WarningCircleIcon size={20} weight="bold" aria-hidden="true" />
@@ -207,7 +207,7 @@ export function AskBody({ run, draft, setDraft, onSend, close }: BodyProps) {
             <span />
           )}
           {used >= ANON_MAX_LENGTH * COUNT_FROM && (
-            <span className="o-count" role="img" aria-label={t("o.countAria", { n: used, max: ANON_MAX_LENGTH })} data-full={used >= ANON_MAX_LENGTH}>
+            <span className="ask__count" role="img" aria-label={t("ask.countAria", { n: used, max: ANON_MAX_LENGTH })} data-full={used >= ANON_MAX_LENGTH}>
               {used}/{ANON_MAX_LENGTH}
             </span>
           )}

@@ -21,7 +21,7 @@ describe("error codes", () => {
   });
 
   it("lists the codes sign-in needs", () => {
-    for (const code of ["unknown_email", "invalid_code", "code_expired", "rate_limited", "unauthenticated", "signed_in_elsewhere"]) {
+    for (const code of ["unknown_email", "sign_in_failed", "rate_limited", "unauthenticated", "signed_in_elsewhere"]) {
       expect(SERVER_ERROR_CODES).toContain(code);
     }
   });
@@ -117,8 +117,7 @@ describe("parseErrorResponse", () => {
 
   it("reads the sign-in refusals as they come", async () => {
     expect((await parseErrorResponse(reply(404, { error: { code: "unknown_email" } }))).code).toBe("unknown_email");
-    expect((await parseErrorResponse(reply(400, { error: { code: "invalid_code" } }))).code).toBe("invalid_code");
-    expect((await parseErrorResponse(reply(410, { error: { code: "code_expired" } }))).code).toBe("code_expired");
+    expect((await parseErrorResponse(reply(400, { error: { code: "sign_in_failed" } }))).code).toBe("sign_in_failed");
     expect((await parseErrorResponse(reply(401, { error: { code: "signed_in_elsewhere" } }))).code).toBe("signed_in_elsewhere");
   });
 

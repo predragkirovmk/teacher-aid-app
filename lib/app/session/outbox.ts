@@ -21,10 +21,6 @@ import { backoffDelay } from "./transport";
  * starting). The server stores one answer per key, so a repeat is harmless. Answers go in the order they
  * were given, one at a time, and a failure stops the line: the next would fail for the same reason.
  *
- * An opener's vote and its one-line reason travel the same way, under their own endpoints (`kind`): they are
- * answers too, and the same things go wrong with them. A reason sent before its vote is not a risk, because the
- * line is in the order they were given and stops at the first failure.
- *
  * An answer in a practice set (`kind` "practice", F-12) travels the same way, with the set's id as `sessionId` and no time that matters: the
  * server judges it by nothing but whether the question has been answered, and keeps the first answer. Its receipt carries the verdict.
  *
@@ -60,7 +56,7 @@ export type AnswerOutcome =
   | { type: "expired"; record: OutboxRecord };
 
 export type OutboxStatus = {
-  /** Answers, votes, reasons and questions to the teacher of the signed-in student that have not reached the server. */
+  /** Answers and questions to the teacher of the signed-in student that have not reached the server. */
   pending: number;
   /** Of those, the questions to the teacher, which the connection note names apart from answers. */
   pendingAsks: number;
@@ -70,7 +66,7 @@ export type OutboxStatus = {
 
 export type OutboxDeps = {
   store: OutboxStore;
-  /** The raw call, `POST /sessions/{id}/answers` or the opener's vote or reason by `kind`; see send.ts. */
+  /** The raw call, `POST /sessions/{id}/answers` or the endpoint of the `kind`; see send.ts. */
   send(sessionId: Id, answer: AnswerInput, kind: SubmissionKind): Promise<AnswerReceipt>;
   now?: () => number;
   random?: () => number;

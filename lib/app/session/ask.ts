@@ -25,7 +25,7 @@ export function cleanAsk(text: string, max: number = ANON_MAX_LENGTH): string {
  * be opened at any other time before the lesson ends, and a sheet already open stays open.)
  */
 export function canAsk(stage: StudentStage): boolean {
-  return stage === "waiting_start" || stage === "waiting_next" || stage === "opener_result";
+  return stage === "waiting_start" || stage === "waiting_next";
 }
 
 /**

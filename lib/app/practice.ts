@@ -3,13 +3,10 @@ import type { Id, PracticeAttempt, PracticeSet, PracticeVerdict } from "./api/ty
 /**
  * Practice sets (spec F-12, 7.12): optional questions the teacher sends after a lesson, answered at the
  * student's own pace. This file is the pure part: what a set looks like to the student (new, started, done),
- * and where an answer has got to. The server owns the right answers and the scoring; the phone owns the
+ * and where an answer has got to. The server owns the right answers; practice gives no points (BR-PTS-03); the phone owns the
  * answers it has saved but not yet delivered. Both are folded into one view here, so the screen can resume
  * where the student left off, whichever side holds the progress.
  */
-
-/** What a right answer is worth (BR-PTS-03, PROPOSED). The server decides; the mock uses it to play the server. */
-export const PRACTICE_POINTS = 5;
 
 /** A set with no answer yet, one the student has started, one they have finished. */
 export type PracticeStatus = "new" | "started" | "done";
@@ -26,7 +23,7 @@ export const answeredIn = (set: Pick<PracticeSet, "questions">) => set.questions
 export const openSets = <T extends Pick<PracticeSet, "questions" | "completedAt">>(sets: T[]) => sets.filter((s) => practiceStatus(s) !== "done");
 
 /** A verdict the server gave in this session of the app that the set the app holds does not carry yet. */
-export type LocalVerdict = { response: string; verdict: PracticeVerdict; setPoints: number };
+export type LocalVerdict = { response: string; verdict: PracticeVerdict };
 
 export type QuestionState =
   /** Not answered. */
@@ -45,8 +42,6 @@ export type PracticeView = {
   checked: number;
   /** Right among the checked ones. */
   right: number;
-  /** Points the server has credited for the set so far. */
-  points: number;
   /** Every question is answered and the server has said so for each: the set is done. */
   finished: boolean;
   /** Every question is answered, but some verdicts are still to come. */
@@ -71,15 +66,12 @@ export function practiceView(set: PracticeSet, pending: Record<Id, string>, loca
   const checked = items.filter((i) => i.status === "checked");
   const right = checked.filter((i) => i.status === "checked" && i.verdict.correct).length;
   const answered = items.length - items.filter((i) => i.status === "open").length;
-  // Points only ever grow, so the biggest total anyone has reported is the latest.
-  const points = Math.max(set.points, ...Object.values(local).map((l) => l.setPoints));
   return {
     items,
     next: next < 0 ? null : next,
     answered,
     checked: checked.length,
     right,
-    points,
     finished: items.length > 0 && checked.length === items.length,
     waiting: items.length > 0 && answered === items.length && checked.length < items.length,
   };
@@ -91,7 +83,7 @@ export function localVerdicts(attempt: PracticeAttempt, responses: Record<Id, st
   for (const r of attempt.results) {
     const response = responses[r.questionId];
     if (response === undefined) continue;
-    out[r.questionId] = { response, verdict: { correct: r.correct, correctAnswer: r.correctAnswer, explanation: r.explanation }, setPoints: attempt.points };
+    out[r.questionId] = { response, verdict: { correct: r.correct, correctAnswer: r.correctAnswer, explanation: r.explanation } };
   }
   return out;
 }

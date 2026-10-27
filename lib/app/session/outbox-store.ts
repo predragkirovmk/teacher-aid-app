@@ -10,9 +10,9 @@ import type { SubmissionKind } from "../api/types";
 /** localStorage: who was signed in last, so a phone that cannot reach the server can still say whose answers it holds. Cleared when the session ends. */
 export const OUTBOX_STUDENT_KEY = "teacheraid-outbox-student";
 
-/** One answer, opener vote or opener reason waiting to reach the server. */
+/** One answer, practice answer or question to the teacher waiting to reach the server. */
 export type OutboxRecord = {
-  /** Which endpoint it goes to: `/answers`, `/opener/vote`, `/opener/reason` or `/anon-questions`. For a reason or a question to the teacher `response` is the text (and a question to the teacher has no `sessionQuestionId`). */
+  /** Which endpoint it goes to: `/answers`, a practice set's `/answers` or `/anon-questions`. For a question to the teacher `response` is the text (and it has no `sessionQuestionId`). */
   kind: SubmissionKind;
   /** The idempotency key: the server stores one answer per key, so a resend is safe (EC-NET-06). */
   key: string;

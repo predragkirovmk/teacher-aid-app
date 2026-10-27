@@ -61,7 +61,7 @@ describe("a failed call", () => {
     expect(getSessionEnd()).toBe("unauthenticated");
   });
 
-  it.each(["token_expired", "not_enrolled", "rate_limited", "network", "server_error", "unknown_email", "invalid_code"] as const)(
+  it.each(["token_expired", "not_enrolled", "rate_limited", "network", "server_error", "unknown_email", "sign_in_failed"] as const)(
     "does not end it on %s",
     (code) => {
       noteFailure(new ApiError(code));
@@ -92,7 +92,6 @@ describe("watching every call", () => {
     getMe: vi.fn(),
     listCourses: vi.fn(),
     startSignIn: vi.fn(),
-    completeSignIn: vi.fn(),
     signOut: vi.fn(),
     subscribe: vi.fn(() => () => {}),
   };
@@ -121,7 +120,7 @@ describe("watching every call", () => {
   it("leaves sign-in and sign-out alone: a refusal there is about the attempt", async () => {
     adapter.startSignIn.mockReturnValue(failed(new ApiError("unauthenticated")));
     adapter.signOut.mockReturnValue(failed(new ApiError("unauthenticated")));
-    await expect(client.startSignIn({ schoolEmail: "a@b.mk" })).rejects.toBeDefined();
+    await expect(client.startSignIn({ provider: "google" })).rejects.toBeDefined();
     await expect(client.signOut()).rejects.toBeDefined();
     await flush();
     expect(getSessionEnd()).toBeNull();

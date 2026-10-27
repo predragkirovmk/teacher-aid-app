@@ -39,10 +39,10 @@ test("a set is opened from Home, answered, left and carried on, and finished wit
   await expect(page.locator(".q-opt").nth(1)).toHaveAttribute("aria-pressed", "true");
   await check(page).click();
 
-  // Right: an icon and a word, why, and the points.
+  // Right: an icon and a word, and why. Practice gives no points.
   const verdict = page.getByRole("status").filter({ hasText: mk.t("pr.right") });
   await expect(verdict).toBeVisible();
-  await expect(verdict).toContainText(mk.t("pr.gain", { n: 5 }));
+  await expect(verdict).not.toContainText(/[+]\d|поен|point/i);
   await expect(verdict).toContainText(mk.t("pr.why"));
   await expect(page.locator(".q-opt").nth(1)).toHaveAttribute("data-state", "right");
   await expect(page.locator(".q-opt").nth(1)).toContainText(mk.t("pr.rightChoice"));
@@ -54,7 +54,6 @@ test("a set is opened from Home, answered, left and carried on, and finished wit
   const wrong = page.getByRole("status").filter({ hasText: mk.t("pr.wrong") });
   await expect(wrong).toBeVisible();
   await expect(wrong).toContainText(mk.t("pr.correctIs", { a: "5/6" }));
-  await expect(wrong).not.toContainText(mk.t("pr.gain", { n: 5 }));
   await expect(page.locator(".q-opt").nth(0)).toHaveAttribute("data-state", "right");
   await expect(page.locator(".q-opt").nth(2)).toHaveAttribute("data-state", "miss");
   await expect(page.locator(".q-opt").nth(2)).toContainText(mk.t("pr.yourChoice"));
@@ -77,14 +76,15 @@ test("a set is opened from Home, answered, left and carried on, and finished wit
   await expect(page.getByRole("status").filter({ hasText: mk.t("pr.right") })).toBeVisible();
   await page.getByRole("button", { name: mk.t("pr.result") }).click();
 
-  // Done: 3 of 4, 15 points, and each answer with its word.
+  // Done: 3 of 4, no points, and each answer with its word.
   await expect(page.getByRole("heading", { name: mk.t("pr.done.score", { score: 3, total: 4 }) })).toBeVisible();
-  await expect(page.getByText(mk.t("pr.gain", { n: 15 }))).toBeVisible();
+  await expect(page.locator("main")).not.toContainText(/[+]\d|поен|point/i);
   const review = page.getByRole("region", { name: mk.t("pr.review") });
   await expect(review.getByRole("listitem")).toHaveCount(4);
   await expect(review.getByText(mk.t("pr.right"))).toHaveCount(3);
   await expect(review.getByText(mk.t("pr.wrong"))).toHaveCount(1);
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("teacheraid-app-v1")!).quizPoints)).toBe(15);
+  // A finished practice set earns nothing: the points the demo keeps stay where they were.
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("teacheraid-app-v1")!).quizPoints)).toBe(0);
 
   // A finished set is not offered again on Home, and no yellow control is added to it.
   await page.getByRole("button", { name: mk.t("close"), exact: true }).click();
@@ -129,7 +129,7 @@ test("answers given with no signal are saved, and their verdicts come when the s
   await context.setOffline(false);
   await expect(page.getByRole("heading", { name: mk.t("pr.done.score", { score: 4, total: 4 }) })).toBeVisible();
   await expect(page.getByText(mk.t("pr.done.all"))).toBeVisible();
-  await expect(page.getByText(mk.t("pr.gain", { n: 20 }))).toBeVisible();
+  await expect(page.locator("main")).not.toContainText(/[+]\d|поен|point/i);
 });
 
 test("a set that is not there says so and leads back to the list", async ({ page }) => {

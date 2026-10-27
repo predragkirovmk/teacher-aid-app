@@ -64,29 +64,17 @@ export type PhotoUpload = { blob: Blob; preview: string };
 
 export type SettingsUpdate = Partial<StudentSettings>;
 
-/**
- * Sign-in is email first (F-02): the school email starts it, and what comes next depends on the method
- * OPEN-01 lands on. `returnTo` is the app path to come back to after a redirect to an identity provider.
- */
-export type StudentSignIn = { schoolEmail: string; returnTo?: string };
+/** The identity providers a school can use (spec 3.2 `auth_provider`, FR-AUTH-10). */
+export type AuthProvider = "google" | "microsoft";
 
 /**
- * The next stage of a sign-in, behind one method so the screen does not care which method wins
- * OPEN-01: a code the student types (emailed to the school mailbox), or a redirect to the school's
- * identity provider (Google or Microsoft).
+ * Sign-in is a redirect to the school's Google or Microsoft account (F-02, BR-AUTH-02). `provider` is the button the
+ * student pressed; `returnTo` is the app path to come back to once the provider has sent the browser back.
  */
-export type SignInChallenge =
-  | {
-      method: "code";
-      codeLength: number;
-      /** When the code stops working, and when a new one may be asked for. */
-      expiresAt: number;
-      resendAt: number;
-    }
-  | { method: "redirect"; url: string };
+export type StudentSignIn = { provider: AuthProvider; returnTo?: string };
 
-/** The code a student typed for the email that asked for it. */
-export type StudentSignInCode = { schoolEmail: string; code: string };
+/** The answer to the start of a sign-in: where to send the browser. The emailed code is retired (2026-10-27). */
+export type SignInRedirect = { method: "redirect"; url: string };
 
 // ---- Courses (class + subject + teacher, OPEN-02) -----------------------------------------------
 
@@ -254,13 +242,13 @@ export type PushRegistration = PushSubscriptionData & { platform: PushPlatform }
 
 // ---- Practice sets (F-12) -----------------------------------------------------------------------------------------
 
-/** The kinds a practice set can hold: an opener is a live thing and is never practised. */
+/** The kinds a practice set can hold. */
 export type PracticeKind = "multiple_choice" | "true_false" | "numeric";
 
 /**
  * What the server says about an answered practice question (PROPOSED, spec 11.3). `correctAnswer` is in the
  * encoding of `response` (3.2). The right answer stays on the server until the student has answered, so reading
- * the set gives nothing away (points are earned per right answer, BR-PTS-03).
+ * the set gives nothing away. Practice gives no points (BR-PTS-03, BR-PRA-06).
  */
 export type PracticeVerdict = { correct: boolean; correctAnswer: string; explanation: string | null };
 
@@ -288,8 +276,6 @@ export type PracticeSet = {
   completedAt: number | null;
   /** Right answers so far; null before the first answer. */
   score: number | null;
-  /** Points earned in this set so far (BR-PTS-03). */
-  points: number;
   questions: PracticeQuestion[];
 };
 
@@ -302,7 +288,6 @@ export type PracticeResult = { questionId: Id; duplicate: boolean } & PracticeVe
 export type PracticeAttempt = {
   score: number;
   total: number;
-  points: number;
   /** Every question of the set has been answered. */
   completed: boolean;
   results: PracticeResult[];
@@ -310,10 +295,10 @@ export type PracticeAttempt = {
 
 // ---- Live session, student side (F-07, F-08, section 4.4) ---------------------------------------------------------
 
-export type SessionState = "lobby" | "opener" | "teaching" | "review" | "ended";
+export type SessionState = "lobby" | "teaching" | "review" | "ended";
 
-/** Spec 3.2. The two opener kinds are the lesson's first question: a vote, then one line of reason (4.3). */
-export type QuestionKind = "multiple_choice" | "true_false" | "numeric" | "opener_prediction" | "opener_debate";
+/** Spec 3.2 and BR-Q-01: there is no opener. */
+export type QuestionKind = "multiple_choice" | "true_false" | "numeric";
 
 export type QuestionStatus = "ready" | "open" | "closed" | "revealed" | "skipped";
 
@@ -324,12 +309,6 @@ export type QuestionStatus = "ready" | "open" | "closed" | "revealed" | "skipped
  * question's subject and not to its answer, so the key does not give a negative answer away.
  */
 export type NumericInfo = { unit: string | null; tolerance: number; allowNegative: boolean };
-
-/**
- * What an opener question adds (PROPOSED, spec 4.3): voting runs until `voteClosesAt`, reasons until the
- * question's `closesAt`, and a reason has at most `reasonMax` characters (BR-Q-03).
- */
-export type OpenerInfo = { voteClosesAt: number; reasonMax: number };
 
 /** What the student sees of a question; never the correct answer before it is revealed. */
 export type SessionQuestion = {
@@ -347,22 +326,15 @@ export type SessionQuestion = {
   closesAt: number | null;
   /** Set for `numeric`, else null. */
   numeric: NumericInfo | null;
-  /** Set for the two opener kinds, else null. */
-  opener: OpenerInfo | null;
 };
-
-/** Where an opener is (spec 4.3): voting, then reasoning, then revealed. */
-export type OpenerPhase = "voting" | "reasoning" | "revealed";
 
 /** What a closed question was worth to this student. */
 export type QuestionResult = {
   sessionQuestionId: Id;
-  /** Null for a debate opener, which has no right side (EC-Q-03, OPEN-07). */
-  correct: boolean | null;
-  /** The question's whole worth to the student: for an opener the vote's points and `reasonPoints` together. */
+  correct: boolean;
+  /** The question's whole worth to the student: 10 for a right answer plus the speed bonus, 0 for a wrong one (BR-PTS-02). */
   points: number;
-  /** The part of `points` that came from the written reason (BR-PTS-02); 0 for everything but an opener. */
-  reasonPoints: number;
+  /** The part of `points` that came from speed, 0 to 5. */
   speedBonus: number;
   /** The student's rank in this session after the question (BR-PTS-09). */
   sessionRank: number;
@@ -421,19 +393,12 @@ export type StudentSessionState = {
   progress: QuestionProgress | null;
   /** The tally once the session has ended (PROPOSED), else null. */
   summary: SessionSummary | null;
-  /** This student's written reason for the opener in `question` (PROPOSED), when there is one. */
-  myReason: string | null;
-  /** The opener in `question`: its phase, the class's votes once voting has closed, and the anonymous reasons (PROPOSED). */
-  opener: OpenerSnapshot | null;
   /** How many questions to the teacher this student has sent in this lesson, and how many they may (BR-ANON-02, PROPOSED); null from a server that does not say. */
   anon: AnonCount | null;
 };
 
 /** The student's questions to the teacher in one lesson: sent so far and the limit (BR-ANON-02). */
 export type AnonCount = { used: number; limit: number };
-
-/** What the class did in an opener, without names (FR-OPN-03). `votes` lines up with the options, or is [agree, disagree]. */
-export type OpenerSnapshot = { phase: OpenerPhase; votes: number[] | null; reasons: string[] };
 
 /**
  * The student's place in section 4.4's table. `waiting_result` is the moment between a question
@@ -448,23 +413,14 @@ export type StudentStage =
   | "right"
   | "wrong"
   | "waiting_next"
-  | "ended"
-  /** An opener: the student has not voted yet and voting is open. */
-  | "voting"
-  /** An opener: the vote is in and a reason can be written. */
-  | "reasoning"
-  /** An opener: nothing more to do but wait for the class and the result. */
-  | "opener_wait"
-  /** An opener: the result, the class's votes and the reasons. */
-  | "opener_result";
+  | "ended";
 
 /**
- * What the phone sends to the server: an answer, an opener vote (`/opener/vote`), an opener reason (`/opener/reason`,
- * `response` holds its text), a question to the teacher (`/anon-questions`, `response` holds its text and there is
+ * What the phone sends to the server: an answer, a question to the teacher (`/anon-questions`, `response` holds its text and there is
  * no question to answer, so `sessionQuestionId` is empty) or an answer in a practice set (`/practice-sets/{id}/answers`:
  * `sessionId` holds the set's id and `sessionQuestionId` the practice question's).
  */
-export type SubmissionKind = "answer" | "vote" | "reason" | "ask" | "practice";
+export type SubmissionKind = "answer" | "ask" | "practice";
 
 export type AnswerInput = {
   sessionQuestionId: Id;
@@ -508,8 +464,6 @@ export type SessionEvent =
   | { type: "question.revealed"; serverNow: number; sessionQuestionId: Id; correctAnswer: string | null; explanation: string | null }
   | { type: "question.skipped"; serverNow: number; sessionQuestionId: Id }
   | { type: "leaderboard.updated"; serverNow: number; rows: BoardRow[] }
-  | { type: "opener.counts"; serverNow: number; sessionQuestionId: Id; phase: OpenerPhase; votes: number[] }
-  | { type: "opener.reasons"; serverNow: number; sessionQuestionId: Id; reasons: string[] }
   | { type: "question.result"; serverNow: number; result: QuestionResult; sessionPoints: number }
   | { type: "session.ended"; serverNow: number; summary: SessionSummary | null; sessionPoints: number | null; sessionRank: number | null }
   // Not about the session: the app reacts to these itself (session.ts, the notifications query).

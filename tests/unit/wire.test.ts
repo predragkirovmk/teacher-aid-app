@@ -205,7 +205,6 @@ describe("wire to domain", () => {
       created_at: AT,
       completed_at: null,
       score: 1,
-      points: 5,
       questions: [
         {
           id: "q1",
@@ -218,7 +217,8 @@ describe("wire to domain", () => {
         { id: "q2", kind: "numeric", prompt: "7/4", options: null, numeric: { unit: "m", allow_negative: false }, answer: null },
       ],
     });
-    expect(set).toMatchObject({ sessionId: "se1", courseId: "k1", subjectId: "math", lessonTitle: "Fractions", createdAt: AT_MS, completedAt: null, score: 1, points: 5 });
+    expect(set).toMatchObject({ sessionId: "se1", courseId: "k1", subjectId: "math", lessonTitle: "Fractions", createdAt: AT_MS, completedAt: null, score: 1 });
+    expect(set).not.toHaveProperty("points");
     expect(set.questions[0]).toEqual({
       id: "q1",
       kind: "multiple_choice",
@@ -233,14 +233,12 @@ describe("wire to domain", () => {
       wire.practiceAttempt({
         score: 1,
         total: 2,
-        points: 5,
         completed: false,
         results: [{ question_id: "q1", duplicate: false, correct: true, correct_answer: "1", explanation: null }],
       }),
     ).toEqual({
       score: 1,
       total: 2,
-      points: 5,
       completed: false,
       results: [{ questionId: "q1", duplicate: false, correct: true, correctAnswer: "1", explanation: null }],
     });
@@ -297,7 +295,7 @@ describe("wire to domain", () => {
       session_rank: 2,
     });
     expect(live.question).toMatchObject({ id: "sq1", timerSeconds: 20, firedAt: AT_MS, closesAt: null });
-    expect(live.result).toEqual({ sessionQuestionId: "sq1", correct: true, points: 15, reasonPoints: 0, speedBonus: 5, sessionRank: 2, correctAnswer: "b", explanation: null });
+    expect(live.result).toEqual({ sessionQuestionId: "sq1", correct: true, points: 15, speedBonus: 5, sessionRank: 2, correctAnswer: "b", explanation: null });
     expect(live).toMatchObject({ myResponse: "b", sessionPoints: 15, sessionRank: 2 });
   });
 
@@ -307,26 +305,11 @@ describe("wire to domain", () => {
 });
 
 describe("sign-in", () => {
-  it("reads a code challenge, with its times as milliseconds", () => {
-    expect(
-      wire.signInChallenge({ method: "code", code_length: 6, expires_at: "2026-10-20T08:10:00.000Z", resend_at: "2026-10-20T08:00:30.000Z" }),
-    ).toEqual({
-      method: "code",
-      codeLength: 6,
-      expiresAt: Date.parse("2026-10-20T08:10:00.000Z"),
-      resendAt: Date.parse("2026-10-20T08:00:30.000Z"),
-    });
-  });
-
-  it("reads a redirect to the school's identity provider", () => {
-    expect(wire.signInChallenge({ method: "redirect", url: "https://login.example/start" })).toEqual({
+  it("reads the redirect to the provider", () => {
+    expect(wire.signInRedirect({ method: "redirect", url: "https://accounts.google.example/start" })).toEqual({
       method: "redirect",
-      url: "https://login.example/start",
+      url: "https://accounts.google.example/start",
     });
-  });
-
-  it("treats a malformed time as an invalid response", () => {
-    expect(() => wire.signInChallenge({ method: "code", code_length: 6, expires_at: "soon", resend_at: "later" })).toThrow(ApiError);
   });
 });
 
@@ -367,14 +350,11 @@ describe("domain to wire (request bodies)", () => {
     for (const e of body) expect(Object.keys(e).sort()).toEqual(["at", "session_question_id", "type"]);
   });
 
-  it("writes an opener vote like an answer and a reason with its text under `text`", () => {
-    const input = { sessionQuestionId: "o1", response: "agree", answeredAt: AT_MS, idempotencyKey: "k-2" };
-    expect(wire.voteBody(input)).toEqual({ session_question_id: "o1", response: "agree", answered_at: AT, idempotency_key: "k-2" });
-    expect(wire.reasonBody({ ...input, response: "It changes the meaning." })).toEqual({
-      session_question_id: "o1",
-      text: "It changes the meaning.",
-      answered_at: AT,
-      idempotency_key: "k-2",
+  it("starts a sign-in with the provider that was pressed and the way back, and no email", () => {
+    expect(wire.signInBody({ provider: "google", returnTo: "/app/welcome?next=%2Fapp%2Fcheckin%2FMATH-7B" })).toEqual({
+      provider: "google",
+      return_to: "/app/welcome?next=%2Fapp%2Fcheckin%2FMATH-7B",
     });
+    expect(wire.signInBody({ provider: "microsoft" })).toEqual({ provider: "microsoft" });
   });
 });

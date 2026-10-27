@@ -1,239 +1,216 @@
 import type { Page } from "@playwright/test";
-import { MOCK_CODE, MOCK_ROSTER } from "@/lib/app/api/mock/roster";
-import { MAX_WRONG_CODES } from "@/lib/app/api/mock/signin";
 import { NOTICE_VERSION } from "@/lib/app/privacy";
 import { expect, mk, en, start, test } from "../fixtures";
 
-const EMAIL = MOCK_ROSTER[0];
+type Provider = "google" | "microsoft";
+type Account = "marko" | "personal" | "cancel";
+const NAMES: Record<Provider, string> = { google: "Google", microsoft: "Microsoft" };
 
-const emailField = (page: Page, t = mk) => page.getByLabel(t.t("signin.email"));
-const codeField = (page: Page, t = mk) => page.getByLabel(t.t("signin.code"), { exact: true });
+const providerButton = (page: Page, which: Provider, t = mk) => page.getByRole("button", { name: t.t(`signin.${which}`) });
 /** What the screen says is wrong. Next's own route announcer is an alert too, so it is left out. */
 const problem = (page: Page) => page.locator('[role="alert"]:not(#__next-route-announcer__)');
 const signedOut = (page: Page, state: Record<string, unknown> = {}) => start(page, { state: { signedIn: false, ...state } });
 
-/** The email stage, filled in and sent: the student is now on the code stage. */
-async function toCodeStage(page: Page) {
-  await emailField(page).fill(EMAIL);
-  await page.getByRole("button", { name: mk.t("signin.next") }).click();
-  await expect(page.getByRole("heading", { name: mk.t("signin.codeTitle") })).toBeVisible();
+/** The demo's stand-in for the provider's own page: the sheet the browser lands on after the redirect. */
+const providerSheet = (page: Page, which: Provider = "google", t = mk) => page.getByRole("dialog", { name: t.t("signin.demo.title", { provider: NAMES[which] }) });
+
+/** Press a provider button, and choose an account at the provider's page, which returns through the callback. */
+async function signInWith(page: Page, account: Account = "marko", which: Provider = "google") {
+  await providerButton(page, which).click();
+  const key = `signin.demo.${account}` as const;
+  await providerSheet(page, which)
+    .getByRole("button", { name: mk.t(key, { provider: NAMES[which] }) })
+    .click();
 }
 
 test("a phone that has never been used opens on the sign-in screen, whichever address it is opened at", async ({ page }) => {
   await start(page, { state: {} });
   await page.goto("/app/welcome");
   await expect(page.getByRole("heading", { level: 1, name: mk.t("welcome.title") })).toBeVisible();
-  await expect(emailField(page)).toBeVisible();
+  await expect(providerButton(page, "google")).toBeVisible();
 
   await page.goto("/app");
   await expect(page).toHaveURL(/\/app\/welcome\?next=%2Fapp$/);
 });
 
-test.describe("the email stage", () => {
-  test("is the first screen of a student who is signed out, and asks for the school email", async ({ page }) => {
+test.describe("the sign-in screen", () => {
+  test("offers Google and Microsoft and nothing else: no email, no code", async ({ page }) => {
     await signedOut(page);
     await page.goto("/app/welcome");
 
     await expect(page.getByRole("heading", { level: 1, name: mk.t("welcome.title") })).toBeVisible();
-    const email = emailField(page);
-    // What lets a phone fill the field and raise the right keyboard.
-    await expect(email).toHaveAttribute("type", "email");
-    await expect(email).toHaveAttribute("autocomplete", "email");
-    await expect(email).toHaveAttribute("inputmode", "email");
-    await expect(email).toHaveAttribute("autocapitalize", "none");
-    await expect(email).toHaveAttribute("enterkeyhint", "go");
-    // One yellow control, and it is the one that moves on.
-    await expect(page.locator(".btn--primary")).toHaveCount(1);
+    await expect(page.getByText(mk.t("welcome.sub"))).toBeVisible();
+    await expect(page.getByRole("button", { name: "Продолжи со Google" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Продолжи со Microsoft" })).toBeVisible();
+    // Nothing to type: the provider asks for the account and the password.
+    await expect(page.locator("input, textarea")).toHaveCount(0);
+    await expect(page.getByText(mk.t("signin.safe"))).toBeVisible();
   });
 
-  test("says what is wrong with an empty or incomplete email without asking the API", async ({ page }) => {
+  test("draws the providers' marks inline and asks nobody else for anything", async ({ page }) => {
+    const outside: string[] = [];
+    const origin = new URL(test.info().project.use.baseURL ?? "http://localhost:3100").origin;
+    page.on("request", (r) => {
+      if (!r.url().startsWith(origin) && !r.url().startsWith("data:") && !r.url().startsWith("blob:")) outside.push(r.url());
+    });
     await signedOut(page);
     await page.goto("/app/welcome");
-    const email = emailField(page);
-    const next = page.getByRole("button", { name: mk.t("signin.next") });
-
-    await next.click();
-    await expect(problem(page)).toContainText(mk.t("signin.err.empty"));
-    await expect(email).toHaveAttribute("aria-invalid", "true");
-    await expect(email).toBeFocused();
-
-    await email.fill("marko@");
-    await expect(problem(page)).toHaveCount(0);
-    await email.press("Enter");
-    await expect(problem(page)).toContainText(mk.t("signin.err.invalid"));
-    await expect(page.getByRole("heading", { name: mk.t("signin.codeTitle") })).toHaveCount(0);
+    for (const which of ["google", "microsoft"] as const) {
+      const button = providerButton(page, which);
+      // The mark is an svg inside the button, hidden from a screen reader: the words name the provider.
+      await expect(button.locator("svg[aria-hidden='true']")).toHaveCount(1);
+      await expect(button.locator("img")).toHaveCount(0);
+    }
+    // The Google G is its four colours, the Microsoft mark its four squares.
+    await expect(providerButton(page, "google").locator("path")).toHaveCount(4);
+    await expect(providerButton(page, "microsoft").locator("path")).toHaveCount(4);
+    expect(outside, "requests to another origin").toEqual([]);
   });
 
-  test("tells a student who is not on the school's list to ask the teacher, and keeps what they typed", async ({ page }) => {
+  test("follows each provider's own button: white, with the words in the provider's colour, and 56 points high", async ({ page }) => {
     await signedOut(page);
     await page.goto("/app/welcome");
-    const email = emailField(page);
-    await email.fill("nobody@student.example.mk");
-    await email.press("Enter");
-
-    await expect(problem(page)).toContainText(mk.t("err.unknown_email"));
-    await expect(email).toHaveValue("nobody@student.example.mk");
-    await expect(email).toBeFocused();
-    await expect(email).toHaveAttribute("aria-describedby", /.+/);
+    for (const which of ["google", "microsoft"] as const) {
+      const button = providerButton(page, which);
+      await expect(button).toHaveCSS("background-color", "rgb(255, 255, 255)");
+      const box = (await button.boundingBox())!;
+      expect(box.height).toBeGreaterThanOrEqual(56);
+    }
+    await expect(providerButton(page, "google")).toHaveCSS("color", "rgb(31, 31, 31)");
+    await expect(providerButton(page, "microsoft")).toHaveCSS("color", "rgb(94, 94, 94)");
+    // No yellow control: the providers' buttons are the only actions.
+    await expect(page.locator(".btn--primary")).toHaveCount(0);
   });
 
-  test("the demo hint fills in a roster email", async ({ page }) => {
+  test("keeps the privacy notice and the terms a tap away", async ({ page }) => {
     await signedOut(page);
     await page.goto("/app/welcome");
-    await page.getByRole("button", { name: mk.t("signin.demoUse") }).click();
-    await expect(emailField(page)).toHaveValue(EMAIL);
-  });
-
-  test("says there is no connection when offline, and clears it when the connection is back", async ({ page, context }) => {
-    await signedOut(page);
-    await page.goto("/app/welcome");
-    await emailField(page).fill(EMAIL);
-    await context.setOffline(true);
-    await page.getByRole("button", { name: mk.t("signin.next") }).click();
-
-    await expect(problem(page)).toContainText(mk.t("err.network"));
-    await expect(emailField(page)).toHaveValue(EMAIL);
-
-    await context.setOffline(false);
-    await expect(problem(page)).toHaveCount(0);
-    await page.getByRole("button", { name: mk.t("signin.next") }).click();
-    await expect(page.getByRole("heading", { name: mk.t("signin.codeTitle") })).toBeVisible();
+    await expect(page.getByRole("link", { name: mk.t("privacy.row") })).toBeVisible();
+    await expect(page.getByRole("link", { name: mk.t("terms.row") })).toBeVisible();
   });
 });
 
-test.describe("the code stage", () => {
-  test("signs in on the sixth digit, with no button to find, and lands on Home", async ({ page }) => {
+test.describe("signing in through the provider", () => {
+  test("Google: the redirect lands on the demo's provider page, and the account on the roster signs in and lands on Home", async ({ page }) => {
     await signedOut(page);
     await page.goto("/app");
     await expect(page).toHaveURL(/\/app\/welcome\?next=%2Fapp$/);
-    await toCodeStage(page);
 
-    await expect(page.getByText(EMAIL)).toBeVisible();
-    const code = codeField(page);
-    await expect(code).toBeFocused();
-    await expect(code).toHaveAttribute("autocomplete", "one-time-code");
-    await expect(code).toHaveAttribute("inputmode", "numeric");
-    await expect(code).toHaveAttribute("maxlength", "6");
+    await providerButton(page, "google").click();
+    await expect(page).toHaveURL(/demo_provider=google/);
+    const sheet = providerSheet(page);
+    await expect(sheet).toContainText(mk.t("signin.demo.note", { provider: "Google" }));
+    await sheet.getByRole("button", { name: mk.t("signin.demo.marko") }).click();
 
-    await code.pressSequentially(MOCK_CODE);
     await expect(page).toHaveURL(/\/app$/);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Марко");
   });
 
-  test("signs in with Enter too, and takes a pasted code with spaces", async ({ page }) => {
+  test("Microsoft goes the same way", async ({ page }) => {
     await signedOut(page);
     await page.goto("/app/welcome");
-    await toCodeStage(page);
-    // A paste can bring spaces and fewer digits than the field holds; only digits stay.
-    await codeField(page).fill("123 45");
-    await expect(codeField(page)).toHaveValue("12345");
-    await codeField(page).fill(MOCK_CODE.slice(0, 5));
-    await codeField(page).press("Enter");
-    await expect(problem(page)).toHaveCount(0); // too short to send: nothing asked, nothing said
-    await codeField(page).fill(MOCK_CODE);
+    await signInWith(page, "marko", "microsoft");
     await expect(page).toHaveURL(/\/app$/);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Марко");
   });
 
-  test("says a wrong code is wrong, empties the field and lets the student try again", async ({ page }) => {
+  test("a personal account is not on the list", async ({ page }) => {
     await signedOut(page);
     await page.goto("/app/welcome");
-    await toCodeStage(page);
-    await codeField(page).fill("000000");
+    await signInWith(page, "personal");
 
-    await expect(problem(page)).toContainText(mk.t("err.invalid_code"));
-    await expect(codeField(page)).toHaveValue("");
-    await expect(codeField(page)).toBeFocused();
-    await expect(codeField(page)).toHaveAttribute("aria-invalid", "true");
-
-    await codeField(page).fill(MOCK_CODE);
-    await expect(page).toHaveURL(/\/app$/);
+    // The provider sent the browser back with the reason, which the screen has read and taken off the address; nobody is signed in.
+    await expect(page).toHaveURL(/\/app\/welcome$/);
+    await expect(problem(page)).toContainText(mk.t("signin.err.unknown_email.title"));
+    await expect(problem(page)).toContainText(mk.t("signin.err.unknown_email.body"));
+    await expect(providerButton(page, "google")).toBeEnabled();
   });
 
-  test("locks after too many wrong codes and says for how long", async ({ page }) => {
+  test("tells the student the sign-in did not finish when they cancel at the provider, and nothing was changed", async ({ page }) => {
     await signedOut(page);
     await page.goto("/app/welcome");
-    await toCodeStage(page);
-    for (let i = 0; i < MAX_WRONG_CODES; i++) {
-      await codeField(page).fill("000000");
-      await expect(problem(page)).toBeVisible();
-      if (i < MAX_WRONG_CODES - 1) await expect(codeField(page)).toHaveValue("");
-    }
+    await signInWith(page, "cancel", "microsoft");
 
-    await expect(codeField(page)).toBeDisabled();
-    await expect(page.getByText(/Премногу погрешни кодови/)).toBeVisible();
-    await expect(page.getByRole("button", { name: mk.t("signin.verify") })).toBeDisabled();
-    // The way out is still there.
-    await page.getByRole("button", { name: mk.t("signin.change") }).click();
-    await expect(emailField(page)).toBeVisible();
+    await expect(problem(page)).toContainText(mk.t("signin.err.sign_in_failed.title"));
+    await expect(problem(page)).toContainText(mk.t("signin.err.sign_in_failed.body"));
+    await page.goto("/app");
+    await expect(page).toHaveURL(/\/app\/welcome\?next=%2Fapp$/);
   });
 
-  test("says a code has expired, and a new one fixes it", async ({ page }) => {
-    await page.clock.install({ time: new Date("2026-10-20T08:00:00Z") });
+  test("says it once: the reason leaves the address, so a reload does not repeat it, and trying again clears it", async ({ page }) => {
     await signedOut(page);
-    await page.goto("/app/welcome");
-    await toCodeStage(page);
-
-    await page.clock.fastForward("11:00");
-    await codeField(page).fill(MOCK_CODE);
-    await expect(problem(page)).toContainText(mk.t("err.code_expired"));
-
-    await page.getByRole("button", { name: mk.t("signin.resend") }).click();
-    await expect(page.getByRole("status").filter({ hasText: mk.t("signin.resent") })).toBeVisible();
-    await codeField(page).fill(MOCK_CODE);
-    await expect(page).toHaveURL(/\/app$/);
-  });
-
-  test("lets a new code be asked for only after the wait, and counts it down", async ({ page }) => {
-    await page.clock.install({ time: new Date("2026-10-20T08:00:00Z") });
-    await signedOut(page);
-    await page.goto("/app/welcome");
-    await toCodeStage(page);
-
-    const resend = page.getByRole("button", { name: /Нов код за \d+ с/ });
-    await expect(resend).toBeVisible();
-    await expect(resend).toHaveAttribute("aria-disabled", "true");
-    await page.clock.fastForward("00:31");
-    await expect(page.getByRole("button", { name: mk.t("signin.resend") })).toHaveAttribute("aria-disabled", "false");
-  });
-
-  test("is still there after the page was away (a mail app in between), and the email can be changed", async ({ page }) => {
-    await signedOut(page);
-    await page.goto("/app/welcome");
-    await toCodeStage(page);
-
-    await page.reload();
-    await expect(page.getByRole("heading", { name: mk.t("signin.codeTitle") })).toBeVisible();
-    await expect(page.getByText(EMAIL)).toBeVisible();
-
-    await page.getByRole("button", { name: mk.t("signin.change") }).click();
-    await expect(emailField(page)).toHaveValue(EMAIL);
+    await page.goto("/app/welcome?next=%2Fapp%2Fattendance");
+    await signInWith(page, "personal");
+    await expect(problem(page)).toContainText(mk.t("signin.err.unknown_email.title"));
+    // The way on is kept; the reason is not.
+    await expect(page).toHaveURL(/\/app\/welcome\?next=%2Fapp%2Fattendance$/);
     await page.reload();
     await expect(page.getByRole("heading", { name: mk.t("welcome.title") })).toBeVisible();
+    await expect(problem(page)).toHaveCount(0);
+
+    await signInWith(page, "personal");
+    await expect(problem(page)).toHaveCount(1);
+    await providerButton(page, "google").click();
+    await expect(providerSheet(page)).toBeVisible();
   });
 
-  test("speaks English when asked to, in every stage", async ({ page }) => {
+  test("leaving the provider's page without choosing changes nothing and says nothing", async ({ page }) => {
+    await signedOut(page);
+    await page.goto("/app/welcome");
+    await providerButton(page, "google").click();
+    await expect(providerSheet(page)).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    await expect(providerSheet(page)).toHaveCount(0);
+    await expect(providerButton(page, "google")).toBeVisible();
+    await expect(problem(page)).toHaveCount(0);
+    await expect(page).toHaveURL(/\/app\/welcome$/);
+  });
+
+  test("an error in the address that the API does not send is ignored", async ({ page }) => {
+    await signedOut(page);
+    await page.goto("/app/welcome?error=%3Cb%3Ehello%3C%2Fb%3E");
+    await expect(problem(page)).toHaveCount(0);
+  });
+
+  // Going offline fails the requests that are in flight, and the browser logs each one.
+  test.describe("with no connection", () => {
+    test.use({ allowConsoleErrors: [/https:\/\/vercel\.live\/|net::ERR_INTERNET_DISCONNECTED/] });
+
+    test("says there is no connection when offline, and clears it when the connection is back", async ({ page, context }) => {
+      await signedOut(page);
+      await page.goto("/app/welcome");
+      await context.setOffline(true);
+      await providerButton(page, "google").click();
+
+      await expect(problem(page)).toContainText(mk.t("err.network"));
+      await expect(providerButton(page, "google")).toBeEnabled();
+
+      await context.setOffline(false);
+      await expect(problem(page)).toHaveCount(0);
+      await providerButton(page, "google").click();
+      await expect(providerSheet(page)).toBeVisible();
+    });
+    });
+
+  test("speaks English when asked to, buttons and reasons included", async ({ page }) => {
     await signedOut(page);
     await page.goto("/app/welcome");
     await page.getByRole("button", { name: "English" }).click();
     await expect(page.getByRole("heading", { name: en.t("welcome.title") })).toBeVisible();
-    await emailField(page, en).fill("nobody@student.example.mk");
-    await emailField(page, en).press("Enter");
-    await expect(problem(page)).toContainText(en.t("err.unknown_email"));
-
-    await emailField(page, en).fill(EMAIL);
-    await emailField(page, en).press("Enter");
-    await expect(page.getByRole("heading", { name: en.t("signin.codeTitle") })).toBeVisible();
-    await codeField(page, en).fill("000000");
-    await expect(problem(page)).toContainText(en.t("err.invalid_code"));
+    await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
+    await providerButton(page, "microsoft", en).click();
+    await providerSheet(page, "microsoft", en).getByRole("button", { name: en.t("signin.demo.personal") }).click();
+    await expect(problem(page)).toContainText(en.t("signin.err.unknown_email.title"));
+    await expect(problem(page)).toContainText(en.t("signin.err.unknown_email.body"));
   });
 
   test("keeps the message and drops the movement when the phone asks for reduced motion", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await signedOut(page);
-    await page.goto("/app/welcome");
-    await emailField(page).press("Enter");
-    await expect(problem(page)).toContainText(mk.t("signin.err.empty"));
-    // Nothing moves: no running animation, the stage change and the message included, carries a transform.
+    await page.goto("/app/welcome?error=sign_in_failed");
+    await expect(problem(page)).toContainText(mk.t("signin.err.sign_in_failed.title"));
+    // Nothing moves: no running animation, the message included, carries a transform.
     const moving = await page.evaluate(() =>
       document
         .getAnimations()
@@ -250,10 +227,10 @@ test.describe("continuing what the student came for (EC-JOIN-05)", () => {
     await page.goto("/app/checkin/MATH-7B");
 
     await expect(page).toHaveURL(/\/app\/welcome\?next=%2Fapp%2Fcheckin%2FMATH-7B$/);
-    await toCodeStage(page);
-    // The code stage keeps the address, so a reload there still knows where to go.
-    await expect(page).toHaveURL(/next=%2Fapp%2Fcheckin%2FMATH-7B$/);
-    await codeField(page).fill(MOCK_CODE);
+    // The provider's page and the way back keep the address, so a reload anywhere on the way still knows where to go.
+    await providerButton(page, "google").click();
+    await expect(page).toHaveURL(/demo_provider=google&return_to=.*checkin/);
+    await providerSheet(page).getByRole("button", { name: mk.t("signin.demo.marko") }).click();
 
     await expect(page).toHaveURL(/\/app\/play\/MATH-7B$/);
     await expect(page.getByText(mk.q("q.live"))).toBeVisible();
@@ -267,14 +244,12 @@ test.describe("continuing what the student came for (EC-JOIN-05)", () => {
     await signedOut(page);
     await page.goto("/app/attendance");
     await expect(page).toHaveURL(/welcome\?next=%2Fapp%2Fattendance$/);
-    await toCodeStage(page);
-    await codeField(page).fill(MOCK_CODE);
+    await signInWith(page);
     await expect(page).toHaveURL(/\/app\/attendance$/);
 
     await page.evaluate((noticeVersion) => localStorage.setItem("teacheraid-app-v1", JSON.stringify({ signedIn: false, noticeVersion })), NOTICE_VERSION);
     await page.goto("/app/welcome?next=https%3A%2F%2Fevil.example%2Fapp");
-    await toCodeStage(page);
-    await codeField(page).fill(MOCK_CODE);
+    await signInWith(page);
     await expect(page).toHaveURL(/\/app$/);
   });
 });
@@ -294,8 +269,7 @@ test.describe("signed in elsewhere (BR-AUTH-03)", () => {
 
     await page.getByRole("button", { name: mk.t("elsewhere.cta") }).click();
     await expect(page).toHaveURL(/\/app\/welcome\?next=%2Fapp%2Fattendance$/);
-    await toCodeStage(page);
-    await codeField(page).fill(MOCK_CODE);
+    await signInWith(page);
     await expect(page).toHaveURL(/\/app\/attendance$/);
     await expect(page.getByText(mk.t("elsewhere.title"))).toHaveCount(0);
   });
@@ -309,8 +283,7 @@ test.describe("signed in elsewhere (BR-AUTH-03)", () => {
     await expect(page.getByRole("heading", { name: mk.t("settings.title") })).toHaveCount(0);
 
     await page.getByRole("button", { name: mk.t("elsewhere.cta") }).click();
-    await toCodeStage(page);
-    await codeField(page).fill(MOCK_CODE);
+    await signInWith(page);
     await expect(page).toHaveURL(/\/app\/settings$/);
     await expect(page.getByRole("heading", { name: mk.t("settings.title") })).toBeVisible();
   });
@@ -342,8 +315,7 @@ test.describe("signing out", () => {
     // Nothing the student saw is left on the page.
     await expect(page.getByText("Марко")).toHaveCount(0);
 
-    await toCodeStage(page);
-    await codeField(page).fill(MOCK_CODE);
+    await signInWith(page);
     await expect(page).toHaveURL(/\/app$/);
   });
 

@@ -1,5 +1,4 @@
 import type { Page } from "@playwright/test";
-import { MOCK_CODE, MOCK_ROSTER } from "@/lib/app/api/mock/roster";
 import { NOTICE_VERSION } from "@/lib/app/privacy";
 import { PRIVACY, TERMS } from "@/lib/app/privacy-copy";
 import { en, expect, mk, start, test, untilStage } from "../fixtures";
@@ -14,10 +13,10 @@ const dock = (page: Page) => page.getByRole("navigation", { name: mk.t("nav.main
 const title = (page: Page, key: "notice.title" | "notice.titleUpdated", t = mk) => page.getByRole("heading", { level: 1, name: t.t(key) });
 const cont = (page: Page, t = mk) => page.getByRole("button", { name: t.t("notice.continue") });
 
-async function signIn(page: Page) {
-  await page.getByLabel(mk.t("signin.email")).fill(MOCK_ROSTER[0]);
-  await page.getByRole("button", { name: mk.t("signin.next") }).click();
-  await page.getByLabel(mk.t("signin.code"), { exact: true }).fill(MOCK_CODE);
+/** Google's button, then the account on the roster at the demo's stand-in for Google's page. */
+async function signIn(page: Page, t = mk) {
+  await page.getByRole("button", { name: t.t("signin.google") }).click();
+  await page.getByRole("dialog", { name: t.t("signin.demo.title", { provider: "Google" }) }).getByRole("button", { name: t.t("signin.demo.marko") }).click();
 }
 
 /** The phone's idea of its connection, which is all the app asks (lib/app/session/net.ts). */
@@ -118,9 +117,7 @@ test.describe("the first sign-in", () => {
   test("is in English when the phone is", async ({ page }) => {
     await start(page, { state: NEW_STUDENT, locale: "en" });
     await page.goto("/app/welcome");
-    await page.getByLabel(en.t("signin.email")).fill(MOCK_ROSTER[0]);
-    await page.getByRole("button", { name: en.t("signin.next") }).click();
-    await page.getByLabel(en.t("signin.code"), { exact: true }).fill(MOCK_CODE);
+    await signIn(page, en);
     await expect(title(page, "notice.title", en)).toBeVisible();
     await expect(cont(page, en)).toHaveText("Continue");
   });

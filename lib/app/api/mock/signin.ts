@@ -1,87 +1,50 @@
 import { ApiError } from "../errors";
-import type { SignInChallenge } from "../types";
-import { emailError, normalizeEmail } from "../../signin";
-import { MOCK_CODE, MOCK_ROSTER } from "./roster";
+import type { AuthProvider, SignInRedirect } from "../types";
+import { isAppPath, isProvider, withError } from "../../signin";
+import { MOCK_PERSONAL_ACCOUNT, MOCK_ROSTER } from "./roster";
+import { actions } from "./store";
 
 /**
- * The mock's sign-in: the rules the API will enforce, played in the browser. The roster is a short
- * list of emails (data.ts), the "emailed" code is a fixed one the welcome screen shows as a hint,
- * and the code expires, may be tried a few times and then locks, as a real one will. Numbers are the
- * PROPOSED ones of the handoff spec; they are constants here so a test can reach them.
+ * The mock's sign-in: the shape of the live one, played in the browser (F-02, FR-AUTH-10).
  *
- * The pending code is kept in sessionStorage, so a reload (or the student switching to a mail app and
- * back, which can discard the page) does not lose it, and a closed tab forgets it.
+ * `POST /auth/student/start` answers with a redirect, here to a page of the app that stands in for Google's or Microsoft's own
+ * (the demo sheet on the welcome screen). That page returns through `finishMockSignIn`, which does what `GET /auth/callback/{provider}`
+ * does: it checks the account against the roster, signs the student in and sends the browser back to `return_to`, or back with
+ * `?error=` and nothing created (EC-AUTH-09, EC-AUTH-10). So the screen cannot tell the mock from the live API: it leaves for a
+ * provider and the page is loaded afresh when it comes back.
  */
 
-export const CODE_LENGTH = MOCK_CODE.length;
-export const CODE_TTL_MS = 10 * 60_000;
-export const RESEND_AFTER_MS = 30_000;
-/** Wrong codes allowed before the sign-in locks. */
-export const MAX_WRONG_CODES = 5;
-export const LOCK_SECONDS = 60;
+/** The accounts the demo's provider page offers. */
+export type DemoAccount = "marko" | "personal" | "cancel";
 
-const KEY = "teacheraid-mock-challenge";
-
-type Pending = { email: string; expiresAt: number; wrong: number; lockedUntil: number };
-
-const read = (): Pending | null => {
-  try {
-    const raw = window.sessionStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as Pending) : null;
-  } catch {
-    return memory;
-  }
-};
-
-/** Where the pending code lives when sessionStorage is blocked. */
-let memory: Pending | null = null;
-
-const write = (pending: Pending | null) => {
-  memory = pending;
-  try {
-    if (pending) window.sessionStorage.setItem(KEY, JSON.stringify(pending));
-    else window.sessionStorage.removeItem(KEY);
-  } catch {
-    // blocked storage: the copy in memory serves
-  }
-};
+/** The app path the sign-in comes back to: a path of this app, else the welcome screen (the API accepts nothing else). */
+const appPath = (raw: string | null | undefined) => (isAppPath(raw) ? raw : "/app/welcome");
 
 /** Signing in needs the server, so a phone that is offline cannot, in the mock as for real. */
 const needNetwork = () => {
   if (typeof navigator !== "undefined" && navigator.onLine === false) throw new ApiError("network");
 };
 
-export function startMockSignIn(rawEmail: string): SignInChallenge {
+/** The demo's provider page: the welcome screen with its sheet open. `returnTo` rides along as the live `state` would. */
+export const demoProviderUrl = (provider: AuthProvider, returnTo: string) =>
+  `/app/welcome?demo_provider=${provider}&return_to=${encodeURIComponent(appPath(returnTo))}`;
+
+/** POST /auth/student/start. */
+export function startMockSignIn(provider: AuthProvider, returnTo: string | undefined): SignInRedirect {
   needNetwork();
-  const email = normalizeEmail(rawEmail);
-  if (emailError(email)) throw new ApiError("validation_failed");
-  if (!MOCK_ROSTER.includes(email)) throw new ApiError("unknown_email");
-  const now = Date.now();
-  write({ email, expiresAt: now + CODE_TTL_MS, wrong: 0, lockedUntil: 0 });
-  return { method: "code", codeLength: CODE_LENGTH, expiresAt: now + CODE_TTL_MS, resendAt: now + RESEND_AFTER_MS };
+  if (!isProvider(provider)) throw new ApiError("validation_failed");
+  return { method: "redirect", url: demoProviderUrl(provider, returnTo ?? "") };
 }
 
-/** Check a code. Returns normally when it is right (and spends it); throws the API's refusal otherwise. */
-export function verifyMockCode(rawEmail: string, rawCode: string): void {
-  needNetwork();
-  const email = normalizeEmail(rawEmail);
-  const now = Date.now();
-  const pending = read();
-  if (!pending || pending.email !== email || now > pending.expiresAt) {
-    write(null);
-    throw new ApiError("code_expired");
-  }
-  if (now < pending.lockedUntil) {
-    throw new ApiError("rate_limited", { retryAfter: Math.ceil((pending.lockedUntil - now) / 1000) });
-  }
-  if (rawCode.replace(/\s/g, "") !== MOCK_CODE) {
-    const wrong = pending.wrong + 1;
-    if (wrong >= MAX_WRONG_CODES) {
-      write({ ...pending, wrong: 0, lockedUntil: now + LOCK_SECONDS * 1000 });
-      throw new ApiError("rate_limited", { retryAfter: LOCK_SECONDS });
-    }
-    write({ ...pending, wrong });
-    throw new ApiError("invalid_code");
-  }
-  write(null);
+/**
+ * GET /auth/callback/{provider}, for the account the demo's page chose. Returns the path the browser goes to next:
+ * `return_to` with the student signed in, or with `?error=` and nobody signed in.
+ */
+export function finishMockSignIn(account: DemoAccount, returnTo: string): string {
+  const back = appPath(returnTo);
+  if (account === "cancel") return withError(back, "sign_in_failed");
+  const email = account === "marko" ? MOCK_ROSTER[0] : MOCK_PERSONAL_ACCOUNT;
+  if (!MOCK_ROSTER.includes(email)) return withError(back, "unknown_email");
+  actions.signIn();
+  return back;
 }

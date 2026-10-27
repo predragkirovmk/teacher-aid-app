@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/app/api/errors";
 import { createMockClient, mockClient, mockServerClient } from "@/lib/app/api/mock";
 import { CLASS_SUBJECTS, LEADERBOARD, NOTIFS, BASE_ATTENDED, BASE_TOTAL } from "@/lib/app/api/mock/data";
-import { MOCK_CODE, MOCK_ROSTER } from "@/lib/app/api/mock/roster";
-import { CODE_LENGTH, CODE_TTL_MS, LOCK_SECONDS, MAX_WRONG_CODES, RESEND_AFTER_MS } from "@/lib/app/api/mock/signin";
+import { MOCK_ROSTER } from "@/lib/app/api/mock/roster";
+import { finishMockSignIn } from "@/lib/app/api/mock/signin";
 import { QUIZZES } from "@/lib/app/api/mock/quiz";
 import { resetMockSessions } from "@/lib/app/api/mock/session";
 import { actions, DEFAULT_STATE, getState } from "@/lib/app/api/mock/store";
@@ -34,8 +34,6 @@ describe("every call answers with a settled promise", () => {
   });
 });
 
-const EMAIL = MOCK_ROSTER[0];
-
 describe("sign-in", () => {
   afterEach(() => vi.useRealTimers());
 
@@ -56,80 +54,41 @@ describe("sign-in", () => {
     expect(getState().signedIn).toBe(true);
   });
 
-  it("refuses getMe with unauthenticated after sign-out, and signs back in with the emailed code", async () => {
+  it("refuses getMe with unauthenticated after sign-out, and signs back in through the provider and its callback", async () => {
     await mockClient.signOut();
     await expect(mockClient.getMe()).rejects.toMatchObject({ code: "unauthenticated" });
-    const challenge = await mockClient.startSignIn({ schoolEmail: EMAIL });
-    expect(challenge).toMatchObject({ method: "code", codeLength: CODE_LENGTH });
-    const me = await mockClient.completeSignIn({ schoolEmail: EMAIL, code: MOCK_CODE });
-    expect(me.id).toBe("student-marko");
-    await expect(mockClient.getMe()).resolves.toMatchObject({ id: "student-marko" });
-  });
-
-  it("takes the email in any case and with spaces round it", async () => {
-    await mockClient.signOut();
-    await expect(mockClient.startSignIn({ schoolEmail: `  ${EMAIL.toUpperCase()} ` })).resolves.toMatchObject({ method: "code" });
-    await expect(mockClient.completeSignIn({ schoolEmail: ` ${EMAIL.toUpperCase()}`, code: " 123 456 " })).resolves.toMatchObject({
-      id: "student-marko",
+    // Always a redirect: here to the demo's stand-in for the provider's page, which carries the way back.
+    const redirect = await mockClient.startSignIn({ provider: "google", returnTo: "/app/welcome?next=%2Fapp%2Fcheckin%2FMATH-7B" });
+    expect(redirect).toEqual({
+      method: "redirect",
+      url: `/app/welcome?demo_provider=google&return_to=${encodeURIComponent("/app/welcome?next=%2Fapp%2Fcheckin%2FMATH-7B")}`,
     });
+    // The callback checks the account against the roster, signs the student in and goes back to where they were.
+    expect(finishMockSignIn("marko", "/app/welcome?next=%2Fapp%2Fcheckin%2FMATH-7B")).toBe("/app/welcome?next=%2Fapp%2Fcheckin%2FMATH-7B");
+    await expect(mockClient.getMe()).resolves.toMatchObject({ id: "student-marko", schoolEmail: MOCK_ROSTER[0] });
   });
 
-  it("times the code: it can be resent after 30 seconds and stops working after 10 minutes", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-10-20T08:00:00Z"));
-    const c = await mockClient.startSignIn({ schoolEmail: EMAIL });
-    if (c.method !== "code") throw new Error("expected a code");
-    expect(c.resendAt - Date.now()).toBe(RESEND_AFTER_MS);
-    expect(c.expiresAt - Date.now()).toBe(CODE_TTL_MS);
-    vi.advanceTimersByTime(CODE_TTL_MS + 1);
-    await expect(mockClient.completeSignIn({ schoolEmail: EMAIL, code: MOCK_CODE })).rejects.toMatchObject({ code: "code_expired" });
-  });
-
-  it("refuses an email on no roster, and one that is not an email", async () => {
-    await expect(mockClient.startSignIn({ schoolEmail: "nobody@student.example.mk" })).rejects.toMatchObject({ code: "unknown_email" });
-    await expect(mockClient.startSignIn({ schoolEmail: "not an email" })).rejects.toMatchObject({ code: "validation_failed" });
-  });
-
-  it("refuses a wrong code and a code nobody asked for, and signs nobody in", async () => {
+  it("offers Google and Microsoft and nothing else", async () => {
     await mockClient.signOut();
-    await expect(mockClient.completeSignIn({ schoolEmail: EMAIL, code: MOCK_CODE })).rejects.toMatchObject({ code: "code_expired" });
-    await mockClient.startSignIn({ schoolEmail: EMAIL });
-    await expect(mockClient.completeSignIn({ schoolEmail: EMAIL, code: "000000" })).rejects.toMatchObject({ code: "invalid_code" });
+    await expect(mockClient.startSignIn({ provider: "microsoft" })).resolves.toMatchObject({ method: "redirect", url: expect.stringContaining("demo_provider=microsoft") });
+    await expect(mockClient.startSignIn({ provider: "yahoo" as never })).rejects.toMatchObject({ code: "validation_failed" });
+  });
+
+  it("comes back to the welcome screen when no way back was given", async () => {
+    await mockClient.signOut();
+    await expect(mockClient.startSignIn({ provider: "google" })).resolves.toMatchObject({ url: `/app/welcome?demo_provider=google&return_to=${encodeURIComponent("/app/welcome")}` });
+  });
+
+  it("refuses an account that is on no roster, and a sign-in cancelled at the provider, and signs nobody in", async () => {
+    await mockClient.signOut();
+    expect(finishMockSignIn("personal", "/app/welcome")).toBe("/app/welcome?error=unknown_email");
+    expect(finishMockSignIn("cancel", "/app/welcome?next=%2Fapp")).toBe("/app/welcome?next=%2Fapp&error=sign_in_failed");
     await expect(mockClient.getMe()).rejects.toMatchObject({ code: "unauthenticated" });
-  });
-
-  it("locks after too many wrong codes, with how long to wait, even for the right one", async () => {
-    vi.useFakeTimers();
-    await mockClient.signOut();
-    await mockClient.startSignIn({ schoolEmail: EMAIL });
-    for (let i = 1; i < MAX_WRONG_CODES; i++) {
-      await expect(mockClient.completeSignIn({ schoolEmail: EMAIL, code: "000000" })).rejects.toMatchObject({ code: "invalid_code" });
-    }
-    await expect(mockClient.completeSignIn({ schoolEmail: EMAIL, code: "000000" })).rejects.toMatchObject({
-      code: "rate_limited",
-      retryAfter: LOCK_SECONDS,
-    });
-    vi.advanceTimersByTime(10_000);
-    await expect(mockClient.completeSignIn({ schoolEmail: EMAIL, code: MOCK_CODE })).rejects.toMatchObject({
-      code: "rate_limited",
-      retryAfter: LOCK_SECONDS - 10,
-    });
-    vi.advanceTimersByTime(LOCK_SECONDS * 1000);
-    await expect(mockClient.completeSignIn({ schoolEmail: EMAIL, code: MOCK_CODE })).resolves.toMatchObject({ id: "student-marko" });
-  });
-
-  it("spends a code: it works once", async () => {
-    await mockClient.signOut();
-    await mockClient.startSignIn({ schoolEmail: EMAIL });
-    await mockClient.completeSignIn({ schoolEmail: EMAIL, code: MOCK_CODE });
-    await mockClient.signOut();
-    await expect(mockClient.completeSignIn({ schoolEmail: EMAIL, code: MOCK_CODE })).rejects.toMatchObject({ code: "code_expired" });
   });
 
   it("needs a connection, as the real one will", async () => {
     const online = vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
-    await expect(mockClient.startSignIn({ schoolEmail: EMAIL })).rejects.toMatchObject({ code: "network" });
-    await expect(mockClient.completeSignIn({ schoolEmail: EMAIL, code: MOCK_CODE })).rejects.toMatchObject({ code: "network" });
+    await expect(mockClient.startSignIn({ provider: "google" })).rejects.toMatchObject({ code: "network" });
     online.mockRestore();
   });
 });
@@ -152,8 +111,8 @@ describe("signed in elsewhere (BR-AUTH-03)", () => {
     ];
     for (const [name, call] of calls) await expect(call(), name).rejects.toMatchObject({ code: "signed_in_elsewhere" });
 
-    await mockClient.startSignIn({ schoolEmail: EMAIL });
-    await mockClient.completeSignIn({ schoolEmail: EMAIL, code: MOCK_CODE });
+    await mockClient.startSignIn({ provider: "google" });
+    finishMockSignIn("marko", "/app/welcome");
     await expect(mockClient.getMe()).resolves.toMatchObject({ id: "student-marko" });
     expect(getState().endedElsewhere).toBe(false);
   });

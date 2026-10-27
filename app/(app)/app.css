@@ -961,6 +961,21 @@ button.item:active {
   transform: translateX(24px);
   background: var(--ink);
 }
+/* The way to write to TeacherAid, under the questions: the only support there is besides them. */
+.faq-contact {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.faq-contact p {
+  margin: 0;
+  max-width: 34ch;
+}
+.faq-contact__address {
+  text-align: center;
+  user-select: all;
+}
 details.faq {
   padding: 0 20px;
 }
@@ -1019,14 +1034,6 @@ details.faq p {
   align-items: center;
   gap: 12px;
 }
-.signin__stage {
-  display: flex;
-  flex-direction: column;
-}
-/* Only a stage the student moved to arrives with movement; a page that opens on one just shows it. */
-.signin__stage--moved {
-  animation: signin-in var(--spring-snappy-dur) var(--spring-snappy) backwards;
-}
 .signin__form {
   display: flex;
   flex-direction: column;
@@ -1044,86 +1051,84 @@ details.faq p {
   margin: 0;
   max-width: 34ch;
 }
-/* The field's message sits where the next thing would otherwise be, so an error moves nothing. */
-.signin__email {
-  display: block;
-  margin-top: 4px;
-  color: var(--text);
-  font-size: var(--fs-callout);
-  font-weight: 650;
-}
-.signin__help {
-  min-height: 1.25rem;
-}
-.signin__form .btn--primary {
-  margin-top: -8px;
-}
-.signin__err,
-.signin__sent {
+.signin__problem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius-item);
+  background: var(--card);
   animation: signin-err var(--spring-snappy-dur) var(--spring-snappy) backwards;
 }
-.signin__code {
-  text-align: center;
-  font-family: var(--font-display);
-  font-size: var(--fs-title1);
+.signin__problem svg {
+  flex: none;
+  margin-top: 1px;
+}
+.signin__problem-title,
+.signin__problem-body {
+  margin: 0;
+}
+.signin__problem-title {
   font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.4em;
-  /* The spacing trails the last digit; pad it back so the digits sit in the middle. */
-  padding-left: calc(16px + 0.4em);
+  margin-bottom: 4px;
 }
-.signin__code::placeholder {
-  color: rgba(255, 255, 255, 0.4);
-  letter-spacing: 0.4em;
+.signin__problem-body {
+  font-size: var(--fs-callout);
+  max-width: 34ch;
 }
-.signin__code:disabled {
-  opacity: 0.55;
-}
-.signin__more {
+.signin__providers {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+/* The provider buttons keep each provider's own look (a white button, its mark and its words), not the app's yellow. */
+.provider {
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 24px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid;
+  font-weight: 600;
+  font-size: var(--fs-body);
+  transition:
+    transform var(--spring-press-dur) var(--spring-press),
+    background var(--spring-press-dur) var(--spring-press),
+    opacity 150ms;
 }
-/* Waiting, not broken: the countdown stays readable (about 5:1 on the blue). */
-.signin__more .btn[aria-disabled="true"] {
-  color: rgba(255, 255, 255, 0.8);
+.provider svg {
+  flex: none;
 }
-.signin__demo {
+.provider--google {
+  color: #1f1f1f;
+  border-color: #747775;
+}
+.provider--microsoft {
+  color: #5e5e5e;
+  border-color: #8c8c8c;
+}
+.provider:active {
+  transform: scale(0.97);
+  background: #f0f0f0;
+  transition-duration: 100ms;
+  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+.provider:disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+.signin__safe {
+  margin: -8px 0 0;
+  max-width: 34ch;
+}
+.demo-sheet__title {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  padding: 8px 8px 8px 16px;
-  border-radius: 999px;
-  background: rgba(7, 22, 47, 0.3);
-}
-.signin__demo .t-cap {
-  min-width: 0;
-}
-/* The email is longer than the hint beside it, so it takes a line of its own under both. */
-.signin__demo--email {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas:
-    "hint use"
-    "email email";
-  align-items: center;
-  border-radius: 24px;
-  row-gap: 2px;
-}
-.signin__demo--email .t-cap {
-  grid-area: hint;
-}
-.signin__demo--email .signin__demo-email {
-  grid-area: email;
-  overflow-wrap: anywhere;
-}
-.signin__demo--email .pill {
-  grid-area: use;
-}
-.signin__demo .pill {
-  flex: none;
-  background: rgba(255, 255, 255, 0.14);
 }
 .signin--center {
   justify-content: center;
@@ -1141,12 +1146,6 @@ details.faq p {
 }
 .signin__cta {
   margin-top: 16px;
-}
-@keyframes signin-in {
-  from {
-    opacity: 0;
-    transform: translateX(16px);
-  }
 }
 @keyframes signin-err {
   from {
@@ -2001,11 +2000,6 @@ button.pill {
     }
   }
   @keyframes tick {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes signin-in {
     from {
       opacity: 0;
     }

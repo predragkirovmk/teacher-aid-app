@@ -1,6 +1,5 @@
 import { ApiError } from "../errors";
 import { parseNumeric, withinTolerance } from "../../numeric";
-import { PRACTICE_POINTS } from "../../practice";
 import type { Question, Text } from "../../quiz";
 import type { Locale, PracticeAnswer, PracticeAttempt, PracticeQuestion, PracticeSet, PracticeVerdict } from "../types";
 import type { SubjectId } from "./data";
@@ -28,7 +27,7 @@ export type MissStat = { id: string; /** Students who got it wrong or left it un
 /**
  * One set for the whole class from one lesson, in the order of the lesson (OPEN-08). Every pop-up that PRACTICE_MISS_SHARE of the class
  * missed; if that leaves fewer than PRACTICE_MIN, the next most missed are added, but a question nobody missed is never in a set. Ties go to
- * the earlier question. `stats` are the lesson's pop-ups in lesson order (the opener is not one, BR-OPN-05).
+ * the earlier question. `stats` are the lesson's pop-ups in lesson order.
  */
 export function pickPracticeQuestions(stats: MissStat[]): string[] {
   const ranked = stats
@@ -184,7 +183,6 @@ export function buildPracticeSets(state: AppState, locale: Locale): PracticeSet[
         createdAt: s.createdAt,
         completedAt: completedAtOf(state, s.id),
         score: answered > 0 ? right : null,
-        points: right * PRACTICE_POINTS,
         questions,
       };
     })
@@ -193,7 +191,7 @@ export function buildPracticeSets(state: AppState, locale: Locale): PracticeSet[
 
 /**
  * POST /practice-sets/{id}/answers. The first answer to a question stands (a repeat is answered with the stored verdict, flagged
- * `duplicate`); a right one is worth PRACTICE_POINTS, once. An answer the question cannot have is `validation_failed`, a question that
+ * `duplicate`). Practice gives no points (BR-PTS-03). An answer the question cannot have is `validation_failed`, a question that
  * is not the set's `not_found`. Nothing is written if any answer is refused.
  */
 export function answerPractice(state: AppState, id: string, answers: PracticeAnswer[], locale: Locale): PracticeAttempt {
@@ -214,14 +212,12 @@ export function answerPractice(state: AppState, id: string, answers: PracticeAns
   const right = (qid: string) => (isRightAnswer(practiceDef(qid)!, all[qid]) ? 1 : 0);
   const completed = set.questionIds.every((qid) => all[qid] !== undefined);
   if (fresh.size > 0) {
-    const gain = [...fresh.keys()].reduce((n, qid) => n + right(qid), 0) * PRACTICE_POINTS;
-    actions.answerPractice(id, Object.fromEntries(fresh), gain, completed ? Date.now() : null);
+    actions.answerPractice(id, Object.fromEntries(fresh), completed ? Date.now() : null);
   }
   const score = set.questionIds.reduce((n, qid) => n + (all[qid] === undefined ? 0 : right(qid)), 0);
   return {
     score,
     total: set.questionIds.length,
-    points: score * PRACTICE_POINTS,
     completed,
     results: answers.map((a) => ({
       questionId: a.questionId,

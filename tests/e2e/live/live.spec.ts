@@ -133,121 +133,130 @@ test.describe("what the live build leaves out or refuses", () => {
     expect(scripts.length).toBeGreaterThan(0);
     // Strings only the mock adapter, its leaderboard and its quiz driver contain. A count rather than
     // the script in the failure message: one chunk is a quarter of a megabyte.
-    for (const needle of ["mock-session-", "flaky-7b", "mock-classmate-", "student-marko", "Виктор Илиевски", "Њутнови закони", "marko.trajkovski@student", "teacheraid-mock-challenge", "opener-7b", "debate-7b", "numeric-7b", "ask-7b", "focus-7b", "teacheraid-mock-console", "Spelling matters, even in a message to a friend"]) {
+    for (const needle of ["mock-session-", "flaky-7b", "mock-classmate-", "student-marko", "Виктор Илиевски", "Њутнови закони", "marko.trajkovski@student", "marko.trajkovski@example.com", "numeric-7b", "ask-7b", "focus-7b", "teacheraid-mock-console"]) {
       expect(scripts.filter((source) => source.includes(needle)).length, `scripts containing "${needle}"`).toBe(0);
     }
   });
 });
 
 /**
- * Signing in against the API: the proposed `/auth/student/start` and `/auth/student/verify` (spec 11.1),
- * the codes it answers with, and the session ending behind the app's back.
+ * Signing in against the API: `POST /auth/student/start` always answers with a redirect to Google or Microsoft (the fake API's own page
+ * stands in for the provider's), which returns through `GET /auth/callback/{provider}` to the app, signed in or with `?error=`
+ * (spec 11.1, 11.3), and the session ending behind the app's back.
  */
 test.describe("signing in", () => {
   test.use({ allowConsoleErrors: [/Failed to load resource: the server responded with a status of (400|401|404|410|429)/] });
 
-  const EMAIL = "live.student@school.example";
-  const CODE = "424242";
-  const control = (request: import("@playwright/test").APIRequestContext, what: string) => request.post(`${API}/__control/${what}`);
-  const email = (page: Page) => page.getByLabel(mk.t("signin.email"));
-  const code = (page: Page) => page.getByLabel(mk.t("signin.code"), { exact: true });
+  const control = (request: import("@playwright/test").APIRequestContext, what: string, data?: unknown) => request.post(`${API}/__control/${what}`, { data });
+  const google = (page: Page) => page.getByRole("button", { name: mk.t("signin.google") });
+  const microsoft = (page: Page) => page.getByRole("button", { name: mk.t("signin.microsoft") });
   const problem = (page: Page) => page.locator('[role="alert"]:not(#__next-route-announcer__)');
-  const toCodeStage = async (page: Page) => {
-    await email(page).fill(EMAIL);
-    await email(page).press("Enter");
-    await expect(page.getByRole("heading", { name: mk.t("signin.codeTitle") })).toBeVisible();
+  /** The fake provider's page: three accounts, each a link to the API's callback. */
+  const atProvider = async (page: Page, name: "Google" | "Microsoft") => {
+    await expect(page).toHaveURL(new RegExp(`^${API.replace(/[.:/]/g, "\\$&")}/__provider/${name.toLowerCase()}\\?return_to=`));
+    await expect(page.getByRole("heading", { name: `${name} sign-in` })).toBeVisible();
   };
+  const choose = (page: Page, account: "marko" | "personal" | "cancel") => page.locator(`#${account}`).click();
 
-  test("a signed-out student asks for a code, types it, and is in", async ({ page, request }) => {
+  test("a signed-out student presses Google, signs in at the provider's page, and is in", async ({ page, request }) => {
     await control(request, "signed-out");
     await page.goto("/app");
     await expect(page).toHaveURL(/\/app\/welcome\?next=%2Fapp$/);
     await expect(page.getByRole("heading", { name: mk.t("welcome.title") })).toBeVisible();
-    // The demo's hint is the mock's own.
-    await expect(page.getByText(mk.t("signin.demoUse"), { exact: true })).toHaveCount(0);
+    // The demo's provider sheet is the mock's own; a live build leaves to the real thing.
+    await expect(page.getByText(mk.t("signin.demo.marko"), { exact: true })).toHaveCount(0);
+    await expect(page.locator("input")).toHaveCount(0);
 
-    await email(page).fill(`  ${EMAIL.toUpperCase()} `);
-    await email(page).press("Enter");
-    await expect(page.getByText(EMAIL)).toBeVisible();
-    await code(page).fill(CODE);
+    await google(page).click();
+    await atProvider(page, "Google");
+    await choose(page, "marko");
 
     await expect(page).toHaveURL(/\/app$/);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Live");
 
     const { calls, bodies } = await serverState(request);
-    // The email goes out trimmed and in lower case, with where to come back to for a redirect; the code with the email it is for.
-    expect(bodies["POST /auth/student/start"]).toEqual({ school_email: EMAIL, return_to: "/app" });
-    expect(bodies["POST /auth/student/verify"]).toEqual({ school_email: EMAIL, code: CODE });
+    // The provider that was pressed and the way back (the welcome screen, carrying where the student was going), and no email.
+    expect(bodies["POST /auth/student/start"]).toEqual({ provider: "google", return_to: "/app/welcome?next=%2Fapp" });
+    expect(calls).not.toContain("POST /auth/student/verify");
     // Nothing of the student was asked for before they were signed in, bar the one question who is there.
-    const verify = calls.indexOf("POST /auth/student/verify");
-    expect(calls.slice(0, verify).filter((c) => c.startsWith("GET") && c !== "GET /me")).toEqual([]);
+    const callback = calls.indexOf("GET /auth/callback/google");
+    expect(callback).toBeGreaterThan(calls.indexOf("POST /auth/student/start"));
+    expect(calls.slice(0, callback).filter((c) => c.startsWith("GET") && c !== "GET /me")).toEqual([]);
+    const state = (await (await request.get(`${API}/__control/state`)).json()) as { signIns: { provider: string; account: string }[] };
+    expect(state.signIns).toEqual([{ provider: "google", account: "marko" }]);
   });
 
-  test("an email that is not on the school's list is refused with a word to the teacher", async ({ page, request }) => {
+  test("Microsoft goes the same way, and carries the screen asked for", async ({ page, request }) => {
     await control(request, "signed-out");
-    await page.goto("/app/welcome");
-    await email(page).fill("nobody@school.example");
-    await email(page).press("Enter");
-    await expect(problem(page)).toContainText(mk.t("err.unknown_email"));
-    await expect(email(page)).toHaveValue("nobody@school.example");
-  });
-
-  test("a wrong code is refused, and too many lock the sign-in for as long as the API says", async ({ page, request }) => {
-    await control(request, "signed-out");
-    await page.goto("/app/welcome");
-    await toCodeStage(page);
-
-    await code(page).fill("111111");
-    await expect(problem(page)).toContainText(mk.t("err.invalid_code"));
-    await code(page).fill("111111");
-    await expect(problem(page)).toContainText(mk.t("err.invalid_code"));
-    await code(page).fill("111111");
-
-    // Retry-After crosses origins only because the API exposes it (CORS): the wait shown is the API's 2 seconds, not a guess.
-    await expect(code(page)).toBeDisabled();
-    await expect(page.getByText(/Премногу погрешни кодови. Обиди се повторно за [12] секунди/)).toBeVisible();
-    await expect(code(page)).toBeEnabled({ timeout: 6000 });
-    await code(page).fill(CODE);
-    await expect(page).toHaveURL(/\/app$/);
-  });
-
-  test("a code that has expired is refused, and a new one is asked for", async ({ page, request }) => {
-    await control(request, "signed-out");
-    await page.goto("/app/welcome");
-    await toCodeStage(page);
-    await control(request, "expire-code");
-    await code(page).fill(CODE);
-    await expect(problem(page)).toContainText(mk.t("err.code_expired"));
-    await expect(code(page)).toHaveValue("");
-  });
-
-  test("a school that signs in through its own identity provider takes the student there", async ({ page, request }) => {
-    await control(request, "signed-out");
-    await control(request, "redirect");
     await page.goto("/app/welcome?next=%2Fapp%2Fattendance");
-    await email(page).fill(EMAIL);
-    await email(page).press("Enter");
+    await microsoft(page).click();
+    await atProvider(page, "Microsoft");
+    await choose(page, "marko");
 
-    await expect(page).toHaveURL(`${API}/__idp`);
-    await expect(page.getByRole("heading", { name: "School sign-in" })).toBeVisible();
+    await expect(page).toHaveURL(/\/app\/attendance$/);
     const { bodies } = await serverState(request);
-    expect(bodies["POST /auth/student/start"]).toEqual({ school_email: EMAIL, return_to: "/app/attendance" });
+    expect(bodies["POST /auth/student/start"]).toEqual({ provider: "microsoft", return_to: "/app/welcome?next=%2Fapp%2Fattendance" });
+  });
+
+  test("an account that is on no roster is refused, once, with a word to use the school's", async ({ page, request }) => {
+    await control(request, "signed-out");
+    await page.goto("/app/welcome?next=%2Fapp%2Fattendance");
+    await google(page).click();
+    await choose(page, "personal");
+
+    await expect(problem(page)).toContainText(mk.t("signin.err.unknown_email.title"));
+    await expect(problem(page)).toContainText(mk.t("signin.err.unknown_email.body"));
+    // The way on is kept, the reason is not: a reload does not repeat it.
+    await expect(page).toHaveURL(/\/app\/welcome\?next=%2Fapp%2Fattendance$/);
+    await page.reload();
+    await expect(problem(page)).toHaveCount(0);
+    await expect(google(page)).toBeEnabled();
+    expect((await serverState(request)).calls).not.toContain("GET /me/leaderboard");
+  });
+
+  test("cancelling at the provider says the sign-in did not finish, and nothing was created", async ({ page, request }) => {
+    await control(request, "signed-out");
+    await page.goto("/app/welcome");
+    await microsoft(page).click();
+    await choose(page, "cancel");
+
+    await expect(problem(page)).toContainText(mk.t("signin.err.sign_in_failed.title"));
+    await expect(problem(page)).toContainText(mk.t("signin.err.sign_in_failed.body"));
+    await page.goto("/app");
+    await expect(page).toHaveURL(/\/app\/welcome\?next=%2Fapp$/);
+
+    // Trying again from the same screen works.
+    await google(page).click();
+    await choose(page, "marko");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Live");
+  });
+
+  test("too many tries are refused with the wait the API gives", async ({ page, request }) => {
+    await control(request, "signed-out");
+    await control(request, "rate-limit", { seconds: 30 });
+    await page.goto("/app/welcome");
+    await google(page).click();
+    await expect(problem(page)).toContainText(mk.t("err.rate_limited"));
+    await expect(google(page)).toBeEnabled();
+    // The limit was for one try: the next goes through.
+    await google(page).click();
+    await atProvider(page, "Google");
   });
 
   test("a class QR opened while signed out signs in, then joins with the same code (EC-JOIN-05)", async ({ page, request }) => {
     await control(request, "signed-out");
     await page.goto("/app/checkin/MATH-7B");
     await expect(page).toHaveURL(/\/app\/welcome\?next=%2Fapp%2Fcheckin%2FMATH-7B$/);
-    await toCodeStage(page);
-    await code(page).fill(CODE);
+    await google(page).click();
+    await choose(page, "marko");
 
     // The API refuses this fake code, which is not the point: it was asked, once, after the sign-in, with the scanned token.
     await expect(page.getByRole("alert").filter({ hasText: mk.q("q.fail.unknown.title") })).toBeVisible();
     const { calls, bodies } = await serverState(request);
     expect(bodies["POST /sessions/join"]).toEqual({ token: "MATH-7B" });
     expect(calls.filter((c) => c === "POST /sessions/join")).toHaveLength(1);
-    expect(calls.indexOf("POST /sessions/join")).toBeGreaterThan(calls.indexOf("POST /auth/student/verify"));
-    expect(bodies["POST /auth/student/start"]).toEqual({ school_email: EMAIL, return_to: "/app/checkin/MATH-7B" });
+    expect(calls.indexOf("POST /sessions/join")).toBeGreaterThan(calls.indexOf("GET /auth/callback/google"));
+    expect(bodies["POST /auth/student/start"]).toEqual({ provider: "google", return_to: "/app/welcome?next=%2Fapp%2Fcheckin%2FMATH-7B" });
   });
 
   test("signing in on another device ends this session: any call that hears of it shows the full screen", async ({ page, request }) => {
@@ -256,6 +265,8 @@ test.describe("signing in", () => {
 
     // Home is already drawn, and so are the alerts the tab bar counts. What the student does next
     // asks the API something it has not been asked before, and is told.
+    // (The alerts the tab bar counts must have been read already, or that read is the call that hears of it and the bar is gone.)
+    await expect.poll(async () => (await serverState(request)).calls).toContain("GET /me/notifications");
     await control(request, "elsewhere");
     await page.getByRole("navigation", { name: mk.t("nav.main") }).getByRole("link", { name: mk.t("nav.alerts") }).click();
     await expect(page).toHaveURL(/\/app\/notifications$/);
@@ -267,8 +278,8 @@ test.describe("signing in", () => {
 
     await page.getByRole("button", { name: mk.t("elsewhere.cta") }).click();
     await expect(page).toHaveURL(/\/app\/welcome\?next=%2Fapp%2Fnotifications$/);
-    await toCodeStage(page);
-    await code(page).fill(CODE);
+    await google(page).click();
+    await choose(page, "marko");
     await expect(page).toHaveURL(/\/app\/notifications$/);
     await expect(page.getByRole("link", { name: /Parents evening/ })).toBeVisible();
   });
@@ -290,8 +301,8 @@ test.describe("signing in", () => {
     expect((await serverState(request)).calls).toContain("POST /auth/logout");
     await expect(page.getByText("Live Student")).toHaveCount(0);
 
-    await toCodeStage(page);
-    await code(page).fill(CODE);
+    await google(page).click();
+    await choose(page, "marko");
     await expect(page).toHaveURL(/\/app$/);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Live");
   });
@@ -783,20 +794,15 @@ test.describe("a live session", () => {
 });
 
 /**
- * The question kinds beyond multiple choice and true or false, against the fake API: a numeric answer, and the
- * opener's vote and reason on their own endpoints (spec 7.6, 7.7, F-08), with the test playing the teacher. The
- * fake's opener is a prediction ("which is the biggest fraction?", right answer the first option, a class of
- * 13) or a debate; its fourth question is "7 divided by 4", right within 0.01, no minus.
+ * The question kinds beyond multiple choice and true or false, against the fake API: a numeric answer (spec 7.7, F-08), with the
+ * test playing the teacher. There is no opener (2026-10-27). The fake's fourth question is "7 divided by 4", right within 0.01, no minus.
  */
-test.describe("a live session with an opener and a number", () => {
+test.describe("a live session with a number", () => {
   test.use({ allowConsoleErrors: [/Failed to load resource: (the server responded with a status of (403|404|409|410|422|503)|net::ERR_)/] });
 
   type Req = import("@playwright/test").APIRequestContext;
-  const OPTION = ".q-opt, .q-tf__btn";
   const teacher = (request: Req, action: string, data: object = {}) => request.post(`${API}/__control/session/${action}`, { data });
   const stageOf = (page: Page) => page.locator("main.q");
-  const VOTE = "POST /sessions/se-live-1/opener/vote";
-  const REASON = "POST /sessions/se-live-1/opener/reason";
   const ANSWER = "POST /sessions/se-live-1/answers";
 
   async function inLobby(page: Page, request: Req) {
@@ -804,171 +810,6 @@ test.describe("a live session with an opener and a number", () => {
     await expect(page.getByText(mk.q("q.waitTeacher"))).toBeVisible();
     await expect.poll(async () => (await (await request.get(`${API}/__control/state`)).json()).streams).toBeGreaterThan(0);
   }
-
-  test("a vote and a reason each go to their endpoint with a key and the time they were given, and the result adds them up", async ({ page, request }) => {
-    await inLobby(page, request);
-    await teacher(request, "opener");
-    await expect(stageOf(page)).toHaveAttribute("data-stage", "voting");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Which is the biggest fraction?");
-    expect((await serverState(request)).calls.filter((c) => c === "GET /sessions/se-live-1/student-state").length).toBeGreaterThan(0);
-
-    await page.locator(OPTION).nth(0).click();
-    await expect(stageOf(page)).toHaveAttribute("data-stage", "reasoning");
-    await expect.poll(async () => (await serverState(request)).bodies[VOTE]).toMatchObject({ session_question_id: "fo1", response: "0" });
-    const vote = (await serverState(request)).bodies[VOTE] as { answered_at: string; idempotency_key: string };
-    expect(Number.isNaN(Date.parse(vote.answered_at))).toBe(false);
-    expect(vote.idempotency_key).toMatch(/\S{8,}/);
-
-    // Mid-vote the class's counts are not shown (the stage after voting is where they live).
-    await teacher(request, "progress", { answered: 5 });
-    await expect(page.locator(".o-bars")).toHaveCount(0);
-
-    await page.getByRole("textbox").fill("  Half is   more than a third.  ");
-    await page.getByRole("textbox").press("Enter");
-    await expect.poll(async () => (await serverState(request)).bodies[REASON]).toMatchObject({ session_question_id: "fo1", text: "Half is more than a third." });
-    // The reason goes after the vote, and under its own key.
-    const { calls } = await serverState(request);
-    expect(calls.indexOf(VOTE)).toBeLessThan(calls.indexOf(REASON));
-    await expect(stageOf(page)).toHaveAttribute("data-stage", "opener_wait");
-
-    // Voting closes: the class's votes, and the student's own among them.
-    await teacher(request, "opener-voting-end");
-    const bars = page.locator(".o-bar");
-    await expect(bars).toHaveCount(3);
-    await expect(bars.nth(0).locator(".o-bar__n")).toHaveText("10");
-    await expect(bars.nth(0).locator(".o-tag").filter({ hasText: mk.q("o.yourVote") })).toBeVisible();
-
-    await teacher(request, "opener-close");
-    await expect(stageOf(page)).toHaveAttribute("data-stage", "opener_result");
-    await expect(page.getByRole("heading", { name: mk.q("q.right") })).toBeVisible();
-    await expect(page.locator(".o-chips")).toContainText(mk.q("o.pts.vote", { n: 10 }));
-    await expect(page.locator(".o-chips")).toContainText(mk.q("o.pts.reason", { n: 8 }));
-    await expect(page.locator(".q-total .q-big")).toHaveText("18");
-    // The right answer and the class's reasons wait for the teacher's reveal.
-    await expect(page.locator(".o-tag--right")).toHaveCount(0);
-    await expect(page.locator(".o-reason")).toHaveCount(0);
-    await teacher(request, "opener-reveal");
-    await expect(page.locator('.o-bar[data-right="true"]')).toContainText("1/2");
-    await expect(page.locator(".o-tag--right")).toContainText(mk.q("q.correctAnswer"));
-    await expect(page.locator(".o-reason")).toHaveCount(2);
-    await expect(page.locator(".o-reason").first()).toContainText("Half is more than a third.");
-
-    // The lesson goes on: the first question opens and the opener is gone.
-    await teacher(request, "fire", { index: 0, timer: 60 });
-    await expect(stageOf(page)).toHaveAttribute("data-stage", "answering");
-    await expect(page.locator(".o-bars")).toHaveCount(0);
-  });
-
-  test("a wrong vote with a reason is worth the reason's points, and a vote with no reason is worth the vote's", async ({ page, request }) => {
-    await inLobby(page, request);
-    await teacher(request, "opener");
-    await page.locator(OPTION).nth(2).click();
-    await page.getByRole("textbox").fill("Four is the biggest number.");
-    await page.getByRole("button", { name: mk.q("o.send") }).click();
-    await expect.poll(async () => (await serverState(request)).bodies[REASON]).toBeTruthy();
-    await teacher(request, "opener-close");
-    await expect(page.getByRole("heading", { name: mk.q("q.wrong") })).toBeVisible();
-    await expect(page.getByText(mk.q("o.voteWrongReason"))).toBeVisible();
-    await expect(page.locator(".q-total .q-big")).toHaveText("8");
-  });
-
-  test("an empty reason is never sent, and skipping sends nothing", async ({ page, request }) => {
-    await inLobby(page, request);
-    await teacher(request, "opener");
-    await page.locator(OPTION).nth(0).click();
-    await expect(stageOf(page)).toHaveAttribute("data-stage", "reasoning");
-    await page.getByRole("button", { name: mk.q("o.send") }).click();
-    await expect(page.locator(".n-err")).toContainText(mk.q("o.err.empty"));
-    await page.getByRole("button", { name: mk.q("o.skip") }).click();
-    await expect(stageOf(page)).toHaveAttribute("data-stage", "opener_wait");
-    await teacher(request, "opener-close");
-    await expect(page.locator(".q-total .q-big")).toHaveText("10");
-    expect((await serverState(request)).calls).not.toContain(REASON);
-  });
-
-  test("a debate has no right side: the split, and only the reason's points", async ({ page, request }) => {
-    await inLobby(page, request);
-    await teacher(request, "opener", { kind: "debate" });
-    await expect(page.locator(".q-tf__btn")).toHaveCount(2);
-    await page.getByRole("button", { name: mk.q("o.disagree") }).click();
-    await expect.poll(async () => (await serverState(request)).bodies[VOTE]).toMatchObject({ session_question_id: "fo2", response: "disagree" });
-    await page.getByRole("textbox").fill("Without it nobody would practise.");
-    await page.getByRole("textbox").press("Enter");
-    await teacher(request, "opener-voting-end");
-    await expect(page.locator(".o-bar")).toHaveCount(2);
-    await expect(page.locator(".o-bar").nth(1).locator(".o-bar__n")).toHaveText("9");
-    await teacher(request, "opener-close");
-    await teacher(request, "opener-reveal");
-    await expect(page.getByRole("heading", { name: mk.q("o.side.disagree") })).toBeVisible();
-    await expect(page.getByText(mk.q("o.noRight"))).toBeVisible();
-    await expect(page.locator(".o-tag--right")).toHaveCount(0);
-    await expect(page.locator(".q-total .q-big")).toHaveText("8");
-  });
-
-  test("a vote and a reason given with no signal are kept, in order, and counted when it returns", async ({ page, request, context }) => {
-    await inLobby(page, request);
-    await teacher(request, "opener");
-    await expect(stageOf(page)).toHaveAttribute("data-stage", "voting");
-
-    let refused = 0;
-    await context.route(`${API}/api/v1/sessions/se-live-1/opener/*`, (route) => (refused++ < 3 ? route.abort() : route.continue()));
-    await page.locator(OPTION).nth(0).click();
-    // The vote is on the phone, not lost: the reason can be written on top of it.
-    await expect(page.getByText(mk.q("ans.saved"))).toBeVisible();
-    await page.getByRole("textbox").fill("Half is more than a third.");
-    await page.getByRole("textbox").press("Enter");
-
-    // Both arrive once the road is open, the vote first.
-    await expect.poll(async () => (await serverState(request)).bodies[REASON], { timeout: 20_000 }).toBeTruthy();
-    const { calls } = await serverState(request);
-    expect(calls.indexOf(VOTE)).toBeGreaterThan(-1);
-    expect(calls.indexOf(VOTE)).toBeLessThan(calls.indexOf(REASON));
-    expect(refused).toBeGreaterThanOrEqual(3);
-    await expect(page.getByText(mk.q("ans.saved"))).toHaveCount(0);
-
-    await teacher(request, "opener-close");
-    await expect(page.locator(".q-total .q-big")).toHaveText("18");
-  });
-
-  test("a reason saved while the opener closed is counted by the time it was given, and corrects the points", async ({ page, request, context }) => {
-    await inLobby(page, request);
-    await teacher(request, "opener", { vote: 30, reason: 60 });
-    await page.locator(OPTION).nth(0).click();
-    await expect.poll(async () => (await serverState(request)).bodies[VOTE]).toBeTruthy();
-
-    // The reason cannot leave the phone; the opener closes meanwhile, and the student's result is 10 without it.
-    await context.route(`${API}/api/v1/sessions/se-live-1/opener/reason`, (route) => route.abort());
-    await page.getByRole("textbox").fill("Half is more than a third.");
-    await page.getByRole("textbox").press("Enter");
-    await expect(page.getByText(mk.q("ans.saved"))).toBeVisible();
-    await teacher(request, "opener-close");
-    await expect(page.getByText(mk.q("q.checking")).or(page.locator(".o-own"))).toBeVisible();
-
-    await context.unroute(`${API}/api/v1/sessions/se-live-1/opener/reason`);
-    // It arrives after the close and counts: the points are corrected to 18.
-    await expect(stageOf(page)).toHaveAttribute("data-stage", "opener_result", { timeout: 20_000 });
-    await expect(page.locator(".q-total .q-big")).toHaveText("18", { timeout: 20_000 });
-    await expect(page.locator(".o-chips")).toContainText(mk.q("o.pts.reason", { n: 8 }));
-  });
-
-  test("a reload after the vote and the reason picks up where the student was", async ({ page, request }) => {
-    await inLobby(page, request);
-    await teacher(request, "opener");
-    await page.locator(OPTION).nth(1).click();
-    await page.getByRole("textbox").fill("Because.");
-    await page.getByRole("textbox").press("Enter");
-    await expect.poll(async () => (await serverState(request)).bodies[REASON]).toBeTruthy();
-
-    await page.reload();
-    await expect(stageOf(page)).toHaveAttribute("data-stage", "opener_wait");
-    await expect(page.locator(".o-vote")).toContainText("1/3");
-    await expect(page.locator(".o-own")).toContainText("Because.");
-    // And the class's votes, once voting has closed, come with the snapshot.
-    await teacher(request, "opener-voting-end");
-    await expect(page.locator(".o-bar")).toHaveCount(3);
-    await page.reload();
-    await expect(page.locator(".o-bar")).toHaveCount(3);
-  });
 
   test("a number is sent as plain text with a point, whichever separator was typed, and counted within the tolerance", async ({ page, request }) => {
     await inLobby(page, request);
@@ -1297,8 +1138,9 @@ test.describe("practice and the history of results", () => {
     await page.locator(".q-opt").nth(1).click();
     await check(page).click();
     const verdict = page.getByRole("status").filter({ hasText: mk.t("pr.right") });
-    await expect(verdict).toContainText(mk.t("pr.gain", { n: 5 }));
     await expect(verdict).toContainText("Divide both sides by 2");
+    // Practice gives no points, and the API sends none.
+    await expect(verdict).not.toContainText(/[+]\d|поен|point/i);
     expect((await bodies(request)).practiceBodies).toEqual([{ id: "ps-1", body: { answers: [{ question_id: "pq-1", response: "1" }] } }]);
 
     // Leave and come back: the API has the first answer, so the set opens on the second question.
@@ -1320,7 +1162,7 @@ test.describe("practice and the history of results", () => {
     await page.getByRole("button", { name: mk.t("pr.result") }).click();
 
     await expect(page.getByRole("heading", { name: mk.t("pr.done.score", { score: 2, total: 3 }) })).toBeVisible();
-    await expect(page.getByText(mk.t("pr.gain", { n: 10 }))).toBeVisible();
+    await expect(page.locator("main")).not.toContainText(/[+]\d|поен|point/i);
     const sent = (await bodies(request)).practiceBodies.map((b) => b.body.answers[0]);
     expect(sent).toEqual([
       { question_id: "pq-1", response: "1" },
@@ -1343,7 +1185,8 @@ test.describe("practice and the history of results", () => {
       { question_id: "pq-3", response: "2.25" },
     ];
     const res = await request.post(`${API}/api/v1/practice-sets/ps-1/answers`, { data: { answers } });
-    expect(await res.json()).toMatchObject({ score: 3, total: 3, points: 15, completed: true });
+    expect(await res.json()).toEqual(expect.objectContaining({ score: 3, total: 3, completed: true }));
+    expect(await res.json()).not.toHaveProperty("points");
     await page.goto(SET);
     await expect(page.getByRole("heading", { name: mk.t("pr.done.score", { score: 3, total: 3 }) })).toBeVisible();
     await expect(page.getByText(mk.t("pr.done.all"))).toBeVisible();

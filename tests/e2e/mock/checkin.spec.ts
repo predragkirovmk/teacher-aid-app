@@ -102,6 +102,14 @@ test.describe("when the join fails", () => {
     await nothingRecorded(page);
   });
 
+  test("the codes of the retired opener are not recognized any more", async ({ page }) => {
+    for (const code of ["OPENER-7B", "DEBATE-7B"]) {
+      await page.goto(`/app/checkin/${code}`);
+      await expect(screen(page, "unknown").getByRole("alert")).toContainText(mk.q("q.fail.unknown.title"));
+    }
+    await nothingRecorded(page);
+  });
+
   test("each reason has its own words", async ({ page }) => {
     const titles = new Set<string>();
     for (const code of ["EXPIRED-7B", "OTHER-8A", "ENDED-7B", "NOPE-9"]) {
@@ -135,4 +143,12 @@ test("joining after the lobby is a late attendance with a gentle note", async ({
   await expect(page.getByText(mk.t("att.status.late"), { exact: true }).first()).toBeVisible();
   await page.goto("/app");
   await expect(page.getByRole("link", { name: new RegExp(mk.t("home.attendance")) })).toContainText("88%");
+});
+
+test("NUMERIC-7B checks in and goes straight to the numeric question, with no opener first", async ({ page }) => {
+  await page.goto("/app/checkin/NUMERIC-7B");
+  await expect(page).toHaveURL(/\/app\/play\/NUMERIC-7B$/);
+  await expect(page.locator("main.q")).toHaveAttribute("data-stage", /answering|joined/);
+  await expect(page.locator(".n-input")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("10");
 });

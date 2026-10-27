@@ -57,9 +57,9 @@ test("Enter sends, an empty question is not sent, and the box stops at the limit
   await expect(box(page)).toHaveAttribute("maxlength", "280");
   await box(page).fill("ш".repeat(300));
   await expect(box(page)).toHaveValue("ш".repeat(280));
-  await expect(sheet(page).locator(".o-count")).toHaveText("280/280");
+  await expect(sheet(page).locator(".ask__count")).toHaveText("280/280");
   await box(page).fill("Кратко прашање");
-  await expect(sheet(page).locator(".o-count")).toHaveCount(0);
+  await expect(sheet(page).locator(".ask__count")).toHaveCount(0);
   await box(page).press("Enter");
   await expect(sheet(page).getByRole("heading", { name: mk.q("ask.sent") })).toBeVisible();
 });
@@ -87,12 +87,6 @@ test("the limit: two questions, then the sheet says there are no more, and still
 
 test("the way to ask is not on the screen while a question is open, and comes back after", async ({ page }) => {
   await inLobby(page);
-  await untilStage(page, "voting");
-  await expect(entry(page)).toHaveCount(0);
-  await page.locator(".q-opt").nth(1).click();
-  await untilStage(page, "reasoning");
-  await expect(entry(page)).toHaveCount(0);
-  await untilStage(page, "opener_result");
   await expect(entry(page)).toBeVisible();
   await untilStage(page, "answering");
   await expect(entry(page)).toHaveCount(0);
@@ -106,15 +100,15 @@ test("a sheet that is open when a question starts steps aside, says why, and kee
   await inLobby(page);
   await entry(page).click();
   await box(page).fill("Нешто што не стигнав да го испратам");
-  // The teacher starts the opener while the student is typing.
-  await untilStage(page, "voting");
+  // The teacher fires a question while the student is typing.
+  await untilStage(page, "answering");
   await expect(sheet(page)).toHaveCount(0);
   await expect(page.locator(".toast")).toContainText(mk.q("ask.paused"));
   // Nothing was sent.
   expect((await received(page)).asks).toHaveLength(0);
 
-  await page.locator(".q-opt").nth(1).click();
-  await untilStage(page, "opener_result");
+  await page.locator(".q-opt, .q-tf__btn").first().click();
+  await untilStage(page, "waiting_next");
   await entry(page).click();
   await expect(box(page)).toHaveValue("Нешто што не стигнав да го испратам");
 });

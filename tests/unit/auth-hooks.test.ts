@@ -3,7 +3,8 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/app/api/errors";
-import { MOCK_CODE, MOCK_ROSTER } from "@/lib/app/api/mock/roster";
+import { MOCK_ROSTER } from "@/lib/app/api/mock/roster";
+import { finishMockSignIn } from "@/lib/app/api/mock/signin";
 import { actions } from "@/lib/app/api/mock/store";
 import { getSessionEnd, startSession } from "@/lib/app/api/session";
 
@@ -21,7 +22,7 @@ vi.mock("@/lib/app/api/index", async () => {
 });
 
 const { client } = await import("@/lib/app/api");
-const { completeSignIn, signOut, startSignIn, useAuth } = await import("@/lib/app/api/hooks");
+const { signOut, startSignIn, useAuth } = await import("@/lib/app/api/hooks");
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -83,18 +84,18 @@ describe("who is signed in", () => {
     expect(getSessionEnd()).toBe("signed_in_elsewhere");
   });
 
-  it("is signed in again after the code is typed, with no reason left over", async () => {
+  it("is signed in again once the provider has sent the browser back, with no reason left over", async () => {
     const auth = mountAuth();
     actions.signOutElsewhere();
     await flush();
     expect(auth.last().reason).toBe("signed_in_elsewhere");
 
-    const challenge = await startSignIn({ schoolEmail: EMAIL });
-    expect(challenge.method).toBe("code");
-    await act(async () => {
-      await completeSignIn({ schoolEmail: EMAIL, code: MOCK_CODE });
-    });
-    expect(auth.last()).toMatchObject({ status: "signedIn", reason: undefined });
+    // The browser leaves for the provider and comes back to a page loaded afresh: the app starts over and asks who is in.
+    const redirect = await startSignIn({ provider: "microsoft", returnTo: "/app/welcome" });
+    expect(redirect.method).toBe("redirect");
+    expect(finishMockSignIn("marko", "/app/welcome")).toBe("/app/welcome");
+    startSession();
+    await expect(client.getMe()).resolves.toMatchObject({ schoolEmail: EMAIL });
     expect(getSessionEnd()).toBeNull();
   });
 });
@@ -114,10 +115,29 @@ describe("signing out", () => {
 });
 
 describe("signing in", () => {
-  it("does not sign anyone in on a wrong code", async () => {
+  it("does not sign anyone in with a personal account, and sends the browser back with the reason", async () => {
     actions.signOut();
-    await startSignIn({ schoolEmail: EMAIL });
-    await expect(completeSignIn({ schoolEmail: EMAIL, code: "000000" })).rejects.toMatchObject({ code: "invalid_code" });
+    await startSignIn({ provider: "google" });
+    expect(finishMockSignIn("personal", "/app/welcome?next=%2Fapp%2Fcheckin%2FMATH-7B")).toBe(
+      "/app/welcome?next=%2Fapp%2Fcheckin%2FMATH-7B&error=unknown_email",
+    );
     await expect(client.getMe()).rejects.toMatchObject({ code: "unauthenticated" });
+  });
+
+  it("does not sign anyone in when the student cancels at the provider", async () => {
+    actions.signOut();
+    expect(finishMockSignIn("cancel", "/app/welcome")).toBe("/app/welcome?error=sign_in_failed");
+    await expect(client.getMe()).rejects.toMatchObject({ code: "unauthenticated" });
+  });
+
+  it("comes back only to a path of the app", () => {
+    actions.signOut();
+    expect(finishMockSignIn("marko", "https://evil.example/app")).toBe("/app/welcome");
+    expect(finishMockSignIn("marko", "//evil.example")).toBe("/app/welcome");
+  });
+
+  it("cannot start without a network, as for real", async () => {
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    await expect(startSignIn({ provider: "google" })).rejects.toMatchObject({ code: "network" });
   });
 });

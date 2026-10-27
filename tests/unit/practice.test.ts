@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PracticeAttempt, PracticeQuestion, PracticeSet } from "@/lib/app/api/types";
-import { PRACTICE_POINTS, answeredIn, localVerdicts, openSets, practiceStatus, practiceView } from "@/lib/app/practice";
+import { answeredIn, localVerdicts, openSets, practiceStatus, practiceView } from "@/lib/app/practice";
 
 const q = (id: string, answer: PracticeQuestion["answer"] = null): PracticeQuestion => ({
   id,
@@ -21,7 +21,6 @@ const set = (questions: PracticeQuestion[], over: Partial<PracticeSet> = {}): Pr
   createdAt: 1,
   completedAt: null,
   score: null,
-  points: 0,
   questions,
   ...over,
 });
@@ -48,10 +47,10 @@ describe("the view of a set while it is answered", () => {
   });
 
   it("resumes at the first unanswered question from what the server holds", () => {
-    const s = set([q("a", given("1", true)), q("b", given("0", false)), q("c"), q("d")], { points: PRACTICE_POINTS });
+    const s = set([q("a", given("1", true)), q("b", given("0", false)), q("c"), q("d")]);
     const v = practiceView(s, {}, {});
     expect(v.next).toBe(2);
-    expect(v).toMatchObject({ answered: 2, checked: 2, right: 1, points: PRACTICE_POINTS, finished: false });
+    expect(v).toMatchObject({ answered: 2, checked: 2, right: 1, finished: false });
   });
 
   it("resumes past an answer saved on the phone that the server has not confirmed", () => {
@@ -62,31 +61,31 @@ describe("the view of a set while it is answered", () => {
   });
 
   it("prefers the server's record, then a verdict just heard, then the phone's own answer", () => {
-    const told = { response: "2", verdict: { correct: false, correctAnswer: "1", explanation: "why" }, setPoints: 0 };
+    const told = { response: "2", verdict: { correct: false, correctAnswer: "1", explanation: "why" } };
     const v = practiceView(
       set([q("a", given("1", true)), q("b"), q("c")]),
       { a: "0", b: "3", c: "2" },
-      { a: { response: "9", verdict: { correct: false, correctAnswer: "0", explanation: null }, setPoints: 0 }, b: told },
+      { a: { response: "9", verdict: { correct: false, correctAnswer: "0", explanation: null } }, b: told },
     );
     expect(v.items[0]).toMatchObject({ status: "checked", response: "1", verdict: { correct: true } });
     expect(v.items[1]).toMatchObject({ status: "checked", response: "2", verdict: { correct: false, explanation: "why" } });
     expect(v.items[2]).toEqual({ status: "saved", response: "2" });
   });
 
-  it("scores the right answers among the checked ones and takes the points from the server", () => {
+  it("scores the right answers among the checked ones", () => {
     const attempt: PracticeAttempt = {
       score: 2,
       total: 3,
-      points: 2 * PRACTICE_POINTS,
       completed: true,
       results: [{ questionId: "c", duplicate: false, correct: true, correctAnswer: "2", explanation: null }],
     };
     const v = practiceView(
-      set([q("a", given("1", true)), q("b", given("0", false)), q("c")], { points: PRACTICE_POINTS }),
+      set([q("a", given("1", true)), q("b", given("0", false)), q("c")]),
       {},
       localVerdicts(attempt, { c: "2" }),
     );
-    expect(v).toMatchObject({ right: 2, checked: 3, finished: true, next: null, points: 2 * PRACTICE_POINTS });
+    expect(v).toMatchObject({ right: 2, checked: 3, finished: true, next: null });
+    expect(v).not.toHaveProperty("points");
   });
 
   it("is waiting, not finished, while every question is answered but some verdicts are still to come", () => {
@@ -103,7 +102,6 @@ describe("verdicts heard from the server", () => {
   const attempt: PracticeAttempt = {
     score: 1,
     total: 2,
-    points: PRACTICE_POINTS,
     completed: false,
     results: [
       { questionId: "a", duplicate: false, correct: true, correctAnswer: "1", explanation: "because" },
@@ -111,9 +109,9 @@ describe("verdicts heard from the server", () => {
     ],
   };
 
-  it("are kept with the response they were for and the set's points then", () => {
+  it("are kept with the response they were for", () => {
     expect(localVerdicts(attempt, { a: "1" })).toEqual({
-      a: { response: "1", verdict: { correct: true, correctAnswer: "1", explanation: "because" }, setPoints: PRACTICE_POINTS },
+      a: { response: "1", verdict: { correct: true, correctAnswer: "1", explanation: "because" } },
     });
   });
 

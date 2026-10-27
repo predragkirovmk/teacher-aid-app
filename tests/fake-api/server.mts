@@ -9,18 +9,20 @@
  *   POST /__control/notice        { version }              the notice the student has acknowledged: a version string, or null for none
  *   POST /__control/signed-out     answer 401 `unauthenticated` to every call until the student signs in
  *   POST /__control/elsewhere      answer 401 `signed_in_elsewhere` to every call until the student signs in
- *   POST /__control/redirect       make sign-in answer with a redirect to the school's identity provider
- *   POST /__control/expire-code    make the emailed code stop working
+ *   POST /__control/rate-limit     { seconds }              make the next sign-in start answer `rate_limited` with that Retry-After
  *
- * Sign-in is the proposed `/auth/student/start` and `/auth/student/verify`: the roster is one email,
- * the code is CODE, three wrong codes lock it for LOCK_SECONDS, and the session is a flag (the real
- * one is an httpOnly cookie, which a single test browser does not need to tell apart).
+ * Sign-in is a redirect to Google or Microsoft (2026-10-27): `POST /auth/student/start` takes `{ provider, return_to }` and answers
+ * `{ method: "redirect", url }` to this server's own stand-in for the provider's page, `GET /__provider/{provider}`, which offers three
+ * accounts: the student on the roster, a personal account that is on no roster (EC-AUTH-09) and cancelling (EC-AUTH-10). Each goes to
+ * `GET /api/v1/auth/callback/{provider}?account=&return_to=`, which signs the student in (the session is a flag; the real one is an
+ * httpOnly cookie, which a single test browser does not need to tell apart) and redirects to `return_to` on the app's origin, or
+ * redirects there with `?error=unknown_email` or `?error=sign_in_failed` and nothing created. Every sign-in is kept in state.signIns.
  *
  * A live session, student side: `POST /sessions/join`, `GET /sessions/{id}/student-state`, `POST
  * /sessions/{id}/answers` and the PROPOSED event stream `GET /realtime?channels=` (Server-Sent Events,
  * lib/app/session/sse.ts). The test plays the teacher through the control endpoints; nothing here moves
  * by itself, so a test decides when a question opens and closes:
- *   POST /__control/session/state     { state }                lobby | opener | teaching | review | ended
+ *   POST /__control/session/state     { state }                lobby | teaching | review | ended
  *   POST /__control/session/fire      { index, timer? }        open question `index` of the lesson (timer in seconds, default 60)
  *   POST /__control/session/progress  { answered }             how many have answered
  *   POST /__control/session/close                              close the open question and send the student's result
@@ -28,10 +30,6 @@
  *   POST /__control/session/skip                               skip the open question
  *   POST /__control/session/end                                end the session: results, rank and the tally
  *   POST /__control/session/joined    { count }                the class gathering in the lobby
- *   POST /__control/session/opener    { kind?, vote?, reason? } start the opener: "prediction" (default) or "debate", with the seconds each part lasts (30 and 45)
- *   POST /__control/session/opener-voting-end                  voting closes: the class's final votes go out
- *   POST /__control/session/opener-close                       the opener ends: the student's vote and reason are worked out and sent
- *   POST /__control/session/opener-reveal                      the teacher reveals: the right answer, the final votes, the anonymous reasons
  *   POST /__control/session/anon-limit { limit }               how many questions to the teacher a student may send (3, BR-ANON-02)
  *   POST /__control/session/elsewhere                          tell the student's channel they signed in on another device
  *   POST /__control/skew              { ms }                   the server's clock runs this far ahead of the machine's
@@ -46,10 +44,7 @@
  * answer to a skipped question is refused the same way (EC-NET-03). A repeat of a key is `duplicate`, a
  * different key for a question already answered is `already_answered`. Closing a question early moves its
  * `closes_at` back to now, as a real server's early close does (BR-TIME-04).
- * The opener (spec 4.3) takes `POST /sessions/{id}/opener/vote` (an answer's body) and `/opener/reason` (`text`
- * instead of `response`), judged like answers: by the time the student gave, with the same grace, one of each,
- * a key seen before is `duplicate`. A reason needs a vote. A right prediction is worth 10, a written reason 8
- * whatever the vote (BR-PTS-02), a debate has no right side (OPEN-07). The fourth question of the lesson is a
+ * A right answer is worth 10 plus up to 5 for speed, a wrong one 0 (BR-PTS-02). The fourth question of the lesson is a
  * number: 7 divided by 4, within 0.01, no minus. The server reads a comma or a point and keeps the number as text.
  * A question to the teacher (F-09) is `POST /sessions/{id}/anon-questions` (`text`, `asked_at`, `idempotency_key`): stored with the
  * sender (state.session.asks), a key seen before is `duplicate`, one past the limit is `limit_reached` (409), an empty text
@@ -61,7 +56,7 @@
  * The history and practice (F-12, spec 11.3): `GET /me/results` (`?course=` filters it, the query of each call is kept in state.queries), `GET /me/topics`,
  * `GET /me/practice-sets` and `POST /practice-sets/{id}/answers`. The server holds the right answers: a set lists a question with what the student answered
  * and the verdict once there is one, and nothing before. An answer body is `{ answers: [{ question_id, response }] }`; the first answer to a question stands, a
- * repeat gets the stored verdict with `duplicate`, a right answer is PRACTICE_POINTS, a response the question cannot have is `validation_failed` (422), a question
+ * repeat gets the stored verdict with `duplicate`, a right answer earns no points (BR-PTS-03), a response the question cannot have is `validation_failed` (422), a question
  * that is not the set's is `not_found` (404); a number is read with a comma or a point. Every body is kept in state.practiceBodies, in order.
  *   POST /__control/practice/send     the teacher sends a set from the live lesson's questions: a new set, and its alert
  *
@@ -90,10 +85,8 @@ const PORT = Number(process.env.FAKE_API_PORT ?? 3101);
 /** The privacy notice's version the app ships, read from its source so the two cannot drift apart (lib/app/privacy.ts). */
 const NOTICE_VERSION = /NOTICE_VERSION = "([^"]+)"/.exec(readFileSync(new URL("../../lib/app/privacy.ts", import.meta.url), "utf8"))![1];
 
-const ROSTER = ["live.student@school.example"];
-const CODE = "424242";
-const WRONG_ALLOWED = 3;
-const LOCK_SECONDS = 2;
+/** The origin of the app the browser comes back to after a sign-in (the callback redirects there). */
+const APP_ORIGIN = process.env.FAKE_APP_ORIGIN ?? `http://localhost:${process.env.E2E_PORT ?? 3102}`;
 /** How far past a question's end an answer's own time may be and still count (PROPOSED, BR-NET-01, EC-TIME-01). */
 const GRACE_MS = 2000;
 
@@ -129,33 +122,11 @@ const LESSON: LessonQuestion[] = [
   { id: "fq4", kind: "numeric", prompt: "What is 7 divided by 4?", options: null, correct: "1.75", numeric: { unit: null, tolerance: 0.01, allow_negative: false } },
 ];
 
-/** What the opener asks, by kind; the class's votes are fixed, the student's is added to them. */
-const OPENERS = {
-  prediction: {
-    id: "fo1",
-    kind: "opener_prediction",
-    prompt: "Which is the biggest fraction?",
-    options: ["1/2", "1/3", "1/4"],
-    correct: "0",
-    class: [9, 3, 1],
-    reasons: ["Half is more than a third.", "The bigger the bottom, the smaller the piece."],
-  },
-  debate: {
-    id: "fo2",
-    kind: "opener_debate",
-    prompt: "Homework should be optional.",
-    options: null,
-    correct: null,
-    class: [4, 8],
-    reasons: ["I learn more when I choose.", "Without it nobody would practise."],
-  },
-} as const;
-const REASON_MAX = 80;
 /** The longest question to the teacher (PROPOSED, the app's ANON_MAX_LENGTH). */
 const ASK_MAX = 280;
 const SESSION_ID = "se-live-1";
 const STUDENT_ID = "st-1";
-type SessionStateName = "lobby" | "opener" | "teaching" | "review" | "ended";
+type SessionStateName = "lobby" | "teaching" | "review" | "ended";
 
 type Live = { id: string; index: number; status: "open" | "closed" | "revealed" | "skipped"; firedAt: number; closesAt: number; timer: number };
 
@@ -176,8 +147,6 @@ function newSession() {
     rank: 5,
     right: 0,
     summary: null as null | { right: number; total: number },
-    /** The opener the teacher started, while it is the lesson's current question. */
-    opener: null as null | OpenerLive,
     /** Questions to the teacher, with the sender (the teacher sees it; no student endpoint returns it). */
     asks: [] as { key: string; text: string; askedAt: number; sender: string }[],
     askLimit: 3,
@@ -187,20 +156,6 @@ function newSession() {
     focusBatches: [] as { type: string; at: string; session_question_id: string }[][],
   };
 }
-
-type OpenerLive = {
-  kind: "prediction" | "debate";
-  status: "open" | "closed" | "revealed";
-  phase: "voting" | "reasoning" | "revealed";
-  firedAt: number;
-  voteClosesAt: number;
-  /** When voting really ended, which may be earlier than planned. */
-  voteEnd: number;
-  closesAt: number;
-  mine: null | { response: string; key: string; answeredAt: number };
-  reason: null | { text: string; key: string; answeredAt: number };
-  result: null | { correct: boolean | null; points: number; reasonPoints: number };
-};
 
 // ---- Practice sets (F-12) --------------------------------------------------------------------------------
 
@@ -224,9 +179,6 @@ type PracticeSetData = {
   created_at: string;
   questions: PracticeQuestionData[];
 };
-/** What a right answer is worth (PROPOSED, BR-PTS-03). */
-const PRACTICE_POINTS = 5;
-
 /** The set the student starts with: three questions on the maths lesson that ended yesterday. */
 function practiceSetOne(): PracticeSetData {
   return {
@@ -288,11 +240,10 @@ const TOPICS = () => [
 const initial = () => ({
   /** Why every call is refused, or null while the student is signed in. */
   signedOut: null as null | "unauthenticated" | "signed_in_elsewhere",
-  /** What `start` answers: a code to type, or a redirect to an identity provider. */
-  method: "code" as "code" | "redirect",
-  codeExpired: false,
-  wrongCodes: 0,
-  lockedUntil: 0,
+  /** Every sign-in the callback handled, oldest first: the provider and the account chosen at its page. */
+  signIns: [] as { provider: string; account: string }[],
+  /** The next sign-in start is refused as `rate_limited` with this Retry-After, once. */
+  rateLimit: 0,
   student: {
     id: "st-1",
     full_name: "Live Student",
@@ -426,7 +377,7 @@ function dataSummary() {
   const sess = state.session;
   return {
     attendance: ATTENDANCE.attended + (sess.joinedStudent ? 1 : 0),
-    answers: 12 + Object.keys(sess.answers).length + (sess.opener?.mine ? 1 : 0),
+    answers: 12 + Object.keys(sess.answers).length,
     questions_to_teacher: sess.asks.length,
     focus_events: sess.focus.filter((f) => f.type === "lost").length,
     practice_answers: Object.values(state.practiceAnswers).reduce((n, answers) => n + Object.keys(answers).length, 0),
@@ -472,7 +423,6 @@ const wireQuestion = (cur: Live) => {
     fired_at: new Date(cur.firedAt).toISOString(),
     closes_at: new Date(cur.closesAt).toISOString(),
     numeric: q.numeric ?? null,
-    opener: null,
   };
 };
 
@@ -485,88 +435,6 @@ function readNumber(raw: string, allowNegative: boolean): string | null {
 
 const isRight = (q: LessonQuestion, response: string) =>
   q.kind === "numeric" ? Math.abs(Number(response) - Number(q.correct)) <= (q.numeric?.tolerance ?? 0) + 1e-9 : response === q.correct;
-
-// ---- The opener ----------------------------------------------------------------------------------------
-
-const wireOpener = (o: OpenerLive) => {
-  const def = OPENERS[o.kind];
-  return {
-    id: def.id,
-    index: 0,
-    total: LESSON.length,
-    kind: def.kind,
-    prompt: def.prompt,
-    options: def.options,
-    status: o.status,
-    timer_seconds: (o.closesAt - o.firedAt) / 1000,
-    fired_at: new Date(o.firedAt).toISOString(),
-    closes_at: new Date(o.closesAt).toISOString(),
-    numeric: null,
-    opener: { vote_closes_at: new Date(o.voteClosesAt).toISOString(), reason_max_length: REASON_MAX },
-  };
-};
-
-/** The class's votes plus the student's, one count for each option or side. */
-const countsOf = (o: OpenerLive) => {
-  const base: number[] = [...OPENERS[o.kind].class];
-  if (o.mine) base[o.kind === "prediction" ? Number(o.mine.response) : o.mine.response === "agree" ? 0 : 1]++;
-  return base;
-};
-
-/** What the student's vote and reason are worth from what the server holds (BR-PTS-02). */
-function settleOpener(o: OpenerLive) {
-  const def = OPENERS[o.kind];
-  const voteRight = def.correct !== null && o.mine?.response === def.correct;
-  const reasonPoints = o.reason ? 8 : 0;
-  const points = (voteRight ? 10 : 0) + reasonPoints;
-  const before = o.result?.points ?? 0;
-  state.session.points += points - before;
-  o.result = { correct: def.correct === null ? null : voteRight, points, reasonPoints };
-}
-
-const openerResultBody = (o: OpenerLive) => ({
-  session_question_id: OPENERS[o.kind].id,
-  correct: o.result!.correct,
-  points: o.result!.points,
-  reason_points: o.result!.reasonPoints,
-  speed_bonus: 0,
-  session_rank: state.session.rank,
-  session_points: state.session.points,
-  correct_answer: o.status === "revealed" ? OPENERS[o.kind].correct : null,
-  explanation: null,
-});
-
-/** The opener's own two endpoints. The same rules as an answer: the student's own time decides, one of each, a repeated key is a duplicate. */
-function openerGive(res: ServerResponse, part: "vote" | "reason", body: { session_question_id?: string; response?: string; text?: string; answered_at?: string; idempotency_key?: string }) {
-  const sess = state.session;
-  if (sess.state === "ended") return fail(res, 410, "session_ended");
-  const o = sess.opener;
-  if (!o || OPENERS[o.kind].id !== body.session_question_id) return fail(res, 404, "not_found");
-  const key = body.idempotency_key ?? "";
-  const had = part === "vote" ? o.mine : o.reason;
-  if (had) return had.key === key ? send(res, 200, { accepted: true, duplicate: true }) : fail(res, 409, "already_answered");
-  const claimed = Date.parse(body.answered_at ?? "");
-  const at = Number.isNaN(claimed) ? nowMs() : claimed;
-  if (part === "vote") {
-    const valid = o.kind === "prediction" ? ["0", "1", "2"] : ["agree", "disagree"];
-    if (!body.response || !valid.includes(body.response)) return fail(res, 422, "validation_failed");
-    if (at > o.voteEnd + GRACE_MS) return fail(res, 409, "question_closed");
-    o.mine = { response: body.response, key, answeredAt: Math.min(o.voteEnd, Math.max(o.firedAt, at)) };
-  } else {
-    // A reason belongs to a vote, is one line, and is cut to the limit.
-    const text = (body.text ?? "").replace(/\s+/g, " ").trim().slice(0, REASON_MAX);
-    if (!o.mine || text === "") return fail(res, 422, "validation_failed");
-    if (at > o.closesAt + GRACE_MS) return fail(res, 409, "question_closed");
-    o.reason = { text, key, answeredAt: Math.min(o.closesAt, Math.max(o.mine.answeredAt, at)) };
-  }
-  // It arrived after the opener closed: the result the student has was worked out without it.
-  if (o.status !== "open") {
-    settleOpener(o);
-    broadcast("student", "question.result", openerResultBody(o));
-    broadcast("public", "leaderboard.updated", { rows: board() });
-  }
-  return send(res, 200, { accepted: true, duplicate: false });
-}
 
 const resultBody = (id: string) => {
   const r = state.session.results[id];
@@ -595,28 +463,6 @@ function board() {
 function snapshot() {
   const sess = state.session;
   const cur = sess.current;
-  const o = sess.opener;
-  if (o) {
-    return {
-      session: wireSession(),
-      server_now: nowIso(),
-      question: wireOpener(o),
-      my_response: o.mine?.response ?? null,
-      my_reason: o.reason?.text ?? null,
-      result: o.result ? openerResultBody(o) : null,
-      session_points: sess.points,
-      session_rank: sess.rank,
-      board: o.result ? board() : null,
-      progress: o.phase === "voting" ? { answered: countsOf(o).reduce((a, b) => a + b, 0), joined: sess.joined } : null,
-      summary: sess.summary,
-      anon_questions: { used: sess.asks.length, limit: sess.askLimit },
-      opener: {
-        phase: o.phase,
-        votes: countsOf(o),
-        reasons: o.status === "revealed" ? [...OPENERS[o.kind].reasons] : [],
-      },
-    };
-  }
   return {
     session: wireSession(),
     server_now: nowIso(),
@@ -725,9 +571,7 @@ function ask(res: ServerResponse, body: { text?: string; asked_at?: string; idem
 function windowOf(id: string): { from: number; to: number } | null {
   const sess = state.session;
   const q = sess.fired[id];
-  if (q) return { from: q.firedAt, to: q.closesAt };
-  const o = sess.opener;
-  return o && OPENERS[o.kind].id === id ? { from: o.firedAt, to: o.closesAt } : null;
+  return q ? { from: q.firedAt, to: q.closesAt } : null;
 }
 
 /** POST /sessions/{id}/focus-events. */
@@ -779,7 +623,6 @@ function teacher(action: string, body: Record<string, unknown>) {
         sess.state = "teaching";
         broadcast("public", "state.changed", { state: "teaching" });
       }
-      sess.opener = null;
       sess.current = { id: LESSON[index].id, index, status: "open", firedAt: nowMs(), closesAt: nowMs() + timer * 1000, timer };
       sess.fired[sess.current.id] = sess.current;
       sess.answered = 0;
@@ -810,50 +653,6 @@ function teacher(action: string, body: Record<string, unknown>) {
       delete sess.answers[cur.id];
       delete sess.results[cur.id];
       return broadcast("public", "question.skipped", { session_question_id: cur.id });
-    }
-    case "opener": {
-      const kind = body.kind === "debate" ? "debate" : "prediction";
-      const vote = Number(body.vote ?? 30) * 1000;
-      const reason = Number(body.reason ?? 45) * 1000;
-      const firedAt = nowMs();
-      sess.state = "opener";
-      broadcast("public", "state.changed", { state: "opener" });
-      sess.current = null;
-      sess.opener = { kind, status: "open", phase: "voting", firedAt, voteClosesAt: firedAt + vote, voteEnd: firedAt + vote, closesAt: firedAt + vote + reason, mine: null, reason: null, result: null };
-      return broadcast("public", "question.opened", { question: wireOpener(sess.opener) });
-    }
-    case "opener-voting-end": {
-      const o = sess.opener;
-      if (!o || o.phase !== "voting") return;
-      o.phase = "reasoning";
-      o.voteEnd = Math.min(o.voteEnd, nowMs());
-      return broadcast("public", "opener.counts", { session_question_id: OPENERS[o.kind].id, phase: "reasoning", votes: countsOf(o) });
-    }
-    case "opener-close": {
-      const o = sess.opener;
-      if (!o || o.status !== "open") return;
-      if (o.phase === "voting") {
-        o.phase = "reasoning";
-        o.voteEnd = Math.min(o.voteEnd, nowMs());
-        broadcast("public", "opener.counts", { session_question_id: OPENERS[o.kind].id, phase: "reasoning", votes: countsOf(o) });
-      }
-      o.status = "closed";
-      o.closesAt = Math.min(o.closesAt, nowMs());
-      settleOpener(o);
-      broadcast("public", "question.closed", { session_question_id: OPENERS[o.kind].id });
-      broadcast("student", "question.result", openerResultBody(o));
-      return broadcast("public", "leaderboard.updated", { rows: board() });
-    }
-    case "opener-reveal": {
-      const o = sess.opener;
-      if (!o || o.status === "open") return;
-      o.status = "revealed";
-      o.phase = "revealed";
-      if (o.result) o.result = { ...o.result };
-      const def = OPENERS[o.kind];
-      broadcast("public", "opener.counts", { session_question_id: def.id, phase: "revealed", votes: countsOf(o) });
-      broadcast("public", "opener.reasons", { session_question_id: def.id, reasons: [...def.reasons] });
-      return broadcast("public", "question.revealed", { session_question_id: def.id, correct_answer: def.correct, explanation: null });
     }
     case "anon-limit":
       sess.askLimit = Number(body.limit ?? 3);
@@ -932,7 +731,6 @@ function practiceWire(set: PracticeSetData) {
     created_at: set.created_at,
     completed_at: state.practiceDone[set.id] ?? null,
     score: Object.keys(answers).length > 0 ? right : null,
-    points: right * PRACTICE_POINTS,
     questions,
   };
 }
@@ -962,7 +760,6 @@ async function practiceAnswer(res: ServerResponse, req: IncomingMessage, id: str
   return send(res, 200, {
     score: wire.score ?? 0,
     total: set.questions.length,
-    points: wire.points,
     completed: wire.completed_at !== null,
     results: body.answers.map((a) => {
       const q = set.questions.find((x) => x.id === a.question_id)!;
@@ -1052,12 +849,8 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     state.signedOut = "signed_in_elsewhere";
     return send(res, 204);
   }
-  if (path === "/__control/redirect" && method === "POST") {
-    state.method = "redirect";
-    return send(res, 204);
-  }
-  if (path === "/__control/expire-code" && method === "POST") {
-    state.codeExpired = true;
+  if (path === "/__control/rate-limit" && method === "POST") {
+    state.rateLimit = Number(((await readJson(req)) as { seconds?: number } | undefined)?.seconds ?? 30);
     return send(res, 204);
   }
   if (path === "/__control/skew" && method === "POST") {
@@ -1112,9 +905,21 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     teacher(path.slice("/__control/session/".length), ((await readJson(req)) as Record<string, unknown> | undefined) ?? {});
     return send(res, 204);
   }
-  // The school's identity provider, as far as a browser test needs one: a page to land on.
-  if (path === "/__idp") {
-    res.writeHead(200, { "Content-Type": "text/html" }).end("<!doctype html><title>School sign-in</title><h1>School sign-in</h1>");
+  // The identity provider's own page, as far as a browser test needs one: three accounts to choose from (EC-AUTH-02, -09, -10).
+  const providerPage = /^\/__provider\/(google|microsoft)$/.exec(path);
+  if (providerPage) {
+    const name = providerPage[1] === "google" ? "Google" : "Microsoft";
+    const back = encodeURIComponent(url.searchParams.get("return_to") ?? "/app");
+    const link = (account: string, label: string) =>
+      `<p><a id="${account}" href="/api/v1/auth/callback/${providerPage[1]}?account=${account}&return_to=${back}">${label}</a></p>`;
+    res
+      .writeHead(200, { "Content-Type": "text/html" })
+      .end(
+        `<!doctype html><meta charset="utf-8"><title>${name} sign-in</title><h1>${name} sign-in</h1>` +
+          link("marko", "Continue as the student on the roster") +
+          link("personal", "Continue with a personal account") +
+          link("cancel", "Cancel"),
+      );
     return;
   }
 
@@ -1124,39 +929,32 @@ async function route(req: IncomingMessage, res: ServerResponse) {
   state.queries[`${method} ${api}`] = url.search;
 
   if (method === "POST" && api === "/auth/student/start") {
-    const body = (await readJson(req)) as { school_email?: string; return_to?: string } | undefined;
+    const body = (await readJson(req)) as { provider?: string; return_to?: string } | undefined;
     state.bodies[`${method} ${api}`] = body;
-    if (!ROSTER.includes((body?.school_email ?? "").toLowerCase())) return fail(res, 404, "unknown_email");
-    if (state.method === "redirect") return send(res, 200, { method: "redirect", url: `http://127.0.0.1:${PORT}/__idp` });
-    state.codeExpired = false;
-    state.wrongCodes = 0;
-    return send(res, 200, {
-      method: "code",
-      code_length: CODE.length,
-      expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
-      resend_at: new Date(Date.now() + 30_000).toISOString(),
-    });
-  }
-
-  if (method === "POST" && api === "/auth/student/verify") {
-    const body = (await readJson(req)) as { school_email?: string; code?: string } | undefined;
-    state.bodies[`${method} ${api}`] = body;
-    if (state.codeExpired) return fail(res, 410, "code_expired");
-    if (Date.now() < state.lockedUntil) {
-      res.setHeader("Retry-After", String(Math.ceil((state.lockedUntil - Date.now()) / 1000)));
+    if (state.rateLimit > 0) {
+      res.setHeader("Retry-After", String(state.rateLimit));
+      state.rateLimit = 0;
       return fail(res, 429, "rate_limited");
     }
-    if (body?.code !== CODE) {
-      if (++state.wrongCodes >= WRONG_ALLOWED) {
-        state.wrongCodes = 0;
-        state.lockedUntil = Date.now() + LOCK_SECONDS * 1000;
-        res.setHeader("Retry-After", String(LOCK_SECONDS));
-        return fail(res, 429, "rate_limited");
-      }
-      return fail(res, 400, "invalid_code");
-    }
-    state.signedOut = null;
-    return send(res, 200, state.student);
+    // The provider is one of the two, and the way back is a path of the app (the API accepts nothing else).
+    if (body?.provider !== "google" && body?.provider !== "microsoft") return fail(res, 422, "validation_failed");
+    const returnTo = body.return_to ?? "/app";
+    if (!/^\/app(?![\w-])/.test(returnTo) || returnTo.startsWith("//")) return fail(res, 422, "validation_failed");
+    return send(res, 200, { method: "redirect", url: `http://127.0.0.1:${PORT}/__provider/${body.provider}?return_to=${encodeURIComponent(returnTo)}` });
+  }
+
+  // Where the provider sends the browser back (PROPOSED): the student is signed in, or sent home with ?error= and nothing created.
+  const callback = /^\/auth\/callback\/(google|microsoft)$/.exec(api);
+  if (callback && method === "GET") {
+    const account = url.searchParams.get("account") ?? "";
+    const returnTo = url.searchParams.get("return_to") ?? "/app";
+    if (!/^\/app(?![\w-])/.test(returnTo) || returnTo.startsWith("//")) return fail(res, 422, "validation_failed");
+    state.signIns.push({ provider: callback[1], account });
+    const refused = account === "personal" ? "unknown_email" : account === "marko" ? null : "sign_in_failed";
+    if (!refused) state.signedOut = null;
+    const to = `${APP_ORIGIN}${returnTo}${refused ? `${returnTo.includes("?") ? "&" : "?"}error=${refused}` : ""}`;
+    res.writeHead(302, { Location: to }).end();
+    return;
   }
 
   if (state.signedOut) return fail(res, 401, state.signedOut);
@@ -1255,14 +1053,6 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     const body = (await readJson(req)) as { token?: string; short_code?: string } | undefined;
     state.bodies[`${method} ${api}`] = body;
     return join(res, (body?.token ?? body?.short_code ?? "").trim().toUpperCase());
-  }
-
-  const opener = /^\/sessions\/([^/]+)\/opener\/(vote|reason)$/.exec(api);
-  if (opener && method === "POST") {
-    if (decodeURIComponent(opener[1]) !== SESSION_ID) return fail(res, 404, "not_found");
-    const body = (await readJson(req)) as Record<string, string> | undefined;
-    state.bodies[`${method} ${api}`] = body;
-    return openerGive(res, opener[2] as "vote" | "reason", body ?? {});
   }
 
   const extra = /^\/sessions\/([^/]+)\/(anon-questions|focus-events)$/.exec(api);

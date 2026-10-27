@@ -1,16 +1,6 @@
-/** The pure rules of the sign-in screen: what it accepts before it asks the API anything. */
+import type { AuthProvider } from "./api/types";
 
-export const normalizeEmail = (raw: string) => raw.trim().toLowerCase();
-
-/** Whether what was typed can be an email at all. The roster decides whether it is a student's (EC-AUTH-02). */
-export function emailError(raw: string): "empty" | "invalid" | null {
-  const email = normalizeEmail(raw);
-  if (!email) return "empty";
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) ? null : "invalid";
-}
-
-/** Digits only, as many as the code has: what a paste or an autofill leaves in the field. */
-export const cleanCode = (raw: string, length: number) => raw.replace(/\D/g, "").slice(0, length);
+/** The pure rules of the sign-in screen: where a sign-in continues to, and which providers there are. */
 
 /**
  * Where to go after signing in: the screen that was asked for (a class QR's check-in link, say), if it
@@ -26,6 +16,22 @@ export function safeNext(raw: string | null | undefined): string | null {
   }
   return raw;
 }
+
+/** The identity providers a student can sign in with, in the order the buttons come, and how each is written (spec 3.2 `auth_provider`). */
+export const PROVIDERS: readonly { id: AuthProvider; name: string }[] = [
+  { id: "google", name: "Google" },
+  { id: "microsoft", name: "Microsoft" },
+];
+
+export const isProvider = (v: unknown): v is AuthProvider => PROVIDERS.some((p) => p.id === v);
+
+export const providerName = (id: AuthProvider) => PROVIDERS.find((p) => p.id === id)!.name;
+
+/** Whether `raw` is a path of this app, query allowed: the only kind of place a sign-in may come back to (the API accepts nothing else). */
+export const isAppPath = (raw: string | null | undefined): raw is string => !!raw && /^\/app(?![\w-])/.test(raw);
+
+/** `path` with `error=` added to its query: how the API's callback tells the screen a sign-in was refused. */
+export const withError = (path: string, error: string) => `${path}${path.includes("?") ? "&" : "?"}error=${error}`;
 
 /** The welcome screen, carrying the screen that was asked for so signing in can continue to it. */
 export const welcomeUrl = (next?: string) => (next ? `/app/welcome?next=${encodeURIComponent(next)}` : "/app/welcome");

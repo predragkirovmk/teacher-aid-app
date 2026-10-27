@@ -40,7 +40,7 @@ const app = {
 const fakeApi = {
   command: "node tests/fake-api/server.mts",
   url: `${apiUrl}/__control/state`,
-  env: { FAKE_API_PORT: String(apiPort) },
+  env: { FAKE_API_PORT: String(apiPort), FAKE_APP_ORIGIN: `http://localhost:${port}` },
   reuseExistingServer: !ci,
   timeout: 30_000,
 };

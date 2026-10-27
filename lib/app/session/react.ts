@@ -113,8 +113,6 @@ export function useSession(sessionId: Id, late: boolean) {
   return {
     run,
     answer: (response: string) => holder.get()?.answer(response),
-    reason: (text: string) => holder.get()?.reason(text),
-    skipReason: () => holder.get()?.skipReason(),
     ask: (text: string) => holder.get()?.ask(text) ?? null,
     retry: () => holder.get()?.retry(),
   };

@@ -85,7 +85,7 @@ export { expect };
 
 /**
  * Run the demo's clock on, in half-second steps, until the quiz is at `stage` (the `data-stage` of its screen).
- * The scripted lessons open with an opener now, so a test about a pop-up waits for `answering`, not for a button.
+ * A test about a pop-up waits for `answering`, not for a button.
  */
 export async function untilStage(page: Page, stage: string, steps = 600) {
   const main = page.locator("main.q");

@@ -11,15 +11,6 @@ export type Question =
   /** A number; `answer` is plain text with a point (lib/app/numeric.ts), `tolerance` an absolute distance it may be off by. */
   | { id: string; kind: "num"; text: Text; answer: string; tolerance: number; unit?: string; allowNegative?: boolean; explanation?: Text };
 
-/**
- * The lesson's opener (spec 4.3). A prediction has 3 or 4 options and a right one; a debate is a claim to
- * agree or disagree with and has no right side (OPEN-07). `reasons` is what the simulated class writes,
- * without names.
- */
-export type Opener =
-  | { id: string; kind: "prediction"; text: Text; options: Text[]; answer: number; reasons: Text[] }
-  | { id: string; kind: "debate"; text: Text; agreeShare: number; reasons: { agree: Text[]; disagree: Text[] } };
-
 const LATIN: Record<string, string> = {
   а: "a", б: "b", в: "v", г: "g", д: "d", ѓ: "gj", е: "e", ж: "zh", з: "z", ѕ: "dz", и: "i", ј: "j",
   к: "k", л: "l", љ: "lj", м: "m", н: "n", њ: "nj", о: "o", п: "p", р: "r", с: "s", т: "t", ќ: "kj",

@@ -14,8 +14,7 @@ export const SERVER_ERROR_CODES = [
   // PROPOSED.
   "unauthenticated",
   "unknown_email",
-  "invalid_code",
-  "code_expired",
+  "sign_in_failed",
   "not_found",
   "validation_failed",
   "question_closed",
