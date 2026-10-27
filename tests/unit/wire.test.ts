@@ -71,14 +71,13 @@ describe("wire to domain", () => {
       wire.dataSummary({
         attendance: 20,
         answers: 31,
-        reasons: 2,
         questions_to_teacher: 1,
         focus_events: 3,
         practice_answers: 6,
         notifications: 9,
         push_subscription: true,
       }),
-    ).toEqual({ attendance: 20, answers: 31, reasons: 2, questionsToTeacher: 1, focusEvents: 3, practiceAnswers: 6, notifications: 9, pushSubscription: true });
+    ).toEqual({ attendance: 20, answers: 31, questionsToTeacher: 1, focusEvents: 3, practiceAnswers: 6, notifications: 9, pushSubscription: true });
   });
 
   it("sends the acknowledgement as the version and nothing else", () => {

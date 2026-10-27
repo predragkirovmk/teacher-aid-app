@@ -72,7 +72,6 @@ export type WireStudent = {
 export type WireDataSummary = {
   attendance: number;
   answers: number;
-  reasons: number;
   questions_to_teacher: number;
   focus_events: number;
   practice_answers: number;
@@ -275,7 +274,6 @@ export const student = (w: WireStudent): Student => ({
 export const dataSummary = (w: WireDataSummary): DataSummary => ({
   attendance: w.attendance,
   answers: w.answers,
-  reasons: w.reasons,
   questionsToTeacher: w.questions_to_teacher,
   focusEvents: w.focus_events,
   practiceAnswers: w.practice_answers,

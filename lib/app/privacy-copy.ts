@@ -77,7 +77,10 @@ const privacyEn: PrivacyDoc = {
         {
           p: "Your school is responsible for your data. It decides what the app is used for and why. TeacherAid runs the app for your school, under the contract the two of them have.",
         },
-        { p: "Your school also tells your parents or guardians about the app. If they have questions, they can ask the school office." },
+        { p: "If you are not yet an adult, your school also tells your parents or guardians about the app. If they have questions, they can ask the school office." },
+        {
+          p: "At a university, read \"school\" as your faculty, \"teacher\" as your professor, \"class\" as your study group, \"school office\" as the faculty office and \"headmaster\" as the dean.",
+        },
         { p: "The law behind this is North Macedonia's Law on Personal Data Protection (ЗЗЛП), which follows the EU's GDPR." },
       ],
     },
@@ -128,12 +131,6 @@ const privacyEn: PrivacyDoc = {
       ],
     },
     {
-      id: "reasons",
-      title: "One-line reasons",
-      level: 3,
-      blocks: [{ p: "In an opening question you can write a short reason. Your teacher sees it with your name. Your classmates see it without your name." }],
-    },
-    {
       id: "topics",
       title: "Results by topic",
       level: 3,
@@ -170,7 +167,7 @@ const privacyEn: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "Your answers to practice questions and the points they give you. Your teacher sees whether a set is finished and its score. Your classmates don't see them.",
+          p: "Your answers to practice questions. Your teacher sees whether a set is finished and its score. Your classmates don't see them.",
         },
       ],
     },
@@ -194,7 +191,7 @@ const privacyEn: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "You sign in with your school email. After that the app keeps a sign-in cookie on your phone so you stay signed in. It is the only cookie we use: there are no cookies for ads, statistics or tracking. You can be signed in on one phone at a time. If you sign in on another, the first one is signed out.",
+          p: "You sign in with your school's Google or Microsoft account. The sign-in itself happens at Google or Microsoft, so we never see your password. After that the app keeps a sign-in cookie on your phone so you stay signed in. It is the only cookie we use: there are no cookies for ads, statistics or tracking. You can be signed in on one phone at a time. If you sign in on another, the first one is signed out.",
         },
       ],
     },
@@ -220,7 +217,7 @@ const privacyEn: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "Your answers and points, your reasons with your name, your results by topic, your attendance, your practice results, the questions you ask, and when you leave the quiz during a question. Only for the lessons they teach you.",
+          p: "Your answers and points, your results by topic, your attendance, your practice results, the questions you ask, and when you leave the quiz during a question. Only for the lessons they teach you.",
         },
       ],
     },
@@ -230,7 +227,7 @@ const privacyEn: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "Your name, your points and your place on the class board, and the badges you earn. They see your reasons without your name. They never see your answers, your questions, your results, your attendance or when you leave the quiz.",
+          p: "Your name, your points and your place on the class board, and the badges you earn. They never see your answers, your questions, your results, your attendance or when you leave the quiz.",
         },
       ],
     },
@@ -240,7 +237,7 @@ const privacyEn: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "The class lists and your school account details, and how often teachers use the app. Never your answers, reasons, questions or results by topic.",
+          p: "The class lists and your school account details, and how often teachers use the app. Never your answers, questions or results by topic.",
         },
       ],
     },
@@ -256,7 +253,7 @@ const privacyEn: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "They have no standing access. They get access only when your school reports a problem, for a short, limited time. Every look is logged, and the school office can see the log.",
+          p: "They have no standing access. They get access only when your school reports a problem, for a short, limited time. Every look is logged on TeacherAid's side.",
         },
       ],
     },
@@ -266,7 +263,7 @@ const privacyEn: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "AI helps teachers prepare lessons. It never receives your name, your email or the class list. Your data is stored in the European Union and is encrypted while it travels and while it is stored.",
+          p: "AI helps teachers prepare lessons from their own material or a topic they type. It never receives your name, your email or the class list. Your data is stored in the European Union and is encrypted while it travels and while it is stored.",
         },
       ],
     },
@@ -277,7 +274,7 @@ const privacyEn: PrivacyDoc = {
       blocks: [
         {
           ul: [
-            "Lesson data (attendance, answers, reasons, results by topic, practice, questions to your teacher, leaving the quiz, and your alerts): until the end of the school year after the one it was made in. Then we delete it or turn it into totals without names.",
+            "Lesson data (attendance, answers, results by topic, practice, questions to your teacher, leaving the quiz, and your alerts): until the end of the school year after the one it was made in. Then we delete it or turn it into totals without names.",
             "If you leave the school: your school asks us, and we delete everything about you within {days} days.",
             "Monthly reports: kept as totals without names.",
             "The address for notifications: until you turn notifications off or sign out.",
@@ -363,7 +360,10 @@ const privacyMk: PrivacyDoc = {
         {
           p: "Училиштето е одговорно за твоите податоци. Тоа одлучува за што и зошто се користи апликацијата. TeacherAid ја води апликацијата за училиштето, според договорот што го имаат.",
         },
-        { p: "Училиштето ги известува и твоите родители или старатели за апликацијата. Ако имаат прашања, можат да се обратат во училишната канцеларија." },
+        { p: "Ако не си сѐ уште полнолетен, училиштето ги известува и твоите родители или старатели за апликацијата. Ако имаат прашања, можат да се обратат во училишната канцеларија." },
+        {
+          p: "На универзитет, „училиште“ читај го како твојот факултет, „наставник“ како професор, „клас“ како студиска група, „училишна канцеларија“ како факултетска канцеларија и „директор“ како декан.",
+        },
         { p: "Законот зад ова е Законот за заштита на личните податоци на Северна Македонија (ЗЗЛП), кој е усогласен со GDPR на ЕУ." },
       ],
     },
@@ -414,12 +414,6 @@ const privacyMk: PrivacyDoc = {
       ],
     },
     {
-      id: "reasons",
-      title: "Образложенија во една реченица",
-      level: 3,
-      blocks: [{ p: "Во воведното прашање можеш да напишеш кратко образложение. Наставникот го гледа со твоето име. Соучениците го гледаат без твоето име." }],
-    },
-    {
       id: "topics",
       title: "Резултати по теми",
       level: 3,
@@ -456,7 +450,7 @@ const privacyMk: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "Твоите одговори на прашањата за вежбање и поените од нив. Наставникот гледа дали вежбањето е завршено и колку е резултатот. Соучениците не ги гледаат.",
+          p: "Твоите одговори на прашањата за вежбање. Наставникот гледа дали вежбањето е завршено и колку е резултатот. Соучениците не ги гледаат.",
         },
       ],
     },
@@ -480,7 +474,7 @@ const privacyMk: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "Се најавуваш со училишната е-пошта. Потоа апликацијата чува колаче за најавата на твојот телефон за да останеш најавен. Тоа е единственото колаче што го користиме: нема колачиња за реклами, статистика или следење. Може да си најавен на еден телефон одеднаш: ако се најавиш на друг, првиот се одјавува.",
+          p: "Се најавуваш со училишната Google или Microsoft сметка. Самото најавување се случува кај Google или Microsoft, па ние никогаш не ја гледаме твојата лозинка. Потоа апликацијата чува колаче за најавата на твојот телефон за да останеш најавен. Тоа е единственото колаче што го користиме: нема колачиња за реклами, статистика или следење. Може да си најавен на еден телефон одеднаш: ако се најавиш на друг, првиот се одјавува.",
         },
       ],
     },
@@ -506,7 +500,7 @@ const privacyMk: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "Твоите одговори и поени, образложенијата со твоето име, резултатите по теми, присуството, резултатите од вежбањето, прашањата што му ги поставуваш и кога излегуваш од квизот додека трае прашање. Само за часовите што ти ги држи.",
+          p: "Твоите одговори и поени, резултатите по теми, присуството, резултатите од вежбањето, прашањата што му ги поставуваш и кога излегуваш од квизот додека трае прашање. Само за часовите што ти ги држи.",
         },
       ],
     },
@@ -516,7 +510,7 @@ const privacyMk: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "Твоето име, поените и местото на листата на класот, и значките што ги освојуваш. Образложенијата ги гледаат без твоето име. Никогаш не ги гледаат твоите одговори, прашања, резултати, присуство или кога излегуваш од квизот.",
+          p: "Твоето име, поените и местото на листата на класот, и значките што ги освојуваш. Никогаш не ги гледаат твоите одговори, прашања, резултати, присуство или кога излегуваш од квизот.",
         },
       ],
     },
@@ -526,7 +520,7 @@ const privacyMk: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "Списоците на класовите и податоците од твојата училишна сметка, и колку често наставниците ја користат апликацијата. Никогаш твоите одговори, образложенија, прашања или резултати по теми.",
+          p: "Списоците на класовите и податоците од твојата училишна сметка, и колку често наставниците ја користат апликацијата. Никогаш твоите одговори, прашања или резултати по теми.",
         },
       ],
     },
@@ -542,7 +536,7 @@ const privacyMk: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "Немаат постојан пристап. Пристап добиваат само кога училиштето ќе пријави проблем, на кратко и ограничено време. Секое гледање се запишува, а училишната канцеларија може да го види записот.",
+          p: "Немаат постојан пристап. Пристап добиваат само кога училиштето ќе пријави проблем, на кратко и ограничено време. Секое гледање се запишува кај TeacherAid.",
         },
       ],
     },
@@ -552,7 +546,7 @@ const privacyMk: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "Вештачка интелигенција им помага на наставниците да подготват часови. Таа никогаш не го добива твоето име, твојата е-пошта или списокот на класот. Податоците се чуваат во Европската Унија и се шифрирани при пренос и при чување.",
+          p: "Вештачка интелигенција им помага на наставниците да подготват часови од сопствен материјал или од тема што ја впишуваат. Таа никогаш не го добива твоето име, твојата е-пошта или списокот на класот. Податоците се чуваат во Европската Унија и се шифрирани при пренос и при чување.",
         },
       ],
     },
@@ -563,7 +557,7 @@ const privacyMk: PrivacyDoc = {
       blocks: [
         {
           ul: [
-            "Податоците од часовите (присуство, одговори, образложенија, резултати по теми, вежбање, прашања до наставникот, излегувања од квизот и твоите известувања): до крајот на училишната година што доаѓа по онаа во која настанале. Потоа ги бришеме или ги претвораме во збирови без имиња.",
+            "Податоците од часовите (присуство, одговори, резултати по теми, вежбање, прашања до наставникот, излегувања од квизот и твоите известувања): до крајот на училишната година што доаѓа по онаа во која настанале. Потоа ги бришеме или ги претвораме во збирови без имиња.",
             "Ако го напуштиш училиштето: училиштето ни бара, а ние го бришеме сѐ за тебе во рок од {days} дена.",
             "Месечни извештаи: се чуваат како збирови без имиња.",
             "Адресата за известувања: додека не ги исклучиш известувањата или не се одјавиш.",
@@ -637,14 +631,14 @@ const termsEn: Doc = {
       id: "intro",
       title: "What this is",
       level: 2,
-      blocks: [{ p: "These are the rules for using TeacherAid in your school. They are short." }],
+      blocks: [{ p: "These are the rules for using TeacherAid in your school. They are short. At a university, read \"school\" as your faculty and \"teacher\" as your professor." }],
     },
     {
       id: "who",
       title: "Who can use it",
       level: 2,
       blocks: [
-        { p: "TeacherAid is for students your school has added. You sign in with your school email. The account is yours: don't share your sign-in with anyone." },
+        { p: "TeacherAid is for students your school has added. You sign in with your school's Google or Microsoft account. The account is yours: don't share your sign-in with anyone." },
       ],
     },
     {
@@ -721,14 +715,14 @@ const termsMk: Doc = {
       id: "intro",
       title: "Што е ова",
       level: 2,
-      blocks: [{ p: "Ова се правилата за користење на TeacherAid во твоето училиште. Кратки се." }],
+      blocks: [{ p: "Ова се правилата за користење на TeacherAid во твоето училиште. Кратки се. На универзитет, „училиште“ читај го како факултет, а „наставник“ како професор." }],
     },
     {
       id: "who",
       title: "Кој може да ја користи",
       level: 2,
       blocks: [
-        { p: "TeacherAid е за ученици што училиштето ги додало. Се најавуваш со училишната е-пошта. Сметката е твоја: не ја споделувај најавата со никого." },
+        { p: "TeacherAid е за ученици што училиштето ги додало. Се најавуваш со училишната Google или Microsoft сметка. Сметката е твоја: не ја споделувај најавата со никого." },
       ],
     },
     {

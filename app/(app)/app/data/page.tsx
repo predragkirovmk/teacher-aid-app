@@ -17,7 +17,6 @@ import { clearPhone, unsentCount } from "@/lib/app/phone-data";
 const COUNTS: { key: Key; value: (s: DataSummary) => number }[] = [
   { key: "data.n.attendance", value: (s) => s.attendance },
   { key: "data.n.answers", value: (s) => s.answers },
-  { key: "data.n.reasons", value: (s) => s.reasons },
   { key: "data.n.asks", value: (s) => s.questionsToTeacher },
   { key: "data.n.focus", value: (s) => s.focusEvents },
   { key: "data.n.practice", value: (s) => s.practiceAnswers },

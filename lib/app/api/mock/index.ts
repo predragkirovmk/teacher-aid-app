@@ -118,7 +118,6 @@ function buildDataSummary(state: AppState, locale: Locale): DataSummary {
     attendance: buildAttendance(state, locale).attended,
     // A lesson from before the demo started does not say what was answered, only what was right: a right one was answered.
     answers: sum(buildResults(state, locale).map((r) => r.questions.filter((q) => q.yourAnswer !== null || q.correct).length)),
-    reasons: state.reasonsSent,
     questionsToTeacher: state.asksSent,
     focusEvents: state.focusLost,
     practiceAnswers: sum(buildPracticeSets(state, locale).map((p) => p.questions.filter((q) => q.answer !== null).length)),

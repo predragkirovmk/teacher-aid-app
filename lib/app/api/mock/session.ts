@@ -779,7 +779,6 @@ export class MockSession {
     const at = Math.min(live.end, Math.max(live.mine.at, answer.answeredAt));
     live.myReason = { text, at, key: answer.idempotencyKey };
     this.keys.set(answer.idempotencyKey, text);
-    actions.countReason();
     if (live.closed) {
       this.settleOpener(live, true);
       return { accepted: true, duplicate: false };

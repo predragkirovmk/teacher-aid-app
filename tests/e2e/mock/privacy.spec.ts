@@ -172,7 +172,7 @@ test.describe("the privacy notice", () => {
 
   test("says what is collected and why, one item at a time, and who sees what", async ({ page }) => {
     await page.goto("/app/privacy");
-    for (const id of ["account", "profile", "attendance", "answers", "reasons", "topics", "ask", "focus", "practice", "alerts", "signin", "not-collected"]) {
+    for (const id of ["account", "profile", "attendance", "answers", "topics", "ask", "focus", "practice", "alerts", "signin", "not-collected"]) {
       await expect(page.locator(`#${id}`), id).toContainText(PRIVACY.mk.sections.find((s) => s.id === id)!.title);
     }
     for (const id of ["sees-teacher", "sees-class", "sees-admin", "sees-head", "sees-staff", "sees-other"]) await expect(page.locator(`#${id}`), id).toBeAttached();
@@ -297,7 +297,7 @@ test.describe("Your data", () => {
     await expect(page.getByRole("heading", { level: 1, name: mk.t("data.title") })).toBeVisible();
     await expect(page.getByText("marko.trajkovski@student.gnaumov.edu.mk")).toBeVisible();
     await expect(page.getByText(mk.t("data.displayNone"))).toBeVisible();
-    for (const key of ["data.n.attendance", "data.n.answers", "data.n.reasons", "data.n.asks", "data.n.focus", "data.n.practice", "data.n.alerts", "data.n.push"] as const) {
+    for (const key of ["data.n.attendance", "data.n.answers", "data.n.asks", "data.n.focus", "data.n.practice", "data.n.alerts", "data.n.push"] as const) {
       await expect(row(page, key), key).toBeVisible();
     }
     await expect(row(page, "data.n.attendance")).toContainText("20");

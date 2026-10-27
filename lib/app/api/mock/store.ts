@@ -60,8 +60,7 @@ export type AppState = {
   /** The privacy notice the student last acknowledged and when (the server's `acknowledgement`); null until the first sign-in's notice. */
   noticeVersion: string | null;
   noticeAt: number | null;
-  /** What the mock server has been sent besides answers, so "Your data" can count it: reasons, questions to the teacher, times away from the quiz. */
-  reasonsSent: number;
+  /** What the mock server has been sent besides answers, so "Your data" can count it: questions to the teacher, times away from the quiz. */
   asksSent: number;
   focusLost: number;
 };
@@ -87,7 +86,6 @@ const DEFAULT: AppState = {
   practiceDone: {},
   noticeVersion: null,
   noticeAt: null,
-  reasonsSent: 0,
   asksSent: 0,
   focusLost: 0,
 };
@@ -165,7 +163,6 @@ function sanitize(saved: unknown): AppState {
         : DEFAULT.practiceDone,
     noticeVersion: typeof s.noticeVersion === "string" && s.noticeVersion ? s.noticeVersion : DEFAULT.noticeVersion,
     noticeAt: typeof s.noticeAt === "number" && Number.isFinite(s.noticeAt) ? s.noticeAt : DEFAULT.noticeAt,
-    reasonsSent: count(s.reasonsSent),
     asksSent: count(s.asksSent),
     focusLost: count(s.focusLost),
   };
@@ -287,10 +284,6 @@ export const actions = {
   setProfile: (profile: Profile) => set({ profile }),
   /** POST /me/acknowledgements: the notice of this version was seen, now. `null` takes the acknowledgement back (the demo's "show the notice again"). */
   acknowledgeNotice: (version: string | null) => set({ noticeVersion: version, noticeAt: version === null ? null : Date.now() }),
-  countReason: () => {
-    load();
-    set({ reasonsSent: state.reasonsSent + 1 });
-  },
   countAsk: () => {
     load();
     set({ asksSent: state.asksSent + 1 });

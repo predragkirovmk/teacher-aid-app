@@ -46,10 +46,7 @@ export type Student = {
 export type DataSummary = {
   /** Lessons the student was marked present or late at. */
   attendance: number;
-  /** Answers and opener votes. */
   answers: number;
-  /** One-line reasons. */
-  reasons: number;
   questionsToTeacher: number;
   /** Times the student left the quiz during a question (`lost` events). */
   focusEvents: number;

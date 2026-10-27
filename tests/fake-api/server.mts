@@ -427,7 +427,6 @@ function dataSummary() {
   return {
     attendance: ATTENDANCE.attended + (sess.joinedStudent ? 1 : 0),
     answers: 12 + Object.keys(sess.answers).length + (sess.opener?.mine ? 1 : 0),
-    reasons: sess.opener?.reason ? 1 : 0,
     questions_to_teacher: sess.asks.length,
     focus_events: sess.focus.filter((f) => f.type === "lost").length,
     practice_answers: Object.values(state.practiceAnswers).reduce((n, answers) => n + Object.keys(answers).length, 0),

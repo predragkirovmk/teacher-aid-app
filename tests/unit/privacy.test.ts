@@ -120,12 +120,12 @@ describe("the privacy notice and the terms", () => {
   });
 
   it("says the same things the spec decides about who sees what", () => {
-    // Hard rules 3 and 4 of the spec: a student never sees another's answers; the school admin never sees answers, reasons, questions or topic results.
+    // Hard rules 3 and 4 of the spec: a student never sees another's answers; the school admin never sees answers, questions or topic results.
     const en = PRIVACY.en.sections;
     const classmates = en.find((s) => s.id === "sees-class")!.blocks.map((b) => ("p" in b ? b.p : "")).join(" ");
     const admin = en.find((s) => s.id === "sees-admin")!.blocks.map((b) => ("p" in b ? b.p : "")).join(" ");
     expect(classmates).toMatch(/never see your answers, your questions, your results/);
-    expect(admin).toMatch(/Never your answers, reasons, questions or results by topic/);
+    expect(admin).toMatch(/Never your answers, questions or results by topic/);
     const mk = PRIVACY.mk.sections;
     expect(mk.find((s) => s.id === "sees-class")!.blocks.map((b) => ("p" in b ? b.p : "")).join(" ")).toMatch(/Никогаш не ги гледаат твоите одговори, прашања/);
   });

@@ -635,15 +635,6 @@ describe("the opener", () => {
     expect(ofType("question.result")[0]).toMatchObject({ correct: true, points: 18, reason_points: 8, session_points: 18 });
   });
 
-  it("counts a reason for the Your data screen once, however often it is sent", async () => {
-    const { session } = hear("OPENER-7B");
-    const before = getState().reasonsSent;
-    vote(session, mathRight, 1000);
-    reason(session, "Same on both sides keeps the balance.", 3000);
-    reason(session, "Same on both sides keeps the balance.", 3000);
-    expect(getState().reasonsSent).toBe(before + 1);
-  });
-
   it("gives the reason's 8 even when the vote was wrong (BR-PTS-06), and 10 alone for a right vote with no reason", async () => {
     const wrong = hear("OPENER-7B");
     vote(wrong.session, mathWrong, 1000);

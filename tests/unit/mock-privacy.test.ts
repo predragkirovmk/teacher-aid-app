@@ -75,19 +75,17 @@ describe("the data summary", () => {
     expect(s.answers).toBeGreaterThan(0);
     expect(s.practiceAnswers).toBeGreaterThan(0);
     expect(s.notifications).toBeGreaterThan(0);
-    expect(s).toMatchObject({ reasons: 0, questionsToTeacher: 0, focusEvents: 0, pushSubscription: false });
+    expect(s).toMatchObject({ questionsToTeacher: 0, focusEvents: 0, pushSubscription: false });
   });
 
-  it("grows with a check-in, a question to the teacher, a reason and a time away from the quiz", async () => {
+  it("grows with a check-in, a question to the teacher and a time away from the quiz", async () => {
     const before = await mockClient.getDataSummary();
     actions.checkIn("math");
     actions.countAsk();
-    actions.countReason();
     actions.countFocusLost(2);
     const after = await mockClient.getDataSummary();
     expect(after.attendance).toBe(before.attendance + 1);
     expect(after.questionsToTeacher).toBe(before.questionsToTeacher + 1);
-    expect(after.reasons).toBe(before.reasons + 1);
     expect(after.focusEvents).toBe(before.focusEvents + 2);
   });
 
