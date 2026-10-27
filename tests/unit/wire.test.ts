@@ -43,7 +43,46 @@ describe("wire to domain", () => {
       school: { id: "sc1", name: "Ѓорѓи Наумов" },
       class: { id: "c1", name: "7Б" },
       settings: { notificationsOn: false, locale: "en" },
+      acknowledgement: null,
     });
+  });
+
+  it("maps the notice a student acknowledged, and reads a server that does not send one as none", () => {
+    const base = {
+      id: "s1",
+      full_name: "A B",
+      school_email: "a@b.example",
+      display_name: null,
+      photo_url: null,
+      school: { id: "sc1", name: "S" },
+      class: { id: "c1", name: "7" },
+      settings: { notifications_on: true, locale: "mk" as const },
+    };
+    expect(wire.student({ ...base, acknowledgement: { notice_version: "2026-10-27", acknowledged_at: "2026-10-27T08:00:00Z" } }).acknowledgement).toEqual({
+      version: "2026-10-27",
+      at: Date.parse("2026-10-27T08:00:00Z"),
+    });
+    expect(wire.student({ ...base, acknowledgement: null }).acknowledgement).toBeNull();
+    expect(wire.student(base).acknowledgement).toBeNull();
+  });
+
+  it("maps the data summary, counts only", () => {
+    expect(
+      wire.dataSummary({
+        attendance: 20,
+        answers: 31,
+        reasons: 2,
+        questions_to_teacher: 1,
+        focus_events: 3,
+        practice_answers: 6,
+        notifications: 9,
+        push_subscription: true,
+      }),
+    ).toEqual({ attendance: 20, answers: 31, reasons: 2, questionsToTeacher: 1, focusEvents: 3, practiceAnswers: 6, notifications: 9, pushSubscription: true });
+  });
+
+  it("sends the acknowledgement as the version and nothing else", () => {
+    expect(wire.acknowledgementBody("2026-10-27")).toEqual({ notice_version: "2026-10-27" });
   });
 
   it("maps a course", () => {

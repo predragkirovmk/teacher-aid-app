@@ -15,6 +15,7 @@ import type {
   Badge,
   BoardRow,
   Course,
+  DataSummary,
   JoinResult,
   Leaderboard,
   LeaderboardRow,
@@ -63,6 +64,20 @@ export type WireStudent = {
   school: { id: string; name: string };
   class: { id: string; name: string };
   settings: { notifications_on: boolean; locale: Locale };
+  /** PROPOSED: the latest notice the student acknowledged. */
+  acknowledgement?: { notice_version: string; acknowledged_at: string } | null;
+};
+
+/** GET /me/data-summary (PROPOSED). */
+export type WireDataSummary = {
+  attendance: number;
+  answers: number;
+  reasons: number;
+  questions_to_teacher: number;
+  focus_events: number;
+  practice_answers: number;
+  notifications: number;
+  push_subscription: boolean;
 };
 
 export type WireCourse = {
@@ -254,6 +269,18 @@ export const student = (w: WireStudent): Student => ({
   school: w.school,
   class: w.class,
   settings: { notificationsOn: w.settings.notifications_on, locale: w.settings.locale },
+  acknowledgement: w.acknowledgement ? { version: w.acknowledgement.notice_version, at: ms(w.acknowledgement.acknowledged_at) } : null,
+});
+
+export const dataSummary = (w: WireDataSummary): DataSummary => ({
+  attendance: w.attendance,
+  answers: w.answers,
+  reasons: w.reasons,
+  questionsToTeacher: w.questions_to_teacher,
+  focusEvents: w.focus_events,
+  practiceAnswers: w.practice_answers,
+  notifications: w.notifications,
+  pushSubscription: w.push_subscription,
 });
 
 export const signInChallenge = (w: WireSignInChallenge): SignInChallenge =>
@@ -577,6 +604,9 @@ export function sessionEvent(type: string, data: unknown): SessionEvent | null {
 }
 
 // ---- Domain to wire (request bodies) -------------------------------------------------------------------------
+
+/** `POST /me/acknowledgements`: the version of the notice the student saw, and nothing else (the server stamps the time). */
+export const acknowledgementBody = (version: string) => ({ notice_version: version });
 
 export const settingsBody = (u: SettingsUpdate) => ({
   ...(u.notificationsOn !== undefined && { notifications_on: u.notificationsOn }),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { keepOnClear } from "../../keep-keys";
 import { resetFocusNotice } from "../../session/focus-notice";
 import { DEFAULT_PROFILE, isPhoto, type Profile } from "./avatars";
 import { CLOCKS, demoTime, type ClockId } from "../../demo/schedule";
@@ -56,9 +57,17 @@ export type AppState = {
   practiceAnswers: Record<string, Record<string, string>>;
   /** When each practice set was finished. */
   practiceDone: Record<string, number>;
+  /** The privacy notice the student last acknowledged and when (the server's `acknowledgement`); null until the first sign-in's notice. */
+  noticeVersion: string | null;
+  noticeAt: number | null;
+  /** What the mock server has been sent besides answers, so "Your data" can count it: reasons, questions to the teacher, times away from the quiz. */
+  reasonsSent: number;
+  asksSent: number;
+  focusLost: number;
 };
 
-const KEY = "teacheraid-app-v1";
+// Marked pure, so a live build that never reads the mock's data does not keep the mock because of this call.
+const KEY = /* @__PURE__ */ keepOnClear("teacheraid-app-v1");
 
 const DEFAULT: AppState = {
   // A phone that has never been used has to sign in, as a student's will.
@@ -76,6 +85,11 @@ const DEFAULT: AppState = {
   practiceSets: [],
   practiceAnswers: {},
   practiceDone: {},
+  noticeVersion: null,
+  noticeAt: null,
+  reasonsSent: 0,
+  asksSent: 0,
+  focusLost: 0,
 };
 
 const isCheckin = (c: unknown): c is Checkin => {
@@ -149,8 +163,15 @@ function sanitize(saved: unknown): AppState {
       s.practiceDone && typeof s.practiceDone === "object"
         ? Object.fromEntries(Object.entries(s.practiceDone).filter((e): e is [string, number] => typeof e[1] === "number" && Number.isFinite(e[1])))
         : DEFAULT.practiceDone,
+    noticeVersion: typeof s.noticeVersion === "string" && s.noticeVersion ? s.noticeVersion : DEFAULT.noticeVersion,
+    noticeAt: typeof s.noticeAt === "number" && Number.isFinite(s.noticeAt) ? s.noticeAt : DEFAULT.noticeAt,
+    reasonsSent: count(s.reasonsSent),
+    asksSent: count(s.asksSent),
+    focusLost: count(s.focusLost),
   };
 }
+
+const count = (n: unknown) => (typeof n === "number" && Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0);
 
 function sanitizeProfile(saved: unknown): Profile {
   const p = saved && typeof saved === "object" ? (saved as Record<string, unknown>) : {};
@@ -264,6 +285,20 @@ export const actions = {
     return entry;
   },
   setProfile: (profile: Profile) => set({ profile }),
+  /** POST /me/acknowledgements: the notice of this version was seen, now. `null` takes the acknowledgement back (the demo's "show the notice again"). */
+  acknowledgeNotice: (version: string | null) => set({ noticeVersion: version, noticeAt: version === null ? null : Date.now() }),
+  countReason: () => {
+    load();
+    set({ reasonsSent: state.reasonsSent + 1 });
+  },
+  countAsk: () => {
+    load();
+    set({ asksSent: state.asksSent + 1 });
+  },
+  countFocusLost: (n: number) => {
+    load();
+    if (n > 0) set({ focusLost: state.focusLost + n });
+  },
   setClock: (clock: ClockId) => set({ clock }),
   addQuizPoints: (points: number) => {
     load();
@@ -307,7 +342,7 @@ export const actions = {
     }
     // The line about leaving the quiz is new again too.
     resetFocusNotice();
-    // Starting the demo over is not signing out: whoever is in stays in.
-    set({ ...DEFAULT, signedIn: state.signedIn });
+    // Starting the demo over is not signing out: whoever is in stays in, and a notice already seen stays seen.
+    set({ ...DEFAULT, signedIn: state.signedIn, noticeVersion: state.noticeVersion, noticeAt: state.noticeAt });
   },
 };

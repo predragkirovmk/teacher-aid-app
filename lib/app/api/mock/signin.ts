@@ -1,7 +1,7 @@
 import { ApiError } from "../errors";
 import type { SignInChallenge } from "../types";
 import { emailError, normalizeEmail } from "../../signin";
-import { MOCK_CODE, MOCK_ROSTER } from "./data";
+import { MOCK_CODE, MOCK_ROSTER } from "./roster";
 
 /**
  * The mock's sign-in: the rules the API will enforce, played in the browser. The roster is a short

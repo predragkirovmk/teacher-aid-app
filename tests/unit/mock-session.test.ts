@@ -635,6 +635,15 @@ describe("the opener", () => {
     expect(ofType("question.result")[0]).toMatchObject({ correct: true, points: 18, reason_points: 8, session_points: 18 });
   });
 
+  it("counts a reason for the Your data screen once, however often it is sent", async () => {
+    const { session } = hear("OPENER-7B");
+    const before = getState().reasonsSent;
+    vote(session, mathRight, 1000);
+    reason(session, "Same on both sides keeps the balance.", 3000);
+    reason(session, "Same on both sides keeps the balance.", 3000);
+    expect(getState().reasonsSent).toBe(before + 1);
+  });
+
   it("gives the reason's 8 even when the vote was wrong (BR-PTS-06), and 10 alone for a right vote with no reason", async () => {
     const wrong = hear("OPENER-7B");
     vote(wrong.session, mathWrong, 1000);
@@ -890,6 +899,16 @@ describe("questions to the teacher and the focus flag", () => {
     expect(session.studentState().anon).toEqual({ used: 2, limit: 2 });
   });
 
+  it("counts what the student sent for the Your data screen: a repeat is one, a refusal is none", () => {
+    const { session } = lesson("ASK-7B");
+    const before = getState().asksSent;
+    ask(session, "one", "k1");
+    ask(session, "one", "k1");
+    ask(session, "two", "k2");
+    expect(() => ask(session, "three", "k3")).toThrow();
+    expect(getState().asksSent).toBe(before + 2);
+  });
+
   it("refuses a question after the lesson has ended", async () => {
     const { session } = lesson("ASK-7B");
     await advance(SCRIPT.start + OPENER_MS + SCRIPT.afterOpener + 60_000 * 10);
@@ -926,6 +945,17 @@ describe("questions to the teacher and the focus flag", () => {
       ["lost", false],
       ["lost", false],
     ]);
+  });
+
+  it("counts the times the student left the quiz, once each, and not the times they came back", async () => {
+    const { session } = lesson("FOCUS-7B");
+    await toFirstQuestionDirect();
+    const q = session.studentState().question!;
+    const before = getState().focusLost;
+    const lost = { type: "lost" as const, at: q.firedAt! + 5000, sessionQuestionId: q.id };
+    session.recordFocus([lost, { type: "back", at: q.firedAt! + 9000, sessionQuestionId: q.id }]);
+    session.recordFocus([lost]);
+    expect(getState().focusLost).toBe(before + 1);
   });
 
   it("takes the same focus event twice as one, and refuses a question that is not the lesson's", async () => {

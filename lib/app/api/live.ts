@@ -85,6 +85,9 @@ export function createLiveClient(): ApiClient {
     removePhoto: () => meAfter(request("DELETE", "/me/profile/photo")),
     updateSettings: (update) => meAfter(request("PATCH", "/me/settings", { body: wire.settingsBody(update) })),
 
+    acknowledgeNotice: (version) => meAfter(request("POST", "/me/acknowledgements", { body: wire.acknowledgementBody(version) })),
+    getDataSummary: async () => wire.dataSummary(await request<wire.WireDataSummary>("GET", "/me/data-summary")),
+
     listCourses: async () => (await request<wire.WireCourse[]>("GET", "/me/courses")).map(wire.course),
     getAttendance: async () => wire.attendance(await request<wire.WireAttendance>("GET", "/me/attendance")),
     listResults: async (courseId?: Id) =>

@@ -1,4 +1,5 @@
 import { ApiError } from "../errors";
+import { keepOnClear } from "../../keep-keys";
 import { net } from "../../session/net";
 import { ChannelTransport, type Connect, type RealtimeMessage, type RealtimeTransport } from "../../session/transport";
 import { translate, type Key } from "../../i18n";
@@ -121,7 +122,7 @@ const text = (locale: Locale, key: string) => translate(locale, key as Key);
 export type Scenario = "normal" | "late" | "flaky" | "offline-answer" | "opener" | "debate" | "numeric" | "ask" | "focus";
 
 /** Where the mock keeps what its teacher's console received. */
-export const MOCK_CONSOLE_KEY = "teacheraid-mock-console";
+export const MOCK_CONSOLE_KEY = /* @__PURE__ */ keepOnClear("teacheraid-mock-console");
 
 export type MockConsole = {
   sessionId: string;
@@ -778,6 +779,7 @@ export class MockSession {
     const at = Math.min(live.end, Math.max(live.mine.at, answer.answeredAt));
     live.myReason = { text, at, key: answer.idempotencyKey };
     this.keys.set(answer.idempotencyKey, text);
+    actions.countReason();
     if (live.closed) {
       this.settleOpener(live, true);
       return { accepted: true, duplicate: false };
@@ -819,6 +821,7 @@ export class MockSession {
     if (this.asks.size >= this.anonLimit) throw new ApiError("limit_reached");
     this.asks.set(ask.idempotencyKey, text);
     this.console_.asks.push({ text, sender: STUDENT_ID, at: ask.askedAt });
+    actions.countAsk();
     this.saveConsole();
     return { accepted: true, duplicate: false };
   }
@@ -826,6 +829,7 @@ export class MockSession {
   /** POST /sessions/{id}/focus-events. A `lost` raises a flag only inside the question's open window (AC-FOC-01, AC-FOC-02). */
   recordFocus(events: FocusEventInput[]) {
     if (this.ended) throw new ApiError("session_ended");
+    let lost = 0;
     for (const e of events) {
       const q = this.lives.get(e.sessionQuestionId)?.question ?? this.openers.get(e.sessionQuestionId)?.question;
       if (!q) throw new ApiError("not_found");
@@ -833,7 +837,9 @@ export class MockSession {
       // The same event again (same type, time and question) is one event.
       if (this.console_.focus.some((f) => f.type === e.type && f.at === e.at && f.sessionQuestionId === e.sessionQuestionId)) continue;
       this.console_.focus.push({ type: e.type, at: e.at, sessionQuestionId: e.sessionQuestionId, flagged });
+      if (e.type === "lost") lost++;
     }
+    actions.countFocusLost(lost);
     this.saveConsole();
   }
 

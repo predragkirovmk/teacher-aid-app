@@ -8,6 +8,7 @@ import type {
   AttendanceSummary,
   Badge,
   Course,
+  DataSummary,
   FocusEventInput,
   Id,
   JoinInput,
@@ -106,6 +107,24 @@ function buildStudent(state: AppState, locale: Locale): Student {
     school: { id: "school-gn", name: text(locale, "user.school") },
     class: { id: "class-7b", name: CLASS_NAME[locale] },
     settings: { notificationsOn: state.notificationsOn, locale },
+    acknowledgement: state.noticeVersion !== null ? { version: state.noticeVersion, at: state.noticeAt ?? 0 } : null,
+  };
+}
+
+/** What the mock server holds about the student, counted from the same data the screens read. */
+function buildDataSummary(state: AppState, locale: Locale): DataSummary {
+  const sum = (counts: number[]) => counts.reduce((a, b) => a + b, 0);
+  return {
+    attendance: buildAttendance(state, locale).attended,
+    // A lesson from before the demo started does not say what was answered, only what was right: a right one was answered.
+    answers: sum(buildResults(state, locale).map((r) => r.questions.filter((q) => q.yourAnswer !== null || q.correct).length)),
+    reasons: state.reasonsSent,
+    questionsToTeacher: state.asksSent,
+    focusEvents: state.focusLost,
+    practiceAnswers: sum(buildPracticeSets(state, locale).map((p) => p.questions.filter((q) => q.answer !== null).length)),
+    notifications: buildNotifications(state, locale).length,
+    // The demo has no push server, so it holds no subscription.
+    pushSubscription: false,
   };
 }
 
@@ -289,6 +308,15 @@ export function createMockClient(source: MockSource): ApiClient {
           return me();
         }),
       ),
+
+    acknowledgeNotice: (version) =>
+      authed(() =>
+        write(() => {
+          actions.acknowledgeNotice(version);
+          return me();
+        }),
+      ),
+    getDataSummary: () => authed(() => buildDataSummary(state(), locale())),
 
     listCourses: () => authed(() => buildCourses(locale())),
     getAttendance: () => authed(() => buildAttendance(state(), locale())),

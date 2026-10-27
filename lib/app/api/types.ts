@@ -16,6 +16,13 @@ export type StudentSettings = {
   locale: Locale;
 };
 
+/**
+ * The privacy notice and terms the student last saw and tapped Continue on (PROPOSED `POST /me/acknowledgements`). It records that
+ * the notice was shown, which version and when; it is not a consent. The app compares `version` with its own and shows the notice
+ * again when they differ (lib/app/privacy.ts).
+ */
+export type Acknowledgement = { version: string; at: number };
+
 /** GET /me. Identity is the school email; class and school come from the school account. */
 export type Student = {
   id: Id;
@@ -28,6 +35,28 @@ export type Student = {
   school: { id: Id; name: string };
   class: { id: Id; name: string };
   settings: StudentSettings;
+  /** The latest notice acknowledged, or null for a student who has not yet (a first sign-in). */
+  acknowledgement: Acknowledgement | null;
+};
+
+/**
+ * GET /me/data-summary (PROPOSED): how many records of each kind the server holds about the student, for the "Your data" screen.
+ * Counts only, never what a record says (a question to the teacher is not returned to any student endpoint, BR-ANON-06).
+ */
+export type DataSummary = {
+  /** Lessons the student was marked present or late at. */
+  attendance: number;
+  /** Answers and opener votes. */
+  answers: number;
+  /** One-line reasons. */
+  reasons: number;
+  questionsToTeacher: number;
+  /** Times the student left the quiz during a question (`lost` events). */
+  focusEvents: number;
+  practiceAnswers: number;
+  notifications: number;
+  /** Whether the server holds a push subscription for the student. */
+  pushSubscription: boolean;
 };
 
 /** PATCH /me/profile. */

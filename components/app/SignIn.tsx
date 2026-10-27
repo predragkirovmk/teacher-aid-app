@@ -13,7 +13,12 @@ import { cleanCode, emailError, normalizeEmail } from "@/lib/app/signin";
  * behind the build-time test itself, so a live build carries neither (see lib/app/api/index.ts).
  */
 const demo =
-  process.env.NEXT_PUBLIC_API_MODE === "live" ? null : (require("@/lib/app/demo") as typeof import("@/lib/app/demo")).DEMO_SIGN_IN;
+  process.env.NEXT_PUBLIC_API_MODE === "live"
+    ? null
+    : (() => {
+        const roster = require("@/lib/app/api/mock/roster") as typeof import("@/lib/app/api/mock/roster");
+        return { email: roster.MOCK_ROSTER[0], code: roster.MOCK_CODE };
+      })();
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 /**

@@ -6,6 +6,7 @@ import type {
   AttendanceSummary,
   Badge,
   Course,
+  DataSummary,
   Id,
   JoinInput,
   JoinResult,
@@ -61,6 +62,15 @@ export interface ApiClient {
   removePhoto(): Promise<Student>;
   /** PATCH /me/settings. */
   updateSettings(update: SettingsUpdate): Promise<Student>;
+
+  // Privacy
+  /**
+   * POST /me/acknowledgements (PROPOSED): the student saw the privacy notice and terms of this version and tapped Continue. Stored with the
+   * version and the time; repeating a version changes nothing. Answers with the student, whose `acknowledgement` is now this one.
+   */
+  acknowledgeNotice(version: string): Promise<Student>;
+  /** GET /me/data-summary (PROPOSED): what the server holds about the student, as counts. */
+  getDataSummary(): Promise<DataSummary>;
 
   // Reading
   /** GET /me/courses. */

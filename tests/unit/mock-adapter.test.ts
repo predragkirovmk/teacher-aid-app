@@ -2,7 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/app/api/errors";
 import { createMockClient, mockClient, mockServerClient } from "@/lib/app/api/mock";
-import { CLASS_SUBJECTS, LEADERBOARD, MOCK_CODE, MOCK_ROSTER, NOTIFS, BASE_ATTENDED, BASE_TOTAL } from "@/lib/app/api/mock/data";
+import { CLASS_SUBJECTS, LEADERBOARD, NOTIFS, BASE_ATTENDED, BASE_TOTAL } from "@/lib/app/api/mock/data";
+import { MOCK_CODE, MOCK_ROSTER } from "@/lib/app/api/mock/roster";
 import { CODE_LENGTH, CODE_TTL_MS, LOCK_SECONDS, MAX_WRONG_CODES, RESEND_AFTER_MS } from "@/lib/app/api/mock/signin";
 import { QUIZZES } from "@/lib/app/api/mock/quiz";
 import { resetMockSessions } from "@/lib/app/api/mock/session";

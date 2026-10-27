@@ -3,7 +3,7 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/app/api/errors";
-import { MOCK_CODE, MOCK_ROSTER } from "@/lib/app/api/mock/data";
+import { MOCK_CODE, MOCK_ROSTER } from "@/lib/app/api/mock/roster";
 import { actions } from "@/lib/app/api/mock/store";
 import { getSessionEnd, startSession } from "@/lib/app/api/session";
 

@@ -97,12 +97,3 @@ export const DOCS = ["d1", "d2", "d3", "d4"] as const;
 
 export const ACHIEVEMENTS = ["answer", "ontime", "streak", "perfect"] as const;
 export type AchievementId = (typeof ACHIEVEMENTS)[number];
-
-/**
- * The roster the mock signs in: the school emails it knows. Every one of them is the demo's student,
- * because the mock plays one student. Any other email is, to the mock, on no list (EC-AUTH-02).
- */
-export const MOCK_ROSTER: readonly string[] = ["marko.trajkovski@student.gnaumov.edu.mk"];
-
-/** The one-time code the mock "emails", shown in the welcome screen's demo hint instead of a mailbox. */
-export const MOCK_CODE = "123456";

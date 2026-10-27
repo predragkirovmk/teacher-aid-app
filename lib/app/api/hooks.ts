@@ -15,6 +15,7 @@ import type {
   AttendanceSummary,
   Badge,
   Course,
+  DataSummary,
   Id,
   JoinedSession,
   JoinResult,
@@ -56,6 +57,9 @@ export const useTopics = (): Query<TopicProgress[]> => useQuery("topics", (c) =>
 /** The mock answers at once; the live API's sets are kept on the phone, so a set can still be opened with no signal. */
 export const usePracticeSets = (): Query<PracticeSet[]> =>
   useQuery("practice", (c) => (demoOnly ? c.listPracticeSets() : loadSets(c)));
+
+/** What the server holds about the student, as counts, for the "Your data" screen (PROPOSED `GET /me/data-summary`). */
+export const useDataSummary = (): Query<DataSummary> => useQuery("data-summary", (c) => c.getDataSummary());
 
 export const useBadges = (): Query<Badge[]> => useQuery("badges", (c) => c.listBadges());
 
@@ -192,8 +196,11 @@ export function onBeforeSignOut(cb: () => Promise<void>) {
   };
 }
 
+/** Run what has to be done while the student is still signed in (see `onBeforeSignOut`). Never throws. */
+export const releaseDevice = () => Promise.all([...beforeSignOut].map((cb) => cb().catch(() => {}))).then(() => undefined);
+
 export async function signOut(): Promise<void> {
-  await Promise.all([...beforeSignOut].map((cb) => cb().catch(() => {})));
+  await releaseDevice();
   try {
     await change((c) => c.signOut());
   } catch (e) {
@@ -254,6 +261,14 @@ export async function saveNotificationsOn(on: boolean): Promise<void> {
     if (before) seed("me", before);
     throw toApiError(e);
   }
+}
+
+/**
+ * The student saw the privacy notice and terms of this version and tapped Continue (PROPOSED `POST /me/acknowledgements`). The
+ * student the API answers with replaces the cached one, so the notice screen gives way at once.
+ */
+export async function acknowledgeNotice(version: string): Promise<void> {
+  seed("me", await change((c) => c.acknowledgeNotice(version)));
 }
 
 // ---- Notifications ----------------------------------------------------------------------------------------------
