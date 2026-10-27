@@ -79,6 +79,8 @@ export type FocusQueue = {
   flush(): Promise<void>;
   /** What is waiting for this student. */
   size(studentId: Id): number;
+  /** Drop everything waiting, for anyone: the student cleared this phone. */
+  clear(): void;
 };
 
 export function createFocusQueue(deps: FocusQueueDeps): FocusQueue {
@@ -174,5 +176,11 @@ export function createFocusQueue(deps: FocusQueueDeps): FocusQueue {
     },
     flush,
     size: (id) => load().filter((r) => r.studentId === id).length,
+    clear() {
+      clearTimeout(timer);
+      retrying = false;
+      failures = 0;
+      keep([]);
+    },
   };
 }

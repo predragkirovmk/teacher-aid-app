@@ -9,7 +9,9 @@ import type { Locale } from "./api/types";
  * and is pushed to the API (PATCH /me/settings) when the student changes it. Hydration-safe like
  * store.ts: the server always renders Macedonian, the phone's saved choice takes over after.
  */
-const KEY = "teacheraid-locale";
+/** Where the phone keeps the choice; clearing the phone's data leaves it (lib/app/phone-data.ts). */
+export const LOCALE_KEY = "teacheraid-locale";
+const KEY = LOCALE_KEY;
 const LOCALES: readonly Locale[] = ["mk", "en"];
 const DEFAULT: Locale = "mk";
 

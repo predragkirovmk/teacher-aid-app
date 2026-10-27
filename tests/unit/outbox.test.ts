@@ -524,3 +524,30 @@ describe("questions to the teacher", () => {
     expect(dup.heard.at(-1)).toMatchObject({ type: "delivered", duplicate: true });
   });
 });
+
+describe("clearing the phone", () => {
+  it("drops everything saved and unsent, for any student, from memory and from the store", async () => {
+    const { outbox, store } = setup(down);
+    await outbox.start("me");
+    await outbox.enqueue(answer("k1"));
+    await outbox.enqueue(answer("k2", T0, { studentId: "someone-else" }));
+    expect(await store.all()).toHaveLength(2);
+    await outbox.clear();
+    expect(await store.all()).toEqual([]);
+    expect(outbox.getStatus()).toMatchObject({ pending: 0, pendingAsks: 0, failing: false });
+    expect(outbox.pendingFor("me", "s1", "q1")).toBeNull();
+  });
+
+  it("does not send what it dropped, even when the connection comes back", async () => {
+    let up = false;
+    const { outbox, sender } = setup(async () => (up ? { accepted: true, duplicate: false } : down("s1", {} as AnswerInput, "answer")));
+    await outbox.start("me");
+    await outbox.enqueue(answer("k1"));
+    await outbox.clear();
+    sender.mockClear();
+    up = true;
+    await outbox.flush();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(sender).not.toHaveBeenCalled();
+  });
+});

@@ -1,33 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { demoOnly } from "@/lib/app/api";
-import { demoRoutes } from "@/lib/app/demo";
+import { APP_ROUTES } from "@/lib/app/offline-cache";
 // Loaded with every screen so the browser's install offer is caught whenever it comes.
 import "@/lib/app/install";
-
-/** Every screen, so the offline worker (public/app-sw.js) can cache them all on the first visit. */
-const ROUTES = [
-  "/app",
-  "/app/scan",
-  "/app/notifications",
-  "/app/profile",
-  "/app/attendance",
-  "/app/summary",
-  "/app/practice",
-  "/app/leaderboard",
-  "/app/schedule",
-  "/app/settings",
-  "/app/documents",
-  "/app/achievements",
-  "/app/faq",
-  "/app/welcome",
-  "/app/qr-kit",
-  "/app/subjects",
-  // The demo knows its subjects, class codes and alerts by name. A live student's are not known
-  // until the API has answered, so their screens are cached as they are visited.
-  ...(demoOnly ? demoRoutes() : []),
-];
 
 /** The build running in this page (next.config.ts). */
 const BUILD = process.env.NEXT_PUBLIC_APP_BUILD;
@@ -76,7 +52,7 @@ export function ServiceWorker() {
       } catch {
         // no storage: warm up on every load
       }
-      registration.active?.postMessage({ type: "warm", routes: ROUTES });
+      registration.active?.postMessage({ type: "warm", routes: APP_ROUTES });
     });
   }, []);
 

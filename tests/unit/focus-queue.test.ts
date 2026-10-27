@@ -178,3 +178,16 @@ describe("whose events", () => {
     expect(sender).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("clearing the phone", () => {
+  it("drops the events waiting and does not send them", async () => {
+    const { queue, sender, store } = setup(down);
+    queue.start("me");
+    queue.add(event("lost", T0));
+    queue.clear();
+    expect(store.all()).toEqual([]);
+    expect(queue.size("me")).toBe(0);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(sender).not.toHaveBeenCalled();
+  });
+});

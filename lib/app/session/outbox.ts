@@ -101,6 +101,8 @@ export type Outbox = {
   pendingFor(studentId: Id, sessionId: Id, sessionQuestionId: Id, kind?: SubmissionKind): OutboxRecord | null;
   /** Everything this student saved in this session and has still to send, of one `kind`. */
   pendingOf(studentId: Id, sessionId: Id, kind: SubmissionKind): OutboxRecord[];
+  /** Drop everything saved and unsent, whoever's it is: the student cleared this phone (the "Your data" screen warns first). */
+  clear(): Promise<void>;
   subscribe(listener: (outcome: AnswerOutcome) => void): () => void;
   onStatus(listener: () => void): () => void;
   getStatus(): OutboxStatus;
@@ -273,6 +275,13 @@ export function createOutbox(deps: OutboxDeps): Outbox {
     },
     flush,
     load,
+    async clear() {
+      await load();
+      clearTimeout(timer);
+      for (const record of [...records.values()]) await forget(record);
+      failing = false;
+      refreshStatus();
+    },
     pendingFor(student, sessionId, sessionQuestionId, kind) {
       return (
         [...records.values()].find(
