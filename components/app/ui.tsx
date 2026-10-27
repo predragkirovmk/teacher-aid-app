@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from "react";
 
-export type ConfirmOptions = { title: string; confirmLabel: string; onConfirm: () => void };
+export type ConfirmOptions = { title: string; confirmLabel: string; onConfirm: () => void; /** What the choice means, under the question. */ body?: string };
 
 type UI = {
   openLang: () => void;

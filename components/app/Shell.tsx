@@ -9,10 +9,12 @@ import { invalidate } from "@/lib/app/api/query";
 import { useAuth, useNotifications, useSettings } from "@/lib/app/api/hooks";
 import { useT } from "@/lib/app/i18n";
 import { useAsk, usePush } from "@/lib/app/push";
+import { isOpenPath, needsNotice, noticeWaits, noticeWasUpdated } from "@/lib/app/privacy";
 import { welcomeUrl } from "@/lib/app/signin";
 import type { Locale } from "@/lib/app/api/types";
 import { ClockOptions } from "./ClockOptions";
 import { ConnectionPill } from "./ConnectionPill";
+import { NoticeScreen } from "./NoticeScreen";
 import { OutboxRunner } from "./OutboxRunner";
 import { Pager } from "./Pager";
 import { IosInstallSteps, PushAskSheet, PushHelpSheet } from "./PushSheets";
@@ -22,7 +24,6 @@ import { SignedElsewhere, Splash, Unreachable } from "./SessionScreens";
 import { UIContext, type ConfirmOptions } from "./ui";
 
 const NO_TABS = ["/app/scan", "/app/welcome"];
-const WELCOME = "/app/welcome";
 /** How long after landing on a calm screen the ask about notifications appears: the result is read first. */
 const ASK_DELAY_MS = 1200;
 
@@ -101,17 +102,22 @@ export function Shell({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer);
   }, [eligible, shown, pathname]);
 
-  // The route guard. Every screen but the welcome screen is shown only to a signed-in student: until the
-  // session is known there is the launch picture, and a signed-out student is sent to sign in (carrying
-  // the screen that was asked for, a check-in link say, so signing in continues to it) without any
-  // signed-in screen being drawn first. Signing out by choice carries nothing: the next student starts at Home.
-  const onWelcome = pathname === WELCOME;
-  const view = onWelcome
+  // The route guard. Every screen but the welcome screen, the privacy notice and the terms is shown only to a signed-in
+  // student: until the session is known there is the launch picture, and a signed-out student is sent to sign in (carrying
+  // the screen that was asked for, a check-in link say, so signing in continues to it) without any signed-in screen being
+  // drawn first. Signing out by choice carries nothing: the next student starts at Home. A signed-in student who has not seen
+  // this version of the privacy notice (a first sign-in, or the notice changed) sees it before anything else, except in the
+  // middle of a lesson or a practice set, which it waits for; the check-in link comes after it, so no attendance is
+  // recorded before the student has been told.
+  const onOpen = isOpenPath(pathname);
+  const view = onOpen
     ? "screen"
     : !hydrated || status === "loading"
       ? "splash"
       : status === "signedIn"
-        ? "screen"
+        ? me.data && needsNotice(me.data) && !noticeWaits(pathname)
+          ? "notice"
+          : "screen"
         : status === "error"
           ? "unreachable"
           : reason === "signed_in_elsewhere"
@@ -130,10 +136,13 @@ export function Shell({ children }: { children: ReactNode }) {
 
   // One set at a time is a screen of its own, like the quiz; the list of sets is an ordinary screen.
   const inPractice = pathname.startsWith("/app/practice/");
-  const showTabs = view === "screen" && !NO_TABS.includes(pathname) && !pathname.startsWith("/app/checkin") && !pathname.startsWith("/app/play") && !inPractice;
+  // The notice and the terms can be read without signing in; the tab bar is only for a student who is.
+  const showTabs = view === "screen" && !NO_TABS.includes(pathname) && !(onOpen && status !== "signedIn") && !pathname.startsWith("/app/checkin") && !pathname.startsWith("/app/play") && !inPractice;
   const content =
     view === "screen" ? (
       children
+    ) : view === "notice" && me.data ? (
+      <NoticeScreen updated={noticeWasUpdated(me.data)} />
     ) : view === "elsewhere" ? (
       <SignedElsewhere onSignIn={() => router.replace(welcomeUrl(pathname))} />
     ) : view === "unreachable" ? (
@@ -176,10 +185,12 @@ export function Shell({ children }: { children: ReactNode }) {
             </Sheet>
           )}
           {confirmOptions && (
-            <Sheet label={confirmOptions.title} onClose={() => setConfirmState(null)}>
+            // A sheet that was left behind by a screen it belonged to must not close the next question that opens (its exit timer outlives it).
+            <Sheet label={confirmOptions.title} onClose={() => setConfirmState((s) => (s === confirmState ? null : s))}>
               {(close) => (
                 <>
                   <p className="sheet__title">{confirmOptions.title}</p>
+                  {confirmOptions.body && <p className="t-body steps__note">{confirmOptions.body}</p>}
                   <button
                     className="btn btn--ghost btn--block"
                     onClick={() => {

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
 import { Mark } from "@/components/app/Mark";
@@ -15,7 +16,7 @@ const nextPath = () => safeNext(new URLSearchParams(window.location.search).get(
 
 /** The first screen a student sees: sign in with the school email, then carry on to whatever was asked for. */
 export default function Welcome() {
-  const { locale } = useT();
+  const { locale, t } = useT();
   const { setLocale } = useSettings();
   const router = useRouter();
   const signedIn = useAuth().status === "signedIn";
@@ -47,6 +48,18 @@ export default function Welcome() {
             </div>
           </header>
           <SignIn next={nextPath} />
+          {/* The notice is readable before anything is sent: a student can see how their data is used before signing in. */}
+          <footer className="signin__legal">
+            <p className="t-cap">{t("privacy.welcome")}</p>
+            <div className="signin__legal-links">
+              <Link href="/app/privacy" className="btn btn--plain">
+                {t("privacy.row")}
+              </Link>
+              <Link href="/app/terms" className="btn btn--plain">
+                {t("terms.row")}
+              </Link>
+            </div>
+          </footer>
         </div>
       )}
     </main>
