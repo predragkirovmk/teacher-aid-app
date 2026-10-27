@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
-import { MOCK_CODE, MOCK_ROSTER } from "@/lib/app/api/mock/data";
+import { MOCK_CODE, MOCK_ROSTER } from "@/lib/app/api/mock/roster";
 import { MAX_WRONG_CODES } from "@/lib/app/api/mock/signin";
+import { NOTICE_VERSION } from "@/lib/app/privacy";
 import { expect, mk, en, start, test } from "../fixtures";
 
 const EMAIL = MOCK_ROSTER[0];
@@ -270,7 +271,7 @@ test.describe("continuing what the student came for (EC-JOIN-05)", () => {
     await codeField(page).fill(MOCK_CODE);
     await expect(page).toHaveURL(/\/app\/attendance$/);
 
-    await page.evaluate(() => localStorage.setItem("teacheraid-app-v1", JSON.stringify({ signedIn: false })));
+    await page.evaluate((noticeVersion) => localStorage.setItem("teacheraid-app-v1", JSON.stringify({ signedIn: false, noticeVersion })), NOTICE_VERSION);
     await page.goto("/app/welcome?next=https%3A%2F%2Fevil.example%2Fapp");
     await toCodeStage(page);
     await codeField(page).fill(MOCK_CODE);

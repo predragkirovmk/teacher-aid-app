@@ -2,6 +2,7 @@ import { expect, test as base, type Page } from "@playwright/test";
 import { dictionaries, type Key } from "@/lib/app/i18n";
 import { dictionaries as quizDictionaries, type QKey } from "@/lib/app/quiz-copy";
 import type { Locale } from "@/lib/app/api/types";
+import { NOTICE_VERSION } from "@/lib/app/privacy";
 
 /** Where the demo's local data lives; the key is the app's own (lib/app/api/mock/store.ts). */
 export const STORE_KEY = "teacheraid-app-v1";
@@ -22,7 +23,11 @@ export const en = copy("en");
 export const exact = (s: string) => new RegExp(`^${s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
 
 type Seed = {
-  /** Fields of the demo's saved state to start from (signedIn, read, checkins, clock, ...). A test that gives none starts signed in. */
+  /**
+   * Fields of the demo's saved state to start from (signedIn, read, checkins, clock, ...). A test that gives none starts signed in.
+   * The student has already acknowledged the privacy notice (`noticeVersion`), as every student but a new one has; a test about
+   * the notice says `noticeVersion: null`, or an older version.
+   */
   state?: Record<string, unknown>;
   locale?: Locale;
 };
@@ -35,13 +40,13 @@ type Seed = {
  */
 export async function start(page: Page, seed: Seed) {
   await page.addInitScript(
-    ({ seed, storeKey, localeKey }) => {
+    ({ seed, storeKey, localeKey, noticeVersion }) => {
       if (sessionStorage.getItem("__e2e_seeded")) return;
       sessionStorage.setItem("__e2e_seeded", "1");
-      if (seed.state) localStorage.setItem(storeKey, JSON.stringify(seed.state));
+      if (seed.state) localStorage.setItem(storeKey, JSON.stringify({ noticeVersion, noticeAt: Date.now(), ...seed.state }));
       if (seed.locale) localStorage.setItem(localeKey, seed.locale);
     },
-    { seed, storeKey: STORE_KEY, localeKey: LOCALE_KEY },
+    { seed, storeKey: STORE_KEY, localeKey: LOCALE_KEY, noticeVersion: NOTICE_VERSION },
   );
 }
 
@@ -61,12 +66,15 @@ export const test = base.extend<{ allowConsoleErrors: RegExp[] }>({
     });
     // Every test starts as a student who is signed in, which is what most of them are about; a test about
     // signing in says `signedIn: false` through `start`. (A phone that has never been used is signed out.)
-    await page.addInitScript((storeKey) => {
-      if (sessionStorage.getItem("__e2e_cleared")) return;
-      sessionStorage.setItem("__e2e_cleared", "1");
-      localStorage.clear();
-      localStorage.setItem(storeKey, JSON.stringify({ signedIn: true }));
-    }, STORE_KEY);
+    await page.addInitScript(
+      ({ storeKey, noticeVersion }) => {
+        if (sessionStorage.getItem("__e2e_cleared")) return;
+        sessionStorage.setItem("__e2e_cleared", "1");
+        localStorage.clear();
+        localStorage.setItem(storeKey, JSON.stringify({ signedIn: true, noticeVersion, noticeAt: Date.now() }));
+      },
+      { storeKey: STORE_KEY, noticeVersion: NOTICE_VERSION },
+    );
     // `run`, not `use`: Playwright's name for it trips the React hooks lint rule.
     await run(page);
     expect(problems, "errors in the browser").toEqual([]);

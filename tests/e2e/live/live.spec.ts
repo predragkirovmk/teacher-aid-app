@@ -1,4 +1,6 @@
 import { readFileSync } from "node:fs";
+import { NOTICE_VERSION } from "@/lib/app/privacy";
+import { PRIVACY, TERMS } from "@/lib/app/privacy-copy";
 import { expect, mk, test } from "../fixtures";
 import type { Page } from "@playwright/test";
 
@@ -1692,5 +1694,117 @@ test.describe("alerts and push", () => {
       await page.goto("/app/settings");
       await expect(page.getByRole("button", { name: new RegExp(mk.t("settings.testPush")) })).toHaveCount(0);
     });
+  });
+});
+
+/**
+ * Privacy against the API: the acknowledgement of the notice (PROPOSED `POST /me/acknowledgements`, carried on `GET /me`),
+ * the count of what the API holds (PROPOSED `GET /me/data-summary`), and the notice and terms read without signing in.
+ */
+test.describe("privacy and consent", () => {
+  test.use({ allowConsoleErrors: [/Failed to load resource: (the server responded with a status of (401|422)|net::ERR_)/] });
+
+  const notice = (request: import("@playwright/test").APIRequestContext, version: string | null) =>
+    request.post(`${API}/__control/notice`, { data: { version } });
+  const cont = (page: Page) => page.getByRole("button", { name: mk.t("notice.continue") });
+  const heading = (page: Page, key: "notice.title" | "notice.titleUpdated") => page.getByRole("heading", { level: 1, name: mk.t(key) });
+
+  test("a student the API has no acknowledgement for sees the notice, and Continue sends the version and nothing else", async ({ page, request }) => {
+    await notice(request, null);
+    await page.goto("/app");
+    await expect(heading(page, "notice.title")).toBeVisible();
+    // Nothing of the student's is read behind the notice but who they are (and the stream that tells them of a new alert).
+    expect((await serverState(request)).calls.filter((c) => c.startsWith("GET") && !["GET /me", "GET /realtime"].includes(c))).toEqual([]);
+
+    await cont(page).click();
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Live");
+    await expect(heading(page, "notice.title")).toHaveCount(0);
+    const { calls, bodies } = await serverState(request);
+    expect(calls).toContain("POST /me/acknowledgements");
+    expect(bodies["POST /me/acknowledgements"]).toEqual({ notice_version: NOTICE_VERSION });
+    // The API now has it, so a reload goes straight on.
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Live");
+    await expect(heading(page, "notice.title")).toHaveCount(0);
+  });
+
+  test("a student who acknowledged an older version is told the notice was updated", async ({ page, request }) => {
+    await notice(request, "2026-01-01");
+    await page.goto("/app/profile");
+    await expect(heading(page, "notice.titleUpdated")).toBeVisible();
+    await cont(page).click();
+    await expect(page.locator(".profile__name")).toContainText("Live Student");
+    const state = (await (await request.get(`${API}/__control/state`)).json()) as { acknowledgements: { notice_version: string }[] };
+    expect(state.acknowledgements.map((a) => a.notice_version)).toEqual(["2026-01-01", NOTICE_VERSION]);
+  });
+
+  test("with the API out of reach Continue says so, keeps the screen, and works when the signal is back", async ({ page, request, context }) => {
+    await notice(request, null);
+    await page.goto("/app");
+    await expect(heading(page, "notice.title")).toBeVisible();
+    await context.route(`${API}/api/v1/me/acknowledgements`, (route) => route.abort());
+    await cont(page).click();
+    await expect(page.getByRole("alert").filter({ hasText: mk.t("err.network") })).toBeVisible();
+    await expect(heading(page, "notice.title")).toBeVisible();
+    await context.unroute(`${API}/api/v1/me/acknowledgements`);
+    await cont(page).click();
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Live");
+  });
+
+  test("a class QR scanned by a student who has not seen the notice joins only after Continue", async ({ page, request }) => {
+    await notice(request, null);
+    await page.goto("/app/checkin/LIVE-7B");
+    await expect(heading(page, "notice.title")).toBeVisible();
+    expect((await serverState(request)).calls).not.toContain("POST /sessions/join");
+    await cont(page).click();
+    await expect(page).toHaveURL(/\/app\/play\/LIVE-7B$/);
+    expect((await serverState(request)).calls).toContain("POST /sessions/join");
+  });
+
+  test("the notice and the terms open for a signed-out student, and nothing but who is signed in is asked of the API", async ({ page, request }) => {
+    await request.post(`${API}/__control/signed-out`);
+    await page.goto("/app/privacy#rights");
+    await expect(page).toHaveURL(/\/app\/privacy#rights$/);
+    await expect(page.getByRole("heading", { level: 1, name: PRIVACY.mk.title })).toBeVisible();
+    await page.goto("/app/terms");
+    await expect(page.getByRole("heading", { level: 1, name: TERMS.mk.title })).toBeVisible();
+    expect((await serverState(request)).calls.filter((c) => c !== "GET /me")).toEqual([]);
+  });
+
+  test("Your data draws the API's account and its counts, and a request goes through the school", async ({ page, request }) => {
+    await page.goto("/app/data");
+    await expect(page.getByText("live.student@school.example")).toBeVisible();
+    const row = (key: Parameters<typeof mk.t>[0]) => page.locator("main.screen .list .item").filter({ has: page.getByText(mk.t(key), { exact: true }) });
+    await expect(row("data.n.attendance")).toContainText("18");
+    await expect(row("data.n.answers")).toContainText("12");
+    await expect(row("data.n.alerts")).toContainText("3");
+    await expect(row("data.n.push")).toContainText(mk.t("data.no"));
+    expect((await serverState(request)).calls).toContain("GET /me/data-summary");
+    await expect(page.getByText(mk.t("data.requestBody"))).toBeVisible();
+  });
+
+  test("Your data counts a question to the teacher once the lesson has one", async ({ page, request }) => {
+    await page.goto("/app/checkin/LIVE-7B");
+    await expect(page.getByText(mk.q("q.waitTeacher"))).toBeVisible();
+    await page.getByRole("button", { name: mk.q("ask.entry") }).click();
+    await page.getByRole("textbox", { name: mk.q("ask.label") }).fill("Може ли пример?");
+    await page.getByRole("textbox", { name: mk.q("ask.label") }).press("Enter");
+    await expect(page.getByRole("dialog").getByRole("heading", { name: mk.q("ask.sent") })).toBeVisible();
+    await page.goto("/app/data");
+    await expect(page.locator("main.screen .list .item").filter({ has: page.getByText(mk.t("data.n.asks"), { exact: true }) })).toContainText("1");
+    expect((await serverState(request)).calls).toContain("POST /sessions/se-live-1/anon-questions");
+  });
+
+  test("clearing the phone keeps the student signed in, reads the screens again, and does not sign out", async ({ page, request }) => {
+    await page.goto("/app/data");
+    await page.evaluate(() => localStorage.setItem("teacheraid-camera-intro", "1"));
+    const before = (await serverState(request)).calls.filter((c) => c === "GET /me").length;
+    await page.getByRole("button", { name: new RegExp(mk.t("data.clear")) }).click();
+    await page.getByRole("dialog", { name: mk.t("data.clearTitle") }).getByRole("button", { name: mk.t("data.clearConfirm") }).click();
+    await expect(page.getByText(mk.t("data.cleared")).first()).toBeVisible();
+    expect(await page.evaluate(() => localStorage.getItem("teacheraid-camera-intro"))).toBeNull();
+    await expect(page.getByRole("heading", { level: 1, name: mk.t("data.title") })).toBeVisible();
+    await expect.poll(async () => (await serverState(request)).calls.filter((c) => c === "GET /me").length).toBeGreaterThan(before);
+    expect((await serverState(request)).calls).not.toContain("POST /auth/logout");
   });
 });

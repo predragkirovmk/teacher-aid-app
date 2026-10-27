@@ -6,6 +6,7 @@
  * Control endpoints for a test (not part of the API):
  *   GET  /__control/state          what the server holds, including the calls it received
  *   POST /__control/reset          back to the starting data
+ *   POST /__control/notice        { version }              the notice the student has acknowledged: a version string, or null for none
  *   POST /__control/signed-out     answer 401 `unauthenticated` to every call until the student signs in
  *   POST /__control/elsewhere      answer 401 `signed_in_elsewhere` to every call until the student signs in
  *   POST /__control/redirect       make sign-in answer with a redirect to the school's identity provider
@@ -72,6 +73,7 @@
  *   POST /__control/notifications/seed { count }                 `count` older read notifications, to page through
  * Class codes: LIVE-7B joins; EXPIRED-7B, OTHER-8A and ENDED-7B are refused as the API would; any other is unknown.
  */
+import { readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type {
   WireAttendance,
@@ -84,6 +86,9 @@ import type {
 } from "../../lib/app/api/wire";
 
 const PORT = Number(process.env.FAKE_API_PORT ?? 3101);
+
+/** The privacy notice's version the app ships, read from its source so the two cannot drift apart (lib/app/privacy.ts). */
+const NOTICE_VERSION = /NOTICE_VERSION = "([^"]+)"/.exec(readFileSync(new URL("../../lib/app/privacy.ts", import.meta.url), "utf8"))![1];
 
 const ROSTER = ["live.student@school.example"];
 const CODE = "424242";
@@ -297,7 +302,11 @@ const initial = () => ({
     school: { id: "sc-1", name: "Test School" },
     class: { id: "cl-7b", name: "7B" },
     settings: { notifications_on: true, locale: "en" },
+    // The student has seen the notice of the version the app ships (a test about the notice changes this with /__control/notice).
+    acknowledgement: { notice_version: NOTICE_VERSION, acknowledged_at: iso(DAY) },
   } as WireStudent,
+  /** Every acknowledgement received, newest last: the API keeps one row for each version (PROPOSED). */
+  acknowledgements: [{ notice_version: NOTICE_VERSION, acknowledged_at: iso(DAY) }] as { notice_version: string; acknowledged_at: string }[],
   notifications: [
     {
       id: "n-1",
@@ -411,6 +420,21 @@ const BADGES: WireBadge[] = [
   { code: "perfect", title: "Perfect quiz", points: 20, earned: false, awarded_at: null },
 ];
 
+
+/** GET /me/data-summary (PROPOSED): how many records of each kind the API holds about the student. Counts only. */
+function dataSummary() {
+  const sess = state.session;
+  return {
+    attendance: ATTENDANCE.attended + (sess.joinedStudent ? 1 : 0),
+    answers: 12 + Object.keys(sess.answers).length + (sess.opener?.mine ? 1 : 0),
+    reasons: sess.opener?.reason ? 1 : 0,
+    questions_to_teacher: sess.asks.length,
+    focus_events: sess.focus.filter((f) => f.type === "lost").length,
+    practice_answers: Object.values(state.practiceAnswers).reduce((n, answers) => n + Object.keys(answers).length, 0),
+    notifications: state.notifications.length,
+    push_subscription: state.pushToken !== null,
+  };
+}
 
 /** Open event streams, with the channels each asked for. */
 const streams = new Set<{ res: ServerResponse; channels: string[] }>();
@@ -1013,6 +1037,14 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     state = initial();
     return send(res, 204);
   }
+  if (path === "/__control/notice" && method === "POST") {
+    // The student has acknowledged this version of the notice, or none (null): the app's own is the current one.
+    const body = (await readJson(req)) as { version?: string | null } | undefined;
+    const version = body?.version ?? null;
+    state.student.acknowledgement = version === null ? null : { notice_version: version, acknowledged_at: nowIso() };
+    state.acknowledgements = version === null ? [] : [{ notice_version: version, acknowledged_at: nowIso() }];
+    return send(res, 204);
+  }
   if (path === "/__control/signed-out" && method === "POST") {
     state.signedOut = "unauthenticated";
     return send(res, 204);
@@ -1132,6 +1164,7 @@ async function route(req: IncomingMessage, res: ServerResponse) {
 
   if (method === "GET") {
     if (api === "/me") return send(res, 200, state.student);
+    if (api === "/me/data-summary") return send(res, 200, dataSummary());
     if (api === "/me/courses") return send(res, 200, COURSES);
     if (api === "/me/attendance") return send(res, 200, ATTENDANCE);
     if (api === "/me/results") {
@@ -1161,6 +1194,21 @@ async function route(req: IncomingMessage, res: ServerResponse) {
       if (n.read_at === null && (body?.all || body?.ids?.includes(n.id))) n.read_at = new Date().toISOString();
     }
     return send(res, 204);
+  }
+
+  if (method === "POST" && api === "/me/acknowledgements") {
+    const body = (await readJson(req)) as { notice_version?: unknown } | undefined;
+    state.bodies[`${method} ${api}`] = body;
+    // 1 to 32 characters of letters, digits, dots, dashes and underscores (PROPOSED).
+    const version = body?.notice_version;
+    if (typeof version !== "string" || !/^[A-Za-z0-9._-]{1,32}$/.test(version)) return fail(res, 422, "validation_failed");
+    // One row for each version: a repeat answers with the first and changes nothing.
+    let row = state.acknowledgements.find((a) => a.notice_version === version);
+    const first = !row;
+    if (!row) state.acknowledgements.push((row = { notice_version: version, acknowledged_at: nowIso() }));
+    state.student.acknowledgement = state.acknowledgements.reduce((a, b) => (b.acknowledged_at >= a.acknowledged_at ? b : a));
+    // 201 the first time; a version already stored answers 200 with its row (PROPOSED, FR-PRIV-02).
+    return send(res, first ? 201 : 200, row);
   }
 
   if (method === "PATCH" && api === "/me/profile") {
