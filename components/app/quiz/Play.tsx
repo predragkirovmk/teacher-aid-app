@@ -95,23 +95,19 @@ export function Play({ course, join }: { course: Course; join: JoinedSession }) 
   // Said while the student is on the first question they came to, and gone once the lesson has ranked anyone.
   const lateNote = run.late && run.board === null && run.points === 0 && (run.stage === "answering" || run.stage === "waiting_others" || run.stage === "waiting_result");
   // What the lesson's moving on sounds like to a screen reader: one live region that is always on the page, since a region that
-  // appears together with its text is often not read. It carries the moments that arrive on their own (a question opening, the verdict).
+  // appears together with its text is often not read. It carries the moments that arrive on their own (a question opening, the verdict, the end); what stays on the page for a while (the locked answer, the place) is read there.
   const q = run.question;
   const said = confirming
     ? ""
     : run.stage === "answering" && q
       ? `${t("q.progress", { n: q.index + 1, total: q.total })}. ${q.prompt}`
-      : run.stage === "waiting_others" && run.picked !== null
-        ? t("q.locked")
-        : run.stage === "right"
-          ? `${t("q.right")}. +${run.gain}`
-          : run.stage === "wrong"
-            ? t(run.picked === null ? "q.timeout" : "q.wrong")
-            : run.stage === "waiting_next" && q && run.rank !== null
-              ? `${run.rank}. ${t("q.place")}`
-              : run.stage === "ended"
-                ? t("q.ended.title")
-                : "";
+      : run.stage === "right"
+        ? `${t("q.right")}. +${run.gain}`
+        : run.stage === "wrong"
+          ? t(run.picked === null ? "q.timeout" : "q.wrong")
+          : run.stage === "ended"
+            ? t("q.ended.title")
+            : "";
   return (
     <main className="screen screen--bare q" data-stage={confirming ? "joined" : run.stage}>
       <p className="sr" role="status" aria-atomic="true">
