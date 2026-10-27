@@ -1221,7 +1221,7 @@
   animation-timing-function: var(--spring-smooth);
 }
 
-/* Reduced motion: stages and badges fade in place, rank rows and the timer beat stay still, and the
+/* Reduced motion: stages and badges fade in place, the check and the cross appear instead of drawing, rank rows and the timer beat stay still, and the
    confetti is gone. The timer ring still drains; it is the time left, not decoration. */
 @media (prefers-reduced-motion: reduce) {
   @keyframes q-rise {
@@ -1235,6 +1235,11 @@
     }
   }
   @keyframes q-face {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes q-draw {
     from {
       opacity: 0;
     }

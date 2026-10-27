@@ -2045,6 +2045,9 @@ button.pill {
   .unlock::after {
     animation: none;
   }
+  details.faq::details-content {
+    transition: none;
+  }
   .tab-ind {
     transition: opacity 160ms;
   }
