@@ -758,6 +758,14 @@ button.item:active {
 }
 
 /* ---- scanner ---- */
+.top__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-title1);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
 .scan {
   position: absolute;
   inset: 0;
@@ -1905,7 +1913,7 @@ button.pill {
   transform: translateX(-50%);
   max-width: 88%;
   margin: 0;
-  padding: 10px 16px;
+  padding: 12px 16px;
   border-radius: 22px;
   display: flex;
   align-items: center;

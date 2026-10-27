@@ -50,6 +50,7 @@
 }
 .doc__h3 {
   margin: 0 0 4px;
+  font-family: var(--font-display);
   font-weight: 650;
   text-wrap: balance;
 }
@@ -72,7 +73,7 @@
   text-wrap: pretty;
 }
 .doc__list {
-  padding-left: 22px;
+  padding-left: 24px;
 }
 .doc__list li + li {
   margin-top: 8px;
@@ -88,7 +89,7 @@
 /* One of the app's own sentences, quoted so a student can see it is what the app says at the moment it matters. */
 .doc__quote {
   margin: 8px 0 12px;
-  padding: 14px 16px;
+  padding: 12px 16px;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--line);
@@ -98,7 +99,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 .doc__quote-text {
   margin: 0;
@@ -180,7 +181,7 @@
 .notice__point {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: 16px;
   font-size: var(--fs-callout);
   line-height: 1.4;
   max-width: 36ch;
