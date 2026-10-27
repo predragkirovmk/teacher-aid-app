@@ -286,11 +286,11 @@ function Dock({ pathname }: { pathname: string }) {
   const index = pathname === "/app" ? 0 : pathname.startsWith("/app/notifications") ? 1 : pathname === "/app/profile" ? 2 : -1;
 
   return (
-    <div className="dock">
+    <nav className="dock" aria-label={t("nav.main")}>
       <span className="sr" role="status">
         {arrived}
       </span>
-      <nav className="tabbar glass" aria-label={t("nav.main")}>
+      <div className="tabbar glass">
         <span
           className="tab-ind"
           aria-hidden="true"
@@ -299,12 +299,12 @@ function Dock({ pathname }: { pathname: string }) {
         {tab("/app", t("nav.home"), HouseSimpleIcon, pathname === "/app")}
         {tab("/app/notifications", t("nav.alerts"), BellSimpleIcon, pathname.startsWith("/app/notifications"), count)}
         {tab("/app/profile", t("nav.profile"), UserIcon, pathname === "/app/profile")}
-      </nav>
+      </div>
       {/* The scan is an action, not a section, so it sits beside the tab bar instead of in it. */}
       <Link href="/app/scan" className="scan-fab" aria-label={t("nav.scan")}>
         <ScanIcon size={32} aria-hidden="true" />
       </Link>
-    </div>
+    </nav>
   );
 }
 

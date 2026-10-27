@@ -247,8 +247,9 @@
 
 /* Settings: the line under the notifications switch that leads to how they use data. */
 .settings__more {
-  display: inline-block;
-  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 
 /* The one line about leaving the quiz: its detail opens in place, so the lesson is not left. */
@@ -261,10 +262,15 @@
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
   color: var(--text);
-  min-height: 32px;
+  min-height: 44px;
   display: flex;
   align-items: center;
 }
 .q-fair__more p {
   margin: 4px 0 8px;
+}
+.q-fair__more .doc__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }

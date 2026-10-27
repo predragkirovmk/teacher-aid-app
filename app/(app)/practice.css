@@ -40,7 +40,10 @@
   outline-offset: -2px;
 }
 :is(.q-opt, .q-tf__btn)[data-state="rest"] {
-  opacity: 0.55;
+  /* Receding is losing the card, not fading the words: faded text on blue falls under 4.5:1. */
+  background: transparent;
+  color: var(--text-2);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 /* A choice comes in a little faster than the live quiz's: a student answers many of these in a sitting. */
@@ -108,7 +111,6 @@
   margin-bottom: 2px;
   font-size: var(--fs-label);
   font-weight: 650;
-  color: var(--text-2);
 }
 /* Where a checked-and-saved answer has got to when the verdict is not in yet. */
 .pr-note {

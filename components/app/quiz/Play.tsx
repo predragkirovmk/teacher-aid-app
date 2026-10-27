@@ -94,8 +94,29 @@ export function Play({ course, join }: { course: Course; join: JoinedSession }) 
   const lockedScreen = (run.stage === "waiting_others" || run.stage === "waiting_result") && run.picked !== null;
   // Said while the student is on the first question they came to, and gone once the lesson has ranked anyone.
   const lateNote = run.late && run.board === null && run.points === 0 && (run.stage === "answering" || run.stage === "waiting_others" || run.stage === "waiting_result");
+  // What the lesson's moving on sounds like to a screen reader: one live region that is always on the page, since a region that
+  // appears together with its text is often not read. It carries the moments that arrive on their own (a question opening, the verdict).
+  const q = run.question;
+  const said = confirming
+    ? ""
+    : run.stage === "answering" && q
+      ? `${t("q.progress", { n: q.index + 1, total: q.total })}. ${q.prompt}`
+      : run.stage === "waiting_others" && run.picked !== null
+        ? t("q.locked")
+        : run.stage === "right"
+          ? `${t("q.right")}. +${run.gain}`
+          : run.stage === "wrong"
+            ? t(run.picked === null ? "q.timeout" : "q.wrong")
+            : run.stage === "waiting_next" && q && run.rank !== null
+              ? `${run.rank}. ${t("q.place")}`
+              : run.stage === "ended"
+                ? t("q.ended.title")
+                : "";
   return (
     <main className="screen screen--bare q" data-stage={confirming ? "joined" : run.stage}>
+      <p className="sr" role="status" aria-atomic="true">
+        {said}
+      </p>
       <div className="q__col">
         {confirming ? (
           <Joined course={course} join={join} />
@@ -355,7 +376,7 @@ function Verdict({ run }: { run: SessionRunView }) {
   return (
     <>
       {run.correct ? (
-        <div className="q-body q-body--center" role="status">
+        <div className="q-body q-body--center">
           <span className="q-badge-wrap">
             <Burst />
             <span className="q-badge q-badge--yes q-pop">
@@ -372,7 +393,7 @@ function Verdict({ run }: { run: SessionRunView }) {
         </div>
       ) : (
         <>
-          <div className="q-body q-body--center q-body--tight" role="status">
+          <div className="q-body q-body--center q-body--tight">
             <span className="q-badge q-badge--no q-pop">
               <CrossDraw size={60} />
             </span>
@@ -571,7 +592,7 @@ function Ended({ run, onHome }: { run: SessionRunView; onHome: () => void }) {
           {t("ans.ended")}
         </p>
       )}
-      <div className="q-body q-body--center q-body--tight" role="status">
+      <div className="q-body q-body--center q-body--tight">
         <span className="q-badge q-badge--no q-pop">
           <FlagCheckeredIcon size={56} color="var(--yellow)" aria-hidden="true" />
         </span>
