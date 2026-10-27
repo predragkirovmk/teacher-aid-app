@@ -27,7 +27,7 @@ export const QUIZZES: Partial<Record<SubjectId, Quiz>> = {
       options: [t("Тешката", "The heavy one"), t("Лесната", "The light one"), t("Истовремено", "Both at the same time")],
       answer: 2,
       reasons: [
-        t("Без воздух нема отпор, па сè паѓа исто.", "With no air there is no drag, so everything falls the same."),
+        t("Без воздух нема отпор, па сѐ паѓа исто.", "With no air there is no drag, so everything falls the same."),
         t("Тешката е повлечена посилно, но и потешка за движење.", "The heavy one is pulled harder, but it is also harder to move."),
         t("Го видов тоа на Месечината, перото и чеканот паднаа заедно.", "I saw it on the Moon: the feather and the hammer landed together."),
         t("Мислам дека тешката е побрза, секогаш е така.", "I think the heavy one is faster, it always is."),
@@ -119,7 +119,7 @@ export const QUIZZES: Partial<Record<SubjectId, Quiz>> = {
         t("Исто нешто на двете страни не ја менува рамнотежата.", "The same thing on both sides doesn't tip the balance."),
         t("Како вага: ставам исто на двата краја.", "Like a scale: I put the same on both ends."),
         t("Пробав 2x = 4, па 4x = 8. Пак x = 2.", "I tried 2x = 4, then 4x = 8. Still x = 2."),
-        t("Мислам дека се удвојува бидејќи сè е двојно.", "I think it doubles because everything is doubled."),
+        t("Мислам дека се удвојува бидејќи сѐ е двојно.", "I think it doubles because everything is doubled."),
         t("Решението е x, а x не се менува.", "The solution is x, and x doesn't change."),
       ],
     },

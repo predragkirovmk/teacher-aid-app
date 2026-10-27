@@ -1,0 +1,270 @@
+/* ---- privacy: the notice and the terms, the first-sign-in notice, Your data ---- */
+
+/* The text of a document (privacy notice, terms). Left-aligned running text, a line short enough to follow. */
+.doc__meta {
+  margin: -4px 0 20px;
+}
+/* The date and the version each stay whole: "2026-10-27" must not break at its dashes. */
+.doc__meta span {
+  white-space: nowrap;
+}
+.doc__summary {
+  margin-bottom: 8px;
+}
+.doc__summary .t-title {
+  margin-bottom: 16px;
+}
+.doc__sum {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.doc__sum-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.doc__sum-row .t-body {
+  padding-top: 8px;
+  max-width: 34ch;
+}
+.doc__body {
+  margin-top: 8px;
+}
+.doc__section {
+  /* A jump or a link from another screen lands with the heading clear of the top edge. */
+  scroll-margin-top: 16px;
+}
+.doc__section--2 {
+  margin-top: 40px;
+}
+.doc__section--3 {
+  margin-top: 24px;
+}
+.doc__h2 {
+  margin: 0 0 12px;
+  text-wrap: balance;
+}
+.doc__h3 {
+  margin: 0 0 4px;
+  font-weight: 650;
+  text-wrap: balance;
+}
+.doc__h2:focus,
+.doc__h3:focus {
+  outline: none;
+}
+.doc__h2:focus-visible,
+.doc__h3:focus-visible {
+  outline: 3px solid var(--yellow);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+.doc__p,
+.doc__list {
+  margin: 0 0 12px;
+  max-width: 40rem;
+  color: var(--text-2);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+.doc__list {
+  padding-left: 22px;
+}
+.doc__list li + li {
+  margin-top: 8px;
+}
+.doc__link {
+  color: var(--text);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  overflow-wrap: anywhere;
+}
+/* One of the app's own sentences, quoted so a student can see it is what the app says at the moment it matters. */
+.doc__quote {
+  margin: 8px 0 12px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--line);
+  max-width: 40rem;
+}
+.doc__quote-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.doc__quote-text {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+/* Your data. */
+.data__sub {
+  margin: 0 0 8px;
+}
+.data__text {
+  margin: 0 4px 12px;
+}
+.data__note {
+  margin: 8px 4px 0;
+}
+.data__fact {
+  min-height: 64px;
+}
+.data__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.data__fact .item__title {
+  overflow-wrap: break-word;
+}
+.data__count {
+  min-height: 56px;
+}
+.data__n {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-callout);
+  text-align: right;
+}
+
+/* The first-sign-in notice: a short version, two ways to read on, one Continue that stays in reach. */
+.notice {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 100%;
+}
+.notice__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+}
+.notice__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.notice__out {
+  padding-inline: 8px;
+}
+.notice__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.notice__sub {
+  margin: 0;
+  max-width: 34ch;
+}
+.notice__points {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.notice__point {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  font-size: var(--fs-callout);
+  line-height: 1.4;
+  max-width: 36ch;
+}
+.notice__point svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--text-2);
+}
+.notice__links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.notice__links .btn {
+  min-height: 44px;
+  padding-left: 0;
+  justify-content: flex-start;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  color: var(--text);
+}
+/* The button and what it records stay in reach; the text scrolls up under a short fade into the ground. */
+.notice__foot {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 28px;
+  /* The ground is a gradient over the whole phone; near the bottom it is almost its last colour, so the fade is almost invisible. */
+  background: linear-gradient(180deg, transparent 0, color-mix(in srgb, var(--ground-top) 10%, var(--ground-bottom)) 24px);
+}
+.notice__small {
+  margin: 0;
+  text-align: center;
+}
+.notice__err {
+  margin: 0;
+}
+
+/* The welcome screen's way to the notice and the terms, before anyone has signed in. */
+.signin__legal {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+.signin__legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: 8px;
+}
+.signin__legal-links .btn {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+/* Settings: the line under the notifications switch that leads to how they use data. */
+.settings__more {
+  display: inline-block;
+  margin-top: 4px;
+}
+
+/* The one line about leaving the quiz: its detail opens in place, so the lesson is not left. */
+.q-fair__more {
+  margin-top: 4px;
+}
+.q-fair__more summary {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  color: var(--text);
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+.q-fair__more p {
+  margin: 4px 0 8px;
+}
