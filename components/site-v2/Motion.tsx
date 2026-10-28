@@ -1,7 +1,22 @@
 "use client";
 
 import { useEffect } from "react";
+import { CLASS_COLS, CLASS_ROWS, HERO_SEAT } from "@/lib/site-v2/classroom";
 import { setLenis } from "@/lib/site-v2/lenis";
+
+// An element's layout box relative to `root`, ignoring transforms, so a scrubbed timeline can be
+// measured again at any progress.
+function box(el: HTMLElement, root: HTMLElement) {
+  let x = 0;
+  let y = 0;
+  let n: HTMLElement | null = el;
+  while (n && n !== root) {
+    x += n.offsetLeft;
+    y += n.offsetTop;
+    n = n.offsetParent as HTMLElement | null;
+  }
+  return { x, y, w: el.offsetWidth, h: el.offsetHeight };
+}
 
 /**
  * The page's motion layer. The page is complete without it; this arrives after first paint
@@ -60,6 +75,94 @@ export function Motion() {
             };
             document.addEventListener("click", onAnchor);
 
+            /* The hero (act 1): pinned for two screens of scroll. The text clears, the headline
+               settles as the scene's caption, the laptop becomes the teacher's desk, the one phone
+               flies to its seat while the other 28 fill in around it, and then the class answers:
+               each phone lights yellow and the count climbs to 29. Only the headline, the laptop,
+               the phone, the class and the count move; the seats change opacity. Both layouts are
+               CSS (the start is the page, the end is .hero__end), measured here on every refresh. */
+            const hero = document.querySelector<HTMLElement>("[data-hero]");
+            const q = <T extends Element>(sel: string) => Array.from(hero?.querySelectorAll<T>(sel) ?? []);
+            const title = q<HTMLElement>("[data-hero-title]")[0];
+            const titleEnd = q<HTMLElement>("[data-hero-title-end]")[0];
+            const stage = q<HTMLElement>(".hero__stage")[0];
+            const laptop = q<HTMLElement>(".hero__laptop")[0];
+            const phone = q<HTMLElement>(".hero__phone")[0];
+            const desk = q<HTMLElement>("[data-hero-desk]")[0];
+            const seats = q<HTMLElement>("[data-seat]");
+            const seat = seats[HERO_SEAT];
+            const num = q<HTMLElement>("[data-count]")[0];
+            let heroTl: ReturnType<typeof gsap.timeline> | null = null;
+
+            if (hero && title && titleEnd && stage && laptop && phone && desk && seat && num) {
+              // The entrance runs in CSS; once it has played (or the first scroll cuts it short) it is
+              // cancelled, so its fill never overrides the scene. Its end state is the base style.
+              const entrance = hero.getAnimations({ subtree: true });
+              const settle = () => {
+                entrance.forEach((a) => a.cancel());
+                hero.classList.add("is-entered");
+              };
+              Promise.all(entrance.map((a) => a.finished.catch(() => {}))).then(settle);
+
+              // First the stage rises so the laptop shows itself, its top just under the headline
+              // (lower on wide screens, where the headline is taller); the laptop and the phone then
+              // travel from there, so their moves subtract the rise.
+              const rise = () => Math.min(0, hero.offsetHeight * (narrow ? 0.42 : 0.58) - box(stage, hero).y);
+              const flip = (el: HTMLElement, to: HTMLElement, origin: "top" | "center") => {
+                const a = box(el, hero);
+                const b = box(to, hero);
+                const scale = b.w / a.w;
+                const dx = b.x + b.w / 2 - (a.x + a.w / 2);
+                const dy = origin === "top" ? b.y - a.y : b.y + b.h / 2 - (a.y + a.h / 2);
+                return { x: dx, y: dy - rise(), scale };
+              };
+              const titleTo = () => {
+                const a = box(title, hero);
+                const b = box(titleEnd, hero);
+                const scale = parseFloat(getComputedStyle(titleEnd).fontSize) / parseFloat(getComputedStyle(title).fontSize);
+                return { x: b.x - a.x, y: b.y - a.y, scale };
+              };
+              // GSAP re-reads function values on every refresh, so the scene follows any resize.
+              const toward = (m: () => { x: number; y: number; scale: number }) => ({
+                x: () => m().x,
+                y: () => m().y,
+                scale: () => m().scale,
+              });
+              const count = { n: 0 };
+
+              heroTl = gsap.timeline({
+                defaults: { ease: "none" },
+                scrollTrigger: {
+                  trigger: hero,
+                  start: "top top",
+                  end: "+=200%",
+                  pin: true,
+                  scrub: fine ? 0.6 : 0.35,
+                  invalidateOnRefresh: true,
+                  onUpdate: (st) => {
+                    if (st.progress > 0 && !hero.classList.contains("is-entered")) settle();
+                  },
+                },
+              });
+
+              heroTl
+                // From explicit values: the CSS entrance may still be mid-way when this is built.
+                .fromTo("[data-hero-out]", { y: 0, autoAlpha: 1 }, { y: -48, autoAlpha: 0, duration: 1.2 }, 0)
+                .fromTo(stage, { x: 0, y: 0, scale: 1 }, { y: rise, duration: 1.6, ease: "power2.out" }, 0)
+                .to(title, { ...toward(titleTo), transformOrigin: "0 0", duration: 2.8, ease: "power2.inOut" }, 0.2)
+                .to(laptop, { ...toward(() => flip(laptop, desk, "top")), transformOrigin: "50% 0%", duration: 2.4, ease: "power2.inOut" }, 1.5)
+                .to(phone, { ...toward(() => flip(phone, seat, "center")), duration: 2.2, ease: "power3.inOut" }, 1.7)
+                .to("[data-class]", { autoAlpha: 1, duration: 0.8 }, 2.6)
+                // The phone lands and becomes its seat; the class fills in around it.
+                .to(phone, { autoAlpha: 0, duration: 0.3 }, 3.85)
+                .to(seats, { opacity: 1, duration: 0.35, stagger: { amount: 1.3, from: HERO_SEAT, grid: [CLASS_ROWS, CLASS_COLS] } }, 3.8)
+                // Then they answer, in no particular order, and the count keeps pace.
+                .to("[data-hero-count]", { autoAlpha: 1, duration: 0.6 }, 4.8)
+                .to("[data-lit]", { opacity: 1, duration: 0.25, stagger: { amount: 3.4, from: "random" } }, 5.3)
+                .to(count, { n: seats.length, duration: 3.65, onUpdate: () => (num.textContent = String(Math.round(count.n))) }, 5.3)
+                .to({}, { duration: 1 });
+            }
+
             // Reveals: each block rises into place as it enters, in reading order, once.
             const rise = narrow ? 28 : 44;
             gsap.set("[data-reveal]", { y: rise, autoAlpha: 0 });
@@ -78,7 +181,12 @@ export function Motion() {
                 }),
             });
 
+            // Web fonts change the headline's measure: measure the scene again once they are in.
+            document.fonts.ready.then(() => ScrollTrigger.refresh());
+
             return () => {
+              heroTl?.scrollTrigger?.kill();
+              heroTl?.kill();
               document.removeEventListener("click", onAnchor);
               batch.forEach((st) => st.kill());
               if (lenis) {

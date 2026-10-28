@@ -30,6 +30,8 @@ export type SiteV2Dict = {
     cta: string;
     secondary: string;
     meta: string[];
+    /** The pinned scene: the one phone becomes the class, and every student answers. */
+    class: { of: string; label: string; alt: string };
   };
   teacher: { label: string; title: string; body: string };
   prepare: Scene & { refineLabel: string; refinements: string[]; kinds: string };

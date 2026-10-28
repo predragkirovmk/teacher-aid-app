@@ -1,5 +1,6 @@
 import { ArrowRightIcon } from "@phosphor-icons/react/ssr";
 import type { SiteV2Dict } from "@/content/site-v2/types";
+import { Classroom } from "./Classroom";
 import { Board, Laptop, Phone } from "./Devices";
 import { Motion } from "./Motion";
 import { Nav } from "./Nav";
@@ -19,18 +20,21 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
       <Nav t={t.nav} ctaHref="#book" />
 
       <main id="main" tabIndex={-1}>
-        {/* Act 1, hook: the claim in one line, the product in one glance. */}
-        <section className="hero" id="top" data-theme="paper" aria-labelledby="hero-title">
+        {/* Act 1, hook: the claim in one line, then the scene that proves it. The motion layer
+            pins this section: the one phone becomes the whole class, and every student answers. */}
+        <section className="hero" id="top" data-theme="paper" data-hero aria-labelledby="hero-title">
           <div className="wrap hero__grid">
-            <p className="kicker hero__kicker">{t.hero.kicker}</p>
-            <h1 className="mega hero__title" id="hero-title">
+            <p className="kicker hero__kicker" data-hero-out>
+              {t.hero.kicker}
+            </p>
+            <h1 className="mega hero__title" id="hero-title" data-hero-title>
               {t.hero.title.map((line, i) => (
                 <span className="line" key={line} style={{ "--i": i } as React.CSSProperties}>
                   <span>{line}</span>
                 </span>
               ))}
             </h1>
-            <div className="hero__deck">
+            <div className="hero__deck" data-hero-out>
               <p className="lead">{t.hero.deck}</p>
               <div className="actions">
                 <a className="btn btn--primary" href="#book">
@@ -41,6 +45,11 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
                   <ArrowRightIcon size={18} weight="bold" aria-hidden="true" />
                 </a>
               </div>
+              <ul className="hero__meta">
+                {t.hero.meta.map((m) => (
+                  <li key={m}>{m}</li>
+                ))}
+              </ul>
             </div>
           </div>
 
@@ -53,11 +62,20 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
             </Phone>
           </div>
 
-          <ul className="wrap hero__meta">
-            {t.hero.meta.map((m) => (
-              <li key={m}>{m}</li>
-            ))}
-          </ul>
+          {/* Where the scene ends, laid out in CSS; the motion layer measures it. */}
+          <div className="hero__end">
+            <span className="hero__title-end" data-hero-title-end aria-hidden="true" />
+            <p className="hero__count" data-hero-count aria-hidden="true">
+              <b data-count>0</b>
+              <span>
+                {t.hero.class.of}
+                <br />
+                {t.hero.class.label}
+              </span>
+            </p>
+            <Classroom label={t.hero.class.alt} />
+            <span className="hero__desk" data-hero-desk />
+          </div>
         </section>
 
         {/* Act 2, build: the teacher chapter, the page's one deep-teal moment. */}

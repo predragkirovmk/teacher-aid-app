@@ -95,7 +95,10 @@ teal. One main button per viewport. Secondary actions are chevron links ("Пог
 
 - Engine: GSAP + ScrollTrigger, loaded after first paint. Lenis on desktop pointers only;
   touch keeps native scrolling (smoothing touch adds latency, it does not add smoothness).
-- Hero entrance runs in CSS so it starts at first paint without waiting for JavaScript.
+- Hero entrance runs in CSS so it starts at first paint without waiting for JavaScript; it is
+  cancelled once played (or at the first scroll), so its fill never overrides the scene.
+- Pinned scenes keep both layouts in CSS (start in the flow, end in an absolutely placed layer)
+  and the motion layer only measures between them, so a resize just re-measures.
 - Scroll scenes: pinned, scrubbed timelines with `scrub: 0.6` on desktop and `scrub: true` on
   touch (native momentum already damps).
 - Easing: `power3.out` / `expo.out` for entrances, `none` inside scrubs. No bounce.
@@ -121,7 +124,7 @@ teal. One main button per viewport. Secondary actions are chevron links ("Пог
 
 | Act | Scene | Theme |
 |---|---|---|
-| Hook | Hero: the whole class answers | Paper |
+| Hook | Hero: the whole class answers. Pinned for two screens: the text clears, the headline becomes the caption, the laptop becomes the teacher's desk, the one phone flies to its seat as the other 28 fill in, then every phone lights yellow and the count reaches 29 | Paper |
 | Build | Teacher chapter opener: ready before the bell | Morph to teal |
 | Build | Prepare: your lesson in, questions out (upload, emphasis, AI draft, four refinements) | Teal |
 | Climax | Live: laptop and board in sync (fire, bars, reveal) | Teal |

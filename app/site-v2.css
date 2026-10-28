@@ -156,8 +156,10 @@ body.v2 {
   hyphens: manual;
 }
 
+/* Capped by height too, so on short phones the headline stays two lines and the main button
+   stays on the first screen. */
 .mega {
-  font-size: clamp(3.25rem, 11.5vw, 12.5rem);
+  font-size: clamp(2.5rem, min(12.5vw, 19svh), 12.5rem);
   line-height: 0.92;
   letter-spacing: -0.045em;
 }
@@ -535,7 +537,7 @@ body.v2 {
 
 .hero {
   position: relative;
-  padding-top: calc(var(--nav-h) + clamp(2.5rem, 8vh, 6rem));
+  padding-top: calc(var(--nav-h) + clamp(1.25rem, 7svh, 6rem));
   padding-bottom: clamp(2rem, 6vh, 4rem);
   overflow: clip;
 }
@@ -600,16 +602,22 @@ body.v2 {
 .hero__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 32px;
-  margin-top: clamp(2.5rem, 6vh, 4rem);
-  padding-top: 20px;
-  border-top: 1px solid var(--line);
+  gap: 4px 0;
   font-size: 1rem;
   color: var(--ink-2);
 }
 
-.hero__meta li {
-  padding-top: 0;
+@media (min-width: 768px) {
+  .hero__meta li:not(:last-child)::after {
+    content: "·";
+    padding-inline: 0.6em;
+  }
+}
+
+@media (max-width: 767px) {
+  .hero__meta {
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 1023px) {
@@ -637,10 +645,6 @@ body.v2 {
     bottom: -10%;
   }
 
-  .hero__meta {
-    flex-direction: column;
-    margin-top: clamp(4rem, 10vh, 5rem);
-  }
 }
 
 /* The entrance runs in CSS so it starts at first paint, without waiting for any script. */
@@ -651,8 +655,7 @@ body.v2 {
   }
 
   .hero__kicker,
-  .hero__deck,
-  .hero__meta {
+  .hero__deck {
     animation: v2-fade 0.9s var(--ease-out) both;
     animation-delay: 0.42s;
   }
@@ -661,6 +664,14 @@ body.v2 {
     animation: v2-stage 1.4s var(--ease-out) both;
     animation-delay: 0.3s;
   }
+}
+
+/* Once the entrance has played (or the first scroll finished it), the motion layer owns these. */
+.is-entered .hero__title .line > span,
+.is-entered .hero__kicker,
+.is-entered .hero__deck,
+.is-entered .hero__stage {
+  animation: none;
 }
 
 @keyframes v2-rise {
@@ -691,6 +702,188 @@ body.v2 {
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* ---------- The pinned class scene (motion only) ----------
+   With the motion layer the hero is exactly one screen tall and gets pinned; its start layout is
+   the normal flow above, its end layout is .hero__end below. The motion layer measures both and
+   moves six layers between them; the 29 seats only change opacity. Without motion (or with
+   Reduce Motion) none of this shows and the hero stays as it is. */
+
+.hero__end {
+  display: none;
+}
+
+.motion .hero {
+  height: 100svh;
+  min-height: 560px;
+  padding-bottom: 0;
+}
+
+.motion .hero__end {
+  /* The class is about 11 seat widths tall and the desk 4: the seat size follows the height. */
+  --seat-w: min(4.2vw, calc((89svh - 60px) / 15.4));
+  position: absolute;
+  inset: calc(var(--nav-h) + 3.5svh) var(--gutter) 3.5svh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  column-gap: 4vw;
+  row-gap: 2svh;
+  max-width: calc(1440px - 2 * var(--gutter));
+  margin-inline: auto;
+  pointer-events: none;
+}
+
+/* An empty box at the end place of the headline; its font size is the headline's end size. */
+.hero__title-end {
+  grid-area: 1 / 1;
+  align-self: start;
+  height: 1px;
+  font-family: var(--display);
+  font-size: clamp(2.25rem, 6.6vw, 7.5rem);
+}
+
+.hero__count {
+  grid-area: 2 / 1;
+  align-self: end;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.35em;
+  margin-bottom: 1svh;
+  font-family: var(--display);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 0.9;
+  color: var(--ink);
+  opacity: 0;
+}
+
+.hero__count b {
+  font-size: clamp(4rem, 11vw, 11rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero__count span {
+  padding-bottom: 0.25em;
+  font-size: clamp(1.25rem, 2vw, 2rem);
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--ink-2);
+}
+
+.class {
+  grid-area: 1 / 2 / 3 / 3;
+  align-self: center;
+  justify-self: center;
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: calc(var(--seat-w) * 0.24) calc(var(--seat-w) * 0.5);
+  opacity: 0;
+}
+
+.class__desk {
+  display: flex;
+  gap: calc(var(--seat-w) * 0.12);
+  padding: calc(var(--seat-w) * 0.12);
+  border-radius: calc(var(--seat-w) * 0.16);
+  background: var(--paper-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.seat {
+  display: block;
+  width: var(--seat-w);
+  aspect-ratio: 9 / 16;
+  padding: calc(var(--seat-w) * 0.06);
+  border-radius: calc(var(--seat-w) * 0.16);
+  background: var(--graphite);
+  opacity: 0;
+}
+
+.seat--empty {
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--line);
+  opacity: 1;
+}
+
+.seat__screen {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 7%;
+  height: 100%;
+  padding: 14% 10%;
+  border-radius: calc(var(--seat-w) * 0.11);
+  background: var(--blue);
+}
+
+.seat__screen i {
+  position: relative;
+  display: block;
+  height: 9%;
+  border-radius: 999px;
+  background: var(--blue-card);
+  overflow: hidden;
+}
+
+/* The student's pick, lit yellow when they answer. */
+.seat__screen b {
+  position: absolute;
+  inset: 0;
+  background: var(--yellow);
+  opacity: 0;
+}
+
+/* The laptop's own proportions, so it lands inside its row. */
+.hero__desk {
+  grid-area: 3 / 2;
+  justify-self: center;
+  width: calc(var(--seat-w) * 6.4);
+  aspect-ratio: 1.6;
+}
+
+@media (max-width: 899px) {
+  .motion .hero__end {
+    --seat-w: min(calc((100vw - 2 * var(--gutter)) / 8.2), calc((90svh - 245px) / 11.1));
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    column-gap: 16px;
+    row-gap: 1.6svh;
+  }
+
+  .hero__title-end {
+    font-size: clamp(1.9rem, 8.2vw, 3.25rem);
+  }
+
+  .hero__count {
+    grid-area: 1 / 2;
+    align-self: start;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.1em;
+    margin: 0;
+    text-align: right;
+  }
+
+  .hero__count b {
+    font-size: clamp(2.75rem, 13vw, 5rem);
+  }
+
+  .hero__count span {
+    padding: 0;
+    font-size: 1rem;
+  }
+
+  .class {
+    grid-area: 2 / 1 / 3 / 3;
+  }
+
+  .hero__desk {
+    grid-area: 3 / 1 / 4 / 3;
+    width: min(52vw, 260px);
   }
 }
 

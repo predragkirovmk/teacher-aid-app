@@ -29,6 +29,11 @@ export const en: SiteV2Dict = {
     cta: "Book a free lesson",
     secondary: "See how it works",
     meta: ["Secondary schools and universities", "In Macedonian", "Made in Bitola"],
+    class: {
+      of: "of 29",
+      label: "answered",
+      alt: "A classroom from above: 29 students at their desks, each with a phone. One by one the phones light up, until everyone has answered.",
+    },
   },
   teacher: {
     label: "For the teacher",
