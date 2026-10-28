@@ -1,6 +1,3 @@
-import { apiMode } from "./config";
-import { createLiveApi } from "./live";
-import { createBrowserMock, createServerMock } from "./mock-browser";
 import type {
   AdhocRequest,
   AdvanceRequest,
@@ -146,18 +143,24 @@ export type DemoControls = {
   reset(): void;
 };
 
-// Both adapters are imported by name and the choice is made on a build-time constant, so a bundler can drop the one a
-// build does not use.
-const browserMock = apiMode === "mock" ? createBrowserMock() : null;
+// The environment is read inside each condition, and the adapters are required inside them, so a build proves the other
+// branch dead and leaves that adapter (the mock's demo schools, or the live fetch code) out of its bundle. An `import` at
+// the top of the file would always ship both. Nothing that is unit tested imports this file.
+/* eslint-disable @typescript-eslint/no-require-imports */
+
+const browserMock =
+  process.env.NEXT_PUBLIC_API_MODE === "live" ? null : (require("./mock-browser") as typeof import("./mock-browser")).createBrowserMock();
 
 /** The adapter the app talks to, chosen by NEXT_PUBLIC_API_MODE when it is built. */
-export const api: TeacherApi = browserMock ? browserMock.api : createLiveApi();
+export const api: TeacherApi =
+  process.env.NEXT_PUBLIC_API_MODE === "live" ? (require("./live") as typeof import("./live")).createLiveApi() : browserMock!.api;
 
 /**
  * What the server render, and the render that hydrates it, may know. In mock mode that is a fresh demo school, so both
  * sides draw the same first frame; live data cannot be known there, so it is null and the first frame is a loading state.
  */
-export const serverApi: TeacherApi | null = apiMode === "mock" ? createServerMock() : null;
+export const serverApi: TeacherApi | null =
+  process.env.NEXT_PUBLIC_API_MODE === "live" ? null : (require("./mock-browser") as typeof import("./mock-browser")).createServerMock();
 
 /** The demo's controls, or null on a live build. */
-export const demo: DemoControls | null = browserMock ? browserMock.demo : null;
+export const demo: DemoControls | null = process.env.NEXT_PUBLIC_API_MODE === "live" ? null : browserMock!.demo;

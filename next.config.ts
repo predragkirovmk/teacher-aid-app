@@ -2,6 +2,11 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
 
+// The end-to-end tests run a production build over plain http://localhost, where the browser would
+// upgrade every asset request to https and break the page. NEXT_PUBLIC_E2E=1 drops that one
+// directive for such a build; a Vercel production deploy ignores the flag.
+const e2e = process.env.NEXT_PUBLIC_E2E === "1" && process.env.VERCEL_ENV !== "production";
+
 // No third-party origins anywhere: fonts are self-hosted by next/font, the demo's QR codes are
 // inline SVG, and Redis is only called from the server.
 const csp = [
@@ -17,11 +22,14 @@ const csp = [
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
-  ...(isDev ? [] : ["upgrade-insecure-requests"]),
+  ...(isDev || e2e ? [] : ["upgrade-insecure-requests"]),
 ].join("; ");
 
 const nextConfig: NextConfig = {
   env: {
+    // The teacher app's data source: "mock" (the default, a demo school in the browser) or "live" (the API). Stating the
+    // default here lets a build inline it, so the adapter that is not used is left out of the bundle.
+    NEXT_PUBLIC_API_MODE: process.env.NEXT_PUBLIC_API_MODE === "live" ? "live" : "mock",
     // Which build this is. The student app compares it with /app/build to notice a new deploy.
     NEXT_PUBLIC_APP_BUILD: process.env.VERCEL_DEPLOYMENT_ID ?? process.env.VERCEL_GIT_COMMIT_SHA ?? `local-${Date.now()}`,
   },
