@@ -8,7 +8,11 @@ export type SchoolType = "school" | "university";
 
 export type TeacherState = {
   locale: Locale;
-  /** A demo setting for now; the real one is set once per school when the backend exists. */
+  /**
+   * How the app words the institution. The school decides it (`me.school.type`); this is the last one seen, kept so the
+   * words are right from the first paint. In the demo it is also the switch in Settings that picks which demo school the
+   * mock adapter serves.
+   */
   schoolType: SchoolType;
 };
 
@@ -20,7 +24,7 @@ const LOCALES: readonly Locale[] = ["mk", "en"];
 const SCHOOL_TYPES: readonly SchoolType[] = ["school", "university"];
 
 /** Rebuild the state field by field, so a save from an older build never crashes a screen. */
-function sanitize(saved: unknown): TeacherState {
+export function sanitizeTeacherState(saved: unknown): TeacherState {
   const s = saved && typeof saved === "object" ? (saved as Record<string, unknown>) : {};
   return {
     locale: LOCALES.includes(s.locale as Locale) ? (s.locale as Locale) : DEFAULT.locale,
@@ -37,7 +41,7 @@ function load() {
   loaded = true;
   try {
     const raw = window.localStorage.getItem(KEY);
-    state = raw ? sanitize(JSON.parse(raw)) : DEFAULT;
+    state = raw ? sanitizeTeacherState(JSON.parse(raw)) : DEFAULT;
   } catch {
     // Blocked storage: the settings still work until the page is closed.
   }
@@ -50,6 +54,8 @@ function applyLang() {
 
 function set(patch: Partial<TeacherState>) {
   load();
+  // A change to what it already is is not news: no save, and nothing re-renders.
+  if ((Object.keys(patch) as (keyof TeacherState)[]).every((k) => state[k] === patch[k])) return;
   state = { ...state, ...patch };
   try {
     window.localStorage.setItem(KEY, JSON.stringify(state));
@@ -80,6 +86,15 @@ function subscribe(cb: () => void) {
   listeners.add(cb);
   return () => listeners.delete(cb);
 }
+
+/** The settings now, for code that is not a component (the mock adapter reads which demo school is chosen). */
+export function getTeacherState(): TeacherState {
+  load();
+  return state;
+}
+
+/** Listen to the settings from outside React. Returns the way to stop. */
+export const subscribeTeacher = subscribe;
 
 export function useTeacher(): TeacherState {
   return useSyncExternalStore(

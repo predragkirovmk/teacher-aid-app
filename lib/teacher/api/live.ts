@@ -1,4 +1,5 @@
-import { apiBase, type TeacherApi } from "./client";
+import type { TeacherApi } from "./client";
+import { apiBase } from "./config";
 import { ApiError, parseErrorResponse } from "./errors";
 import {
   CONSOLE_EVENT_TYPES,

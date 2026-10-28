@@ -1,3 +1,6 @@
+import { apiMode } from "./config";
+import { createLiveApi } from "./live";
+import { createBrowserMock, createServerMock } from "./mock-browser";
 import type {
   AdhocRequest,
   AdvanceRequest,
@@ -30,21 +33,6 @@ import type {
   UpdateLessonRequest,
   AnonQuestionItem,
 } from "./types";
-
-/**
- * Which adapter the app runs on, fixed when it is built (Next inlines NEXT_PUBLIC_ variables).
- * `mock` plays the whole backend in the browser over a demo school, so the app works with no
- * server; `live` talks to `NEXT_PUBLIC_API_BASE` under `/api/v1`.
- */
-export type ApiMode = "mock" | "live";
-
-export const apiMode: ApiMode = process.env.NEXT_PUBLIC_API_MODE === "live" ? "live" : "mock";
-
-/** True only in mock mode: the demo's own controls (the school switch, reset) are shown only then. */
-export const demoOnly: boolean = apiMode === "mock";
-
-/** The API's root: NEXT_PUBLIC_API_BASE plus `/api/v1`. An empty base means the same origin. */
-export const apiBase = `${(process.env.NEXT_PUBLIC_API_BASE ?? "").replace(/\/+$/, "")}/api/v1`;
 
 export type Unsubscribe = () => void;
 
@@ -151,3 +139,25 @@ export interface TeacherApi {
  * the live adapter's promises are ordinary and settle later.
  */
 export type SettledPromise<T> = Promise<T> & { settled: { ok: true; value: T } | { ok: false; error: unknown } };
+
+/** The demo's own controls, which only the mock has. */
+export type DemoControls = {
+  /** Start the demo school over: the lessons the teacher made go, and the history is as of today. */
+  reset(): void;
+};
+
+// Both adapters are imported by name and the choice is made on a build-time constant, so a bundler can drop the one a
+// build does not use.
+const browserMock = apiMode === "mock" ? createBrowserMock() : null;
+
+/** The adapter the app talks to, chosen by NEXT_PUBLIC_API_MODE when it is built. */
+export const api: TeacherApi = browserMock ? browserMock.api : createLiveApi();
+
+/**
+ * What the server render, and the render that hydrates it, may know. In mock mode that is a fresh demo school, so both
+ * sides draw the same first frame; live data cannot be known there, so it is null and the first frame is a loading state.
+ */
+export const serverApi: TeacherApi | null = apiMode === "mock" ? createServerMock() : null;
+
+/** The demo's controls, or null on a live build. */
+export const demo: DemoControls | null = browserMock ? browserMock.demo : null;
