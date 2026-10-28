@@ -44,3 +44,8 @@ next-env.d.ts
 # claude code (per machine)
 /.claude/settings.local.json
 /.claude/worktrees/
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
