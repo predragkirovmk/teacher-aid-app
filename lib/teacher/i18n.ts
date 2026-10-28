@@ -33,8 +33,6 @@ const en = {
   "noun.classes": { school: "classes", uni: "groups" },
   "noun.teacher": { school: "teacher", uni: "professor" },
 
-  "user.first": "Marija",
-  "user.name": "Marija Petrovska",
   "user.link": "{name}, settings",
 
   "logout.title": "Do you want to sign out?",
@@ -83,6 +81,15 @@ const en = {
   "install.step3": "Confirm with “Install”.",
   "install.nothing":
     "Cannot see the icon? Open the browser menu (three dots, top right) and look for “Install”.",
+
+  "demo.title": "Demo data",
+  "demo.hint": "The lessons you prepare here are kept on this computer only. Reset puts the demo school back as it was at the start. Your language and type of institution stay as they are.",
+  "demo.reset": "Reset the demo data",
+  "demo.confirm.title": "Do you want to reset the demo data?",
+  "demo.confirm.body": "The lessons you prepared in this demo will disappear.",
+  "demo.confirm.stay": "No, keep them",
+  "demo.confirm.yes": "Yes, reset",
+  "demo.done": "Done. The demo data is back as it was at the start.",
 
   "help.title": "Help",
   "help.what": "Answers to the most common questions.",
@@ -165,8 +172,6 @@ const mk: Record<Key, Entry> = {
   "noun.classes": { school: "класови", uni: "групи" },
   "noun.teacher": { school: "наставник", uni: "професор" },
 
-  "user.first": "Марија",
-  "user.name": "Марија Петровска",
   "user.link": "{name}, поставки",
 
   "logout.title": "Дали сакате да се одјавите?",
@@ -214,6 +219,15 @@ const mk: Record<Key, Entry> = {
   "install.step2": "На десната страна од лентата кликнете на малата икона за инсталирање (монитор со стрелка надолу).",
   "install.step3": "Потврдете со „Инсталирај“.",
   "install.nothing": "Не ја гледате иконата? Отворете го менито на прелистувачот (три точки горе десно) и побарајте „Инсталирај“.",
+
+  "demo.title": "Демо податоци",
+  "demo.hint": "Лекциите што ги подготвувате тука се чуваат само на овој компјутер. Ресетирањето го враќа демо училиштето како на почеток. Јазикот и типот на установа остануваат.",
+  "demo.reset": "Ресетирај ги демо податоците",
+  "demo.confirm.title": "Дали сакате да ги ресетирате демо податоците?",
+  "demo.confirm.body": "Лекциите што сте ги подготвиле во оваа демо верзија ќе исчезнат.",
+  "demo.confirm.stay": "Не, задржи ги",
+  "demo.confirm.yes": "Да, ресетирај",
+  "demo.done": "Готово. Демо податоците се вратени како на почеток.",
 
   "help.title": "Помош",
   "help.what": "Одговори на најчестите прашања.",

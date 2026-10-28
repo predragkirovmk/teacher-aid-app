@@ -2,17 +2,9 @@
 
 import { ArrowLeftIcon } from "@phosphor-icons/react";
 import Link from "next/link";
+import { useTeacherName } from "@/lib/teacher/api/hooks";
 import { useT } from "@/lib/teacher/i18n";
 import { PageTitle } from "./PageTitle";
-
-/** The teacher's initials from their name: "Марија Петровска" gives "МП". */
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .map((word) => word[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 
 /**
  * Every screen starts here: a plain title that says where you are, an optional one-line subtitle,
@@ -20,7 +12,7 @@ const initials = (name: string) =>
  */
 export function PageHeader({ title, subtitle, back }: { title: string; subtitle?: string; back?: string }) {
   const { t } = useT();
-  const name = t("user.name");
+  const teacher = useTeacherName();
   return (
     <header className="head">
       <PageTitle title={title} />
@@ -34,12 +26,14 @@ export function PageHeader({ title, subtitle, back }: { title: string; subtitle?
         <h1 className="head__title">{title}</h1>
         {subtitle && <p className="head__sub">{subtitle}</p>}
       </div>
-      <Link href="/teacher/settings" className="me" aria-label={t("user.link", { name })}>
-        <span className="me__badge" aria-hidden="true">
-          {initials(name)}
-        </span>
-        {name}
-      </Link>
+      {teacher && (
+        <Link href="/teacher/settings" className="me" aria-label={t("user.link", { name: teacher.full })}>
+          <span className="me__badge" aria-hidden="true">
+            {teacher.initials}
+          </span>
+          {teacher.full}
+        </Link>
+      )}
     </header>
   );
 }

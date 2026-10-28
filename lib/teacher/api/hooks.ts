@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { schoolTypeOf } from "../format";
-import { actions } from "../store";
+import { firstName, initials, personName, schoolTypeOf } from "../format";
+import { actions, useTeacher } from "../store";
 import { apiMode } from "./config";
 import { change, mapQuery, seed, useQuery, type Query } from "./query";
 import type {
@@ -76,6 +76,20 @@ export function useCourse(courseId: Id | undefined): Query<CourseSummary | null>
 export function usePreparedLessons(): Query<LessonSummary[]> {
   const q = useLessons();
   return useMemo(() => mapQuery(q, (all) => all.filter((l) => l.times_run === 0)), [q]);
+}
+
+/**
+ * The teacher's name as the interface language writes it (the English interface uses Latin letters), with the first name
+ * for greetings and the initials for the badge. Null until the API has answered.
+ */
+export function useTeacherName(): { full: string; first: string; initials: string } | null {
+  const me = useMe().data;
+  const { locale } = useTeacher();
+  return useMemo(() => {
+    if (!me) return null;
+    const full = personName(me.name, locale);
+    return { full, first: firstName(full), initials: initials(full) };
+  }, [me, locale]);
 }
 
 // ---- Keeping the words in step with the school -----------------------------------------------------

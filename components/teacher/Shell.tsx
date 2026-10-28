@@ -18,6 +18,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 // Loaded on every page so the browser's install offer is caught whenever it comes.
 import "@/lib/app/install";
 import { Mark } from "@/components/app/Mark";
+import { useSchoolWording } from "@/lib/teacher/api/hooks";
 import { useT, type Key } from "@/lib/teacher/i18n";
 import { useNarrow } from "@/lib/teacher/media";
 
@@ -42,6 +43,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { t } = useT();
+  useSchoolWording();
   const narrow = useNarrow();
   // The path the drawer was opened on, so moving to another page closes it without an effect.
   const [openAt, setOpenAt] = useState<string | null>(null);

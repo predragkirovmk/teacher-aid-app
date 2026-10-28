@@ -3,6 +3,7 @@
 import { ChalkboardTeacherIcon, PlusIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { PageHeader } from "@/components/teacher/PageHeader";
+import { useTeacherName } from "@/lib/teacher/api/hooks";
 import { useDayPart } from "@/lib/teacher/day";
 import { useT } from "@/lib/teacher/i18n";
 
@@ -11,10 +12,13 @@ const GREETING = { morning: "today.greet.morning", day: "today.greet.day", eveni
 export default function TodayPage() {
   const { t } = useT();
   const part = useDayPart();
-  const name = t("user.first");
+  const teacher = useTeacherName();
   return (
     <>
-      <PageHeader title={t("today.title")} subtitle={t(part ? GREETING[part] : "today.greet.neutral", { name })} />
+      <PageHeader
+        title={t("today.title")}
+        subtitle={teacher ? t(part ? GREETING[part] : "today.greet.neutral", { name: teacher.first }) : undefined}
+      />
       <div className="content">
         <div className="card card--stack">
           <span className="card__icon">
