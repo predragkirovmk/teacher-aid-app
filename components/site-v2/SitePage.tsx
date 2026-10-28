@@ -1,6 +1,6 @@
 import { ArrowRightIcon } from "@phosphor-icons/react/ssr";
 import type { SiteV2Dict } from "@/content/site-v2/types";
-import { Classroom } from "./Classroom";
+import { ClassStack } from "./ClassStack";
 import { Board, Laptop, Phone } from "./Devices";
 import { Motion } from "./Motion";
 import { Nav } from "./Nav";
@@ -21,7 +21,7 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
 
       <main id="main" tabIndex={-1}>
         {/* Act 1, hook: the claim in one line, then the scene that proves it. The motion layer
-            pins this section: the one phone becomes the whole class, and every student answers. */}
+            pins this section: the one phone is joined by the whole class, and every student answers. */}
         <section className="hero" id="top" data-theme="paper" data-hero aria-labelledby="hero-title">
           <div className="wrap hero__grid">
             <p className="kicker hero__kicker" data-hero-out>
@@ -66,15 +66,14 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
           <div className="hero__end">
             <span className="hero__title-end" data-hero-title-end aria-hidden="true" />
             <p className="hero__count" data-hero-count aria-hidden="true">
-              <b data-count>0</b>
+              <b data-count>1</b>
               <span>
                 {t.hero.class.of}
                 <br />
                 {t.hero.class.label}
               </span>
             </p>
-            <Classroom label={t.hero.class.alt} />
-            <span className="hero__desk" data-hero-desk />
+            <ClassStack label={t.hero.class.alt} />
           </div>
         </section>
 

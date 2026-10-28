@@ -708,8 +708,9 @@ body.v2 {
 /* ---------- The pinned class scene (motion only) ----------
    With the motion layer the hero is exactly one screen tall and gets pinned; its start layout is
    the normal flow above, its end layout is .hero__end below. The motion layer measures both and
-   moves six layers between them; the 29 seats only change opacity. Without motion (or with
-   Reduce Motion) none of this shows and the hero stays as it is. */
+   moves the layers between them: the headline, the stage, the laptop, the phone and the stack's
+   cards, a few at a time. Without motion (or with Reduce Motion) none of this shows and the hero
+   stays as it is. */
 
 .hero__end {
   display: none;
@@ -721,16 +722,21 @@ body.v2 {
   padding-bottom: 0;
 }
 
+/* The flying phone passes over the stack, so the stage sits above the end layer. */
+.motion .hero__stage {
+  z-index: 2;
+}
+
 .motion .hero__end {
-  /* The class is about 11 seat widths tall and the desk 4: the seat size follows the height. */
-  --seat-w: min(4.2vw, calc((89svh - 60px) / 15.4));
+  /* The stack is the front phone (2.09 widths tall) plus 28 edges of 0.03 widths. */
+  --card-w: min(15vw, calc((88svh - 80px) / 3));
   position: absolute;
   inset: calc(var(--nav-h) + 3.5svh) var(--gutter) 3.5svh;
+  z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 0.45fr);
+  grid-template-rows: auto minmax(0, 1fr);
   column-gap: 4vw;
-  row-gap: 2svh;
   max-width: calc(1440px - 2 * var(--gutter));
   margin-inline: auto;
   pointer-events: none;
@@ -774,84 +780,49 @@ body.v2 {
   color: var(--ink-2);
 }
 
-.class {
+/* The stack: every card and the front place sit at the bottom; the motion layer deals the cards
+   up behind the front, each a step higher, narrower and paler than the one before. */
+.stack {
   grid-area: 1 / 2 / 3 / 3;
-  align-self: center;
-  justify-self: center;
-  display: grid;
-  grid-template-columns: repeat(3, auto);
-  gap: calc(var(--seat-w) * 0.24) calc(var(--seat-w) * 0.5);
-  opacity: 0;
-}
-
-.class__desk {
-  display: flex;
-  gap: calc(var(--seat-w) * 0.12);
-  padding: calc(var(--seat-w) * 0.12);
-  border-radius: calc(var(--seat-w) * 0.16);
-  background: var(--paper-2);
-  box-shadow: inset 0 0 0 1px var(--line);
-}
-
-.seat {
-  display: block;
-  width: var(--seat-w);
-  aspect-ratio: 9 / 16;
-  padding: calc(var(--seat-w) * 0.06);
-  border-radius: calc(var(--seat-w) * 0.16);
-  background: var(--graphite);
-  opacity: 0;
-}
-
-.seat--empty {
-  background: none;
-  box-shadow: inset 0 0 0 1px var(--line);
-  opacity: 1;
-}
-
-.seat__screen {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 7%;
-  height: 100%;
-  padding: 14% 10%;
-  border-radius: calc(var(--seat-w) * 0.11);
-  background: var(--blue);
-}
-
-.seat__screen i {
+  align-self: end;
   position: relative;
-  display: block;
-  height: 9%;
-  border-radius: 999px;
-  background: var(--blue-card);
-  overflow: hidden;
+  width: var(--card-w);
+  height: calc(var(--card-w) * (2.09 + 28 * 0.03));
+  opacity: 0;
 }
 
-/* The student's pick, lit yellow when they answer. */
-.seat__screen b {
+.stack__card,
+.stack__front {
   position: absolute;
-  inset: 0;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  aspect-ratio: 9 / 18.8;
+  border-radius: 14% / 6.6%;
+}
+
+/* A paper-white rim parts each edge from the next, like the pages of a book; the cards pale with
+   depth, so the stack stays quiet until it lights. */
+.stack__card {
+  background: color-mix(in oklch, var(--blue) calc(78% - var(--k) * 1.4%), var(--paper));
+  box-shadow: inset 0 0 0 max(1.5px, 0.8%) var(--paper);
+}
+
+/* The card's student has answered. */
+.stack__card b {
+  position: absolute;
+  inset: max(1.5px, 0.8%);
+  border-radius: inherit;
   background: var(--yellow);
   opacity: 0;
 }
 
-/* The laptop's own proportions, so it lands inside its row. */
-.hero__desk {
-  grid-area: 3 / 2;
-  justify-self: center;
-  width: calc(var(--seat-w) * 6.4);
-  aspect-ratio: 1.6;
-}
-
 @media (max-width: 899px) {
   .motion .hero__end {
-    --seat-w: min(calc((100vw - 2 * var(--gutter)) / 8.2), calc((90svh - 245px) / 11.1));
+    --card-w: min(52vw, calc((88svh - 190px) / 3));
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr);
     column-gap: 16px;
-    row-gap: 1.6svh;
   }
 
   .hero__title-end {
@@ -877,13 +848,10 @@ body.v2 {
     font-size: 1rem;
   }
 
-  .class {
+  .stack {
     grid-area: 2 / 1 / 3 / 3;
-  }
-
-  .hero__desk {
-    grid-area: 3 / 1 / 4 / 3;
-    width: min(52vw, 260px);
+    justify-self: center;
+    align-self: center;
   }
 }
 

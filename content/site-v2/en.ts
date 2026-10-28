@@ -32,7 +32,7 @@ export const en: SiteV2Dict = {
     class: {
       of: "of 29",
       label: "answered",
-      alt: "A classroom from above: 29 students at their desks, each with a phone. One by one the phones light up, until everyone has answered.",
+      alt: "One student's phone, with the phones of 28 classmates stacked behind it. One by one they light up, until everyone has answered.",
     },
   },
   teacher: {
