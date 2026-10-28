@@ -131,13 +131,25 @@ button {
   transform: none;
 }
 
+/*
+ * Seven 56px rows and the logo need about 560px. A shorter window (a laptop at 125% to 150%, or
+ * 200% zoom in the drawer) scrolls the sidebar, and a shadow on the edge says there is more. The
+ * "local" layers cover the shadow once the end is reached, so it only shows on a side that still
+ * has something beyond it.
+ */
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
-  padding: var(--sp-3) var(--sp-2);
-  background: var(--deep);
+  gap: var(--sp-3);
+  padding: var(--sp-2);
   overflow-y: auto;
+  overscroll-behavior: contain;
+  background:
+    linear-gradient(var(--deep) 30%, transparent) top / 100% 2.5rem no-repeat local,
+    linear-gradient(transparent, var(--deep) 70%) bottom / 100% 2.5rem no-repeat local,
+    linear-gradient(rgb(10 46 55 / 0.9), transparent) top / 100% 1.5rem no-repeat scroll,
+    linear-gradient(transparent, rgb(10 46 55 / 0.9)) bottom / 100% 1.5rem no-repeat scroll,
+    var(--deep);
 }
 
 .brand {
@@ -209,7 +221,7 @@ button {
 
 .sidebar__foot {
   margin-top: auto;
-  padding-top: var(--sp-2);
+  padding-top: var(--sp-1);
   border-top: 1px solid var(--line);
 }
 
@@ -294,6 +306,22 @@ button {
 @media (max-width: 26rem) {
   .topbar .brand__word {
     display: none;
+  }
+}
+/* A short window: the rows stay 56px, the space between them gives way. About 480px is enough. */
+@media (max-height: 40rem) {
+  .sidebar {
+    gap: var(--sp-1);
+    padding-block: var(--sp-1);
+  }
+  .sidebar .nav {
+    gap: 0;
+  }
+  .sidebar .brand {
+    gap: var(--sp-1);
+  }
+  .sidebar .brand__link {
+    min-height: var(--tap-small);
   }
 }
 
