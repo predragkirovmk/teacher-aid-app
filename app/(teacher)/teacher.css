@@ -18,6 +18,8 @@
   /* Softer text for --panel and --deep only (6.9:1 on --panel). */
   --text-2: #d9e7ea;
   --line: rgba(255, 255, 255, 0.32);
+  /* The edge of a secondary button: 3:1 against the panel and the ground, so it reads as a button. */
+  --line-strong: rgba(255, 255, 255, 0.55);
 
   --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-display: var(--font-golos), system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -102,6 +104,9 @@ button {
 :focus-visible {
   outline: 3px solid var(--yellow);
   outline-offset: 2px;
+  /* A dark gap between the ring and what is behind it keeps the ring 3:1 on any surface, even the
+     lightest part of the ground (yellow on --ground alone is 2.7:1). */
+  box-shadow: 0 0 0 2px var(--shadow);
 }
 
 .sr {
@@ -332,6 +337,7 @@ button {
 
 .main:focus {
   outline: none;
+  box-shadow: none;
 }
 .main {
   min-width: 0;
@@ -487,7 +493,7 @@ button {
 }
 .btn--secondary {
   background: var(--deep);
-  border-color: var(--line);
+  border-color: var(--line-strong);
   color: var(--text);
 }
 .btn--small {
@@ -549,6 +555,7 @@ button {
 .choice:has(input:focus-visible) {
   outline: 3px solid var(--yellow);
   outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--shadow);
 }
 @media (hover: hover) {
   .choice[data-checked="false"]:hover {
