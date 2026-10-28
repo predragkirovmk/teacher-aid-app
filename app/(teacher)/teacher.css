@@ -245,6 +245,10 @@ button {
 }
 
 @media (max-width: 63.9375rem) {
+  /* The top bar is sticky: tabbing back up must not leave the focused row underneath it. */
+  html {
+    scroll-padding-top: 5.5rem;
+  }
   .topbar {
     position: sticky;
     top: 0;
