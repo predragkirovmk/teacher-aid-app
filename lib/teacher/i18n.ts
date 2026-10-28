@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { isApiError } from "./api/errors";
 import { useTeacher, type Locale, type SchoolType } from "./store";
 
 /**
@@ -110,6 +111,35 @@ const en = {
   "error.body": "This screen could not be shown. Please try again. If that does not help, go back to Today.",
   "error.retry": "Try again",
   "error.home": "Go to Today",
+
+  "err.network": "There is no internet connection. Check the connection and try again.",
+  "err.invalid_response": "We got an answer we do not understand. Try again. If that does not help, write to us.",
+  "err.not_implemented": "This part is still being built.",
+  "err.unknown": "Something went wrong. Try again.",
+  "err.unauthenticated": "You are not signed in. Sign in and try again.",
+  "err.unknown_email": "This address is not on the list of invited teachers. Sign in with the address from your institution, or ask the administrator for an invitation.",
+  "err.sign_in_failed": "Signing in did not work or was cancelled. Try again.",
+  "err.signed_in_elsewhere": "You have signed in on another computer. Sign in again to carry on here.",
+  "err.token_expired": "The code has expired. Use the new code that is shown.",
+  "err.not_enrolled": { school: "This student is not in this class.", uni: "This student is not in this group." },
+  "err.session_ended": "The lesson has ended and can no longer be changed.",
+  "err.already_answered": "The answer has already been sent.",
+  "err.limit_reached": "The highest number allowed has been reached.",
+  "err.not_found": "We could not find what you are looking for. It may have been deleted. Go back and try again.",
+  "err.validation_failed": "Something you entered is not right. Check it and try again.",
+  "err.validation_failed.file_type": "Only a PDF or a Word (.docx) document can be added.",
+  "err.validation_failed.file_too_large": "The document is larger than 20 MB. Choose a smaller one, or paste the text instead.",
+  "err.validation_failed.empty": "The document is empty. Choose another one.",
+  "err.validation_failed.no_text": "We found no text in this document (it may be a scan). Paste the text instead, or choose another document.",
+  "err.validation_failed.text_too_short": "The text is too short. Write at least a few sentences about the topic.",
+  "err.question_closed": "The time for this question has run out.",
+  "err.rate_limited": "Too many tries. Wait a moment and try again.",
+  "err.rate_limited.wait": "Too many tries. Wait {seconds} seconds and try again.",
+  "err.server_error": "We have a problem on our side. Your work is not lost. Try again in a few minutes.",
+  "err.generation_failed": "We could not prepare the lesson. Your material is saved. Try again.",
+  "err.session_open": { school: "You already have a lesson running for this class. End it first.", uni: "You already have a lesson running for this group. End it first." },
+  "err.invalid_state": "That cannot be done at this point in the lesson.",
+  "err.question_open": "A question is already open. Close it or skip it first.",
 } satisfies Record<string, Entry>;
 
 export type Key = keyof typeof en;
@@ -212,6 +242,35 @@ const mk: Record<Key, Entry> = {
   "error.body": "Овој екран не можеше да се прикаже. Обидете се повторно. Ако не помогне, вратете се на Денес.",
   "error.retry": "Обиди се повторно",
   "error.home": "Оди на Денес",
+
+  "err.network": "Нема врска со интернет. Проверете ја врската и обидете се повторно.",
+  "err.invalid_response": "Добивме одговор што не го разбираме. Обидете се повторно. Ако не помогне, пишете ни.",
+  "err.not_implemented": "Овој дел сè уште се гради.",
+  "err.unknown": "Нешто не е во ред. Обидете се повторно.",
+  "err.unauthenticated": "Не сте најавени. Најавете се и обидете се повторно.",
+  "err.unknown_email": "Оваа адреса не е меѓу поканетите наставници. Најавете се со адресата од Вашата установа или побарајте покана од администраторот.",
+  "err.sign_in_failed": "Најавувањето не успеа или е откажано. Обидете се повторно.",
+  "err.signed_in_elsewhere": "Се најавивте на друг компјутер. Најавете се повторно за да продолжите тука.",
+  "err.token_expired": "Кодот истече. Користете го новиот код што се прикажува.",
+  "err.not_enrolled": { school: "Овој ученик не е запишан во овој клас.", uni: "Овој студент не е запишан во оваа група." },
+  "err.session_ended": "Лекцијата е завршена и повеќе не може да се менува.",
+  "err.already_answered": "Одговорот веќе е испратен.",
+  "err.limit_reached": "Достигнат е најголемиот дозволен број.",
+  "err.not_found": "Не го најдовме тоа што го барате. Можеби е избришано. Вратете се назад и обидете се повторно.",
+  "err.validation_failed": "Нешто од внесеното не е во ред. Проверете го и обидете се повторно.",
+  "err.validation_failed.file_type": "Може да се додаде само PDF или Word (.docx) документ.",
+  "err.validation_failed.file_too_large": "Документот е поголем од 20 MB. Изберете помал или залепете го текстот.",
+  "err.validation_failed.empty": "Документот е празен. Изберете друг.",
+  "err.validation_failed.no_text": "Во овој документ не најдовме текст (можеби е скениран). Залепете го текстот или изберете друг документ.",
+  "err.validation_failed.text_too_short": "Текстот е прекраток. Напишете барем неколку реченици за темата.",
+  "err.question_closed": "Времето за ова прашање истече.",
+  "err.rate_limited": "Премногу обиди. Почекајте малку и обидете се повторно.",
+  "err.rate_limited.wait": "Премногу обиди. Почекајте {seconds} секунди и обидете се повторно.",
+  "err.server_error": "Кај нас има проблем. Вашата работа не е изгубена. Обидете се повторно за неколку минути.",
+  "err.generation_failed": "Не успеавме да ја подготвиме лекцијата. Вашиот материјал е сочуван. Обидете се повторно.",
+  "err.session_open": { school: "Веќе имате лекција во тек за овој клас. Прво завршете ја.", uni: "Веќе имате лекција во тек за оваа група. Прво завршете ја." },
+  "err.invalid_state": "Тоа не може да се направи во овој момент од лекцијата.",
+  "err.question_open": "Едно прашање е веќе отворено. Прво затворете го или прескокнете го.",
 };
 
 export const dictionaries: Record<Locale, Record<Key, Entry>> = { en, mk };
@@ -231,11 +290,32 @@ export function translate(locale: Locale, schoolType: SchoolType, key: Key, vars
   return pick(locale, schoolType, key).replace(/\{(\w+)\}/g, (whole, name: string) => (name in all ? String(all[name]) : whole));
 }
 
+/**
+ * The words for a failed call. A refused upload says what was wrong with it, a rate limit says how long to wait when the
+ * server said, and any other code has its own sentence; anything that is not an ApiError reads as an unknown failure.
+ * The cast below is checked: it does not build while an error code has no `err.<code>` entry.
+ */
+export function errorKey(error: unknown): { key: Key; vars?: Record<string, number> } {
+  if (!isApiError(error)) return { key: "err.unknown" };
+  const { code, reason, retryAfter } = error;
+  if (code === "validation_failed" && reason) return { key: `err.validation_failed.${reason}` };
+  if (code === "rate_limited" && retryAfter) return { key: "err.rate_limited.wait", vars: { seconds: retryAfter } };
+  return { key: `err.${code}` };
+}
+
 export function useT() {
   const { locale, schoolType } = useTeacher();
   const t = useCallback(
     (key: Key, vars?: Record<string, string | number>) => translate(locale, schoolType, key, vars),
     [locale, schoolType],
   );
-  return { t, locale, schoolType };
+  /** The words for whatever a call threw. */
+  const te = useCallback(
+    (error: unknown) => {
+      const { key, vars } = errorKey(error);
+      return translate(locale, schoolType, key, vars);
+    },
+    [locale, schoolType],
+  );
+  return { t, te, locale, schoolType };
 }
