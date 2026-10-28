@@ -174,7 +174,7 @@ export function Shell({ children }: { children: ReactNode }) {
         {children}
       </main>
 
-      <dialog ref={logout} className="dialog" aria-labelledby="logout-title">
+      <dialog ref={logout} className="dialog" role="alertdialog" aria-labelledby="logout-title">
         <h2 id="logout-title" className="dialog__title">
           {t("logout.title")}
         </h2>
