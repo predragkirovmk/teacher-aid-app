@@ -1,0 +1,49 @@
+{
+  "id": "/teacher",
+  "name": "TeacherAid за наставници",
+  "short_name": "TeacherAid",
+  "description": "Подгответе ја лекцијата, одржете ја во живо и погледнете ги резултатите.",
+  "lang": "mk",
+  "start_url": "/teacher",
+  "scope": "/teacher",
+  "display": "standalone",
+  "background_color": "#124554",
+  "theme_color": "#124554",
+  "icons": [
+    {
+      "src": "/teacher-icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/teacher-icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/teacher-icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": [
+    "education"
+  ],
+  "shortcuts": [
+    {
+      "name": "Подготви лекција",
+      "short_name": "Лекција",
+      "url": "/teacher/lessons/new",
+      "icons": [
+        {
+          "src": "/teacher-icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}
