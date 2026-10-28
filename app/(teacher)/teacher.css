@@ -719,3 +719,19 @@ button {
     scroll-behavior: auto !important;
   }
 }
+
+/* Windows high-contrast: fills are dropped, so the edges of cards, the chosen row and the one main
+   button are drawn as lines. The yellow button gets a thicker edge than the others. */
+@media (forced-colors: active) {
+  .card,
+  .dialog,
+  .me {
+    border: 2px solid CanvasText;
+  }
+  .nav__item[aria-current="page"] {
+    border: 2px solid Highlight;
+  }
+  .btn--primary {
+    border-width: 4px;
+  }
+}
