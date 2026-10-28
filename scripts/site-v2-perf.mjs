@@ -7,7 +7,16 @@
 // docs/site-v2/DESIGN.md: 95 % of frames under 20 ms. Exits 1 when the budget is missed.
 // Shots: full-page screenshots at 1440 and 390 wide with Reduce Motion on, so every scene is in
 // its final state.
+//
+// The frame timing sees the main thread only. The first site lagged on the GPU (blurs re-drawn
+// every frame), which headless Chrome does not show, so the stylesheet is also checked for the
+// properties that cost the GPU on every scrolled frame. Any of them fails the run.
+import { readFileSync } from "node:fs";
 import { chromium, devices } from "@playwright/test";
+
+const css = readFileSync(new URL("../app/site-v2.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+const gpu = ["backdrop-filter", "filter:", "clip-path", "mix-blend-mode"].filter((p) => css.includes(p));
+if (gpu.length) console.error(`GPU-heavy CSS in app/site-v2.css: ${gpu.join(", ")}`);
 
 const args = process.argv.slice(2);
 const url = args.find((a) => !a.startsWith("--") && /^https?:/.test(a));
@@ -101,4 +110,4 @@ console.log(
     2,
   ),
 );
-process.exit(under >= 0.95 ? 0 : 1);
+process.exit(under >= 0.95 && !gpu.length ? 0 : 1);
