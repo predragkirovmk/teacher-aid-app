@@ -50,6 +50,7 @@
   --tap: 3.5rem; /* 56: buttons and rows */
   --tap-small: 3rem; /* 48: small secondary buttons */
   --sidebar-w: 17.5rem; /* 280 */
+  --page-w: 56rem; /* 896: the column the header and the content share */
 
   /* Motion: small state changes only, under 250ms. */
   --dur: 150ms;
@@ -352,6 +353,7 @@ button {
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--sp-2) var(--sp-4);
+  max-width: var(--page-w);
   margin-bottom: var(--sp-4);
 }
 .head__text {
@@ -409,7 +411,7 @@ button {
 }
 
 .content {
-  max-width: 56rem;
+  max-width: var(--page-w);
   display: grid;
   gap: var(--sp-3);
 }
