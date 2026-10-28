@@ -1,0 +1,128 @@
+import type { SiteV2Dict } from "./types";
+
+export const en: SiteV2Dict = {
+  lang: "en",
+  meta: {
+    title: "TeacherAid: the whole class answers",
+    description:
+      "TeacherAid turns your lesson into questions for class. You send them from your laptop, students answer on their phones, and one scan takes attendance. For secondary schools and universities in North Macedonia.",
+  },
+  nav: {
+    home: "TeacherAid, home",
+    links: [
+      { href: "#prepare", label: "Prepare" },
+      { href: "#live", label: "In class" },
+      { href: "#after", label: "After class" },
+    ],
+    cta: "Book a lesson",
+    menu: "Menu",
+    close: "Close",
+    skip: "Skip to content",
+    switchLabel: "Прочитајте на македонски",
+    switchShort: "МК",
+    switchHref: "/v2",
+  },
+  hero: {
+    kicker: "For teachers and school directors",
+    title: ["The whole class", "answers."],
+    deck: "TeacherAid turns your lesson into questions for class. You send them from your laptop, students answer on their phones, and you see at once who understood.",
+    cta: "Book a free lesson",
+    secondary: "See how it works",
+    meta: ["Secondary schools and universities", "In Macedonian", "Made in Bitola"],
+  },
+  teacher: {
+    label: "For the teacher",
+    title: "Ready before the bell.",
+    body: "Three steps: add your lesson, run the class, read the results. All of it in Macedonian, all of it in one place.",
+  },
+  prepare: {
+    id: "prepare",
+    index: "01",
+    label: "Prepare",
+    title: "Add your lesson. The questions are ready.",
+    body: "Add a PDF or a Word file, or type a few sentences about the topic. TeacherAid prepares five to eight questions, with the right answers and a short explanation. Nothing reaches your students until you have checked it.",
+    refineLabel: "One button to change it",
+    refinements: ["Easier", "Harder", "More questions", "Shorter timers"],
+    kinds: "Three kinds of question: multiple choice, true or false, and a number.",
+  },
+  live: {
+    id: "live",
+    index: "02",
+    label: "In class",
+    title: "One click. Every phone.",
+    body: "You teach as you always do. Whenever you like, you send a question: it appears on the board and on every phone, with a timer. When time is up, you reveal the right answer to the whole class.",
+    join: "Attendance is one scan. The QR code on the board changes every 30 seconds, so it only works in the room.",
+    anonymous: "Students can ask you what they would never ask out loud. Classmates do not see who is asking. You do.",
+  },
+  after: {
+    id: "after",
+    index: "03",
+    label: "After class",
+    title: "End of class. Attendance is done.",
+    body: "When you press End, you get the full list: present, late and absent, ready to copy into e-Dnevnik. Below it are the questions the class got wrong most.",
+    practice: "If you like, you send the class practice built from what they got wrong.",
+    note: "TeacherAid never writes to e-Dnevnik. It gives you the list, and you decide.",
+  },
+  results: {
+    id: "results",
+    index: "04",
+    label: "Results",
+    title: "Every class on one page.",
+    body: "Attendance, points over time, the topics the class finds hard and the questions students asked. Nothing to fill in.",
+  },
+  book: {
+    title: "Book a free lesson.",
+    body: "We come to your school and run a real lesson with one class, from the scan to the list at the end. You and your teachers watch.",
+    cta: "Write to us",
+    email: "hello@teacheraid.education",
+    pilot: "We start with the first schools in the 2026/27 school year.",
+  },
+  footer: {
+    line: "TeacherAid · Bitola, 2026",
+    langLabel: "Language",
+    langs: [
+      { href: "/v2", label: "Македонски", lang: "mk" },
+      { href: "/v2/en", label: "English", lang: "en" },
+    ],
+  },
+  screens: {
+    example: "Example",
+    alt: {
+      console: "A laptop with the teacher app: today's prepared lessons.",
+      board: "The classroom board: a question, a timer and how many students picked each answer.",
+      phone: "A student's phone with the same question and four answers.",
+    },
+    console: {
+      nav: ["Today", "Lessons", "Classes", "Settings"],
+      greet: "Good morning, Ana",
+      title: "Today",
+      prepare: "Prepare a lesson",
+      lessons: [
+        { course: "Biology · I-2", topic: "The cell and its parts", count: "7 questions" },
+        { course: "Biology · I-4", topic: "The cell and its parts", count: "7 questions" },
+        { course: "Biology · II-1", topic: "Photosynthesis", count: "6 questions" },
+      ],
+      recentTitle: "Last lesson · Biology · I-3",
+      recent: [
+        { value: "27 of 29", label: "present" },
+        { value: "71%", label: "right answers" },
+        { value: "2", label: "anonymous questions" },
+      ],
+      start: "Start",
+    },
+    board: {
+      course: "Biology · I-2",
+      progress: "Question 3 of 7",
+      question: "Which organelle produces the cell's energy?",
+      answers: ["Nucleus", "Mitochondrion", "Ribosome", "Vacuole"],
+      timer: "14",
+      answered: "24 of 29 answered",
+    },
+    phone: {
+      course: "Biology · I-2",
+      question: "Which organelle produces the cell's energy?",
+      answers: ["Nucleus", "Mitochondrion", "Ribosome", "Vacuole"],
+      send: "Send",
+    },
+  },
+};
