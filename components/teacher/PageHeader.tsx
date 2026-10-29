@@ -7,10 +7,23 @@ import { useT } from "@/lib/teacher/i18n";
 import { PageTitle } from "./PageTitle";
 
 /**
- * Every screen starts here: a plain title that says where you are, an optional one-line subtitle,
- * a labelled Back on deep screens, and at the top right the teacher, who leads to Settings.
+ * Every screen starts here: a plain title that says where you are, an optional date and one-line subtitle,
+ * a labelled Back on deep screens (it names where it goes when `backLabel` says so), and at the top right the
+ * teacher, who leads to Settings.
  */
-export function PageHeader({ title, subtitle, back }: { title: string; subtitle?: string; back?: string }) {
+export function PageHeader({
+  title,
+  subtitle,
+  date,
+  back,
+  backLabel,
+}: {
+  title: string;
+  subtitle?: string;
+  date?: string;
+  back?: string;
+  backLabel?: string;
+}) {
   const { t } = useT();
   const teacher = useTeacherName();
   return (
@@ -20,10 +33,11 @@ export function PageHeader({ title, subtitle, back }: { title: string; subtitle?
         {back && (
           <Link href={back} className="btn btn--secondary btn--small back">
             <ArrowLeftIcon size={24} aria-hidden="true" />
-            {t("back")}
+            {backLabel ?? t("back")}
           </Link>
         )}
         <h1 className="head__title">{title}</h1>
+        {date && <p className="head__sub head__date">{date}</p>}
         {subtitle && <p className="head__sub">{subtitle}</p>}
       </div>
       {teacher && (
