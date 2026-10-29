@@ -16,7 +16,10 @@ describe("the dictionaries", () => {
   });
 
   test("a string with a variable other than the school words names one the app supplies", () => {
-    const known = new Set(["students", "classes", "teacher", "name", "seconds", "provider", "n", "total"]);
+    const known = new Set([
+      "students", "classes", "teacher", "name", "seconds", "provider", "n", "total",
+      "weekday", "day", "month", "when", "time", "roman", "title", "course", "subject", "tolerance",
+    ]);
     for (const locale of ["mk", "en"] as const) {
       for (const key of keys) {
         for (const text of entryText(locale, key)) {
@@ -50,9 +53,31 @@ describe("school type wording", () => {
   });
 
   test("a message that depends on the kind of class is worded for it", () => {
-    expect(translate("mk", "school", "err.session_open")).toContain("клас");
-    expect(translate("mk", "university", "err.session_open")).toContain("група");
+    expect(translate("mk", "school", "err.not_enrolled")).toContain("клас");
+    expect(translate("mk", "university", "err.not_enrolled")).toContain("група");
     expect(translate("en", "school", "err.not_enrolled")).toContain("student");
+  });
+
+  test("the window that starts a lesson asks for a class at a school and a group at a faculty", () => {
+    expect(translate("mk", "school", "start.title")).toBe("Со кој клас?");
+    expect(translate("mk", "university", "start.title")).toBe("Со која група?");
+    expect(translate("en", "school", "start.title")).toBe("Which class?");
+    expect(translate("en", "university", "start.title")).toBe("Which group?");
+    expect(translate("mk", "school", "start.count", { n: 26 })).toBe("26 ученици");
+    expect(translate("mk", "university", "start.count", { n: 26 })).toBe("26 студенти");
+    expect(translate("mk", "school", "start.count.one")).toBe("1 ученик");
+    expect(translate("mk", "university", "start.noclass.body", { subject: "Физика" })).toContain("ни на една група");
+  });
+
+  test("a lesson's year is a Roman numeral at a school and a study year at a faculty", () => {
+    expect(translate("mk", "school", "lesson.year", { n: 2, roman: "II" })).toBe("II година");
+    expect(translate("mk", "university", "lesson.year", { n: 2, roman: "II" })).toBe("2. година");
+    expect(translate("en", "school", "lesson.year", { n: 2, roman: "II" })).toBe("Year 2");
+  });
+
+  test("a lesson that is already running is a lesson to go back to, not an error about a class", () => {
+    expect(translate("mk", "school", "err.session_open")).toBe(translate("mk", "university", "err.session_open"));
+    expect(translate("mk", "school", "err.session_open")).toContain("час во тек");
   });
 
   test("a variable that is not given stays visible instead of vanishing", () => {

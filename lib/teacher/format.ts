@@ -35,3 +35,8 @@ export function initials(name: string): string {
 
 /** A faculty is worded as a university ("студенти", "група"); every other kind of school as a secondary school. */
 export const schoolTypeOf = (kind: SchoolKind): SchoolType => (kind === "faculty" ? "university" : "school");
+
+const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+
+/** A school year as the Roman numeral a secondary school writes it ("II година"); a number past X is left as it is. */
+export const romanYear = (year: number): string => ROMAN[year] || String(year);

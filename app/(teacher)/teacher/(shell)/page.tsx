@@ -28,7 +28,7 @@ export default function TodayPage() {
           <p>{t("today.empty.body")}</p>
           <Link href="/teacher/lessons/new" className="btn btn--primary">
             <PlusIcon size={24} weight="bold" aria-hidden="true" />
-            {t("today.empty.cta")}
+            {t("today.prepare")}
           </Link>
         </div>
       </div>
