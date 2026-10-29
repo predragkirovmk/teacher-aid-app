@@ -3,16 +3,19 @@
 import { useEffect, useMemo } from "react";
 import { firstName, initials, personName, schoolTypeOf } from "../format";
 import { authStatusOf, type AuthStatus, type EndReason } from "../guard";
+import { preparedLessons } from "../today";
 import { actions, useTeacher } from "../store";
 import { apiMode } from "./config";
 import { api } from "./client";
 import { toApiError } from "./errors";
-import { change, mapQuery, resetQueries, seed, useQuery, type Query } from "./query";
+import { change, invalidate, mapQuery, resetQueries, seed, useQuery, type Query } from "./query";
 import { endSession, useSessionEnd } from "./session";
 import type {
+  ConsoleSnapshot,
   CourseDashboard,
   CoursePatch,
   CourseSummary,
+  CreateSessionRequest,
   GenerateRequest,
   Id,
   Lesson,
@@ -107,10 +110,11 @@ export function useCourse(courseId: Id | undefined): Query<CourseSummary | null>
   return useMemo(() => mapQuery(q, (all) => all.find((c) => c.id === courseId) ?? null), [q, courseId]);
 }
 
-/** The lessons that are prepared and have not been run: what Today lists. */
+/** The lessons that are prepared and have not been run, the one running now left out: what Today lists. */
 export function usePreparedLessons(): Query<LessonSummary[]> {
-  const q = useLessons();
-  return useMemo(() => mapQuery(q, (all) => all.filter((l) => l.times_run === 0)), [q]);
+  const lessons = useLessons();
+  const running = useOpenSession().data?.session?.lesson.id ?? null;
+  return useMemo(() => mapQuery(lessons, (all) => preparedLessons(all, running)), [lessons, running]);
 }
 
 /**
@@ -192,4 +196,20 @@ export async function copyFromLibrary(lessonId: Id): Promise<Lesson> {
   const lesson = await change((a) => a.copyFromLibrary(lessonId), ["lessons", "library"]);
   seed(`lessons:${lesson.id}`, lesson);
   return lesson;
+}
+
+/**
+ * Start a lesson with a class: it opens in the lobby and becomes the teacher's open lesson at once, so the screen they go to
+ * finds it. A refusal because a lesson is already open (`session_open`, EC-SES-02) means this screen did not know: another
+ * window may have started it, so the open lesson is asked for again and the window can say which one it is.
+ */
+export async function startSession(request: CreateSessionRequest): Promise<ConsoleSnapshot> {
+  try {
+    const snapshot = await change((a) => a.createSession(request));
+    seed("open-session", { server_now: snapshot.server_now, session: snapshot.session });
+    return snapshot;
+  } catch (e) {
+    if (toApiError(e).code === "session_open") invalidate("open-session");
+    throw e;
+  }
 }

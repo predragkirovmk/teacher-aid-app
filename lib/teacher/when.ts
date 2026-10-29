@@ -17,6 +17,10 @@ const dayNumber = (ms: number): number => {
 
 export type When = { key: Key; n?: number };
 
+/** A `When` in words, through the `t` of the interface. */
+export const sayWhen = (t: (key: Key, vars?: Record<string, number>) => string, when: When): string =>
+  t(when.key, when.n === undefined ? undefined : { n: when.n });
+
 /** How long ago `then` was, in the words a person uses for it. A moment in the future (a clock that is a little off) is today. */
 export function relativeDay(then: number, now: number): When {
   const days = dayNumber(now) - dayNumber(then);

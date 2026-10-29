@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 
 export type DayPart = "morning" | "day" | "evening";
 
@@ -22,3 +22,38 @@ export const useDayPart = () =>
     part,
     (): DayPart | null => null,
   );
+
+function subscribeEvery(ms: number) {
+  return (listener: () => void) => {
+    const timer = setInterval(listener, ms);
+    return () => clearInterval(timer);
+  };
+}
+
+const everyMinute = subscribeEvery(60_000);
+const startOfToday = () => {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+};
+
+/** The moment today began on this computer (a day changes in the middle of the night, so it is checked once a minute). The server renders null. */
+export const useToday = (): number | null => useSyncExternalStore(everyMinute, startOfToday, (): number | null => null);
+
+/**
+ * The moment now on the server's clock, for a lesson that began at `startedAt`, brought up to date a whole minute at a time so
+ * that a count of minutes changes when a minute has passed. The server said what time it was when it answered (`server_now`);
+ * this carries that on by this computer's own clock, so a computer whose clock is a few minutes off still counts right. The
+ * server render gets null.
+ */
+export function useRunningNow(serverNow: string, startedAt: string): number | null {
+  const clock = useMemo(() => runningClock(Date.parse(serverNow), Date.parse(startedAt)), [serverNow, startedAt]);
+  return useSyncExternalStore(clock.subscribe, clock.snapshot, (): number | null => null);
+}
+
+function runningClock(serverNow: number, startedAt: number) {
+  const skew = serverNow - Date.now();
+  return {
+    subscribe: subscribeEvery(15_000),
+    snapshot: () => startedAt + Math.floor((Date.now() + skew - startedAt) / 60_000) * 60_000,
+  };
+}

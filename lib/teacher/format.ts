@@ -40,3 +40,6 @@ const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
 /** A school year as the Roman numeral a secondary school writes it ("II година"); a number past X is left as it is. */
 export const romanYear = (year: number): string => ROMAN[year] || String(year);
+
+/** A number written with a point (the API's way, 3.2) as the interface writes it: Macedonian puts a comma ("3,5"). */
+export const decimal = (text: string, locale: Locale): string => (locale === "mk" ? text.replace(".", ",") : text);
