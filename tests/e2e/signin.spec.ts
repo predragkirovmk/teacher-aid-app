@@ -281,6 +281,8 @@ test.describe("signing in", () => {
     // One yellow button, and a way out that is always in view.
     await expect(page.locator(".btn--primary")).toHaveCount(1);
     await expect(page.getByRole("button", { name: "Прескокни го водичот" })).toBeVisible();
+    // Skipping is not a trap: it says where the guide is when the teacher wants it again.
+    await expect(page.getByText("Водичот можете да го погледнете повторно во Поставки.")).toBeVisible();
 
     await page.getByRole("button", { name: "Следно" }).click();
     await expect(page.getByText("Чекор 2 од 3")).toBeVisible();
@@ -788,7 +790,6 @@ test.describe("when the first run cannot be saved", () => {
     await expect(page.getByRole("button", { name: "Продолжи сепак" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Прескокни го водичот" })).toHaveCount(0);
   });
-});
 });
 
 test.describe("when signing out cannot reach the server", () => {

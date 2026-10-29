@@ -127,6 +127,7 @@ export function Guide() {
               )}
             </div>
           )}
+          {!last && error === null && <p className="guide__note">{t("guide.note")}</p>}
         </div>
       </div>
     </main>
