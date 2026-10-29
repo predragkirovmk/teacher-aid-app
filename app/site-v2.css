@@ -155,8 +155,7 @@ body.v2 {
 /* ---------- Type ---------- */
 
 .mega,
-.display,
-.title {
+.display {
   font-family: var(--display);
   font-weight: 800;
   text-wrap: balance;
@@ -178,11 +177,6 @@ body.v2 {
   max-width: 13em;
 }
 
-.title {
-  font-size: clamp(2.1rem, 4.4vw, 4.5rem);
-  line-height: 1;
-  letter-spacing: -0.035em;
-}
 
 .lead {
   font-size: clamp(1.25rem, 1.55vw, 1.6rem);
@@ -396,6 +390,12 @@ body.v2 {
   --nav-bg: var(--ground-top);
   --nav-fg: var(--on-teal);
   --nav-line: var(--line-teal);
+}
+
+.nav[data-nav-theme="yellow"] {
+  --nav-bg: var(--yellow);
+  --nav-fg: var(--shadow);
+  --nav-line: oklch(20% 0.04 230 / 0.16);
 }
 
 .nav::after {
@@ -989,6 +989,15 @@ body.v2 {
   color: var(--on-teal-2);
 }
 
+/* A scene's number and its line, full width above the copy and the device: a chapter opening,
+   not a feature row. */
+.scene__head {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.25rem, 3vh, 2rem);
+  margin-bottom: clamp(2.5rem, 8vh, 5.5rem);
+}
+
 .split__grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -1216,32 +1225,45 @@ body.v2 {
   color: var(--ink-2);
 }
 
+/* The ending: the page's one field of yellow, the brand's "do this now", with the headline at hero
+   size in dark ink (6.5:1 on this yellow). */
 .book {
-  background: var(--paper-2);
+  background: var(--yellow);
+  color: var(--shadow);
+  padding-block: clamp(6rem, 16vh, 12rem);
+}
+
+.book ::selection {
+  background: var(--deep);
+  color: var(--paper);
 }
 
 .book__grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   column-gap: clamp(12px, 1.6vw, 24px);
-  row-gap: 40px;
-  align-items: end;
+  row-gap: clamp(2.5rem, 7vh, 4.5rem);
 }
 
-.book__grid .display {
-  grid-column: 1 / span 7;
+.book__title {
+  grid-column: 1 / -1;
+  max-width: 11em;
 }
 
 .book__copy {
-  grid-column: 8 / -1;
+  grid-column: 7 / -1;
 }
 
-.book__copy .lead {
-  color: var(--ink-2);
+.book__copy .lead,
+.book .note--ink {
+  color: var(--shadow);
+}
+
+.book .chev {
+  color: var(--deep);
 }
 
 @media (max-width: 899px) {
-  .book__grid .display,
   .book__copy {
     grid-column: 1 / -1;
   }

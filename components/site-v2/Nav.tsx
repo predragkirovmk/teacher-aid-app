@@ -6,13 +6,13 @@ import type { SiteV2Dict } from "@/content/site-v2/types";
 import { getLenis } from "@/lib/site-v2/lenis";
 
 /**
- * The slim bar on top. It takes the theme of the section under it (paper or teal), gains a
+ * The slim bar on top. It takes the theme of the section under it (paper, teal or yellow), gains a
  * hairline once the page has moved, and opens a full-screen menu on narrow screens. Solid
  * colours only: a blurred bar re-blurs the page on every scrolled frame.
  */
 export function Nav({ t, ctaHref }: { t: SiteV2Dict["nav"]; ctaHref: string }) {
   const [open, setOpen] = useState(false);
-  const [theme, setTheme] = useState<"paper" | "teal">("paper");
+  const [theme, setTheme] = useState<"paper" | "teal" | "yellow">("paper");
   const [moved, setMoved] = useState(false);
   const bar = useRef<HTMLElement>(null);
   const sentinel = useRef<HTMLSpanElement>(null);
@@ -30,7 +30,9 @@ export function Nav({ t, ctaHref }: { t: SiteV2Dict["nav"]; ctaHref: string }) {
       io = new IntersectionObserver(
         (entries) => {
           for (const e of entries) {
-            if (e.isIntersecting) setTheme((e.target as HTMLElement).dataset.theme === "teal" ? "teal" : "paper");
+            if (!e.isIntersecting) continue;
+            const next = (e.target as HTMLElement).dataset.theme;
+            setTheme(next === "teal" || next === "yellow" ? next : "paper");
           }
         },
         { rootMargin: `-${mid}px 0px -${Math.max(0, window.innerHeight - mid - 1)}px 0px` },

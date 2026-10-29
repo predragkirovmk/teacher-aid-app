@@ -100,14 +100,16 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
           </section>
 
           <section className="scene split" id={t.prepare.id} aria-labelledby="prepare-title" tabIndex={-1}>
+            <div className="wrap scene__head">
+              <p className="index" data-reveal>
+                <span>{t.prepare.index}</span> {t.prepare.label}
+              </p>
+              <h2 className="display" id="prepare-title" data-reveal>
+                {t.prepare.title}
+              </h2>
+            </div>
             <div className="wrap split__grid">
               <div className="split__copy">
-                <p className="index" data-reveal>
-                  <span>{t.prepare.index}</span> {t.prepare.label}
-                </p>
-                <h2 className="title" id="prepare-title" data-reveal>
-                  {t.prepare.title}
-                </h2>
                 <p className="body" data-reveal>
                   {t.prepare.body}
                 </p>
@@ -179,14 +181,16 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
           </section>
 
           <section className="scene split split--flip" id={t.after.id} aria-labelledby="after-title" tabIndex={-1}>
+            <div className="wrap scene__head">
+              <p className="index" data-reveal>
+                <span>{t.after.index}</span> {t.after.label}
+              </p>
+              <h2 className="display" id="after-title" data-reveal>
+                {t.after.title}
+              </h2>
+            </div>
             <div className="wrap split__grid">
               <div className="split__copy">
-                <p className="index" data-reveal>
-                  <span>{t.after.index}</span> {t.after.label}
-                </p>
-                <h2 className="title" id="after-title" data-reveal>
-                  {t.after.title}
-                </h2>
                 <p className="body" data-reveal>
                   {t.after.body}
                 </p>
@@ -207,14 +211,16 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
         </div>
 
         <section className="scene results split" id={t.results.id} data-theme="paper" aria-labelledby="results-title">
+          <div className="wrap scene__head">
+            <p className="index index--ink" data-reveal>
+              <span>{t.results.index}</span> {t.results.label}
+            </p>
+            <h2 className="display display--ink" id="results-title" data-reveal>
+              {t.results.title}
+            </h2>
+          </div>
           <div className="wrap split__grid">
             <div className="split__copy">
-              <p className="index index--ink" data-reveal>
-                <span>{t.results.index}</span> {t.results.label}
-              </p>
-              <h2 className="title display--ink" id="results-title" data-reveal>
-                {t.results.title}
-              </h2>
               <p className="body results__body" data-reveal>
                 {t.results.body}
               </p>
@@ -227,10 +233,10 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
           </div>
         </section>
 
-        {/* Epilogue: the one thing to do next. */}
-        <section className="scene book" id="book" data-theme="paper" aria-labelledby="book-title" tabIndex={-1}>
+        {/* Epilogue: the one thing to do next, the page's one field of yellow. */}
+        <section className="scene book" id="book" data-theme="yellow" aria-labelledby="book-title" tabIndex={-1}>
           <div className="wrap book__grid">
-            <h2 className="display display--ink" id="book-title" data-reveal>
+            <h2 className="mega book__title" id="book-title" data-reveal>
               {t.book.title}
             </h2>
             <div className="book__copy">
