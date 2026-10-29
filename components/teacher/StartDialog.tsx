@@ -141,7 +141,7 @@ export function StartDialog({ lesson, onClose }: { lesson: StartLesson; onClose:
           </button>
         )}
         {view === "running" && running && (
-          <Link href={liveUrl(running.id)} className="btn btn--primary" data-first>
+          <Link href={liveUrl(running.id)} prefetch={false} className="btn btn--primary" data-first>
             <ArrowUUpLeftIcon size={24} weight="bold" aria-hidden="true" />
             {t("running.back")}
           </Link>

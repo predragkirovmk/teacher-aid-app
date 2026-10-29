@@ -51,7 +51,7 @@ export function RunningBand({ session, serverNow }: { session: NonNullable<OpenS
           {how}
         </p>
       </div>
-      <Link href={liveUrl(session.id)} className="btn btn--primary">
+      <Link href={liveUrl(session.id)} prefetch={false} className="btn btn--primary">
         <ArrowUUpLeftIcon size={24} weight="bold" aria-hidden="true" />
         {t("running.back")}
       </Link>

@@ -34,7 +34,8 @@ export function LessonCard({ lesson, today }: { lesson: LessonSummary; today: nu
       </div>
       <div className="lesson__actions">
         <StartLessonButton lesson={lesson} describedBy={title} />
-        <Link href={lessonUrl(lesson.id, FROM_TODAY)} className="btn btn--quiet" aria-describedby={title}>
+        {/* The lesson fills itself from the API once it is open, so there is nothing to fetch ahead of time. */}
+        <Link href={lessonUrl(lesson.id, FROM_TODAY)} prefetch={false} className="btn btn--quiet" aria-describedby={title}>
           <FolderOpenIcon size={24} aria-hidden="true" />
           {t("lesson.open")}
         </Link>
