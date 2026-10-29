@@ -1,12 +1,15 @@
 "use client";
 
 import { ArrowClockwiseIcon } from "@phosphor-icons/react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { Mark } from "@/components/app/Mark";
 import { useAuth } from "@/lib/teacher/api/hooks";
+import { useGuideLeft } from "@/lib/teacher/first-run";
 import { destinationOf, viewOf } from "@/lib/teacher/guard";
 import { useT } from "@/lib/teacher/i18n";
+import { HELP } from "@/lib/teacher/signin";
 import { PageTitle } from "./PageTitle";
 import { Splash } from "./Splash";
 
@@ -19,7 +22,9 @@ export function Gate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { status, reason, me } = useAuth();
-  const firstRunDone = me.data?.first_run_done;
+  const guideLeft = useGuideLeft();
+  // A teacher who went on without the guide being saved as done is not sent back to it (lib/teacher/first-run.ts).
+  const firstRunDone = guideLeft ? true : me.data?.first_run_done;
   const view = viewOf({ pathname, status, firstRunDone });
 
   useEffect(() => {
@@ -49,6 +54,10 @@ function Retry({ error, onRetry }: { error: unknown; onRetry: () => void }) {
           <ArrowClockwiseIcon size={24} weight="bold" aria-hidden="true" />
           {t("error.retry")}
         </button>
+        {/* Help needs no sign-in, so a teacher whom the server keeps failing for has somewhere to go and someone to write to. */}
+        <Link href={HELP} className="btn btn--secondary">
+          {t("signin.help")}
+        </Link>
       </div>
     </main>
   );

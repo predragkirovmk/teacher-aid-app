@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Mark } from "@/components/app/Mark";
 import { setFirstRunDone, useMe } from "@/lib/teacher/api/hooks";
+import { leaveGuideUnsaved } from "@/lib/teacher/first-run";
 import { GUIDE_STEPS, isLastStep, stepAfter, type GuideIcon } from "@/lib/teacher/guide";
 import { useT } from "@/lib/teacher/i18n";
 import { safeNext, TODAY } from "@/lib/teacher/signin";
@@ -35,18 +36,26 @@ export function Guide() {
     moved.current = true;
   }, [step]);
 
+  const goOn = () => router.replace(safeNext(new URLSearchParams(window.location.search).get("next")) ?? TODAY);
+
   const leave = async () => {
     if (busy) return;
     setBusy(true);
     setError(null);
     try {
       if (done === false) await setFirstRunDone();
-      router.replace(safeNext(new URLSearchParams(window.location.search).get("next")) ?? TODAY);
+      goOn();
     } catch (e) {
-      // Not saved: stay, say why, and the same button tries again. (Leaving anyway would send the teacher straight back here.)
+      // Not saved: stay, say why, and the same button tries again. Going on is the teacher's to choose, below.
       setError(e);
       setBusy(false);
     }
+  };
+
+  // The save keeps failing and the teacher would rather get on: every page would send them back here, so the gate is told not to.
+  const goOnAnyway = () => {
+    leaveGuideUnsaved();
+    goOn();
   };
 
   const current = GUIDE_STEPS[step];
@@ -104,10 +113,19 @@ export function Guide() {
               </button>
             )}
           </div>
-          {!last && (
-            <button type="button" className="btn btn--quiet" disabled={busy} aria-busy={busy} onClick={() => void leave()}>
-              {t("guide.skip")}
-            </button>
+          {(!last || error !== null) && (
+            <div className="guide__quiet">
+              {!last && (
+                <button type="button" className="btn btn--quiet" disabled={busy} aria-busy={busy} onClick={() => void leave()}>
+                  {t("guide.skip")}
+                </button>
+              )}
+              {error !== null && (
+                <button type="button" className="btn btn--quiet" onClick={goOnAnyway}>
+                  {t("guide.anyway")}
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>

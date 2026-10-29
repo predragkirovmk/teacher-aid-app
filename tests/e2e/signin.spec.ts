@@ -753,6 +753,42 @@ test.describe("when the first run cannot be saved", () => {
     await expect(title(page)).toHaveText("Денес");
     expect((await mockState(page)).novice.school.first_run_done).toBe(true);
   });
+
+  test("and a teacher the save keeps failing for can go on anyway: nothing sends them back, and the guide is there on the next visit", async ({ page }) => {
+    await page.goto("/teacher/welcome");
+    await page.getByRole("button", { name: "Прескокни го водичот" }).waitFor();
+    // Not offered while nothing has gone wrong.
+    await expect(page.getByRole("button", { name: "Продолжи сепак" })).toHaveCount(0);
+    // The page says it is offline, which refuses the save, while the pages it goes on to can still be reached.
+    await page.evaluate(() => Object.defineProperty(navigator, "onLine", { configurable: true, get: () => false }));
+    await page.getByRole("button", { name: "Прескокни го водичот" }).click();
+    await expect(problem(page)).toContainText("Не успеавме да продолжиме");
+    // Trying again and going on are both there.
+    await expect(page.getByRole("button", { name: "Прескокни го водичот" })).toBeVisible();
+    await page.getByRole("button", { name: "Продолжи сепак" }).click();
+    await expect(page).toHaveURL(/\/teacher$/);
+    await expect(title(page)).toHaveText("Денес");
+    // Moving about is not sent back to the guide.
+    await page.getByRole("navigation").first().getByRole("link", { name: "Библиотека" }).click();
+    await expect(title(page)).toHaveText("Библиотека");
+    expect((await mockState(page)).novice.school.first_run_done).toBe(false);
+
+    // A page loaded afresh asks the server again, and the guide is shown once more.
+    await page.goto("/teacher");
+    await expect(page).toHaveURL(/\/teacher\/welcome$/);
+  });
+
+  test("on the last step the only way on is the main button, and going on anyway is offered beside it once that fails", async ({ page, context }) => {
+    await page.goto("/teacher/welcome");
+    await page.getByRole("button", { name: "Следно" }).click();
+    await page.getByRole("button", { name: "Следно" }).click();
+    await context.setOffline(true);
+    await page.getByRole("button", { name: "Оди на Денес" }).click();
+    await expect(problem(page)).toContainText("Не успеавме да продолжиме");
+    await expect(page.getByRole("button", { name: "Продолжи сепак" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Прескокни го водичот" })).toHaveCount(0);
+  });
+});
 });
 
 test.describe("when signing out cannot reach the server", () => {

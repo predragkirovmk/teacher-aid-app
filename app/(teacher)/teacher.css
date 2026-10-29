@@ -972,11 +972,15 @@ button {
 .guide__actions .btn--primary {
   flex: 1 1 14rem;
 }
+.guide__quiet {
+  display: flex;
+  flex-wrap: wrap;
+  /* The words, not the padding, line up with the text above. */
+  margin-left: calc(var(--sp-2) * -1);
+}
 .btn--quiet {
   min-height: var(--tap-small);
   padding: var(--sp-1) var(--sp-2);
-  /* The words, not the padding, line up with the text above. */
-  margin-left: calc(var(--sp-2) * -1);
   background: transparent;
   font-size: var(--fs-body);
   font-weight: 600;
