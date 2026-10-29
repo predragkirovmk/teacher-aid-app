@@ -178,7 +178,7 @@ export function SignIn() {
                 aria-describedby={message ? PROBLEM : undefined}
                 onClick={() => void go(p.id)}
               >
-                <ProviderMark provider={p.id} />
+                <ProviderMark provider={p.id} size={28} />
                 {busy === p.id ? t("signin.opening", { provider: p.name }) : t(p.id === "google" ? "signin.google" : "signin.microsoft")}
               </button>
             ))}

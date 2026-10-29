@@ -3,7 +3,7 @@ import type { AuthProvider } from "@/lib/teacher/api/types";
 /**
  * The providers' own marks, inline so the screen makes no request for them and the CSP stays as it is. They are drawn as the
  * brand guidelines give them and are never recoloured: the four-colour Google "G" (48 x 48 grid) and the four squares of
- * Microsoft (23 x 23 grid, one pixel apart). Decorative: the button's words name the provider.
+ * Microsoft (21 x 21 grid, one pixel apart). Decorative: the button's words name the provider.
  */
 export function ProviderMark({ provider, size = 24 }: { provider: AuthProvider; size?: number }) {
   return provider === "google" ? (
@@ -14,7 +14,7 @@ export function ProviderMark({ provider, size = 24 }: { provider: AuthProvider; 
       <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
     </svg>
   ) : (
-    <svg width={size} height={size} viewBox="0 0 23 23" aria-hidden="true" focusable="false">
+    <svg width={size} height={size} viewBox="1 1 21 21" aria-hidden="true" focusable="false">
       <path fill="#F25022" d="M1 1h10v10H1z" />
       <path fill="#7FBA00" d="M12 1h10v10H12z" />
       <path fill="#00A4EF" d="M1 12h10v10H1z" />
