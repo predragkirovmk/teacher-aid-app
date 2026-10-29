@@ -113,18 +113,19 @@ export function Nav({ t, ctaHref }: { t: SiteV2Dict["nav"]; ctaHref: string }) {
         </div>
       </header>
 
-      <div id="v2-menu" ref={sheet} className="menu" data-open={open || undefined} hidden={!open}>
+      {/* Closed, the sheet is invisible and inert; it fades out instead of vanishing. */}
+      <div id="v2-menu" ref={sheet} className="menu" data-open={open || undefined} inert={!open}>
         <nav className="wrap menu__inner" aria-label={t.menu}>
           <ul>
-            {t.links.map((l) => (
-              <li key={l.href}>
+            {t.links.map((l, i) => (
+              <li key={l.href} style={{ "--n": i } as React.CSSProperties}>
                 <a href={l.href} onClick={() => setOpen(false)}>
                   {l.label}
                 </a>
               </li>
             ))}
           </ul>
-          <div className="menu__end">
+          <div className="menu__end" style={{ "--n": t.links.length } as React.CSSProperties}>
             <a className="btn btn--primary" href={ctaHref} onClick={() => setOpen(false)}>
               {t.cta}
             </a>

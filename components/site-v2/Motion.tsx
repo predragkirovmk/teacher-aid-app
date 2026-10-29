@@ -70,7 +70,8 @@ export function Motion() {
               const target = document.querySelector<HTMLElement>(a.getAttribute("href")!);
               if (!target) return;
               e.preventDefault();
-              lenis.scrollTo(target, { offset: 0, duration: 1.3 });
+              // Land the target just under the fixed bar, not behind it.
+              lenis.scrollTo(target, { offset: -(document.querySelector<HTMLElement>(".nav")?.offsetHeight ?? 0), duration: 1.3 });
               window.setTimeout(() => target.focus({ preventScroll: true }), 900);
             };
             document.addEventListener("click", onAnchor);
@@ -270,6 +271,8 @@ export function Motion() {
                   pin: true,
                   // ScrollTrigger leaves spacing off for a flex child; the stage sits in one.
                   pinSpacing: true,
+                  // Pins a beat early on a fast flick, so the stage never jumps as it locks.
+                  anticipatePin: 1,
                   scrub: fine ? 0.6 : 0.35,
                   invalidateOnRefresh: true,
                 },

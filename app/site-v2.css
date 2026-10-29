@@ -40,6 +40,8 @@
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-press: cubic-bezier(0.2, 0, 0, 1);
+  /* The iOS sheet curve, for the menu. */
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
 
   --gutter: clamp(20px, 4vw, 64px);
   --scene-y: clamp(5rem, 12vh, 9.5rem);
@@ -102,6 +104,11 @@ body.v2 {
 
 :where(.v2) a {
   color: inherit;
+}
+
+/* The press scale is the feedback; the system's grey tap flash is noise on top of it. */
+:where(.v2) :where(a, button) {
+  -webkit-tap-highlight-color: transparent;
 }
 
 .v2 ::selection {
@@ -331,6 +338,23 @@ body.v2 {
   transition: transform 200ms var(--ease-out);
 }
 
+/* Text links press like buttons. */
+.chev,
+.nav__lang,
+.menu__inner li a {
+  transition: transform 160ms var(--ease-press);
+}
+
+.chev:active,
+.nav__lang:active,
+.menu__inner li a:active {
+  transform: scale(0.97);
+}
+
+.menu__inner li a {
+  transform-origin: left center;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .chev:hover {
     text-decoration: underline;
@@ -483,6 +507,8 @@ body.v2 {
   }
 }
 
+/* The menu sheet: in on the iOS sheet curve, out faster; links follow one after another. Closed,
+   it stays in the page but invisible, so it can fade out instead of vanishing. */
 .menu {
   position: fixed;
   inset: var(--nav-h) 0 0;
@@ -490,10 +516,55 @@ body.v2 {
   background: var(--paper);
   color: var(--ink);
   overflow-y: auto;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 180ms var(--ease-out),
+    visibility 0s linear 180ms;
 }
 
-.menu[hidden] {
-  display: none;
+.menu[data-open] {
+  visibility: visible;
+  opacity: 1;
+  transition:
+    opacity 280ms var(--ease-sheet),
+    transform 280ms var(--ease-sheet),
+    visibility 0s;
+}
+
+.menu__inner li,
+.menu__end {
+  opacity: 0;
+  transition:
+    opacity 140ms var(--ease-out),
+    transform 140ms var(--ease-out);
+}
+
+.menu[data-open] :is(.menu__inner li, .menu__end) {
+  opacity: 1;
+  transition:
+    opacity 320ms var(--ease-out) calc(60ms + var(--n, 0) * 40ms),
+    transform 320ms var(--ease-out) calc(60ms + var(--n, 0) * 40ms);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .menu {
+    transform: translate3d(0, -8px, 0);
+  }
+
+  .menu[data-open] {
+    transform: none;
+  }
+
+  .menu__inner li,
+  .menu__end {
+    transform: translate3d(0, 10px, 0);
+  }
+
+  .menu[data-open] :is(.menu__inner li, .menu__end) {
+    transform: none;
+  }
 }
 
 .menu__inner {
@@ -525,12 +596,6 @@ body.v2 {
   flex-direction: column;
   align-items: flex-start;
   gap: 16px;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .menu[data-open] .menu__inner {
-    animation: v2-fade 360ms var(--ease-out) both;
-  }
 }
 
 /* ---------- Hero (act 1) ---------- */
