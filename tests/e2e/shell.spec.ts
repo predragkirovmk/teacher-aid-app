@@ -139,6 +139,8 @@ test.describe("settings", () => {
     await page.getByRole("button", { name: "Reset the demo data" }).click();
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("button", { name: "No, keep them" })).toBeFocused();
+    // The sentence under the question has room before the buttons (a card's paragraph rules must not reach into the dialog).
+    await expect(dialog.locator(".dialog__body")).toHaveCSS("margin-bottom", "24px");
 
     // No: nothing changes.
     await dialog.getByRole("button", { name: "No, keep them" }).click();

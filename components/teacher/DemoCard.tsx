@@ -17,29 +17,32 @@ export function DemoCard() {
 
   if (!demo) return null;
 
+  // The question sits beside the card, not in it: the card's own paragraph rules would reach into the dialog.
   return (
-    <div className="card card--stack">
-      <span className="card__icon">
-        <ArrowCounterClockwiseIcon size={32} aria-hidden="true" />
-      </span>
-      <h2>{t("demo.title")}</h2>
-      <p>{t("demo.hint")}</p>
-      <button
-        type="button"
-        className="btn btn--secondary"
-        onClick={() => {
-          setDone(false);
-          setAsking(true);
-        }}
-      >
-        {t("demo.reset")}
-      </button>
-      {done && (
-        <p className="status" role="status">
-          <CheckCircleIcon size={28} weight="fill" aria-hidden="true" />
-          {t("demo.done")}
-        </p>
-      )}
+    <>
+      <div className="card card--stack">
+        <span className="card__icon">
+          <ArrowCounterClockwiseIcon size={32} aria-hidden="true" />
+        </span>
+        <h2>{t("demo.title")}</h2>
+        <p>{t("demo.hint")}</p>
+        <button
+          type="button"
+          className="btn btn--secondary"
+          onClick={() => {
+            setDone(false);
+            setAsking(true);
+          }}
+        >
+          {t("demo.reset")}
+        </button>
+        {done && (
+          <p className="status" role="status">
+            <CheckCircleIcon size={28} weight="fill" aria-hidden="true" />
+            {t("demo.done")}
+          </p>
+        )}
+      </div>
       <ConfirmDialog
         open={asking}
         title={t("demo.confirm.title")}
@@ -53,6 +56,6 @@ export function DemoCard() {
           setDone(true);
         }}
       />
-    </div>
+    </>
   );
 }
