@@ -35,7 +35,8 @@ export type SiteV2Dict = {
   };
   teacher: { label: string; title: string; body: string };
   prepare: Scene & { refineLabel: string; refinements: string[]; kinds: string };
-  live: Scene & { join: string; anonymous: string };
+  /** The pinned sync scene: one caption per beat (join, send, answers, reveal). */
+  live: Scene & { steps: string[]; join: string; anonymous: string };
   after: Scene & { practice: string; note: string };
   results: Scene;
   book: { title: string; body: string; cta: string; email: string; pilot: string };
@@ -43,7 +44,7 @@ export type SiteV2Dict = {
   screens: {
     example: string;
     /** What each device shows, read out in place of the placeholder interface. */
-    alt: { console: string; board: string; phone: string };
+    alt: { console: string; board: string; phone: string; prepare: string; live: string; end: string; results: string };
     console: {
       nav: string[];
       greet: string;
@@ -60,7 +61,53 @@ export type SiteV2Dict = {
       question: string;
       answers: string[];
       timer: string;
+      answered: { n: string; of: string };
+      /** Before the first question: the join code and who is in. */
+      lobby: { scan: string; code: string; joined: string; of: string };
+    };
+    prepare: {
+      title: string;
+      course: string;
+      file: string;
+      emphasisLabel: string;
+      emphasis: string;
+      writing: string;
+      count: string;
+      questions: { text: string; kind: string }[];
+      refine: string[];
+      save: string;
+    };
+    live: {
+      course: string;
+      state: string;
+      end: string;
+      joined: string;
       answered: string;
+      of: string;
+      send: string;
+      sent: string;
+      reveal: string;
+      questions: string[];
+    };
+    end: {
+      title: string;
+      course: string;
+      stats: { n: string; label: string }[];
+      copy: string;
+      missedTitle: string;
+      missed: { text: string; pct: number }[];
+      missedUnit: string;
+      practice: string;
+    };
+    results: {
+      title: string;
+      attendanceLabel: string;
+      attendance: number[];
+      weakTitle: string;
+      weak: { topic: string; pct: number }[];
+      weakUnit: string;
+      askedTitle: string;
+      asked: string[];
     };
     phone: { course: string; question: string; answers: string[]; send: string };
   };

@@ -4,7 +4,7 @@ import { ClassStack } from "./ClassStack";
 import { Board, Laptop, Phone } from "./Devices";
 import { Motion } from "./Motion";
 import { Nav } from "./Nav";
-import { BoardScreen, ConsoleScreen, PhoneScreen } from "./Screens";
+import { BoardScreen, ConsoleScreen, EndScreen, LiveConsoleScreen, PhoneScreen, PrepareScreen, ResultsScreen } from "./Screens";
 
 /*
   The page, server-rendered and complete without JavaScript. Motion adds itself on top.
@@ -118,14 +118,16 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
                 </p>
               </div>
               <div className="split__media" data-reveal>
-                <Laptop label={s.alt.console}>
-                  <ConsoleScreen s={s} />
+                <Laptop label={s.alt.prepare}>
+                  <PrepareScreen s={s} />
                 </Laptop>
               </div>
             </div>
           </section>
 
-          {/* Act 2, climax: the laptop and the board in sync (choreographed in step 3). */}
+          {/* Act 2, climax: the laptop and the board in sync. The motion layer pins the stage and
+              plays the lesson through: students join, one click sends the question from the
+              laptop to the board, the answers come in, the right one is revealed. */}
           <section className="scene live" id={t.live.id} aria-labelledby="live-title" tabIndex={-1}>
             <div className="wrap">
               <p className="index" data-reveal>
@@ -134,18 +136,32 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
               <h2 className="display" id="live-title" data-reveal>
                 {t.live.title}
               </h2>
-              <div className="live__stage" data-reveal>
-                <Board label={s.alt.board} className="live__board">
-                  <BoardScreen s={s} lang={t.lang} />
-                </Board>
-                <Laptop label={s.alt.console} className="live__laptop">
-                  <ConsoleScreen s={s} />
-                </Laptop>
+              <p className="lead live__lead" data-reveal>
+                {t.live.body}
+              </p>
+              <div className="live__pin" data-live>
+                <ol className="live__steps">
+                  {t.live.steps.map((step, i) => (
+                    <li key={step} data-step>
+                      <span>{String(i + 1).padStart(2, "0")}</span>
+                      {step}
+                    </li>
+                  ))}
+                </ol>
+                <div className="live__stage">
+                  <Board label={s.alt.live} className="live__board">
+                    <BoardScreen s={s} lang={t.lang} />
+                  </Board>
+                  <Laptop className="live__laptop">
+                    <LiveConsoleScreen s={s} />
+                  </Laptop>
+                  <p className="flycard" data-flycard aria-hidden="true">
+                    <span className="flycard__bg" data-flycard-bg />
+                    <span className="flycard__text">{s.board.question}</span>
+                  </p>
+                </div>
               </div>
               <div className="live__copy">
-                <p className="body" data-reveal>
-                  {t.live.body}
-                </p>
                 <p className="note" data-reveal>
                   {t.live.join}
                 </p>
@@ -176,25 +192,32 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
                 </p>
               </div>
               <div className="split__media" data-reveal>
-                <Laptop label={s.alt.console}>
-                  <ConsoleScreen s={s} />
+                <Laptop label={s.alt.end}>
+                  <EndScreen s={s} />
                 </Laptop>
               </div>
             </div>
           </section>
         </div>
 
-        <section className="scene results" id={t.results.id} data-theme="paper" aria-labelledby="results-title">
-          <div className="wrap">
-            <p className="index index--ink" data-reveal>
-              <span>{t.results.index}</span> {t.results.label}
-            </p>
-            <h2 className="display display--ink" id="results-title" data-reveal>
-              {t.results.title}
-            </h2>
-            <p className="lead results__body" data-reveal>
-              {t.results.body}
-            </p>
+        <section className="scene results split" id={t.results.id} data-theme="paper" aria-labelledby="results-title">
+          <div className="wrap split__grid">
+            <div className="split__copy">
+              <p className="index index--ink" data-reveal>
+                <span>{t.results.index}</span> {t.results.label}
+              </p>
+              <h2 className="title display--ink" id="results-title" data-reveal>
+                {t.results.title}
+              </h2>
+              <p className="body results__body" data-reveal>
+                {t.results.body}
+              </p>
+            </div>
+            <div className="split__media" data-reveal>
+              <Laptop label={s.alt.results}>
+                <ResultsScreen s={s} />
+              </Laptop>
+            </div>
           </div>
         </section>
 

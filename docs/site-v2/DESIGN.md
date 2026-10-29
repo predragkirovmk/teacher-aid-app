@@ -99,8 +99,11 @@ teal. One main button per viewport. Secondary actions are chevron links ("Пог
   cancelled once played (or at the first scroll), so its fill never overrides the scene.
 - Pinned scenes keep both layouts in CSS (start in the flow, end in an absolutely placed layer)
   and the motion layer only measures between them, so a resize just re-measures.
-- Scroll scenes: pinned, scrubbed timelines with `scrub: 0.6` on desktop and `scrub: true` on
-  touch (native momentum already damps).
+- Scroll scenes: pinned, scrubbed timelines with `scrub: 0.6` on desktop and `scrub: 0.35` on
+  touch. Two pins only: the hero and In class. A pinned element inside a flex container needs
+  `pinSpacing: true` set by hand.
+- Play-once scenes set their start states with `gsap.set` and tween only to the end: a paused
+  timeline does not apply `from()` or `fromTo()` starts reliably.
 - Easing: `power3.out` / `expo.out` for entrances, `none` inside scrubs. No bounce.
 - Reduced Motion: no movement, no pinning; scenes show their end state; fades stay.
 
@@ -126,10 +129,10 @@ teal. One main button per viewport. Secondary actions are chevron links ("Пог
 |---|---|---|
 | Hook | Hero: the whole class answers. Pinned for two screens: the text clears, the headline becomes the caption, the laptop becomes the teacher's desk, the one phone flies to its seat as the other 28 fill in, then every phone lights yellow and the count reaches 29 | Paper |
 | Build | Teacher chapter opener: ready before the bell | Morph to teal |
-| Build | Prepare: your lesson in, questions out (upload, emphasis, AI draft, four refinements) | Teal |
-| Climax | Live: laptop and board in sync (fire, bars, reveal) | Teal |
-| Build | End: attendance for e-Дневник, most-missed questions, practice set | Teal to paper |
-| Build | Class results: one page per class | Paper |
+| Build | Prepare: plays once on arrival. The file and the line of emphasis land, the AI writes, the questions appear, one tap on Harder rewrites them | Teal |
+| Climax | In class: pinned for three screens. Students join (0 to 27), Send is pressed, the question flies from the laptop to the board, answers and the timer count, the bars fill, the right answer is revealed. One caption per beat | Teal |
+| Build | After class: plays once. Present, late and absent count in; the most-missed questions fill | Teal to paper |
+| Build | Class results: plays once. Attendance bars grow, topics and anonymous questions arrive | Paper |
 | Later | Student chapter (phone) | Blue and yellow |
 | Later | Trust: data, privacy, the director's monthly report | Paper |
 | Epilogue | Book a free lesson, footer | Paper |

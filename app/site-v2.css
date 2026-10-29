@@ -984,16 +984,54 @@ body.v2 {
   gap: clamp(1.25rem, 3vh, 2rem);
 }
 
-.live__stage {
-  position: relative;
-  margin-top: clamp(2rem, 6vh, 4rem);
+.live__lead {
+  color: var(--on-teal-2);
+}
+
+/* The part the motion layer pins: the beat's caption over the board and the laptop. */
+.live__pin {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.25rem, 3.5vh, 2.25rem);
+  margin-top: clamp(1.5rem, 5vh, 3.5rem);
+}
+
+/* Without motion the four beats are a list; with it they share one place and take turns. */
+.live__steps {
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  align-items: end;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px clamp(16px, 3vw, 48px);
+}
+
+.live__steps li {
+  display: flex;
+  gap: 0.75em;
+  font-family: var(--display);
+  font-size: clamp(1.15rem, 1.8vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+.live__steps li span {
+  color: var(--yellow);
+  font-variant-numeric: tabular-nums;
+}
+
+.motion .live__steps {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.motion .live__steps li {
+  grid-area: 1 / 1;
 }
 
 .live__stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   column-gap: clamp(12px, 1.6vw, 24px);
+  align-items: end;
 }
 
 .live__board {
@@ -1001,24 +1039,55 @@ body.v2 {
   grid-row: 1;
 }
 
+/* Offset with a margin, not a transform, so the motion layer measures it where it is. */
 .live__laptop {
   grid-column: 9 / -1;
   grid-row: 1;
-  transform: translateY(14%);
+  margin-bottom: -5%;
+}
+
+/* The question on its way from the laptop to the board. Placed and sized by the motion layer. */
+.flycard {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.08;
+  color: var(--on-teal);
+  transform-origin: 0 0;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.flycard__bg {
+  position: absolute;
+  inset: -0.45em -0.6em;
+  border-radius: 0.45em;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 2px var(--yellow);
+}
+
+.flycard__text {
+  position: relative;
 }
 
 .live__copy {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px clamp(16px, 3vw, 48px);
+  max-width: 980px;
   margin-top: clamp(3rem, 9vh, 6rem);
 }
 
-.live__copy .body {
-  color: var(--on-teal);
-}
-
 @media (max-width: 899px) {
+  .live__steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .live__board {
     grid-column: 1 / -1;
   }
@@ -1026,8 +1095,7 @@ body.v2 {
   .live__laptop {
     grid-column: 3 / -1;
     grid-row: 2;
-    margin-top: 6%;
-    transform: none;
+    margin: 5% 0 0;
   }
 
   .live__copy {
@@ -1037,17 +1105,14 @@ body.v2 {
 
 /* ---------- Results and booking ---------- */
 
-.results .wrap,
 .book__copy {
   display: flex;
   flex-direction: column;
   gap: clamp(1.25rem, 3vh, 2rem);
 }
 
-.results__body {
+.results .body {
   color: var(--ink-2);
-  margin-left: auto;
-  margin-right: clamp(0px, 8vw, 10rem);
 }
 
 .book {
@@ -1245,6 +1310,12 @@ body.v2 {
   font-weight: 600;
 }
 
+/* On screens with a sidebar the tag sits in the sidebar, clear of the content. */
+.scr--console .scr-tag {
+  right: auto;
+  left: 1.6cqw;
+}
+
 .scr-btn {
   display: inline-flex;
   align-items: center;
@@ -1434,13 +1505,76 @@ body.v2 {
   font-size: 1.3cqw;
 }
 
-/* The class view on the board. */
+/* The class view on the board: the join screen, then the question layer. */
 .scr--board {
+  background: linear-gradient(180deg, var(--ground-top), var(--ground));
+}
+
+.scr-board__lobby,
+.scr-board__q {
+  position: absolute;
+  inset: 0;
+  padding: 3.6cqw 4.4cqw;
+}
+
+/* The finished state is the question; the motion layer starts on the join screen. */
+.scr-board__lobby {
+  display: flex;
+  align-items: center;
+  gap: 5cqw;
+  opacity: 0;
+}
+
+.scr-qr {
+  flex: none;
+  width: 24cqw;
+  padding: 1.4cqw;
+  border-radius: 1.6cqw;
+  background: #fff;
+}
+
+.scr-qr svg {
+  display: block;
+  width: 100%;
+}
+
+.scr-lobby {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6cqw;
+}
+
+.scr-lobby__scan {
+  max-width: 24ch;
+  font-size: 2.1cqw;
+  font-weight: 600;
+  color: var(--on-teal-2);
+}
+
+.scr-lobby__code {
+  font-family: var(--display);
+  font-size: 6.5cqw;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.scr-lobby__joined {
+  font-size: 2cqw;
+  color: var(--on-teal-2);
+}
+
+.scr-lobby__joined b {
+  font-family: var(--display);
+  font-size: 3.4cqw;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--yellow);
+}
+
+.scr-board__q {
   display: flex;
   flex-direction: column;
   gap: 2.4cqw;
-  padding: 3.6cqw 4.4cqw;
-  background: linear-gradient(180deg, var(--ground-top), var(--ground));
 }
 
 .scr-board__top {
@@ -1464,9 +1598,10 @@ body.v2 {
   font-family: var(--display);
   font-size: 2.2cqw;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
-.scr-board__q {
+.scr-board__question {
   max-width: 30ch;
   font-family: var(--display);
   font-size: 3.6cqw;
@@ -1495,7 +1630,7 @@ body.v2 {
   font-weight: 600;
 }
 
-/* The share of the class: a scaled layer, so step 3 can fill it with a transform. */
+/* The share of the class: a scaled layer, filled with a transform. */
 .scr-bars__fill {
   position: absolute;
   inset: 0;
@@ -1504,13 +1639,18 @@ body.v2 {
   background: oklch(100% 0 0 / 0.1);
 }
 
-/* The right answer: a yellow ring, its share in a brighter fill (yellow tints over teal turn olive). */
-.scr-bars li.is-right {
-  box-shadow: inset 0 0 0 0.28cqw var(--yellow);
-}
-
 .scr-bars li.is-right .scr-bars__fill {
   background: oklch(100% 0 0 / 0.2);
+}
+
+/* The right answer, revealed: a yellow ring (yellow tints over teal turn olive). */
+.scr-bars__ring {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 0.28cqw var(--yellow);
+  pointer-events: none;
 }
 
 .scr-bars__key {
@@ -1547,6 +1687,415 @@ body.v2 {
 .scr-board__foot {
   font-size: 1.4cqw;
   color: var(--on-teal-2);
+}
+
+.scr-board__foot b {
+  color: var(--on-teal);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Shared bits of the teacher screens. */
+:where(.scr) :where(h3, h4, p, ol, ul) {
+  margin: 0;
+}
+
+.scr h4 {
+  font-size: 1.35cqw;
+  font-weight: 600;
+  color: var(--on-teal-2);
+}
+
+.scr-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.7cqw 1.4cqw;
+  border-radius: 999px;
+  background: oklch(100% 0 0 / 0.1);
+  font-size: 1.3cqw;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.scr-chip--ghost {
+  background: none;
+  box-shadow: inset 0 0 0 0.12cqw oklch(100% 0 0 / 0.45);
+}
+
+.scr-sub {
+  display: block;
+  margin-top: 0.6cqw;
+  font-size: 1.3cqw;
+  color: var(--on-teal-2);
+}
+
+/* A row's share, filled with a transform. */
+.scr-meter {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform: scaleX(var(--share, 0));
+  background: oklch(100% 0 0 / 0.1);
+}
+
+/* Prepare a lesson. */
+.scr-prep {
+  gap: 1.4cqw;
+}
+
+.scr-prep__in {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 1.2cqw;
+}
+
+.scr-file,
+.scr-prep__emph {
+  display: flex;
+  gap: 1cqw;
+  padding: 1.4cqw 1.6cqw;
+  border-radius: 1.2cqw;
+  background: var(--panel);
+  font-size: 1.35cqw;
+  font-weight: 600;
+}
+
+.scr-file {
+  align-items: center;
+}
+
+.scr-file__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 3.4cqw;
+  height: 3.4cqw;
+  border-radius: 0.6cqw;
+  background: var(--yellow);
+  color: var(--shadow);
+  font-size: 0.95cqw;
+  font-weight: 800;
+}
+
+.scr-prep__emph {
+  flex-direction: column;
+  gap: 0.3cqw;
+  font-weight: 500;
+}
+
+.scr-prep__emph small {
+  font-size: 1.1cqw;
+  color: var(--on-teal-2);
+}
+
+.scr-prep__out {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9cqw;
+}
+
+/* The wait while the AI writes; gone in the finished state. */
+.scr-prep__writing {
+  position: absolute;
+  inset: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1cqw;
+  font-size: 1.4cqw;
+  color: var(--on-teal-2);
+  opacity: 0;
+}
+
+.scr-prep__bar {
+  display: block;
+  height: 0.5cqw;
+  border-radius: 999px;
+  background: oklch(100% 0 0 / 0.12);
+  overflow: hidden;
+}
+
+.scr-prep__bar i {
+  display: block;
+  height: 100%;
+  background: var(--yellow);
+  transform-origin: left center;
+}
+
+.scr-prep__count {
+  font-size: 1.3cqw;
+  font-weight: 600;
+  color: var(--on-teal-2);
+}
+
+.scr-prep__qs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8cqw;
+}
+
+.scr-prep__qs li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2cqw;
+  padding: 1.2cqw 1.6cqw;
+  border-radius: 1.2cqw;
+  background: var(--panel);
+  font-size: 1.4cqw;
+}
+
+.scr-prep__qs small {
+  flex: none;
+  font-size: 1.1cqw;
+  color: var(--on-teal-2);
+}
+
+.scr-prep__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.6cqw;
+  margin-top: auto;
+}
+
+.scr-prep__refine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8cqw;
+}
+
+.scr-prep__foot .scr-btn {
+  padding: 1.1cqw 2cqw;
+  font-size: 1.35cqw;
+}
+
+/* The live console. */
+.scr--live {
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, var(--ground-top), var(--ground));
+}
+
+.scr--live .scr-btn {
+  padding: 0.9cqw 1.8cqw;
+  font-size: 1.3cqw;
+}
+
+.scr-live__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.8cqw 3cqw;
+  background: var(--deep);
+  font-size: 1.5cqw;
+  color: var(--on-teal-2);
+}
+
+.scr-live__bar b {
+  color: var(--on-teal);
+}
+
+.scr--live .scr-btn--end {
+  background: #ec221f;
+  color: #fff;
+  font-weight: 700;
+}
+
+.scr-live__body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28%;
+  gap: 2.4cqw;
+  padding: 2.6cqw 3cqw;
+}
+
+.scr-live__qs {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1cqw;
+}
+
+.scr-live__qs li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.6cqw;
+  padding: 1.5cqw 1.8cqw;
+  border-radius: 1.2cqw;
+  background: var(--panel);
+  font-size: 1.45cqw;
+}
+
+.scr-live__qs li:not(.is-current) {
+  color: var(--on-teal-2);
+}
+
+.scr-live__qs li.is-current {
+  box-shadow: inset 0 0 0 0.2cqw oklch(100% 0 0 / 0.35);
+}
+
+/* Send, then Sent: two labels in one place. The finished state is Sent. */
+.scr-send {
+  display: grid;
+}
+
+.scr-send > span {
+  grid-area: 1 / 1;
+  text-align: center;
+}
+
+.scr-send [data-send-label] {
+  opacity: 0;
+}
+
+.scr-live__side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.8cqw;
+}
+
+.scr-live__side p {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3cqw;
+  font-size: 1.3cqw;
+  color: var(--on-teal-2);
+}
+
+.scr-live__side b {
+  font-family: var(--display);
+  font-size: 3.8cqw;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--on-teal);
+}
+
+.scr-reveal {
+  position: relative;
+  justify-content: center;
+}
+
+.scr-reveal i {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 0.24cqw var(--yellow);
+}
+
+/* After End. */
+.scr-end__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.1cqw;
+}
+
+.scr-end__stats span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3cqw;
+  padding: 1.6cqw 2cqw;
+  border-radius: 1.4cqw;
+  background: var(--panel);
+  font-size: 1.3cqw;
+  color: var(--on-teal-2);
+}
+
+.scr-end__stats b {
+  font-family: var(--display);
+  font-size: 4cqw;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--on-teal);
+}
+
+.scr-end__missed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8cqw;
+}
+
+.scr-end__missed ol,
+.scr-res__cols ol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8cqw;
+}
+
+.scr-end__missed li,
+.scr-res__cols li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2cqw;
+  padding: 1.25cqw 1.6cqw;
+  border-radius: 1.2cqw;
+  background: var(--panel);
+  overflow: hidden;
+  font-size: 1.35cqw;
+}
+
+.scr-end__missed li > span:not(.scr-meter),
+.scr-end__missed b,
+.scr-res__cols li > span:not(.scr-meter),
+.scr-res__cols b {
+  position: relative;
+}
+
+.scr-end__missed b,
+.scr-res__cols b {
+  flex: none;
+  font-weight: 700;
+}
+
+.scr-end__practice {
+  align-self: flex-start;
+  padding: 0.9cqw 1.8cqw;
+  font-size: 1.3cqw;
+}
+
+/* One class's page. */
+.scr-res__chart {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2cqw;
+  padding: 1.6cqw 2cqw;
+  border-radius: 1.4cqw;
+  background: var(--panel);
+}
+
+.scr-res__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 1cqw;
+  height: 9cqw;
+}
+
+.scr-res__bars i {
+  flex: 1;
+  height: 100%;
+  border-radius: 0.5cqw 0.5cqw 0 0;
+  background: oklch(100% 0 0 / 0.32);
+  transform-origin: center bottom;
+  transform: scaleY(var(--v, 1));
+}
+
+.scr-res__cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.6cqw;
+}
+
+.scr-res__cols > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8cqw;
+}
+
+.scr-res__cols ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8cqw;
 }
 
 /* The student phone: the blue app with one yellow choice. */

@@ -167,6 +167,161 @@ export function Motion() {
                 .to({}, { duration: 1 });
             }
 
+            // A number that counts while a timeline plays, written into each of `els`. The play-once
+            // timelines below set their start states first and then only tween to the end.
+            const counter = (tl: ReturnType<typeof gsap.timeline>, els: (Element | null)[], from: number, to: number, duration: number, at: number | string) => {
+              const o = { n: from };
+              const write = () => els.forEach((e) => e && (e.textContent = String(Math.round(o.n))));
+              write();
+              tl.to(o, { n: to, duration, ease: "none", onUpdate: write }, at);
+            };
+
+            /* Prepare (act 2): once the laptop is in view, the lesson file and the line of emphasis
+               arrive, the AI writes, the questions appear, and one tap on Harder rewrites them. */
+            const prep = document.querySelector<HTMLElement>("[data-prep]");
+            if (prep) {
+              const P = (sel: string) => Array.from(prep.querySelectorAll<HTMLElement>(sel));
+              const pick = P('[data-prep-refine="pick"]');
+              const qs = P("[data-prep-q]");
+              gsap.set([...P("[data-prep-file]"), ...P("[data-prep-emph]")], { y: 14, autoAlpha: 0 });
+              gsap.set([...P("[data-prep-writing]"), ...P("[data-prep-count]")], { autoAlpha: 0 });
+              gsap.set(P("[data-prep-bar]"), { scaleX: 0 });
+              gsap.set(qs, { y: 10, autoAlpha: 0 });
+              const tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+              tl.to(P("[data-prep-file]"), { y: 0, autoAlpha: 1, duration: 0.6 })
+                .to(P("[data-prep-emph]"), { y: 0, autoAlpha: 1, duration: 0.6 }, "-=0.35")
+                .to(P("[data-prep-writing]"), { autoAlpha: 1, duration: 0.3 })
+                .to(P("[data-prep-bar]"), { scaleX: 1, duration: 1.4, ease: "power1.inOut" })
+                .to(P("[data-prep-writing]"), { autoAlpha: 0, duration: 0.25 })
+                .to(P("[data-prep-count]"), { autoAlpha: 1, duration: 0.3 })
+                .to(qs, { y: 0, autoAlpha: 1, duration: 0.5, stagger: 0.12 }, "-=0.1")
+                .to(pick, { backgroundColor: "#ffc83e", color: "#0a2e37", duration: 0.2 }, "+=0.5")
+                .to(qs, { autoAlpha: 0.35, duration: 0.2, stagger: 0.04 }, "+=0.1")
+                .to(qs, { autoAlpha: 1, duration: 0.35, stagger: 0.06 })
+                .to(pick, { backgroundColor: "rgba(255, 200, 62, 0)", color: "#f6f9f9", duration: 0.3, clearProps: "backgroundColor,color" }, "+=0.2");
+              ScrollTrigger.create({ trigger: prep, start: "top 75%", once: true, onEnter: () => void tl.play() });
+            }
+
+            /* In class (act 2, climax): the stage pins for three screens of scroll and plays one
+               question through. Students join, the teacher clicks Send, the question flies from the
+               laptop to the board, the answers come in on both screens, and the right one is
+               revealed. One caption per beat. */
+            const live = document.querySelector<HTMLElement>("[data-live]");
+            const liveStage = live?.querySelector<HTMLElement>(".live__stage");
+            const L = <T extends Element = HTMLElement>(sel: string) => live?.querySelector<T>(sel) ?? null;
+            const LA = (sel: string) => Array.from(live?.querySelectorAll<HTMLElement>(sel) ?? []);
+            const boardQ = L("[data-board-question]");
+            const row = L("[data-send-row]");
+            const card = L("[data-flycard]");
+            let placeCard: (() => void) | null = null;
+
+            if (live && liveStage && boardQ && row && card) {
+              const steps = LA("[data-step]");
+              const bars = LA("[data-bar]");
+              const fills = LA("[data-bar-fill]");
+              const send = L("[data-send]");
+              const revealBtn = L("[data-reveal-btn]");
+
+              // The card is the board's question, laid over it at its size and type; it starts
+              // shrunk onto the console's row and flies home.
+              placeCard = () => {
+                const b = box(boardQ, liveStage);
+                Object.assign(card.style, { left: `${b.x}px`, top: `${b.y}px`, width: `${b.w}px`, fontSize: getComputedStyle(boardQ).fontSize });
+              };
+              placeCard();
+              ScrollTrigger.addEventListener("refreshInit", placeCard);
+              const fromRow = () => {
+                const a = box(row, liveStage);
+                const b = box(boardQ, liveStage);
+                const scale = a.w / b.w;
+                return { x: a.x - b.x, y: a.y + (a.h - b.h * scale) / 2 - b.y, scale };
+              };
+
+              gsap.set(steps, { autoAlpha: (i) => (i === 0 ? 1 : 0) });
+              gsap.set(L("[data-board-lobby]"), { autoAlpha: 1 });
+              gsap.set(L("[data-board-q]"), { autoAlpha: 0 });
+              gsap.set(L("[data-send-label]"), { opacity: 1 });
+              gsap.set(L("[data-sent-label]"), { opacity: 0 });
+              gsap.set(fills, { scaleX: 0 });
+              gsap.set([...LA("[data-bar-pct]"), L("[data-ring]"), L("[data-reveal-fill]")], { opacity: 0 });
+
+              const tl = gsap.timeline({
+                defaults: { ease: "none" },
+                scrollTrigger: {
+                  trigger: live,
+                  start: "center center",
+                  end: "+=300%",
+                  pin: true,
+                  // ScrollTrigger leaves spacing off for a flex child; the stage sits in one.
+                  pinSpacing: true,
+                  scrub: fine ? 0.6 : 0.35,
+                  invalidateOnRefresh: true,
+                },
+              });
+              const beat = (i: number, at: number) =>
+                tl
+                  .to(steps[i - 1], { autoAlpha: 0, y: -10, duration: 0.22 }, at)
+                  .fromTo(steps[i], { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.35 }, at + 0.26);
+
+              // 1. Students scan in.
+              counter(tl, [L("[data-joined]"), L("[data-c-joined]")], 0, 27, 1.8, 0.2);
+              // 2. Send: the button presses, the question leaves the laptop for the board.
+              beat(1, 2.1);
+              tl.to(send, { scale: 0.92, duration: 0.12 }, 2.3)
+                .to(send, { scale: 1, duration: 0.2 }, 2.42)
+                .to(L("[data-send-label]"), { opacity: 0, duration: 0.15 }, 2.45)
+                .to(L("[data-sent-label]"), { opacity: 1, duration: 0.15 }, 2.45)
+                .fromTo(card, { autoAlpha: 0, x: () => fromRow().x, y: () => fromRow().y, scale: () => fromRow().scale }, { autoAlpha: 1, duration: 0.15 }, 2.4)
+                .to(card, { x: 0, y: 0, scale: 1, duration: 1.2, ease: "power2.inOut" }, 2.55)
+                .to(L("[data-board-lobby]"), { autoAlpha: 0, duration: 0.4 }, 2.9)
+                .to(L("[data-board-q]"), { autoAlpha: 1, duration: 0.4 }, 3.2)
+                .to(L("[data-flycard-bg]"), { opacity: 0, duration: 0.3 }, 3.5)
+                .to(card, { autoAlpha: 0, duration: 0.2 }, 3.85);
+              // 3. The answers come in on the board and the console; the timer runs down.
+              beat(2, 3.9);
+              counter(tl, [L("[data-answered]"), L("[data-c-answered]")], 0, 24, 2.6, 4);
+              counter(tl, [L("[data-timer]")], 20, 0, 2.6, 4);
+              tl.to(fills, { scaleX: (_, el) => parseFloat((el as HTMLElement).parentElement?.style.getPropertyValue("--share") ?? "0"), duration: 2.4, ease: "power1.out", stagger: 0.05 }, 4.1);
+              // 4. Reveal: the button presses, the right answer rings, the rest step back.
+              beat(3, 6.8);
+              tl.to(revealBtn, { scale: 0.92, duration: 0.12 }, 6.9)
+                .to(revealBtn, { scale: 1, duration: 0.2 }, 7.02)
+                .to(L("[data-reveal-fill]"), { opacity: 1, duration: 0.2 }, 6.95)
+                .to(L("[data-ring]"), { opacity: 1, duration: 0.35 }, 7.1)
+                .to(bars.filter((b) => !b.classList.contains("is-right")), { opacity: 0.55, duration: 0.35 }, 7.1)
+                .to(LA("[data-bar-pct]"), { opacity: 1, duration: 0.35 }, 7.1)
+                .to({}, { duration: 1.6 });
+            }
+
+            /* After class: the attendance tiles count in and the most-missed questions fill. */
+            const end = document.querySelector<HTMLElement>("[data-end]");
+            if (end) {
+              const E = (sel: string) => Array.from(end.querySelectorAll<HTMLElement>(sel));
+              gsap.set(E("[data-end-stat]"), { y: 12, autoAlpha: 0 });
+              gsap.set(E("[data-end-row]"), { y: 10, autoAlpha: 0 });
+              gsap.set(E("[data-end-fill]"), { scaleX: 0 });
+              const tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+              tl.to(E("[data-end-stat]"), { y: 0, autoAlpha: 1, duration: 0.5, stagger: 0.1 });
+              E("[data-end-n]").forEach((b) => counter(tl, [b], 0, Number(b.dataset.endN), 0.9, 0.1));
+              tl.to(E("[data-end-row]"), { y: 0, autoAlpha: 1, duration: 0.5, stagger: 0.1 }, 0.5)
+                .to(E("[data-end-fill]"), { scaleX: (_, el) => parseFloat((el as HTMLElement).parentElement?.style.getPropertyValue("--share") ?? "0"), duration: 0.9, stagger: 0.1 }, 0.7);
+              ScrollTrigger.create({ trigger: end, start: "top 75%", once: true, onEnter: () => void tl.play() });
+            }
+
+            /* Results: the attendance bars grow, then the topics and the questions arrive. */
+            const results = document.querySelector<HTMLElement>("[data-results]");
+            if (results) {
+              const R = (sel: string) => Array.from(results.querySelectorAll<HTMLElement>(sel));
+              gsap.set(R("[data-res-bar]"), { scaleY: 0 });
+              gsap.set(R("[data-res-row]"), { y: 10, autoAlpha: 0 });
+              gsap.set(R("[data-res-fill]"), { scaleX: 0 });
+              const tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+              tl.to(R("[data-res-bar]"), { scaleY: (_, el) => parseFloat((el as HTMLElement).style.getPropertyValue("--v")), duration: 0.8, stagger: 0.05 })
+                .to(R("[data-res-row]"), { y: 0, autoAlpha: 1, duration: 0.5, stagger: 0.08 }, 0.4)
+                .to(R("[data-res-fill]"), { scaleX: (_, el) => parseFloat((el as HTMLElement).parentElement?.style.getPropertyValue("--share") ?? "0"), duration: 0.9, stagger: 0.1 }, 0.6);
+              ScrollTrigger.create({ trigger: results, start: "top 75%", once: true, onEnter: () => void tl.play() });
+            }
+
             // Reveals: each block rises into place as it enters, in reading order, once.
             const rise = narrow ? 28 : 44;
             gsap.set("[data-reveal]", { y: rise, autoAlpha: 0 });
@@ -189,6 +344,7 @@ export function Motion() {
             document.fonts.ready.then(() => ScrollTrigger.refresh());
 
             return () => {
+              if (placeCard) ScrollTrigger.removeEventListener("refreshInit", placeCard);
               heroTl?.scrollTrigger?.kill();
               heroTl?.kill();
               document.removeEventListener("click", onAnchor);
