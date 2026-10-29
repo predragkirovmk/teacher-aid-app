@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { ApiError } from "@/lib/teacher/api/errors";
-import { createMockApi, memorySource } from "@/lib/teacher/api/mock";
+import { createMock, createMockApi, memorySource } from "@/lib/teacher/api/mock";
 import { freshState } from "@/lib/teacher/api/mock-state";
 import type { TeacherApi } from "@/lib/teacher/api/client";
 import type { Lesson, LessonDraft, QuestionKind } from "@/lib/teacher/api/types";
@@ -413,9 +413,8 @@ describe("the school library", () => {
 });
 
 describe("what is not built yet", () => {
-  test("the live lesson answers not_implemented, and nothing is open", async () => {
+  test("the rest of the live lesson answers not_implemented", async () => {
     const calls: Promise<unknown>[] = [
-      api.createSession({ lesson_id: "l", course_id: "c" }),
       api.getConsole("s"),
       api.getClassView("s"),
       api.advance("s", { to: "teaching" }),
@@ -432,9 +431,6 @@ describe("what is not built yet", () => {
     ];
     for (const call of calls) expect((await rejection(call)).code).toBe("not_implemented");
     expect(() => api.openChannel("session.s.public", () => {})).toThrowError(ApiError);
-    const open = await api.getOpenSession();
-    expect(open.session).toBeNull();
-    expect(open.server_now).toBe(new Date(NOW).toISOString());
   });
 
   test("who did a practice set is read from the history", async () => {
@@ -446,6 +442,150 @@ describe("what is not built yet", () => {
     expect(results.students.length).toBe(practice.students);
     expect(results.students.filter((s) => s.completed_at).length).toBe(practice.completed);
     expect((await rejection(api.getPracticeResults("s-none"))).code).toBe("not_found");
+  });
+});
+
+describe("starting a lesson", () => {
+  const prepared = async () => (await api.listLessons()).filter((l) => l.times_run === 0);
+  const courseFor = async (lessonYear: number) => (await api.listCourses()).find((c) => c.class.year === lessonYear)!;
+
+  test("nothing is open to begin with, and the answer carries the server's clock", async () => {
+    const open = await api.getOpenSession();
+    expect(open.session).toBeNull();
+    expect(open.server_now).toBe(new Date(NOW).toISOString());
+  });
+
+  test("starts in the lobby and answers the console: every question ready, every student of the class not yet in", async () => {
+    const [lesson] = await prepared();
+    const course = await courseFor(lesson.year);
+    const snapshot = await api.createSession({ lesson_id: lesson.id, course_id: course.id });
+    expect(snapshot.session).toMatchObject({
+      course_id: course.id,
+      state: "lobby",
+      ended_at: null,
+      started_at: new Date(NOW).toISOString(),
+      lesson: { id: lesson.id, title: lesson.title, version: 1 },
+      class_name: course.class.name,
+      subject_name: course.subject.name,
+    });
+    expect(snapshot.questions).toHaveLength(lesson.question_count);
+    expect(snapshot.questions.every((q) => q.status === "ready" && q.fired_at === null && !q.adhoc)).toBe(true);
+    expect(snapshot.students).toHaveLength(course.student_count);
+    expect(snapshot.students.every((s) => s.attendance === null && !s.online)).toBe(true);
+    expect(snapshot.nudge).toBe(false);
+  });
+
+  test("GET /sessions/open then returns it, with the names of the class and the subject (AC-END-05)", async () => {
+    const [lesson] = await prepared();
+    const course = await courseFor(lesson.year);
+    const { session } = await api.createSession({ lesson_id: lesson.id, course_id: course.id });
+    const open = await api.getOpenSession();
+    expect(open.session).toMatchObject({ id: session.id, state: "lobby", class_name: course.class.name, subject_name: "Математика" });
+    expect(open.session?.started_at).toBe(new Date(NOW).toISOString());
+  });
+
+  test("a second start is refused as session_open (409), whatever the lesson or the class, and nothing changes", async () => {
+    const [first, second] = await prepared();
+    const [a, b] = await api.listCourses();
+    const { session } = await api.createSession({ lesson_id: first.id, course_id: a.id });
+    const sameCourse = await rejection(api.createSession({ lesson_id: second.id, course_id: a.id }));
+    expect(sameCourse.code).toBe("session_open");
+    expect(sameCourse.status).toBe(409);
+    expect((await rejection(api.createSession({ lesson_id: second.id, course_id: b.id }))).code).toBe("session_open");
+    expect((await api.getOpenSession()).session?.id).toBe(session.id);
+  });
+
+  test("a lesson or a class that is not the teacher's is not found, even while a lesson is open", async () => {
+    const [lesson] = await prepared();
+    const [course] = await api.listCourses();
+    expect((await rejection(api.createSession({ lesson_id: "nope", course_id: course.id }))).code).toBe("not_found");
+    expect((await rejection(api.createSession({ lesson_id: lesson.id, course_id: "nope" }))).code).toBe("not_found");
+    expect((await api.getOpenSession()).session).toBeNull();
+  });
+
+  test("the lesson stays prepared until it has been run: starting it does not make it a run lesson", async () => {
+    const [lesson] = await prepared();
+    const course = await courseFor(lesson.year);
+    await api.createSession({ lesson_id: lesson.id, course_id: course.id });
+    expect((await prepared()).map((l) => l.id)).toContain(lesson.id);
+    expect((await api.listCourses()).find((c) => c.id === course.id)?.lessons_run).toBe(6);
+  });
+
+  test("the open lesson is kept with the demo, and each demo school and teacher has their own", async () => {
+    const [lesson] = await prepared();
+    const course = await courseFor(lesson.year);
+    await api.createSession({ lesson_id: lesson.id, course_id: course.id });
+    // A page loaded again builds the adapter afresh over the same saved state.
+    await expect(build().getOpenSession()).resolves.toMatchObject({ session: { class_name: course.class.name } });
+    source.setSchoolType("university");
+    expect((await api.getOpenSession()).session).toBeNull();
+    source.setSchoolType("school");
+    source.setSession("novice");
+    expect((await api.getOpenSession()).session).toBeNull();
+    source.setSession("veteran");
+    expect((await api.getOpenSession()).session).not.toBeNull();
+  });
+
+  test("starts at a faculty too, in the group of that subject", async () => {
+    source.setSchoolType("university");
+    const [lesson] = await prepared();
+    const groups = await api.listCourses();
+    const group = groups.find((c) => c.subject.id === lesson.subject.id)!;
+    const { session } = await api.createSession({ lesson_id: lesson.id, course_id: group.id });
+    expect(session.class_name).toBe(group.class.name);
+    expect(session.class_name).toMatch(/^Група/);
+  });
+
+  test("a saved lesson that is open is read back; one that is damaged or ended is dropped, not trusted", async () => {
+    const [lesson] = await prepared();
+    const course = await courseFor(lesson.year);
+    await api.createSession({ lesson_id: lesson.id, course_id: course.id });
+    const saved = JSON.parse(JSON.stringify(source.state()));
+    expect(saved.school.session.state).toBe("lobby");
+    const { sanitizeState } = await import("@/lib/teacher/api/mock-state");
+    expect(sanitizeState(saved, NOW).school.session?.id).toBe(saved.school.session.id);
+    for (const damage of [{ state: "ended" }, { started_at: "yesterday" }, { course_id: 7 }, { lesson: null }]) {
+      const bad = JSON.parse(JSON.stringify(saved));
+      bad.school.session = { ...bad.school.session, ...damage };
+      expect(sanitizeState(bad, NOW).school.session).toBeNull();
+    }
+  });
+
+  test("the demo can show a lesson that is running, twelve minutes in, and close it again", async () => {
+    const mock = createMock(source, { delay: () => Promise.resolve() });
+    mock.demo.simulateRunning();
+    const open = await mock.api.getOpenSession();
+    expect(open.session).toMatchObject({ state: "lobby", subject_name: "Математика" });
+    expect(Date.parse(open.server_now) - Date.parse(open.session!.started_at)).toBe(12 * 60_000);
+    // One lesson at a time: pretending again changes nothing, and a real start is refused.
+    const id = open.session!.id;
+    mock.demo.simulateRunning();
+    expect((await mock.api.getOpenSession()).session?.id).toBe(id);
+    const [lesson] = await prepared();
+    const [course] = await api.listCourses();
+    expect((await rejection(mock.api.createSession({ lesson_id: lesson.id, course_id: course.id }))).code).toBe("session_open");
+
+    mock.demo.closeRunning();
+    expect((await mock.api.getOpenSession()).session).toBeNull();
+    // Closed, it is a lesson that can be started again.
+    expect((await mock.api.createSession({ lesson_id: lesson.id, course_id: course.id })).session.state).toBe("lobby");
+  });
+
+  test("the demo can show a running lesson to a teacher who has made no lesson, too", async () => {
+    source.setSession("novice");
+    const mock = createMock(source, { delay: () => Promise.resolve() });
+    mock.demo.simulateRunning();
+    const open = await mock.api.getOpenSession();
+    expect(open.session?.lesson.title).toBeTruthy();
+    expect(open.session?.class_name).toBeTruthy();
+  });
+
+  test("starting is refused until somebody is signed in", async () => {
+    const [lesson] = await prepared();
+    const [course] = await api.listCourses();
+    source.setSession(null);
+    expect((await rejection(api.createSession({ lesson_id: lesson.id, course_id: course.id }))).code).toBe("unauthenticated");
+    expect((await rejection(api.getOpenSession())).code).toBe("unauthenticated");
   });
 });
 

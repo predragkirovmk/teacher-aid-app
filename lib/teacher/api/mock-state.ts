@@ -1,6 +1,6 @@
 import { isObject, isText, isValidContent } from "../lessons";
 import type { SchoolType } from "../store";
-import type { Lesson, LessonDraft, Refinement, SourceKind } from "./types";
+import type { Lesson, LessonDraft, Refinement, SessionState, SourceKind } from "./types";
 
 /**
  * What the mock adapter keeps in the browser. The demo school and its history are worked out from a
@@ -21,6 +21,19 @@ export const MOCK_VERSION = 1;
 /** A document or typed text the teacher gave, kept for the lesson that is made from it. */
 export type DemoSource = { id: string; kind: SourceKind; file_name: string | null; text: string };
 
+/**
+ * The lesson the teacher is running in the demo. A teacher has one open lesson at a time. It stays in the lobby: running the
+ * lesson (the console, the class view) is step 7's, and ending it is step 9's, so until then the demo closes it from Settings.
+ */
+export type DemoSession = {
+  id: string;
+  course_id: string;
+  lesson: { id: string; title: string; version: number };
+  state: SessionState;
+  /** ISO 8601, UTC. */
+  started_at: string;
+};
+
 export type Overlay = {
   first_run_done: boolean;
   /** The speed bonus switch, by course id. */
@@ -31,6 +44,8 @@ export type Overlay = {
   deleted: string[];
   drafts: LessonDraft[];
   sources: DemoSource[];
+  /** The open lesson, if there is one. */
+  session: DemoSession | null;
   /** Counts the ids handed out, so they never repeat. */
   counter: number;
 };
@@ -60,6 +75,7 @@ export const emptyOverlay = (persona: Persona = "veteran"): Overlay => ({
   deleted: [],
   drafts: [],
   sources: [],
+  session: null,
   counter: 0,
 });
 
@@ -136,6 +152,20 @@ export function isDraft(v: unknown): v is LessonDraft {
 const isSource = (v: unknown): v is DemoSource =>
   isObject(v) && isText(v.id) && (v.kind === "upload" || v.kind === "typed") && (v.file_name === null || isText(v.file_name)) && isText(v.text);
 
+const SESSION_STATES: readonly SessionState[] = ["lobby", "teaching", "review", "ended"];
+
+const isDemoSession = (v: unknown): v is DemoSession =>
+  isObject(v) &&
+  isText(v.id) &&
+  isText(v.course_id) &&
+  isObject(v.lesson) &&
+  isText(v.lesson.id) &&
+  isText(v.lesson.title) &&
+  isCount(v.lesson.version) &&
+  SESSION_STATES.includes(v.state as SessionState) &&
+  isText(v.started_at) &&
+  Number.isFinite(Date.parse(v.started_at));
+
 function sanitizeOverlay(saved: unknown, persona: Persona = "veteran"): Overlay {
   const s = isObject(saved) ? saved : {};
   const base = emptyOverlay(persona);
@@ -148,6 +178,7 @@ function sanitizeOverlay(saved: unknown, persona: Persona = "veteran"): Overlay 
     deleted: Array.isArray(s.deleted) ? s.deleted.filter(isText) : base.deleted,
     drafts: Array.isArray(s.drafts) ? s.drafts.filter(isDraft) : base.drafts,
     sources: Array.isArray(s.sources) ? s.sources.filter(isSource) : base.sources,
+    session: isDemoSession(s.session) && s.session.state !== "ended" ? s.session : base.session,
     counter: isCount(s.counter) ? s.counter : base.counter,
   };
 }

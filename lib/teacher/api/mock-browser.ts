@@ -1,6 +1,6 @@
 import { getTeacherState, subscribeTeacher } from "../store";
 import type { DemoControls, TeacherApi } from "./client";
-import { createMockApi, memorySource, type MockSource } from "./mock";
+import { createMock, createMockApi, memorySource, type MockSource } from "./mock";
 import { finishSignIn, MOCK_SESSION_KEY, readSession, writeSession, type DemoAccount } from "./mock-session";
 import { freshState, MOCK_KEY, readState, startOfDay, writeState, type MockState, type Persona } from "./mock-state";
 
@@ -22,7 +22,7 @@ const storage = (): Storage | null => {
   }
 };
 
-function browserSource(): MockSource & { reset(): void } {
+function browserSource(): MockSource & { reset(): void; changed(): void } {
   let state: MockState | null = null;
   // Read from the key on every call: the sign-in of the demo's provider page is a full page load that writes it, and another
   // window may write it too. The listeners are told when another window does.
@@ -81,13 +81,29 @@ function browserSource(): MockSource & { reset(): void } {
       writeState(storage(), state);
       notify();
     },
+    // The demo's controls change the data themselves; this tells the screens to look again.
+    changed: notify,
   };
 }
 
 /** The adapter the browser runs, and the demo's own controls. */
 export function createBrowserMock(): { api: TeacherApi; demo: DemoControls } {
   const source = browserSource();
-  return { api: createMockApi(source), demo: { reset: source.reset } };
+  const mock = createMock(source);
+  return {
+    api: mock.api,
+    demo: {
+      reset: source.reset,
+      simulateRunning: () => {
+        mock.demo.simulateRunning();
+        source.changed();
+      },
+      closeRunning: () => {
+        mock.demo.closeRunning();
+        source.changed();
+      },
+    },
+  };
 }
 
 /**

@@ -155,6 +155,10 @@ export type SettledPromise<T> = Promise<T> & { settled: { ok: true; value: T } |
 export type DemoControls = {
   /** Start the demo school over: the lessons the teacher made go, and the history is as of today. */
   reset(): void;
+  /** Open a lesson that began twelve minutes ago, so Today and the rest can be seen while one is running. */
+  simulateRunning(): void;
+  /** Close the open lesson. Ending a lesson is step 9's; until then this is how the demo gets back to none running. */
+  closeRunning(): void;
 };
 
 // The environment is read inside each condition, and the adapters are required inside them, so a build proves the other

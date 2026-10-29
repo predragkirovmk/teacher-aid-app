@@ -6,7 +6,7 @@ import {
   TYPED_TEXT_MIN_CHARS,
 } from "../lessons";
 import type { SchoolType } from "../store";
-import type { SettledPromise, TeacherApi, Unsubscribe } from "./client";
+import type { DemoControls, SettledPromise, TeacherApi, Unsubscribe } from "./client";
 import { isProvider } from "../signin";
 import { ApiError, toApiError, type ValidationReason } from "./errors";
 import { BANK, bankLesson, bankQuestions, refineQuestions, type BankLesson } from "./mock-bank";
@@ -21,9 +21,10 @@ import {
   type World,
 } from "./mock-data";
 import { demoProviderUrl, isOffline } from "./mock-session";
-import { overlayOf, withOverlay, type MockState, type Overlay, type Persona } from "./mock-state";
+import { overlayOf, withOverlay, type DemoSession, type MockState, type Overlay, type Persona } from "./mock-state";
 import type {
   AttendanceTally,
+  ConsoleSnapshot,
   CourseDashboard,
   CourseSummary,
   DashboardPractice,
@@ -36,9 +37,11 @@ import type {
   LessonSummary,
   LibraryItem,
   Me,
+  OpenSession,
   PracticeResults,
   PracticeSetSummary,
   Question,
+  SessionRef,
 } from "./types";
 
 /**
@@ -56,8 +59,9 @@ import type {
  * a typed text or emphasis containing `[fail]` makes the AI fail, and a document named like a scan
  * (`scan` or `скен`) has no text in it.
  *
- * The live lesson (sessions, the console, the class view, realtime) is not built yet: those calls answer
- * `not_implemented`, except `getOpenSession`, which answers that nothing is open.
+ * The live lesson (the console, the class view, realtime) is not built yet: those calls answer `not_implemented`. What
+ * Today needs is: `createSession` opens a lesson in the lobby, `getOpenSession` reports it, and a teacher has one open
+ * lesson at a time. Ending it is step 9's, so until then the demo closes it from Settings (`MockDemo`).
  */
 
 /** What the mock reads and writes: the saved state, the demo school the app is on, the clock. */
@@ -74,6 +78,9 @@ export type MockSource = {
   /** Called when the state or the school changes behind the adapter's back: another window, a reset, the demo switch. */
   subscribe(listener: () => void): Unsubscribe;
 };
+
+/** What only the mock can do, for the demo's Settings: show a lesson that is running, and close it. */
+export type MockDemo = Pick<DemoControls, "simulateRunning" | "closeRunning">;
 
 /** A source that keeps everything in memory: the server render's, and the tests'. */
 export function memorySource(
@@ -146,10 +153,14 @@ type Ctx = { type: SchoolType; persona: Persona; state: MockState; overlay: Over
 /** A school as a teacher who has just been invited sees it: the same classes and rosters, and no lesson has ever been run. */
 const withoutHistory = (world: World): World => ({ ...world, courses: world.courses.map((course) => ({ ...course, sessions: [] })) });
 
-export function createMockApi(
+/** The adapter alone, for the tests and the server render. */
+export const createMockApi = (source: MockSource, options: { delay?: (ms: number) => Promise<void> } = {}): TeacherApi =>
+  createMock(source, options).api;
+
+export function createMock(
   source: MockSource,
   options: { delay?: (ms: number) => Promise<void> } = {},
-): TeacherApi {
+): { api: TeacherApi; demo: MockDemo } {
   const delay = options.delay ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
 
   const ctx = (): Ctx => {
@@ -460,6 +471,58 @@ export function createMockApi(
     question_count: content.questions.length,
   });
 
+  // ---- The open lesson ----
+
+  const sessionRef = (s: DemoSession): SessionRef => ({
+    id: s.id,
+    course_id: s.course_id,
+    lesson: s.lesson,
+    state: s.state,
+    started_at: s.started_at,
+    ended_at: null,
+  });
+
+  /** The open lesson with the names of its class and subject; none when there is none, or its course is not in this school. */
+  const openOf = (c: Ctx): OpenSession["session"] => {
+    const s = c.overlay.session;
+    const course = s && c.world.courses.find((x) => x.course_id === s.course_id);
+    return s && course ? { ...sessionRef(s), class_name: course.def.name, subject_name: course.def.subject.name } : null;
+  };
+
+  /** What the console shows of a lesson that has just been opened: every question ready, every student of the class not yet in. */
+  const consoleOf = (c: Ctx, s: DemoSession, course: SeedCourse, lesson: Lesson): ConsoleSnapshot => ({
+    server_now: iso(c.now),
+    session: { ...sessionRef(s), class_name: course.def.name, subject_name: course.def.subject.name },
+    questions: lesson.questions.map((question, i) => ({
+      id: `${s.id}-sq${i + 1}`,
+      question,
+      status: "ready",
+      adhoc: false,
+      fired_at: null,
+      closes_at: null,
+      closed_at: null,
+      revealed_at: null,
+      skipped_at: null,
+      answered: 0,
+      joined: 0,
+    })),
+    students: course.students.map((student) => ({
+      id: student.id,
+      full_name: student.full_name,
+      attendance: null,
+      joined_at: null,
+      no_device_reason: null,
+      online: false,
+      answer_state: null,
+      focus_flags: 0,
+      points: 0,
+    })),
+    anon_questions: [],
+    focus_flags: [],
+    board: [],
+    nudge: false,
+  });
+
   const api: TeacherApi = {
     // The redirect to the provider is, in the demo, the sign-in screen with a sheet that stands in for the provider's page.
     startSignIn: (request) =>
@@ -687,8 +750,29 @@ export function createMockApi(
       }),
 
     // ---- The live lesson: step 7 builds the driver ----
-    createSession: () => notImplemented(),
-    getOpenSession: () => run(() => ({ server_now: iso(source.now()), session: null })),
+    createSession: (request) =>
+      run(() => {
+        const c = ctx();
+        const course = c.world.courses.find((x) => x.course_id === request?.course_id);
+        const lesson = lessonsOf(c).find((l) => l.id === request?.lesson_id);
+        if (!course || !lesson) throw notFound();
+        // At most one open lesson (EC-SES-02 says per course, and `GET /sessions/open` answers one): the demo holds a teacher to one.
+        if (c.overlay.session) throw new ApiError("session_open", { status: 409 });
+        const session: DemoSession = {
+          id: nextId(c.overlay, "s-n"),
+          course_id: course.course_id,
+          lesson: { id: lesson.id, title: lesson.title, version: lesson.version },
+          state: "lobby",
+          started_at: iso(c.now),
+        };
+        save(c, { ...c.overlay, counter: c.overlay.counter + 1, session });
+        return consoleOf(c, session, course, lesson);
+      }),
+    getOpenSession: () =>
+      run(() => {
+        const c = ctx();
+        return { server_now: iso(c.now), session: openOf(c) };
+      }),
     getConsole: () => notImplemented(),
     getClassView: () => notImplemented(),
     advance: () => notImplemented(),
@@ -729,7 +813,36 @@ export function createMockApi(
     subscribe: (listener) => source.subscribe(listener),
   };
 
-  return guarded(api, source);
+  // ---- The demo's own controls ----
+
+  const demo: MockDemo = {
+    simulateRunning: () => {
+      const c = ctx();
+      if (c.overlay.session) return;
+      const all = lessonsOf(c);
+      const lesson = all.find((l) => l.times_run === 0) ?? all[0];
+      // A lesson of the course's subject, and the class of its year if there is one. A teacher who has made no lesson yet is
+      // shown one of the demo's own.
+      const courses = c.world.courses;
+      const course = (lesson && (courses.find((x) => x.def.subject.id === lesson.subject.id && x.def.year === lesson.year) ?? courses.find((x) => x.def.subject.id === lesson.subject.id))) || courses[0];
+      const shown = lesson ?? { id: lessonIdOf("procenti"), title: bankLesson("procenti").title, version: 1 };
+      const session: DemoSession = {
+        id: nextId(c.overlay, "s-n"),
+        course_id: course.course_id,
+        lesson: { id: shown.id, title: shown.title, version: shown.version },
+        state: "lobby",
+        // A lesson in the middle of its time, so Today reads like a lesson that is going on.
+        started_at: iso(c.now - 12 * 60_000),
+      };
+      save(c, { ...c.overlay, counter: c.overlay.counter + 1, session });
+    },
+    closeRunning: () => {
+      const c = ctx();
+      if (c.overlay.session) save(c, { ...c.overlay, session: null });
+    },
+  };
+
+  return { api: guarded(api, source), demo };
 }
 
 /** The calls that need no session: starting a sign-in, ending one, listening. */
