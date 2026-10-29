@@ -39,7 +39,8 @@ export function StartDialog({ lesson, onClose }: { lesson: StartLesson; onClose:
   const [problem, setProblem] = useState<unknown>(null);
 
   const offered = useMemo(() => (courses.data ? offeredCourses(courses.data, lesson) : []), [courses.data, lesson]);
-  const running = open.data?.session ?? null;
+  // Once Start has gone through, the lesson that opened is the open lesson: that is not news, and the window is on its way out.
+  const running = busy ? null : (open.data?.session ?? null);
   const waiting = !running && (open.status === "loading" || courses.status === "loading");
   const failed = !running && !waiting && courses.status === "error";
   const view = running ? startView(true, offered) : waiting ? "waiting" : failed ? "failed" : startView(false, offered);

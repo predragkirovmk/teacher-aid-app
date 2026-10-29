@@ -477,6 +477,46 @@ test.describe("starting a lesson", () => {
     await expect(yellow(page)).toHaveCount(1);
   });
 
+  test("the very lesson being asked about, started in another window, turns the question into that message and does not just vanish", async ({ page, context }: { page: Page; context: BrowserContext }) => {
+    await page.goto("/teacher");
+    await procenti(page).getByRole("button", { name: "Започни час" }).click();
+    await expect(startDialog(page)).toBeVisible();
+
+    const other = await context.newPage();
+    await other.clock.setFixedTime(NOW);
+    await other.goto("/teacher");
+    await procenti(other).getByRole("button", { name: "Започни час" }).click();
+    await startDialog(other).getByRole("radio", { name: /II-4/ }).check();
+    await startDialog(other).getByRole("button", { name: "Започни", exact: true }).click();
+    await expect(other).toHaveURL(/\/teacher\/live\//);
+
+    // The lesson has left this page's list, as it should, and the window is still here to say why.
+    await expect(runningDialog(page)).toBeVisible();
+    await expect(runningDialog(page)).toContainText("„Проценти и пропорции“, Математика, II-4.");
+    await expect(runningDialog(page).getByRole("link", { name: "Врати се на часот" })).toBeFocused();
+    await runningDialog(page).getByRole("button", { name: "Затвори" }).click();
+    await expect(procenti(page)).toHaveCount(0);
+    await expect(page.getByRole("region", { name: "Час во тек" })).toContainText("Проценти и пропорции");
+  });
+
+  test("a start that goes through never shows the \"already running\" message on its way out", async ({ page }) => {
+    await page.addInitScript(() => {
+      const seen: string[] = [];
+      (window as unknown as { __titles: string[] }).__titles = seen;
+      new MutationObserver(() => {
+        const t = document.querySelector("dialog:not([role='alertdialog']) h2")?.textContent;
+        if (t && seen[seen.length - 1] !== t) seen.push(t);
+      }).observe(document, { childList: true, subtree: true, characterData: true });
+    });
+    await page.goto("/teacher");
+    await procenti(page).getByRole("button", { name: "Започни час" }).click();
+    await startDialog(page).getByRole("radio", { name: /II-4/ }).check();
+    await startDialog(page).getByRole("button", { name: "Започни", exact: true }).click();
+    await expect(page).toHaveURL(/\/teacher\/live\//);
+    const titles = await page.evaluate(() => (window as unknown as { __titles: string[] }).__titles);
+    expect(titles).toEqual(["Со кој клас?"]);
+  });
+
   test("is in English when the screen is", async ({ page }) => {
     await page.addInitScript((key) => localStorage.setItem(key, JSON.stringify({ locale: "en", schoolType: "school", schoolSeen: true })), SETTINGS_KEY);
     await page.goto("/teacher");

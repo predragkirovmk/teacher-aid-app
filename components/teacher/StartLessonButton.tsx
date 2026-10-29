@@ -11,22 +11,37 @@ import { StartDialog, type StartLesson } from "./StartDialog";
  * no lesson is running, and the yellow of a screen is never shared: with a lesson running the yellow button is the one that
  * goes back to it.
  */
-export function StartLessonButton({ lesson, primary = false, describedBy }: { lesson: StartLesson; primary?: boolean; describedBy?: string }) {
+export function StartButton({
+  primary = false,
+  describedBy,
+  onPress,
+}: {
+  primary?: boolean;
+  describedBy?: string;
+  onPress: () => void;
+}) {
   const { t } = useT();
   const running = useOpenSession().data?.session != null;
+  return (
+    <button
+      type="button"
+      className={primary && !running ? "btn btn--primary" : "btn btn--secondary"}
+      aria-haspopup="dialog"
+      aria-describedby={describedBy}
+      onClick={onPress}
+    >
+      <PlayIcon size={24} weight="fill" aria-hidden="true" />
+      {t("lesson.start")}
+    </button>
+  );
+}
+
+/** The button with its own window, for a screen about one lesson. Today keeps the window itself: a list changes under its buttons. */
+export function StartLessonButton({ lesson, primary = false }: { lesson: StartLesson; primary?: boolean }) {
   const [asking, setAsking] = useState(false);
   return (
     <>
-      <button
-        type="button"
-        className={primary && !running ? "btn btn--primary" : "btn btn--secondary"}
-        aria-haspopup="dialog"
-        aria-describedby={describedBy}
-        onClick={() => setAsking(true)}
-      >
-        <PlayIcon size={24} weight="fill" aria-hidden="true" />
-        {t("lesson.start")}
-      </button>
+      <StartButton primary={primary} onPress={() => setAsking(true)} />
       {asking && <StartDialog lesson={lesson} onClose={() => setAsking(false)} />}
     </>
   );

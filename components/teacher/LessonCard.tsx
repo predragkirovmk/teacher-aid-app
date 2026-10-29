@@ -8,7 +8,7 @@ import { romanYear } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
 import { FROM_TODAY, lessonUrl } from "@/lib/teacher/routes";
 import { relativeDay, sayWhen } from "@/lib/teacher/when";
-import { StartLessonButton } from "./StartLessonButton";
+import { StartButton } from "./StartLessonButton";
 
 /** The subject and year of a lesson in a line: "Математика · II година". */
 export const kindLine = (t: ReturnType<typeof useT>["t"], lesson: Pick<LessonSummary, "subject" | "year">): string =>
@@ -18,7 +18,7 @@ export const kindLine = (t: ReturnType<typeof useT>["t"], lesson: Pick<LessonSum
  * One prepared lesson on Today: what it is, how many questions, when it was last changed, and the two things to do with it,
  * each named. The title is what both buttons are about, for a screen reader that reads them one after another.
  */
-export function LessonCard({ lesson, today }: { lesson: LessonSummary; today: number | null }) {
+export function LessonCard({ lesson, today, onStart }: { lesson: LessonSummary; today: number | null; onStart: (lesson: LessonSummary) => void }) {
   const { t } = useT();
   const title = useId();
   const questions = lesson.question_count === 1 ? t("lesson.questions.one") : t("lesson.questions.many", { n: lesson.question_count });
@@ -33,7 +33,7 @@ export function LessonCard({ lesson, today }: { lesson: LessonSummary; today: nu
         <p>{changed ? `${questions} · ${changed}` : questions}</p>
       </div>
       <div className="lesson__actions">
-        <StartLessonButton lesson={lesson} describedBy={title} />
+        <StartButton describedBy={title} onPress={() => onStart(lesson)} />
         {/* The lesson fills itself from the API once it is open, so there is nothing to fetch ahead of time. */}
         <Link href={lessonUrl(lesson.id, FROM_TODAY)} prefetch={false} className="btn btn--quiet" aria-describedby={title}>
           <FolderOpenIcon size={24} aria-hidden="true" />

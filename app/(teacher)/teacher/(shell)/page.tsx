@@ -2,11 +2,13 @@
 
 import { ArrowRightIcon, ChalkboardTeacherIcon, PlusIcon } from "@phosphor-icons/react";
 import Link from "next/link";
+import { useState } from "react";
 import { LessonCard } from "@/components/teacher/LessonCard";
 import { LoadProblem } from "@/components/teacher/LoadProblem";
 import { PageHeader } from "@/components/teacher/PageHeader";
 import { RunningBand } from "@/components/teacher/RunningBand";
 import { Bar, Loading } from "@/components/teacher/Skeleton";
+import { StartDialog, type StartLesson } from "@/components/teacher/StartDialog";
 import { useOpenSession, usePreparedLessons, useTeacherName } from "@/lib/teacher/api/hooks";
 import { useDayPart, useToday } from "@/lib/teacher/day";
 import { useT } from "@/lib/teacher/i18n";
@@ -24,6 +26,9 @@ export default function TodayPage() {
   const today = useToday();
   const open = useOpenSession();
   const lessons = usePreparedLessons();
+  // The window that starts a lesson belongs to the page, not to the lesson's card: a lesson that has just been started leaves
+  // the list, and the window must stay until it has said what happened.
+  const [starting, setStarting] = useState<StartLesson | null>(null);
 
   const date = today === null ? undefined : dateParts(today);
   const running = open.data?.session ?? null;
@@ -85,7 +90,7 @@ export default function TodayPage() {
               </h2>
               <ul className="lessons">
                 {shown.map((lesson) => (
-                  <LessonCard key={lesson.id} lesson={lesson} today={today} />
+                  <LessonCard key={lesson.id} lesson={lesson} today={today} onStart={setStarting} />
                 ))}
               </ul>
               {more && (
@@ -98,6 +103,7 @@ export default function TodayPage() {
           </>
         )}
       </div>
+      {starting && <StartDialog lesson={starting} onClose={() => setStarting(null)} />}
     </>
   );
 }
