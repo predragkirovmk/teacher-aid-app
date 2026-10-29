@@ -16,7 +16,7 @@ describe("the dictionaries", () => {
   });
 
   test("a string with a variable other than the school words names one the app supplies", () => {
-    const known = new Set(["students", "classes", "teacher", "name", "seconds"]);
+    const known = new Set(["students", "classes", "teacher", "name", "seconds", "provider", "n", "total"]);
     for (const locale of ["mk", "en"] as const) {
       for (const key of keys) {
         for (const text of entryText(locale, key)) {
