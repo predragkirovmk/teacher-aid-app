@@ -1,13 +1,14 @@
 "use client";
 
-import { ArrowLeftIcon, ArrowRightIcon, CalendarCheckIcon, FileTextIcon, ListChecksIcon, QrCodeIcon, type Icon } from "@phosphor-icons/react";
-import { useRouter } from "next/navigation";
+import { ArrowLeftIcon, ArrowRightIcon, CalendarCheckIcon, FileTextIcon, GearSixIcon, ListChecksIcon, QrCodeIcon, type Icon } from "@phosphor-icons/react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Mark } from "@/components/app/Mark";
 import { setFirstRunDone, useMe } from "@/lib/teacher/api/hooks";
 import { leaveGuideUnsaved } from "@/lib/teacher/first-run";
 import { GUIDE_STEPS, isLastStep, stepAfter, type GuideIcon } from "@/lib/teacher/guide";
 import { useT } from "@/lib/teacher/i18n";
+import { SETTINGS } from "@/lib/teacher/routes";
 import { safeNext, TODAY } from "@/lib/teacher/signin";
 import { PageTitle } from "./PageTitle";
 import { Problem } from "./Problem";
@@ -18,12 +19,14 @@ const ICONS: Record<GuideIcon, Icon> = { prepare: FileTextIcon, hold: QrCodeIcon
  * The welcome guide of a first run: three short steps, one thing each, with Next, a labelled Back and "Skip the guide" always
  * in view. Finishing or skipping marks the first run done (FR-SUP-03) and lands on Today, where the one yellow button is
  * "Prepare a lesson", or on the screen the first sign-in was heading for. It is also reached again from Settings, where
- * finishing changes nothing on the server.
+ * finishing or skipping changes nothing on the server and goes back to Settings, and says so.
  */
 export function Guide() {
   const { t, te } = useT();
   const router = useRouter();
   const done = useMe().data?.first_run_done;
+  // Where the guide goes on to: the screen the first sign-in was heading for, or Settings when it is shown again from there.
+  const next = safeNext(useSearchParams().get("next")) ?? TODAY;
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -36,7 +39,7 @@ export function Guide() {
     moved.current = true;
   }, [step]);
 
-  const goOn = () => router.replace(safeNext(new URLSearchParams(window.location.search).get("next")) ?? TODAY);
+  const goOn = () => router.replace(next);
 
   const leave = async () => {
     if (busy) return;
@@ -103,8 +106,8 @@ export function Guide() {
             )}
             {last ? (
               <button type="button" className="btn btn--primary" aria-busy={busy} disabled={busy} onClick={() => void leave()}>
-                <CalendarCheckIcon size={24} weight="bold" aria-hidden="true" />
-                {t("guide.done")}
+                {next === SETTINGS ? <GearSixIcon size={24} weight="bold" aria-hidden="true" /> : <CalendarCheckIcon size={24} weight="bold" aria-hidden="true" />}
+                {next === SETTINGS ? t("guide.done.settings") : t("guide.done")}
               </button>
             ) : (
               <button type="button" className="btn btn--primary" onClick={() => setStep(stepAfter(step, 1))}>
@@ -127,7 +130,8 @@ export function Guide() {
               )}
             </div>
           )}
-          {!last && error === null && <p className="guide__note">{t("guide.note")}</p>}
+          {/* Told to a teacher who has not seen the guide before; one who is looking at it from Settings knows. */}
+          {!last && error === null && done === false && <p className="guide__note">{t("guide.note")}</p>}
         </div>
       </div>
     </main>

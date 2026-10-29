@@ -1,19 +1,21 @@
 "use client";
 
-import { ArrowCounterClockwiseIcon, CheckCircleIcon } from "@phosphor-icons/react";
+import { ArrowCounterClockwiseIcon, BroadcastIcon, CheckCircleIcon, XCircleIcon } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { demo } from "@/lib/teacher/api/client";
-import { useT } from "@/lib/teacher/i18n";
+import { useOpenSession } from "@/lib/teacher/api/hooks";
+import { useT, type Key } from "@/lib/teacher/i18n";
 import { ConfirmDialog } from "./ConfirmDialog";
 
 /**
- * Start the demo school over. It only touches the demo's own data (the lessons made here); it is not a warning, so
- * it is not red. Nothing shows on a live build, where there is no demo.
+ * Start the demo school over, and show a lesson that is running (and close it again, since ending a lesson is not built
+ * yet), so Today can be seen both ways. It only touches the demo's own data; it is not a warning, so it is not red. Nothing
+ * shows on a live build, where there is no demo.
  */
 export function DemoCard() {
   const { t } = useT();
   const [asking, setAsking] = useState(false);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<Key | null>(null);
   const status = useRef<HTMLParagraphElement>(null);
 
   // A message that appears together with its live region is often not read out; moving the focus to it is.
@@ -36,16 +38,17 @@ export function DemoCard() {
           type="button"
           className="btn btn--secondary"
           onClick={() => {
-            setDone(false);
+            setDone(null);
             setAsking(true);
           }}
         >
           {t("demo.reset")}
         </button>
+        <DemoRun onDone={setDone} />
         {done && (
           <p ref={status} className="status" role="status" tabIndex={-1}>
             <CheckCircleIcon size={28} weight="fill" aria-hidden="true" />
-            {t("demo.done")}
+            {t(done)}
           </p>
         )}
       </div>
@@ -59,9 +62,32 @@ export function DemoCard() {
         onConfirm={() => {
           demo?.reset();
           setAsking(false);
-          setDone(true);
+          setDone("demo.done");
         }}
       />
     </>
+  );
+}
+
+/** One button that turns "a lesson is running" on, or, while one is, off. */
+function DemoRun({ onDone }: { onDone: (message: Key) => void }) {
+  const { t } = useT();
+  const running = useOpenSession().data?.session != null;
+  return (
+    <div className="demo__run">
+      <p>{t("demo.run.hint")}</p>
+      <button
+        type="button"
+        className="btn btn--secondary"
+        onClick={() => {
+          if (running) demo?.closeRunning();
+          else demo?.simulateRunning();
+          onDone(running ? "demo.close.done" : "demo.run.done");
+        }}
+      >
+        {running ? <XCircleIcon size={24} aria-hidden="true" /> : <BroadcastIcon size={24} aria-hidden="true" />}
+        {running ? t("demo.close") : t("demo.run")}
+      </button>
+    </div>
   );
 }
