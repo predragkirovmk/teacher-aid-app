@@ -81,6 +81,10 @@ The app is dark teal only (no light mode).
 
 ## Carried notes for later steps
 
+- Step 4: the guide replayed from Settings returns to Settings when done or skipped (a first run
+  still lands on Today). The sign-in screen has no yellow button on purpose: the provider buttons
+  follow Google's and Microsoft's branding.
+
 - Step 6: for a teacher whose first run is not done, the guide's last screen leads into
   `/teacher/lessons/new` (the hands-on first lesson of F-01).
 - Step 7: the class view is a protected page too; a deep link drops its query. Class-view-only
