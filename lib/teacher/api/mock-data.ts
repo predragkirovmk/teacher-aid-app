@@ -239,7 +239,8 @@ export type SeedCourse = {
 
 export type World = { def: SchoolDef; anchor: number; courses: SeedCourse[] };
 
-const NO_DEVICE: NoDeviceReason[] = ["no_phone", "battery", "no_data", "no_phone", "battery"];
+/** The reasons a teacher can give (3.2), the common ones more often. */
+const NO_DEVICE: NoDeviceReason[] = ["no_phone", "battery", "no_data", "no_phone", "battery", "no_focus_authorization"];
 
 /** A local time `daysBack` days before `anchor`, at the given hour, moved back from a weekend to the Friday before. */
 export function lessonStart(anchor: number, daysBack: number, hour: number, minute: number): number {
@@ -363,15 +364,19 @@ function seedSession(def: SchoolDef, course: SeedCourse, index: number, courseIn
 
   const anon: SeedSession["anon"] = [];
   const asks = r() < 0.45 ? 1 : r() < 0.2 ? 2 : 0;
-  for (let k = 0; k < asks && present.length > 0; k++) {
+  for (let k = 0; k < asks; k++) {
     const created_at = started_at + Math.round(between(r, 8, 30)) * 60_000;
+    // Only a student who was already in the lesson can ask in it.
+    const askers = present.filter((s) => (joinedAt.get(s.id) ?? 0) <= created_at);
+    if (askers.length === 0) continue;
     const answered = index < cls.lessons.length - 1 || r() < 0.5;
     anon.push({
       id: `${id}-a${k + 1}`,
-      sender_id: pick(r, present).id,
+      sender_id: pick(r, askers).id,
       text: ANON_TEXTS[(hashSeed(id) + k * 3) % ANON_TEXTS.length],
       created_at,
-      answered_at: answered ? created_at + Math.round(between(r, 5, 25)) * 60_000 : null,
+      // The teacher answers aloud, so before the lesson ends.
+      answered_at: answered ? Math.min(ended_at, created_at + Math.round(between(r, 5, 25)) * 60_000) : null,
     });
   }
 
@@ -385,13 +390,16 @@ function seedSession(def: SchoolDef, course: SeedCourse, index: number, courseIn
     const picked = selectPracticeQuestions(candidates);
     if (picked.length > 0) {
       const created_at = ended_at + 18 * 3_600_000;
-      const results = present.map((student) => {
+      // The set goes to the whole class, those who missed the lesson included (F-12), so everyone who was enrolled for it.
+      const roster = new Map(course.students.map((s) => [s.id, s]));
+      const results = marks.map(({ student_id }) => {
+        const student = roster.get(student_id)!;
         const started = r() < 0.78;
         const done = started && r() < 0.72;
         const completed_at = done ? Math.min(anchor - 3_600_000, created_at + Math.round(between(r, 0.3, 2.5) * DAY_MS)) : null;
         let score = 0;
         for (let q = 0; q < picked.length; q++) if (r() < student.ability) score++;
-        return { student_id: student.id, score: done ? score : null, completed_at };
+        return { student_id, score: done ? score : null, completed_at };
       });
       practice = { id: `pr-${id}`, created_at, question_ids: picked, results };
     }

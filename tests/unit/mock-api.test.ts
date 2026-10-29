@@ -109,6 +109,27 @@ describe("the course dashboard", () => {
     }
   });
 
+  test("the points of the lessons add up to the points of the students", async () => {
+    for (const course of await api.listCourses()) {
+      const d = await api.getDashboard(course.id);
+      const byLesson = d.sessions.reduce((n, s) => n + s.points, 0);
+      const byStudent = d.students.reduce((n, s) => n + s.points, 0);
+      expect(byLesson).toBe(byStudent);
+      expect(byLesson).toBeGreaterThan(0);
+    }
+  });
+
+  test("a practice set counts the whole class, and who did it, not only those who were at the lesson", async () => {
+    const [course] = await api.listCourses();
+    const d = await api.getDashboard(course.id);
+    for (const p of d.practice) {
+      const session = d.sessions.find((s) => s.id === p.practice_set.session_id)!;
+      expect(p.students).toBe(session.tally.total);
+      expect(p.completed).toBeLessThanOrEqual(p.students);
+      if (p.average_score !== null) expect(p.average_score).toBeLessThanOrEqual(p.practice_set.question_count);
+    }
+  });
+
   test("a topic's totals are the sum of its students'", async () => {
     const [course] = await api.listCourses();
     const d = await api.getDashboard(course.id);

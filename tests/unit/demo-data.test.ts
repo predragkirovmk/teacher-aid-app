@@ -189,6 +189,41 @@ describe("the history", () => {
     expect(skipped).toBeGreaterThan(0);
   });
 
+  test("a practice set goes to everyone enrolled for the lesson, those who missed it included (F-12)", () => {
+    let sets = 0;
+    each((_, __, session) => {
+      if (!session.practice) return;
+      sets++;
+      expect(session.practice.results.map((r) => r.student_id).sort()).toEqual(session.marks.map((m) => m.student_id).sort());
+    });
+    expect(sets).toBeGreaterThan(0);
+  });
+
+  test("a question to the teacher is asked by a student who was in the lesson by then, and answered before it ends", () => {
+    let asked = 0;
+    each((_, __, session) => {
+      const joined = new Map(session.marks.map((m) => [m.student_id, m.joined_at]));
+      for (const a of session.anon) {
+        asked++;
+        const at = joined.get(a.sender_id);
+        expect(at, `${a.id} was asked by someone who never joined`).not.toBeNull();
+        expect(at!).toBeLessThanOrEqual(a.created_at);
+        expect(a.created_at).toBeLessThan(session.ended_at);
+        if (a.answered_at !== null) {
+          expect(a.answered_at).toBeGreaterThan(a.created_at);
+          expect(a.answered_at).toBeLessThanOrEqual(session.ended_at);
+        }
+      }
+    });
+    expect(asked).toBeGreaterThan(0);
+  });
+
+  test("every reason for a student without a working device is in the history (F-11)", () => {
+    const reasons = new Set<string>();
+    each((_, __, session) => session.marks.forEach((m) => m.reason && reasons.add(m.reason)));
+    expect(reasons).toEqual(new Set(["no_phone", "battery", "no_data", "no_focus_authorization"]));
+  });
+
   test("has a few practice sets with who did them, and questions to the teacher with who asked", () => {
     for (const type of types) {
       const sessions = courses(type).flatMap((c) => c.sessions);
