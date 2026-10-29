@@ -15,7 +15,7 @@
   --red: #ec221f;
   --text: #ffffff;
   --ink: #0a2e37;
-  /* Softer text for --panel and --deep only (6.9:1 on --panel). */
+  /* Softer text for --panel and --deep only (6.5:1 on --panel). */
   --text-2: #d9e7ea;
   --line: rgba(255, 255, 255, 0.32);
   /* The edge of a secondary button: 3:1 against the panel and the ground, so it reads as a button. */

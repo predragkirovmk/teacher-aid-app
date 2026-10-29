@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowCounterClockwiseIcon, CheckCircleIcon } from "@phosphor-icons/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { demo } from "@/lib/teacher/api/client";
 import { useT } from "@/lib/teacher/i18n";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -14,6 +14,12 @@ export function DemoCard() {
   const { t } = useT();
   const [asking, setAsking] = useState(false);
   const [done, setDone] = useState(false);
+  const status = useRef<HTMLParagraphElement>(null);
+
+  // A message that appears together with its live region is often not read out; moving the focus to it is.
+  useEffect(() => {
+    if (done) status.current?.focus();
+  }, [done]);
 
   if (!demo) return null;
 
@@ -37,7 +43,7 @@ export function DemoCard() {
           {t("demo.reset")}
         </button>
         {done && (
-          <p className="status" role="status">
+          <p ref={status} className="status" role="status" tabIndex={-1}>
             <CheckCircleIcon size={28} weight="fill" aria-hidden="true" />
             {t("demo.done")}
           </p>

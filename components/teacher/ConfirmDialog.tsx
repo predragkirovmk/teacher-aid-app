@@ -25,6 +25,7 @@ export function ConfirmDialog({
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const heading = useId();
+  const description = useId();
 
   useEffect(() => {
     const d = dialog.current;
@@ -34,11 +35,22 @@ export function ConfirmDialog({
   }, [open]);
 
   return (
-    <dialog ref={dialog} className="dialog" role="alertdialog" aria-labelledby={heading} onClose={onStay}>
+    <dialog
+      ref={dialog}
+      className="dialog"
+      role="alertdialog"
+      aria-labelledby={heading}
+      aria-describedby={body ? description : undefined}
+      onClose={onStay}
+    >
       <h2 id={heading} className="dialog__title">
         {title}
       </h2>
-      {body && <p className="dialog__body">{body}</p>}
+      {body && (
+        <p id={description} className="dialog__body">
+          {body}
+        </p>
+      )}
       <div className="dialog__actions">
         <button type="button" className="btn btn--primary" autoFocus onClick={onStay}>
           {stay}

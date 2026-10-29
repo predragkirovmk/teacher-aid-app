@@ -139,6 +139,7 @@ test.describe("settings", () => {
     await page.getByRole("button", { name: "Reset the demo data" }).click();
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("button", { name: "No, keep them" })).toBeFocused();
+    await expect(dialog).toHaveAccessibleDescription("The lessons you prepared in this demo will disappear.");
     // The sentence under the question has room before the buttons (a card's paragraph rules must not reach into the dialog).
     await expect(dialog.locator(".dialog__body")).toHaveCSS("margin-bottom", "24px");
 
@@ -159,6 +160,8 @@ test.describe("settings", () => {
     await dialog.getByRole("button", { name: "Yes, reset" }).click();
     await expect(dialog).toBeHidden();
     await expect(page.getByRole("status")).toContainText("The demo data is back as it was at the start.");
+    // The focus moves to the message, which is what makes a screen reader read it out.
+    await expect(page.getByRole("status")).toBeFocused();
     const after = await saved();
     expect(after.school.counter).toBe(0);
     expect(after.school.speed_bonus).toEqual({});

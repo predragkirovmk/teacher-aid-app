@@ -18,6 +18,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 // Loaded on every page so the browser's install offer is caught whenever it comes.
 import "@/lib/app/install";
 import { Mark } from "@/components/app/Mark";
+import { ConfirmDialog } from "@/components/teacher/ConfirmDialog";
 import { useSchoolWording } from "@/lib/teacher/api/hooks";
 import { useT, type Key } from "@/lib/teacher/i18n";
 import { useNarrow } from "@/lib/teacher/media";
@@ -51,8 +52,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const menuButton = useRef<HTMLButtonElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const drawer = useRef<HTMLDivElement>(null);
-  const logout = useRef<HTMLDialogElement>(null);
-  const stay = useRef<HTMLButtonElement>(null);
+  const [signingOut, setSigningOut] = useState(false);
   const wasOpen = useRef(false);
 
   const isCurrent = (href: string) => (href === "/teacher" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
@@ -67,8 +67,8 @@ export function Shell({ children }: { children: ReactNode }) {
     const overflow = document.documentElement.style.overflow;
     document.documentElement.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      // Escape in the sign-out question answers the question, not the drawer behind it.
-      if (logout.current?.open) return;
+      // Escape in a question (the sign-out one) answers the question, not the drawer behind it.
+      if (document.querySelector("dialog[open]")) return;
       if (e.key === "Escape") return setOpenAt(null);
       if (e.key !== "Tab" || !drawer.current) return;
       const items = Array.from(drawer.current.querySelectorAll<HTMLElement>(FOCUSABLE));
@@ -88,16 +88,6 @@ export function Shell({ children }: { children: ReactNode }) {
       document.documentElement.style.overflow = overflow;
     };
   }, [open]);
-
-  const askLogout = () => {
-    logout.current?.showModal();
-    // The safe answer is the one in hand.
-    stay.current?.focus();
-  };
-  const confirmLogout = () => {
-    logout.current?.close();
-    router.push("/teacher/signed-out");
-  };
 
   const row = ({ href, label, Icon }: Destination) => {
     const current = isCurrent(href);
@@ -162,7 +152,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <ul className="nav">
             {MORE.map(row)}
             <li>
-              <button type="button" className="nav__item" onClick={askLogout}>
+              <button type="button" className="nav__item" onClick={() => setSigningOut(true)}>
                 <SignOutIcon size={28} aria-hidden="true" />
                 {t("nav.logout")}
               </button>
@@ -176,19 +166,17 @@ export function Shell({ children }: { children: ReactNode }) {
         {children}
       </main>
 
-      <dialog ref={logout} className="dialog" role="alertdialog" aria-labelledby="logout-title">
-        <h2 id="logout-title" className="dialog__title">
-          {t("logout.title")}
-        </h2>
-        <div className="dialog__actions">
-          <button ref={stay} type="button" className="btn btn--primary" autoFocus onClick={() => logout.current?.close()}>
-            {t("logout.stay")}
-          </button>
-          <button type="button" className="btn btn--secondary" onClick={confirmLogout}>
-            {t("logout.confirm")}
-          </button>
-        </div>
-      </dialog>
+      <ConfirmDialog
+        open={signingOut}
+        title={t("logout.title")}
+        stay={t("logout.stay")}
+        confirm={t("logout.confirm")}
+        onStay={() => setSigningOut(false)}
+        onConfirm={() => {
+          setSigningOut(false);
+          router.push("/teacher/signed-out");
+        }}
+      />
     </div>
   );
 }
