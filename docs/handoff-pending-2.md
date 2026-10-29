@@ -38,15 +38,17 @@ Spec 11.1 and 11.3 say "agree pagination before any list can outgrow one page". 
    The upload limit is the spec's 20 MB.
 6. `POST /lessons/generate` (F-03, FR-LES-03 to FR-LES-05, BR-LES-04). Body `{ source_id, subject_id, year, emphasis? }`
    (`emphasis` cut at 200 characters, PROPOSED). Answers a `LessonDraft`: `{ id, source_id, subject, year, emphasis,
-   refinements[], created_at, title, review_summary, questions[] }`. It is slow, so the client waits up to 180 s here and 15 s
-   elsewhere (11.4 says 15 s for everything). The review summary is one text.
+   refinements[], created_at, title, review_summary, questions[] }`. It is slow, so the client waits up to 180 s here, on refine
+   and on a file upload (a 20 MB document on a school's connection), and 15 s elsewhere (11.4 says 15 s for everything). The review summary is one text.
 7. `POST /lessons/drafts/{id}/refine` (F-04, FR-LES-08). Body `{ refinement }`; answers a new draft with a new id and the
    refinement appended to `refinements`. The earlier draft stays readable.
 8. `POST /lessons` (FR-LES-07, FR-LES-09). Body `{ draft_id, title, review_summary, questions[] }`, the draft as the
    teacher edited it; 5 to 8 questions (BR-Q-02), else `validation_failed`. Answers the lesson at version 1 and consumes the
    draft. A question is `{ id, order, kind, prompt, media, explanation, timer_seconds (5 to 300), topic }` plus, by kind:
    `multiple_choice` `options[]` (2 to 4) and `correct` (index as a string); `true_false` `correct`; `numeric` `correct`,
-   `tolerance`, `unit`, `allow_negative` (3.2, BR-ANS-03, FR-ANS-07).
+   `tolerance`, `unit`, `allow_negative` (3.2, BR-ANS-03, FR-ANS-07). `timer_seconds` is a whole number. A numeric question whose
+   `correct` is below zero while `allow_negative` is false is `validation_failed` (BR-ANS-03 refuses a minus on it, so nobody
+   could answer it); the same check applies to `PUT /lessons/{id}`.
 9. `GET /lessons`, `GET /lessons/{id}`, `PUT /lessons/{id}` (FR-LES-09, BR-LES-03). The list item is `{ id, title, subject,
    year, question_count, version, times_run, last_run_at, copied_from: {lesson_id, owner_name} | null, created_at,
    updated_at }`. The detail adds `review_summary`, `questions`, `source: {id, kind, file_name} | null` and `emphasis`.
@@ -90,7 +92,7 @@ Spec 11.1 and 11.3 say "agree pagination before any list can outgrow one page". 
 13. Errors (11). New codes: `generation_failed` (502 or 503, EC-LES-02, after the one retry), `session_open` (409),
     `invalid_state` (409), `question_open` (409). `validation_failed` may carry `reason` (item 5). A teacher whose email is
     not invited is refused as `unknown_email` (F-01 step 2). Another teacher's lesson, course or session is `not_found`.
-14. Transport. `NEXT_PUBLIC_API_BASE` + `/api/v1`, `credentials: "include"` (11.4). Before live mode is switched on,
+14. Transport. `NEXT_PUBLIC_API_URL` (the API's origin, the name 11.4 gives it, shared with the student app) + `/api/v1`, `credentials: "include"` (11.4). Before live mode is switched on,
     `next.config.ts` must add the API origin to `connect-src` and `img-src` (question images); today both are `'self'`.
 
 ## B. Gaps: the spec lists no endpoint
@@ -98,7 +100,7 @@ Spec 11.1 and 11.3 say "agree pagination before any list can outgrow one page". 
 1. Images on questions (FR-LES-10, FR-LES-11, OPEN-13). Proposed `POST /lessons/media`, multipart `file`, answers `{ id, url, alt }`
    (compressed variants server-side). Images in options and in the reveal are not modelled; formulas (OPEN-13) neither.
 2. Marking an anonymous question answered (3.1 `AnonQuestion.answered_at`, FR-REV-02). Proposed `PATCH
-   /sessions/{id}/anon-questions/{anon_id}` answering the question with `answered_at` set.
+   /sessions/{id}/anon-questions/{anon_id}` with body `{ answered: true }`, answering the question with `answered_at` set.
 3. Setting `first_run_done` (FR-SUP-03, F-01 step 3). Proposed `PATCH /me` with `{ first_run_done: true }`.
 4. Deleting a lesson. Proposed `DELETE /lessons/{id}`; copies and finished lessons survive (EC-LES-04), and the lesson
    stays readable from the course history.

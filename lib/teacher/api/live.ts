@@ -19,7 +19,7 @@ import {
 } from "./types";
 
 /**
- * The live adapter: `fetch` against NEXT_PUBLIC_API_BASE under `/api/v1`, JSON in and out, errors read
+ * The live adapter: `fetch` against NEXT_PUBLIC_API_URL under `/api/v1`, JSON in and out, errors read
  * from the spec's envelope into stable codes (errors.ts). The paths are spec 11.1; the bodies are the PROPOSED
  * ones of types.ts. Nothing uses it until the backend exists.
  *
@@ -32,7 +32,7 @@ import {
 
 /** Spec 11.4: a request that takes longer than this counts as being offline. */
 const TIMEOUT_MS = 15_000;
-/** The AI writes a lesson in minutes (US-T02), so generating and refining wait longer. */
+/** The AI writes a lesson in minutes (US-T02), and a 20 MB document takes a while on a school's connection: both wait longer. */
 const SLOW_TIMEOUT_MS = 180_000;
 
 type Options = {
@@ -92,7 +92,7 @@ export function createLiveApi(): TeacherApi {
       if (input.kind === "typed") return request<SourceCreated>("POST", "/lessons/sources", { body: { text: input.text } });
       const form = new FormData();
       form.append("file", input.file);
-      return request<SourceCreated>("POST", "/lessons/sources", { body: form });
+      return request<SourceCreated>("POST", "/lessons/sources", { body: form, timeout: SLOW_TIMEOUT_MS });
     },
     generateLesson: (req) => request<LessonDraft>("POST", "/lessons/generate", { body: req, timeout: SLOW_TIMEOUT_MS }),
     getDraft: (draftId) => request<LessonDraft>("GET", `/lessons/drafts/${id(draftId)}`),
@@ -102,7 +102,7 @@ export function createLiveApi(): TeacherApi {
     uploadMedia: (file) => {
       const form = new FormData();
       form.append("file", file);
-      return request<QuestionMedia>("POST", "/lessons/media", { body: form });
+      return request<QuestionMedia>("POST", "/lessons/media", { body: form, timeout: SLOW_TIMEOUT_MS });
     },
 
     listLessons: () => request<LessonSummary[]>("GET", "/lessons"),
