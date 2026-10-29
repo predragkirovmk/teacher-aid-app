@@ -73,6 +73,7 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
                 {t.hero.class.label}
               </span>
             </p>
+            <span className="hero__desk" data-hero-desk />
             <ClassStack label={t.hero.class.alt} />
           </div>
         </section>

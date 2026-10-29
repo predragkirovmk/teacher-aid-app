@@ -76,8 +76,8 @@ export function Motion() {
             document.addEventListener("click", onAnchor);
 
             /* The hero (act 1): pinned for two screens of scroll. The text clears and the stage
-               rises, the headline settles as the scene's caption, the laptop steps back and the
-               student's phone moves to the front of the stack. The other 28 phones of the class
+               rises, the headline settles as the scene's caption, the laptop settles on the desk and
+               the student's phone moves to the front of the stack beside it. The other 28 phones of the class
                are dealt up behind it, then answer: their edges light yellow in a wave from the
                front to the back while the count climbs to 29. Only a few layers move at once.
                Both layouts are CSS (the start is the page, the end is .hero__end), measured here
@@ -90,11 +90,12 @@ export function Motion() {
             const laptop = q<HTMLElement>(".hero__laptop")[0];
             const phone = q<HTMLElement>(".hero__phone")[0];
             const front = q<HTMLElement>("[data-stack-front]")[0];
+            const desk = q<HTMLElement>("[data-hero-desk]")[0];
             const cards = q<HTMLElement>("[data-card]");
             const num = q<HTMLElement>("[data-count]")[0];
             let heroTl: ReturnType<typeof gsap.timeline> | null = null;
 
-            if (hero && title && titleEnd && stage && laptop && phone && front && cards.length && num) {
+            if (hero && title && titleEnd && stage && laptop && phone && front && desk && cards.length && num) {
               // The entrance runs in CSS; once it has played (or the first scroll cuts it short) it is
               // cancelled, so its fill never overrides the scene. Its end state is the base style.
               const entrance = hero.getAnimations({ subtree: true });
@@ -106,16 +107,14 @@ export function Motion() {
 
               // First the stage rises so the laptop shows itself, its top just under the headline
               // (lower on wide screens, where the headline is taller); the phone then travels from
-              // there, so its move subtracts the rise.
+              // there, so their moves subtract the rise.
               const rise = () => Math.min(0, hero.offsetHeight * (narrow ? 0.42 : 0.58) - box(stage, hero).y);
-              const toFront = () => {
-                const a = box(phone, hero);
-                const b = box(front, hero);
-                return {
-                  x: b.x + b.w / 2 - (a.x + a.w / 2),
-                  y: b.y + b.h / 2 - (a.y + a.h / 2) - rise(),
-                  scale: b.w / a.w,
-                };
+              const flip = (el: HTMLElement, to: HTMLElement, origin: "top" | "center") => {
+                const a = box(el, hero);
+                const b = box(to, hero);
+                const scale = b.w / a.w;
+                const dy = origin === "top" ? b.y - a.y : b.y + b.h / 2 - (a.y + a.h / 2);
+                return { x: b.x + b.w / 2 - (a.x + a.w / 2), y: dy - rise(), scale };
               };
               const titleTo = () => {
                 const a = box(title, hero);
@@ -154,9 +153,9 @@ export function Motion() {
                 .fromTo("[data-hero-out]", { y: 0, autoAlpha: 1 }, { y: -48, autoAlpha: 0, duration: 1.2 }, 0)
                 .fromTo(stage, { x: 0, y: 0, scale: 1 }, { y: rise, duration: 1.6, ease: "power2.out" }, 0)
                 .to(title, { ...toward(titleTo), transformOrigin: "0 0", duration: 2.8, ease: "power2.inOut" }, 0.2)
-                // The teacher's laptop steps back; this scene is the class's.
-                .to(laptop, { y: 40, scale: 0.94, autoAlpha: 0, duration: 1.6, ease: "power2.in" }, 1.7)
-                .to(phone, { ...toward(toFront), duration: 2.2, ease: "power3.inOut" }, 1.8)
+                // The teacher's laptop settles on the desk; the student's phone goes to the class.
+                .to(laptop, { ...toward(() => flip(laptop, desk, "top")), transformOrigin: "50% 0%", duration: 2.2, ease: "power2.inOut" }, 1.6)
+                .to(phone, { ...toward(() => flip(phone, front, "center")), duration: 2.2, ease: "power3.inOut" }, 1.8)
                 .to("[data-stack]", { autoAlpha: 1, duration: 0.01 }, 3.6)
                 // The class is dealt up behind the front phone, nearest first.
                 .fromTo(cards, { y: 0 }, { y: (i) => -(i + 1) * step(), duration: 0.6, ease: "power2.out", stagger: { amount: 1.6 } }, 3.6)
