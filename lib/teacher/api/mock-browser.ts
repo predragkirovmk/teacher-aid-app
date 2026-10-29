@@ -10,6 +10,8 @@ import { freshState, MOCK_KEY, readState, startOfDay, writeState, type MockState
 
 /** The day the server renders the demo as of. Only what does not depend on the date is rendered on the server (see hooks). */
 export const SERVER_ANCHOR = new Date(2026, 9, 28).getTime();
+/** The moment the server renders it at, fixed like the day, so the render that hydrates it reads the same clock. */
+const SERVER_NOW = SERVER_ANCHOR + 9 * 3_600_000;
 
 const storage = (): Storage | null => {
   try {
@@ -80,5 +82,5 @@ export function createBrowserMock(): { api: TeacherApi; demo: DemoControls } {
 
 /** The adapter the server render reads: a fresh demo school as of a fixed day, never saved. */
 export function createServerMock(): TeacherApi {
-  return createMockApi(memorySource(freshState(SERVER_ANCHOR)));
+  return createMockApi(memorySource(freshState(SERVER_ANCHOR), { now: () => SERVER_NOW }));
 }

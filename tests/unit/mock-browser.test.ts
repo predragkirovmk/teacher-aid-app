@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { createBrowserMock } from "@/lib/teacher/api/mock-browser";
+import { createBrowserMock, createServerMock, SERVER_ANCHOR } from "@/lib/teacher/api/mock-browser";
 import { MOCK_KEY, MOCK_VERSION, startOfDay } from "@/lib/teacher/api/mock-state";
 
 /** A browser whose localStorage is the one given; the mock reads `window.localStorage` when it first needs the state. */
@@ -76,5 +76,14 @@ describe("the demo in the browser", () => {
     demo.reset();
     expect((await api.listCourses())[0].speed_bonus_on).toBe(true);
     expect(JSON.parse(storage.map.get(MOCK_KEY)!).school.speed_bonus).toEqual({});
+  });
+});
+
+describe("the demo the server renders", () => {
+  test("is the same on every render: a fixed day and a fixed clock, never saved", async () => {
+    const first = createServerMock();
+    const second = createServerMock();
+    expect((await first.getOpenSession()).server_now).toBe(new Date(SERVER_ANCHOR + 9 * 3_600_000).toISOString());
+    expect(await first.getDashboard("course-ii-4")).toEqual(await second.getDashboard("course-ii-4"));
   });
 });
