@@ -4,7 +4,8 @@ import { useEffect, useId, useRef } from "react";
 
 /**
  * A question before something that cannot be undone, in plain words, with the safe answer in hand: it is the yellow
- * button and it has the focus. Escape and the backdrop-less close both answer "stay".
+ * button and it has the focus. The safe button comes first in the markup because that is the one `showModal()` focuses
+ * (a closed dialog cannot take an `autoFocus`). Escape and the backdrop-less close both answer "stay".
  */
 export function ConfirmDialog({
   open,
@@ -52,7 +53,7 @@ export function ConfirmDialog({
         </p>
       )}
       <div className="dialog__actions">
-        <button type="button" className="btn btn--primary" autoFocus onClick={onStay}>
+        <button type="button" className="btn btn--primary" onClick={onStay}>
           {stay}
         </button>
         <button type="button" className="btn btn--secondary" onClick={onConfirm}>
