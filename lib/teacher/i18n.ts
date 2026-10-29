@@ -106,7 +106,7 @@ const en = {
   "help.q4": "How do I install TeacherAid on my computer?",
   "help.a4": "Open Settings and choose “Install on this computer”.",
   "help.q5": "I cannot sign in. What should I do?",
-  "help.a5": "Sign in with the account from your institution, through Google or Microsoft. If it says the address is not on the list, ask the administrator of your institution to invite it. If nothing helps, write to us.",
+  "help.a5": "Sign in with the account from your institution, through Google or Microsoft. If it says the account is not on the list, ask the administrator of your institution to invite it. If nothing helps, write to us.",
   "help.contact.title": "Did not find the answer?",
   "help.contact.body": "Write to us and we will help.",
   "help.contact.cta": "Write to us",
@@ -129,10 +129,11 @@ const en = {
   "signin.problem.unknown_email": "This account is not on the list",
   "signin.problem.sign_in_failed": "Signing in did not work",
   "signin.problem.network": "No internet connection",
+  "signin.problem.network.body": "Check the connection of this computer and try again.",
 
   "demo.sheet.tag": "Demo",
   "demo.sheet.title": "{provider} sign-in page",
-  "demo.sheet.note": "This is only a demo. In the real version, the page of {provider} opens here. Choose what you want to try.",
+  "demo.sheet.note": "This is only a demo. In the real version, the sign-in page of {provider} opens here. Choose what you want to try.",
   "demo.sheet.in": "Sign in as",
   "demo.sheet.veteran": "Marija Petrovska",
   "demo.sheet.veteran.hint": "Has a season of lessons and results.",
@@ -145,7 +146,7 @@ const en = {
   "demo.sheet.offline": "No internet",
 
   "gate.title": "We could not check your sign-in",
-  "gate.body": "You may still be signed in. Check the connection and try again.",
+  "gate.body": "You may still be signed in.",
 
   "public.signin": "Sign in",
 
@@ -176,8 +177,8 @@ const en = {
   "err.not_implemented": "This part is still being built.",
   "err.unknown": "Something went wrong. Try again.",
   "err.unauthenticated": "You are not signed in. Sign in and try again.",
-  "err.unknown_email": "This address is not on the list of invited teachers. Sign in with the address from your institution, or ask the administrator for an invitation.",
-  "err.sign_in_failed": "Signing in did not work or was cancelled. Try again.",
+  "err.unknown_email": "This account is not on the list of invited teachers. Sign in with the account from your institution, with Google or with Microsoft. If that does not work, ask the administrator to invite you.",
+  "err.sign_in_failed": "The sign-in was not finished. You may have closed the window. Try again.",
   "err.signed_in_elsewhere": "You have signed in on another computer. Sign in again to carry on here.",
   "err.token_expired": "The code has expired. Use the new code that is shown.",
   "err.not_enrolled": { school: "This student is not in this class.", uni: "This student is not in this group." },
@@ -296,7 +297,7 @@ const mk: Record<Key, Entry> = {
   "help.q4": "Како да го инсталирам TeacherAid на компјутерот?",
   "help.a4": "Отворете ги Поставките и изберете „Инсталирај на компјутерот“.",
   "help.q5": "Не можам да се најавам. Што да правам?",
-  "help.a5": "Најавете се со сметката од Вашата установа, преку Google или Microsoft. Ако пишува дека адресата не е на списокот, побарајте од администраторот на Вашата установа да ја покани. Ако ништо не помага, пишете ни.",
+  "help.a5": "Најавете се со сметката од Вашата установа, преку Google или Microsoft. Ако пишува дека сметката не е на списокот, побарајте од администраторот на Вашата установа да ја покани. Ако ништо не помага, пишете ни.",
   "help.contact.title": "Не го најдовте одговорот?",
   "help.contact.body": "Пишете ни и ќе Ви помогнеме.",
   "help.contact.cta": "Пишете ни",
@@ -319,6 +320,7 @@ const mk: Record<Key, Entry> = {
   "signin.problem.unknown_email": "Оваа сметка не е на списокот",
   "signin.problem.sign_in_failed": "Најавувањето не успеа",
   "signin.problem.network": "Нема интернет",
+  "signin.problem.network.body": "Проверете ја врската на компјутерот и обидете се повторно.",
 
   "demo.sheet.tag": "Демо",
   "demo.sheet.title": "Страница за најава на {provider}",
@@ -335,7 +337,7 @@ const mk: Record<Key, Entry> = {
   "demo.sheet.offline": "Нема интернет",
 
   "gate.title": "Не успеавме да ја провериме најавата",
-  "gate.body": "Можеби сте сè уште најавени. Проверете ја врската и обидете се повторно.",
+  "gate.body": "Можеби сте сè уште најавени.",
 
   "public.signin": "Најави се",
 
@@ -366,8 +368,8 @@ const mk: Record<Key, Entry> = {
   "err.not_implemented": "Овој дел сè уште се гради.",
   "err.unknown": "Нешто не е во ред. Обидете се повторно.",
   "err.unauthenticated": "Не сте најавени. Најавете се и обидете се повторно.",
-  "err.unknown_email": "Оваа адреса не е меѓу поканетите наставници. Најавете се со адресата од Вашата установа или побарајте покана од администраторот.",
-  "err.sign_in_failed": "Најавувањето не успеа или е откажано. Обидете се повторно.",
+  "err.unknown_email": "Оваа сметка не е меѓу поканетите наставници. Најавете се со сметката од Вашата установа, преку Google или Microsoft. Ако не помага, побарајте од администраторот да Ве покани.",
+  "err.sign_in_failed": "Најавата не беше завршена. Можеби сте го затвориле прозорецот. Обидете се повторно.",
   "err.signed_in_elsewhere": "Се најавивте на друг компјутер. Најавете се повторно за да продолжите тука.",
   "err.token_expired": "Кодот истече. Користете го новиот код што се прикажува.",
   "err.not_enrolled": { school: "Овој ученик не е запишан во овој клас.", uni: "Овој студент не е запишан во оваа група." },

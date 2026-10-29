@@ -43,8 +43,8 @@ function Retry({ error, onRetry }: { error: unknown; onRetry: () => void }) {
       <div className="card card--stack">
         <Mark size={56} />
         <h1>{t("gate.title")}</h1>
-        <p role="alert">{error ? te(error) : t("gate.body")}</p>
         <p>{t("gate.body")}</p>
+        {error ? <p role="alert">{te(error)}</p> : null}
         <button type="button" className="btn btn--primary" onClick={onRetry}>
           <ArrowClockwiseIcon size={24} weight="bold" aria-hidden="true" />
           {t("error.retry")}

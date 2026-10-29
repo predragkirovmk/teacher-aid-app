@@ -368,15 +368,15 @@ test.describe("when signing in does not work", () => {
     {
       who: "not_invited",
       heading: "Оваа сметка не е на списокот",
-      words: /Оваа адреса не е меѓу поканетите наставници\. Најавете се со адресата од Вашата установа или побарајте покана од администраторот\./,
+      words: /Оваа сметка не е меѓу поканетите наставници\. Најавете се со сметката од Вашата установа, преку Google или Microsoft\. Ако не помага, побарајте од администраторот да Ве покани\./,
     },
     {
       who: "personal",
       heading: "Оваа сметка не е на списокот",
-      words: /Најавете се со адресата од Вашата установа или побарајте покана од администраторот/,
+      words: /Најавете се со сметката од Вашата установа, преку Google или Microsoft/,
     },
-    { who: "cancelled", heading: "Најавувањето не успеа", words: /Најавувањето не успеа или е откажано\. Обидете се повторно\./ },
-    { who: "offline", heading: "Нема интернет", words: /Нема врска со интернет\. Проверете ја врската и обидете се повторно\./ },
+    { who: "cancelled", heading: "Најавувањето не успеа", words: /Најавата не беше завршена\. Можеби сте го затвориле прозорецот\. Обидете се повторно\./ },
+    { who: "offline", heading: "Нема интернет", words: /Проверете ја врската на компјутерот и обидете се повторно\./ },
   ];
 
   for (const { who, heading, words } of states) {
@@ -431,7 +431,7 @@ test.describe("when signing in does not work", () => {
     await providerButton(page, "Google").click();
     await expect(sheet(page)).toBeHidden();
     await expect(problem(page)).toContainText("Нема интернет");
-    await expect(problem(page)).toContainText("Нема врска со интернет. Проверете ја врската и обидете се повторно.");
+    await expect(problem(page)).toContainText("Проверете ја врската на компјутерот и обидете се повторно.");
     await context.setOffline(false);
     await expect(problem(page)).toHaveCount(0);
     await signInWith(page, "veteran");
@@ -444,7 +444,7 @@ test.describe("when signing in does not work", () => {
     await page.getByRole("button", { name: "Sign in with Google" }).click();
     await page.getByRole("dialog", { name: "Google sign-in page" }).getByRole("button", { name: /^An account nobody invited/ }).click();
     await expect(problem(page)).toContainText("This account is not on the list");
-    await expect(problem(page)).toContainText("ask the administrator for an invitation");
+    await expect(problem(page)).toContainText("ask the administrator to invite you");
   });
 
   test("only the two refusals the API's callback sends are taken from the address; anything else in it is ignored", async ({ page }) => {

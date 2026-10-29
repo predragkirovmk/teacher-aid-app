@@ -34,6 +34,11 @@ const PROBLEM_TITLE: Record<string, Key> = {
   network: "signin.problem.network",
 };
 
+/** What to do, for a failure whose shared words would only say the heading again. */
+const PROBLEM_BODY: Record<string, Key> = {
+  network: "signin.problem.network.body",
+};
+
 /**
  * Teacher sign-in (F-01, US-T01): the school's Google or Microsoft account, nothing else (2026-10-27). A button asks the API
  * where to send the browser; the provider sends it back to the API's callback, which brings it here again, signed in (the
@@ -112,7 +117,9 @@ export function SignIn() {
   };
 
   const problem = failed ?? refusal;
-  const message = problem ? { title: t(PROBLEM_TITLE[problem.code] ?? "signin.problem.sign_in_failed"), body: te(problem) } : null;
+  const message = problem
+    ? { title: t(PROBLEM_TITLE[problem.code] ?? "signin.problem.sign_in_failed"), body: PROBLEM_BODY[problem.code] ? t(PROBLEM_BODY[problem.code]) : te(problem) }
+    : null;
 
   return (
     <main className="entry">
