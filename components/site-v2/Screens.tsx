@@ -5,7 +5,8 @@ import type { SiteV2Dict } from "@/content/site-v2/types";
   Placeholder screens, laid out like the real apps so the page reads true while they are built.
   Each carries an "Example" tag. They are swapped for real screenshots once the apps are done.
 
-  Every screen renders in its final state; the motion layer sets the earlier states itself and
+  The screens are pictures, so their titles are styled text, not headings: they never enter the
+  page's outline. Every screen renders in its final state; the motion layer sets the earlier states itself and
   plays them through (the data-* hooks below), so without it each screen still reads complete.
 */
 
@@ -46,7 +47,7 @@ export function ConsoleScreen({ s }: { s: S }) {
       <div className="scr-main">
         <p className="scr-greet">{c.greet}</p>
         <div className="scr-head">
-          <h3>{c.title}</h3>
+          <p className="scr-h3">{c.title}</p>
           <span className="scr-btn scr-btn--yellow">{c.prepare}</span>
         </div>
         <ul className="scr-lessons">
@@ -63,7 +64,7 @@ export function ConsoleScreen({ s }: { s: S }) {
           ))}
         </ul>
         <div className="scr-recent">
-          <h4>{c.recentTitle}</h4>
+          <p className="scr-h4">{c.recentTitle}</p>
           <p className="scr-recent__row">
             {c.recent.map((r) => (
               <span key={r.label}>
@@ -87,7 +88,7 @@ export function PrepareScreen({ s }: { s: S }) {
       <Side s={s} on={1} />
       <div className="scr-main scr-prep">
         <div className="scr-head">
-          <h3>{p.title}</h3>
+          <p className="scr-h3">{p.title}</p>
           <span className="scr-chip">{p.course}</span>
         </div>
         <div className="scr-prep__in">
@@ -284,10 +285,10 @@ export function EndScreen({ s }: { s: S }) {
       <Side s={s} on={1} />
       <div className="scr-main scr-end">
         <div className="scr-head">
-          <span>
-            <h3>{e.title}</h3>
+          <div>
+            <p className="scr-h3">{e.title}</p>
             <small className="scr-sub">{e.course}</small>
-          </span>
+          </div>
           <span className="scr-btn scr-btn--yellow">{e.copy}</span>
         </div>
         <p className="scr-end__stats">
@@ -299,7 +300,7 @@ export function EndScreen({ s }: { s: S }) {
           ))}
         </p>
         <div className="scr-end__missed">
-          <h4>{e.missedTitle}</h4>
+          <p className="scr-h4">{e.missedTitle}</p>
           <ol>
             {e.missed.map((m) => (
               <li key={m.text} data-end-row style={{ "--share": m.pct / 100 } as React.CSSProperties}>
@@ -327,10 +328,10 @@ export function ResultsScreen({ s }: { s: S }) {
       <Side s={s} on={2} />
       <div className="scr-main scr-res">
         <div className="scr-head">
-          <h3>{r.title}</h3>
+          <p className="scr-h3">{r.title}</p>
         </div>
         <div className="scr-res__chart">
-          <h4>{r.attendanceLabel}</h4>
+          <p className="scr-h4">{r.attendanceLabel}</p>
           <span className="scr-res__bars">
             {r.attendance.map((v, i) => (
               <i key={i} data-res-bar style={{ "--v": v / 100 } as React.CSSProperties} />
@@ -339,7 +340,7 @@ export function ResultsScreen({ s }: { s: S }) {
         </div>
         <div className="scr-res__cols">
           <div>
-            <h4>{r.weakTitle}</h4>
+            <p className="scr-h4">{r.weakTitle}</p>
             <ol>
               {r.weak.map((w) => (
                 <li key={w.topic} data-res-row style={{ "--share": w.pct / 100 } as React.CSSProperties}>
@@ -353,7 +354,7 @@ export function ResultsScreen({ s }: { s: S }) {
             </ol>
           </div>
           <div>
-            <h4>{r.askedTitle}</h4>
+            <p className="scr-h4">{r.askedTitle}</p>
             <ul>
               {r.asked.map((a) => (
                 <li key={a} data-res-row>

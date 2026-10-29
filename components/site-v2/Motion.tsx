@@ -48,9 +48,9 @@ export function Motion() {
 
         const mm = gsap.matchMedia();
         mm.add(
-          { fine: "(hover: hover) and (pointer: fine)", narrow: "(max-width: 767px)" },
+          { fine: "(hover: hover) and (pointer: fine)", narrow: "(max-width: 767px)", tall: "(min-height: 520px)" },
           (ctx) => {
-            const { fine, narrow } = ctx.conditions as Record<string, boolean>;
+            const { fine, narrow, tall } = ctx.conditions as Record<string, boolean>;
 
             // Smooth wheel scrolling on GSAP's ticker, so Lenis and ScrollTrigger share one clock.
             // Touch keeps native scrolling: its momentum is already smooth and smoothing it adds lag.
@@ -70,9 +70,10 @@ export function Motion() {
               const target = document.querySelector<HTMLElement>(a.getAttribute("href")!);
               if (!target) return;
               e.preventDefault();
-              // Land the target just under the fixed bar, not behind it.
+              // Focus moves at once (keyboard users, the skip link); the page glides after it and lands
+              // the target just under the fixed bar, not behind it.
+              target.focus({ preventScroll: true });
               lenis.scrollTo(target, { offset: -(document.querySelector<HTMLElement>(".nav")?.offsetHeight ?? 0), duration: 1.3 });
-              window.setTimeout(() => target.focus({ preventScroll: true }), 900);
             };
             document.addEventListener("click", onAnchor);
 
@@ -96,7 +97,8 @@ export function Motion() {
             const num = q<HTMLElement>("[data-count]")[0];
             let heroTl: ReturnType<typeof gsap.timeline> | null = null;
 
-            if (hero && title && titleEnd && stage && laptop && phone && front && desk && cards.length && num) {
+            // The pinned scene needs room: on short screens the hero stays as it is (see .motion .hero).
+            if (tall && hero && title && titleEnd && stage && laptop && phone && front && desk && cards.length && num) {
               // The entrance runs in CSS; once it has played (or the first scroll cuts it short) it is
               // cancelled, so its fill never overrides the scene. Its end state is the base style.
               const entrance = hero.getAnimations({ subtree: true });
@@ -344,16 +346,18 @@ export function Motion() {
               ScrollTrigger.create({ trigger: results, start: "top 75%", once: true, onEnter: () => void tl.play() });
             }
 
-            // Reveals: each block rises into place as it enters, in reading order, once.
+            // Reveals: each block rises into place as it enters, in reading order, once. Opacity only,
+            // never visibility, so a link that has not been revealed yet can still take keyboard focus;
+            // focusing it scrolls it into view, which reveals it.
             const rise = narrow ? 28 : 44;
-            gsap.set("[data-reveal]", { y: rise, autoAlpha: 0 });
+            gsap.set("[data-reveal]", { y: rise, opacity: 0 });
             const batch = ScrollTrigger.batch("[data-reveal]", {
               start: "top 86%",
               once: true,
               onEnter: (els) =>
                 gsap.to(els, {
                   y: 0,
-                  autoAlpha: 1,
+                  opacity: 1,
                   duration: narrow ? 0.8 : 1,
                   ease: "power3.out",
                   stagger: narrow ? 0.06 : 0.08,

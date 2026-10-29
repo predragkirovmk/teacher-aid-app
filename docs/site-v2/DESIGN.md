@@ -144,6 +144,20 @@ teal. One main button per viewport. Secondary actions are chevron links ("Пог
 | Later | Trust: data, privacy, the director's monthly report | Paper |
 | Epilogue | Book a free lesson, footer | Paper |
 
+## Final gate (step 5, 30 Oct 2026)
+
+- Honesty check (bolder): the split scenes were the safe part, a feature row of text beside a
+  screenshot, so each now opens with its line full width; the ending became the page's one field
+  of yellow.
+- Animation review: approved after four fixes (no colour tweens, no pure-fade entrance, presses at
+  0.95, the bar's theme change at 240ms).
+- Accessibility: axe (WCAG 2.1 AA and best practice) 0 violations on /v2 and /v2/en, desktop and
+  phone, with and without motion; text on the In class gradient is 5.2:1 or better at its light
+  end. Keyboard order reaches every link with a 3px ring; reveals hide with opacity only so
+  unrevealed links stay focusable; anchors move focus at once. Tap targets 44px or more. At 200 %
+  zoom (or under 520px of height) the hero stays static, nothing scrolls sideways.
+- Text hygiene: no invisible characters or mixed-script words in the copy or components.
+
 ## Steps
 
 1. Base (this step): worktree, this brief, tokens, fonts, nav with chapter theme, MK/EN,

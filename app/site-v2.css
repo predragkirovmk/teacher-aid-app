@@ -206,7 +206,6 @@ body.v2 {
 
 .note--quiet {
   font-size: 1rem;
-  opacity: 0.86;
 }
 
 .kicker {
@@ -781,10 +780,19 @@ body.v2 {
   display: none;
 }
 
-.motion .hero {
-  height: 100svh;
-  min-height: 560px;
-  padding-bottom: 0;
+/* Only on screens at least 520px tall: shorter ones (a phone on its side, a page zoomed to 200 %)
+   keep the static hero, so nothing in it is ever cut off by the pin. */
+@media (min-height: 520px) {
+  .motion .hero {
+    height: 100svh;
+    padding-bottom: 0;
+  }
+}
+
+@media (max-height: 519px) {
+  .motion .hero__end {
+    display: none;
+  }
 }
 
 /* Three layers in one stacking context: the laptop behind, the stack in the middle, the flying
@@ -1539,7 +1547,7 @@ body.v2 {
   margin-bottom: 1cqw;
 }
 
-.scr-head h3 {
+.scr-head .scr-h3 {
   font-family: var(--display);
   font-size: 4cqw;
   font-weight: 800;
@@ -1591,7 +1599,7 @@ body.v2 {
   margin-top: 1.4cqw;
 }
 
-.scr-recent h4 {
+.scr-recent .scr-h4 {
   margin: 0;
   font-size: 1.45cqw;
   font-weight: 600;
@@ -1840,11 +1848,11 @@ body.v2 {
 }
 
 /* Shared bits of the teacher screens. */
-:where(.scr) :where(h3, h4, p, ol, ul) {
+:where(.scr) :where(p, ol, ul) {
   margin: 0;
 }
 
-.scr h4 {
+.scr .scr-h4 {
   font-size: 1.35cqw;
   font-weight: 600;
   color: var(--on-teal-2);
@@ -2050,8 +2058,9 @@ body.v2 {
   color: var(--on-teal);
 }
 
+/* The teacher app's End red, a shade deeper so white text on it passes 4.5:1. */
 .scr--live .scr-btn--end {
-  background: #ec221f;
+  background: #d61f1c;
   color: #fff;
   font-weight: 700;
 }
