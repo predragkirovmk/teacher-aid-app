@@ -29,7 +29,7 @@ const FRESH_MS = 30_000;
 
 type Settled<T> = { ok: true; value: T } | { ok: false; error: unknown };
 
-class Slot<T> {
+export class Slot<T> {
   entry: Entry<T> = LOADING;
   private serverEntry: Entry<T> | null = null;
   private listeners = new Set<() => void>();
@@ -51,10 +51,12 @@ class Slot<T> {
    */
   fetch(notify: boolean): Promise<ApiError | null> {
     const seq = ++this.seq;
+    // Cleared when the ask is made, not when it lands: a read in between must not ask again, and a change that comes while
+    // this one is in flight (which sets it again) still has its own fresh look to wait for.
+    this.stale = false;
     const apply = (s: Settled<T>, announce: boolean) => {
       if (seq !== this.seq) return; // A newer ask has taken over.
       this.fetchedAt = Date.now();
-      this.stale = false;
       const failure = s.ok ? null : toApiError(s.error);
       // An answer that was on screen stays; the failure rides along.
       const next: Entry<T> = s.ok ? { data: s.value, error: null } : { data: this.entry.data, error: failure };
@@ -146,7 +148,8 @@ function watchApi() {
   api.subscribe(() => slots.forEach((s) => s.refresh()));
 }
 
-function slotFor<T>(key: string, load: (a: TeacherApi) => Promise<T>): Slot<T> {
+/** The one slot for a key. Exported for the tests of the cache; screens go through `useQuery`. */
+export function slotFor<T>(key: string, load: (a: TeacherApi) => Promise<T>): Slot<T> {
   let slot = slots.get(key) as Slot<T> | undefined;
   if (!slot) {
     slot = new Slot(key, load);
