@@ -105,16 +105,17 @@ export function Motion() {
               };
               Promise.all(entrance.map((a) => a.finished.catch(() => {}))).then(settle);
 
-              // First the stage rises so the laptop shows itself, its top just under the headline
-              // (lower on wide screens, where the headline is taller); the phone then travels from
-              // there, so their moves subtract the rise.
+              // First the laptop and the phone rise so the laptop shows itself, its top just under the
+              // headline (lower on wide screens, where the headline is taller); then each travels to
+              // its place. They move on their own, never the stage, so the stage stays flat and the
+              // stack can stand between them: the laptop behind it, the phone in front.
               const rise = () => Math.min(0, hero.offsetHeight * (narrow ? 0.42 : 0.58) - box(stage, hero).y);
               const flip = (el: HTMLElement, to: HTMLElement, origin: "top" | "center") => {
                 const a = box(el, hero);
                 const b = box(to, hero);
                 const scale = b.w / a.w;
                 const dy = origin === "top" ? b.y - a.y : b.y + b.h / 2 - (a.y + a.h / 2);
-                return { x: b.x + b.w / 2 - (a.x + a.w / 2), y: dy - rise(), scale };
+                return { x: b.x + b.w / 2 - (a.x + a.w / 2), y: dy, scale };
               };
               const titleTo = () => {
                 const a = box(title, hero);
@@ -151,7 +152,7 @@ export function Motion() {
               heroTl
                 // From explicit values: the CSS entrance may still be mid-way when this is built.
                 .fromTo("[data-hero-out]", { y: 0, autoAlpha: 1 }, { y: -48, autoAlpha: 0, duration: 1.2 }, 0)
-                .fromTo(stage, { x: 0, y: 0, scale: 1 }, { y: rise, duration: 1.6, ease: "power2.out" }, 0)
+                .to([laptop, phone], { y: () => rise(), duration: 1.6, ease: "power2.out" }, 0)
                 .to(title, { ...toward(titleTo), transformOrigin: "0 0", duration: 2.8, ease: "power2.inOut" }, 0.2)
                 // The teacher's laptop settles on the desk; the student's phone goes to the class.
                 .to(laptop, { ...toward(() => flip(laptop, desk, "top")), transformOrigin: "50% 0%", duration: 2.2, ease: "power2.inOut" }, 1.6)
