@@ -2,9 +2,13 @@
 
 import { useEffect, useMemo } from "react";
 import { firstName, initials, personName, schoolTypeOf } from "../format";
+import { authStatusOf, type AuthStatus, type EndReason } from "../guard";
 import { actions, useTeacher } from "../store";
 import { apiMode } from "./config";
-import { change, mapQuery, seed, useQuery, type Query } from "./query";
+import { api } from "./client";
+import { toApiError } from "./errors";
+import { change, mapQuery, resetQueries, seed, useQuery, type Query } from "./query";
+import { endSession, useSessionEnd } from "./session";
 import type {
   CourseDashboard,
   CoursePatch,
@@ -19,6 +23,8 @@ import type {
   OpenSession,
   Refinement,
   SaveLessonRequest,
+  SignInRedirect,
+  SignInRequest,
   SourceCreated,
   SourceInput,
   UpdateLessonRequest,
@@ -64,6 +70,35 @@ export const useLibrary = (): Query<LibraryItem[]> => useQuery("library", (a) =>
 /** The teacher's open lesson, if there is one, so it can be ended from anywhere (FR-END-04). */
 export const useOpenSession = (): Query<OpenSession> => useQuery("open-session", (a) => a.getOpenSession());
 
+// ---- Who is signed in -----------------------------------------------------------------------------
+
+/**
+ * Signed in or out, as the API says: `GET /me` answers a teacher or refuses (`unauthenticated`), or any call the app makes
+ * refuses later (session.ts watches them all). The rules are `authStatusOf` in guard.ts.
+ */
+export function useAuth(): { status: AuthStatus; reason: EndReason | null; me: Query<Me> } {
+  const me = useMe();
+  const ended = useSessionEnd();
+  return { status: authStatusOf({ ended, me: me.status, failure: me.error?.code ?? null }), reason: ended, me };
+}
+
+/** F-01: the provider the teacher chose. Answers with where to send the browser; the teacher comes back to a page loaded afresh. */
+export const startSignIn = (request: SignInRequest): Promise<SignInRedirect> => api.startSignIn(request);
+
+/**
+ * Sign out: ends the session on the server, then forgets everything the teacher saw. A session the server had already ended
+ * counts as signed out (EC-AUTH-08); a failure to reach the server throws and leaves the teacher signed in.
+ */
+export async function signOut(): Promise<void> {
+  try {
+    await api.signOut();
+  } catch (e) {
+    if (toApiError(e).code !== "unauthenticated") throw e;
+  }
+  endSession("signed_out");
+  resetQueries();
+}
+
 // ---- Derived --------------------------------------------------------------------------------------
 
 /** One course, from the list. Null when the teacher has no such course. */
@@ -102,14 +137,24 @@ export function useTeacherName(): { full: string; first: string; initials: strin
 export function useSchoolWording() {
   const kind = useMe().data?.school.type;
   useEffect(() => {
-    if (apiMode === "live" && kind) actions.setSchoolType(schoolTypeOf(kind));
+    if (!kind) return;
+    // Either way the type is now known, so the sign-in screen can name the school (or the faculty) next time.
+    if (apiMode === "live") actions.setSchoolType(schoolTypeOf(kind));
+    else actions.setSchoolSeen();
   }, [kind]);
 }
 
 // ---- Changing -------------------------------------------------------------------------------------
 
-/** First run: the guided first lesson is done (FR-SUP-03). */
-export const setFirstRunDone = (): Promise<Me> => change((a) => a.setFirstRunDone(), ["me"]);
+/**
+ * First run: the guide is finished or skipped (FR-SUP-03). The answer is the teacher as they now are, put straight into the
+ * cache: the page the teacher goes on to must not still read "first run not done" and send them back to the guide.
+ */
+export async function setFirstRunDone(): Promise<Me> {
+  const me = await change((a) => a.setFirstRunDone());
+  seed("me", me);
+  return me;
+}
 
 /** The speed bonus on or off for a course (BR-PTS-04). */
 export const updateCourse = (courseId: Id, patch: CoursePatch): Promise<CourseSummary> =>

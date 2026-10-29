@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { createBrowserMock, createServerMock, SERVER_ANCHOR } from "@/lib/teacher/api/mock-browser";
+import { MOCK_SESSION_KEY } from "@/lib/teacher/api/mock-session";
 import { MOCK_KEY, MOCK_VERSION, startOfDay } from "@/lib/teacher/api/mock-state";
 
 /** A browser whose localStorage is the one given; the mock reads `window.localStorage` when it first needs the state. */
@@ -13,9 +14,16 @@ function browser(storage: Pick<Storage, "getItem" | "setItem"> | "blocked") {
   });
 }
 
-const memory = (saved?: string) => {
+/** A storage with the demo's save in it (or none) and a teacher signed in, as the sign-in leaves it. */
+const memory = (saved?: string, session: string | null = JSON.stringify({ persona: "veteran" })) => {
   const map = new Map<string, string>(saved === undefined ? [] : [[MOCK_KEY, saved]]);
-  return { map, getItem: (k: string) => map.get(k) ?? null, setItem: (k: string, v: string) => void map.set(k, v) };
+  if (session !== null) map.set(MOCK_SESSION_KEY, session);
+  return {
+    map,
+    getItem: (k: string) => map.get(k) ?? null,
+    setItem: (k: string, v: string) => void map.set(k, v),
+    removeItem: (k: string) => void map.delete(k),
+  };
 };
 
 afterEach(() => vi.unstubAllGlobals());
@@ -46,8 +54,11 @@ describe("the demo in the browser", () => {
   });
 
   test("storage that refuses to be read or written still gives a working demo", async () => {
+    // The session is the browser's cookie: with storage that cannot be read there is none, so the mock is let sign in the one
+    // way left to it, in memory, as the tests of the adapter do. Here the demo's own save is what is under test.
     browser({
-      getItem: () => {
+      getItem: (k: string) => {
+        if (k === MOCK_SESSION_KEY) return JSON.stringify({ persona: "veteran" });
         throw new Error("denied");
       },
       setItem: () => {
@@ -60,10 +71,10 @@ describe("the demo in the browser", () => {
     expect((await api.listCourses())[0].speed_bonus_on).toBe(false);
   });
 
-  test("no storage at all gives a working demo too", async () => {
+  test("no storage at all gives no session: nobody can be signed in, and the calls say so", async () => {
     browser("blocked");
     const { api } = createBrowserMock();
-    expect((await api.listCourses()).length).toBe(3);
+    await expect(api.listCourses()).rejects.toMatchObject({ code: "unauthenticated" });
   });
 
   test("Reset starts the demo over, and the fresh start is saved", async () => {
@@ -80,10 +91,20 @@ describe("the demo in the browser", () => {
 });
 
 describe("the demo the server renders", () => {
-  test("is the same on every render: a fixed day and a fixed clock, never saved", async () => {
-    const first = createServerMock();
-    const second = createServerMock();
-    expect((await first.getOpenSession()).server_now).toBe(new Date(SERVER_ANCHOR + 9 * 3_600_000).toISOString());
-    expect(await first.getDashboard("course-ii-4")).toEqual(await second.getDashboard("course-ii-4"));
+  test("has nobody signed in, so the server never draws a teacher's page and the hydrating render agrees with it", async () => {
+    const server = createServerMock();
+    await expect(server.getMe()).rejects.toMatchObject({ code: "unauthenticated", status: 401 });
+    await expect(server.listLessons()).rejects.toMatchObject({ code: "unauthenticated" });
+    // Starting a sign-in needs no session.
+    expect((await server.startSignIn({ provider: "google" })).method).toBe("redirect");
+  });
+
+  test("answers every read as a failure that is already settled, so the first render knows it", () => {
+    const answer = createServerMock().getMe() as unknown as { settled?: { ok: boolean } };
+    expect(answer.settled?.ok).toBe(false);
+  });
+
+  test("keeps its fixed day: the anchor and the clock it would serve a teacher with", () => {
+    expect(SERVER_ANCHOR).toBe(new Date(2026, 9, 28).getTime());
   });
 });

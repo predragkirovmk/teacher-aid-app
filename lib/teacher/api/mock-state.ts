@@ -5,7 +5,9 @@ import type { Lesson, LessonDraft, Refinement, SourceKind } from "./types";
 /**
  * What the mock adapter keeps in the browser. The demo school and its history are worked out from a
  * date (mock-data.ts), so only what the teacher changes is saved: the lessons made, copied, edited or
- * deleted, the drafts and sources being worked on, and a few settings. One overlay per demo school.
+ * deleted, the drafts and sources being worked on, and a few settings. One overlay per demo school and per teacher
+ * (the one with a season of history, and the one just invited). Who is signed in is not here: it is the session
+ * (mock-session.ts), so resetting the demo does not sign anyone out.
  *
  * The saved text is read back with suspicion (it may come from an older build, another tab or a hand
  * edit): `sanitizeState` keeps every field that is well formed and falls back to the default for the
@@ -33,16 +35,26 @@ export type Overlay = {
   counter: number;
 };
 
+/**
+ * Who is signed in, in the demo: the teacher with a season of history, or one the admin has just invited, who has run nothing,
+ * made no lesson and has not done the first run. Each has their own lessons, so one does not meet the other's work.
+ */
+export type Persona = "veteran" | "novice";
+export const PERSONAS: readonly Persona[] = ["veteran", "novice"];
+
 export type MockState = {
   v: typeof MOCK_VERSION;
   /** A local midnight: the demo's "today" when it was started or reset. */
   anchor: number;
+  /** The teacher with history, in the secondary school and at the faculty. */
   school: Overlay;
   university: Overlay;
+  /** The new teacher, in each. Kept apart so that a save made before there was one is still a good save. */
+  novice: { school: Overlay; university: Overlay };
 };
 
-export const emptyOverlay = (): Overlay => ({
-  first_run_done: true,
+export const emptyOverlay = (persona: Persona = "veteran"): Overlay => ({
+  first_run_done: persona === "veteran",
   speed_bonus: {},
   lessons: [],
   deleted: [],
@@ -56,6 +68,7 @@ export const freshState = (anchor: number): MockState => ({
   anchor,
   school: emptyOverlay(),
   university: emptyOverlay(),
+  novice: { school: emptyOverlay("novice"), university: emptyOverlay("novice") },
 });
 
 /** The local midnight at the start of the day `ms` falls on. */
@@ -64,10 +77,15 @@ export function startOfDay(ms: number): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
-export const overlayOf = (state: MockState, type: SchoolType): Overlay => (type === "school" ? state.school : state.university);
+export const overlayOf = (state: MockState, type: SchoolType, persona: Persona = "veteran"): Overlay =>
+  persona === "novice" ? state.novice[type] : type === "school" ? state.school : state.university;
 
-export const withOverlay = (state: MockState, type: SchoolType, overlay: Overlay): MockState =>
-  type === "school" ? { ...state, school: overlay } : { ...state, university: overlay };
+export const withOverlay = (state: MockState, type: SchoolType, overlay: Overlay, persona: Persona = "veteran"): MockState =>
+  persona === "novice"
+    ? { ...state, novice: { ...state.novice, [type]: overlay } }
+    : type === "school"
+      ? { ...state, school: overlay }
+      : { ...state, university: overlay };
 
 // ---- Reading what was saved -----------------------------------------------------------------
 
@@ -118,9 +136,9 @@ export function isDraft(v: unknown): v is LessonDraft {
 const isSource = (v: unknown): v is DemoSource =>
   isObject(v) && isText(v.id) && (v.kind === "upload" || v.kind === "typed") && (v.file_name === null || isText(v.file_name)) && isText(v.text);
 
-function sanitizeOverlay(saved: unknown): Overlay {
+function sanitizeOverlay(saved: unknown, persona: Persona = "veteran"): Overlay {
   const s = isObject(saved) ? saved : {};
-  const base = emptyOverlay();
+  const base = emptyOverlay(persona);
   return {
     first_run_done: typeof s.first_run_done === "boolean" ? s.first_run_done : base.first_run_done,
     speed_bonus: isObject(s.speed_bonus)
@@ -142,7 +160,14 @@ export function sanitizeState(saved: unknown, now: number): MockState {
   if (!isObject(saved) || saved.v !== MOCK_VERSION || typeof saved.anchor !== "number" || !Number.isFinite(saved.anchor) || saved.anchor > now + 2 * 86_400_000) {
     return freshState(startOfDay(now));
   }
-  return { v: MOCK_VERSION, anchor: saved.anchor, school: sanitizeOverlay(saved.school), university: sanitizeOverlay(saved.university) };
+  const novice = isObject(saved.novice) ? saved.novice : {};
+  return {
+    v: MOCK_VERSION,
+    anchor: saved.anchor,
+    school: sanitizeOverlay(saved.school),
+    university: sanitizeOverlay(saved.university),
+    novice: { school: sanitizeOverlay(novice.school, "novice"), university: sanitizeOverlay(novice.university, "novice") },
+  };
 }
 
 type ReadableStorage = Pick<Storage, "getItem">;

@@ -14,6 +14,7 @@ import {
   type LessonSummary,
   type LibraryItem,
   type Me,
+  type SignInRedirect,
   type SourceCreated,
   type QuestionMedia,
 } from "./types";
@@ -22,6 +23,10 @@ import {
  * The live adapter: `fetch` against NEXT_PUBLIC_API_URL under `/api/v1`, JSON in and out, errors read
  * from the spec's envelope into stable codes (errors.ts). The paths are spec 11.1; the bodies are the PROPOSED
  * ones of types.ts. Nothing uses it until the backend exists.
+ *
+ * Signing in is a full-page redirect and not a fetch: `POST /auth/start` answers with the provider's address and the page
+ * navigates to it, so the CSP needs nothing for it (navigation is not `connect-src`). The provider's callback sets the
+ * cookie and brings the browser back to `return_to`, a path of this app.
  *
  * Two things must change before it is switched on, and are not done now:
  * - next.config.ts: the CSP's `connect-src` (and `img-src`, for question images) must list the API's origin;
@@ -78,6 +83,9 @@ export function createLiveApi(): TeacherApi {
   const question = (sessionId: string, sqId: string) => `${session(sessionId)}/questions/${id(sqId)}`;
 
   return {
+    startSignIn: (req) => request<SignInRedirect>("POST", "/auth/start", { body: req }),
+    signOut: () => request<void>("POST", "/auth/logout"),
+
     getMe: () => request<Me>("GET", "/me"),
     setFirstRunDone: async () => {
       await request<unknown>("PATCH", "/me", { body: { first_run_done: true } });

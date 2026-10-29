@@ -14,11 +14,13 @@ export type TeacherState = {
    * mock adapter serves.
    */
   schoolType: SchoolType;
+  /** Whether `schoolType` was ever learned (from the school, or chosen in the demo). Until then the sign-in screen says "institution". */
+  schoolSeen: boolean;
 };
 
 const KEY = "teacheraid-teacher-v1";
 
-const DEFAULT: TeacherState = { locale: "mk", schoolType: "school" };
+const DEFAULT: TeacherState = { locale: "mk", schoolType: "school", schoolSeen: false };
 
 const LOCALES: readonly Locale[] = ["mk", "en"];
 const SCHOOL_TYPES: readonly SchoolType[] = ["school", "university"];
@@ -29,6 +31,7 @@ export function sanitizeTeacherState(saved: unknown): TeacherState {
   return {
     locale: LOCALES.includes(s.locale as Locale) ? (s.locale as Locale) : DEFAULT.locale,
     schoolType: SCHOOL_TYPES.includes(s.schoolType as SchoolType) ? (s.schoolType as SchoolType) : DEFAULT.schoolType,
+    schoolSeen: s.schoolSeen === true && SCHOOL_TYPES.includes(s.schoolType as SchoolType),
   };
 }
 
@@ -109,5 +112,7 @@ export function useTeacher(): TeacherState {
 
 export const actions = {
   setLocale: (locale: Locale) => set({ locale }),
-  setSchoolType: (schoolType: SchoolType) => set({ schoolType }),
+  setSchoolType: (schoolType: SchoolType) => set({ schoolType, schoolSeen: true }),
+  /** The school's type is what the store already holds (the demo has no other source): note that it is known. */
+  setSchoolSeen: () => set({ schoolSeen: true }),
 };

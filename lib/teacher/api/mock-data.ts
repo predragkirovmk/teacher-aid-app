@@ -101,6 +101,8 @@ type SchoolDef = {
   type: SchoolType;
   school: { id: string; name: string; kind: SchoolKind };
   teacher: { id: string; name: string; email: string; provider: AuthProvider };
+  /** A teacher the school's admin has just invited: signs in for the first time, has run nothing and made no lesson. */
+  novice: { id: string; name: string; email: string; provider: AuthProvider };
   classes: ClassDef[];
   colleagues: { id: string; name: string }[];
   /** Prepared and not run: a bank lesson, and the index of the class whose subject and year it is for. */
@@ -117,6 +119,7 @@ export const SCHOOLS: Record<SchoolType, SchoolDef> = {
     type: "school",
     school: { id: "sch-svetlina", name: "Гимназија „Светлина“", kind: "gymnasium" },
     teacher: { id: "t-petrovska", name: "Марија Петровска", email: "marija.petrovska@gimnazija-svetlina.example", provider: "google" },
+    novice: { id: "t-arsovski", name: "Игор Арсовски", email: "igor.arsovski@gimnazija-svetlina.example", provider: "google" },
     classes: [
       {
         id: "ii-4", name: "II-4", year: 2, subject: MATH, size: 26, hour: 8, midYear: 21,
@@ -150,6 +153,7 @@ export const SCHOOLS: Record<SchoolType, SchoolDef> = {
     type: "university",
     school: { id: "fac-demo", name: "Математички факултет „Демо“", kind: "faculty" },
     teacher: { id: "t-petrovska", name: "Марија Петровска", email: "marija.petrovska@mat-fakultet.example", provider: "microsoft" },
+    novice: { id: "t-arsovski", name: "Игор Арсовски", email: "igor.arsovski@mat-fakultet.example", provider: "microsoft" },
     classes: [
       {
         id: "g-1a", name: "Група 1А", year: 1, subject: { id: "analysis-1", name: "Математичка анализа 1" }, size: 28, hour: 9, midYear: 24,

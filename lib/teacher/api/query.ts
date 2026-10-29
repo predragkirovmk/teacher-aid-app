@@ -98,6 +98,18 @@ export class Slot<T> {
     this.emit();
   }
 
+  /** Forget the answer, for when a different teacher may be signed in next. */
+  reset() {
+    this.seq++;
+    this.started = false;
+    this.sync = false;
+    this.fetchedAt = 0;
+    this.serverEntry = null;
+    this.stale = false;
+    this.entry = LOADING;
+    this.emit();
+  }
+
   /** A fresh look at the adapter, for when something it knows has changed. */
   refresh = () => {
     if (!this.started) return;
@@ -164,6 +176,11 @@ export function invalidate(...prefixes: string[]) {
   slots.forEach((slot) => {
     if (!prefixes.length || prefixes.some((p) => slot.key === p || slot.key.startsWith(`${p}:`))) slot.refresh();
   });
+}
+
+/** Drop every answer, so nothing one teacher saw is shown to the next. */
+export function resetQueries() {
+  slots.forEach((slot) => slot.reset());
 }
 
 /** Put an answer straight into a slot that has been read, for a call that returns the fresh data. */

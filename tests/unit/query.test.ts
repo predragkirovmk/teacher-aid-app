@@ -5,7 +5,7 @@ import type { SettledPromise } from "@/lib/teacher/api/client";
 // The cache reads the adapter from client.ts, which builds the demo school in the browser; the tests give it their own.
 vi.mock("@/lib/teacher/api/client", () => ({ api: { subscribe: () => () => {} }, serverApi: null }));
 
-const { invalidate, seed, Slot, slotFor } = await import("@/lib/teacher/api/query");
+const { invalidate, resetQueries, seed, Slot, slotFor } = await import("@/lib/teacher/api/query");
 
 /** A call that is still on its way: it answers when the test says so. */
 function pending<T>() {
@@ -215,5 +215,42 @@ describe("failures", () => {
     await slot.fetch(true);
     expect(slot.entry).toBe(held);
     expect(heard).not.toHaveBeenCalled();
+  });
+});
+
+describe("a different teacher", () => {
+  test("a reset drops the answer, so the next teacher never sees the last one's, and asks again on the next read", async () => {
+    const load = vi.fn<() => Promise<string>>().mockResolvedValueOnce("first teacher's").mockResolvedValue("second teacher's");
+    const slot = slotFor(key, load);
+    slot.read();
+    await flush();
+    expect(slot.read().data).toBe("first teacher's");
+
+    resetQueries();
+    expect(slot.entry.data).toBeUndefined();
+    slot.read();
+    await flush();
+    expect(slot.read().data).toBe("second teacher's");
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  test("tells the screens that are showing it, so they stop", () => {
+    const slot = slotFor(key, () => settled("x"));
+    slot.read();
+    let told = 0;
+    const stop = slot.subscribe(() => told++);
+    resetQueries();
+    stop();
+    expect(told).toBe(1);
+  });
+
+  test("an answer that was still on its way when the teacher changed is not taken for the new one's", async () => {
+    const late = pending<string>();
+    const slot = slotFor(key, () => late.promise);
+    slot.read();
+    resetQueries();
+    late.resolve("the last teacher's");
+    await flush();
+    expect(slot.entry.data).toBeUndefined();
   });
 });

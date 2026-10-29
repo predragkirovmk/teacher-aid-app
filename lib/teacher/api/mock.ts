@@ -7,6 +7,7 @@ import {
 } from "../lessons";
 import type { SchoolType } from "../store";
 import type { SettledPromise, TeacherApi, Unsubscribe } from "./client";
+import { isProvider } from "../signin";
 import { ApiError, toApiError, type ValidationReason } from "./errors";
 import { BANK, bankLesson, bankQuestions, refineQuestions, type BankLesson } from "./mock-bank";
 import {
@@ -19,7 +20,8 @@ import {
   type SeedSession,
   type World,
 } from "./mock-data";
-import { overlayOf, withOverlay, type MockState, type Overlay } from "./mock-state";
+import { demoProviderUrl, isOffline } from "./mock-session";
+import { overlayOf, withOverlay, type MockState, type Overlay, type Persona } from "./mock-state";
 import type {
   AttendanceTally,
   CourseDashboard,
@@ -46,6 +48,10 @@ import type {
  * Reads and quick changes return already-settled promises (see SettledPromise), so the hooks can show
  * the data in the render that asks for it. Writing a lesson takes a moment, as the AI does.
  *
+ * Like the API, it answers `unauthenticated` to everything but signing in and out until somebody is signed in (`session()`),
+ * and what it serves is that teacher's: Марија Петровска with a season of history, or a teacher who has just been invited
+ * and has done nothing yet.
+ *
  * What a real teacher cannot trigger, the demo can, so the screens' failure states can be tried:
  * a typed text or emphasis containing `[fail]` makes the AI fail, and a document named like a scan
  * (`scan` or `скен`) has no text in it.
@@ -60,6 +66,10 @@ export type MockSource = {
   /** Replace the saved state. */
   commit(next: MockState): void;
   schoolType(): SchoolType;
+  /** The signed-in teacher: the API's session cookie. Null when nobody is. */
+  session(): Persona | null;
+  /** Sign in as a teacher, or out with null. */
+  setSession(next: Persona | null): void;
   now(): number;
   /** Called when the state or the school changes behind the adapter's back: another window, a reset, the demo switch. */
   subscribe(listener: () => void): Unsubscribe;
@@ -68,10 +78,12 @@ export type MockSource = {
 /** A source that keeps everything in memory: the server render's, and the tests'. */
 export function memorySource(
   initial: MockState,
-  options: { schoolType?: SchoolType; now?: () => number } = {},
+  options: { schoolType?: SchoolType; now?: () => number; persona?: Persona | null } = {},
 ): MockSource & { setSchoolType(type: SchoolType): void } {
   let state = initial;
   let type = options.schoolType ?? "school";
+  // The tests mostly want a teacher who is already in; the server render passes null: nobody is signed in there.
+  let persona: Persona | null = options.persona === undefined ? "veteran" : options.persona;
   const listeners = new Set<() => void>();
   return {
     state: () => state,
@@ -79,6 +91,11 @@ export function memorySource(
       state = next;
     },
     schoolType: () => type,
+    session: () => persona,
+    setSession: (next) => {
+      persona = next;
+      listeners.forEach((l) => l());
+    },
     now: options.now ?? Date.now,
     subscribe: (listener) => {
       listeners.add(listener);
@@ -124,7 +141,10 @@ export const REFINE_MS = 900;
 const MAX_DRAFTS = 20;
 const MAX_SOURCES = 20;
 
-type Ctx = { type: SchoolType; state: MockState; overlay: Overlay; world: World; now: number };
+type Ctx = { type: SchoolType; persona: Persona; state: MockState; overlay: Overlay; world: World; now: number };
+
+/** A school as a teacher who has just been invited sees it: the same classes and rosters, and no lesson has ever been run. */
+const withoutHistory = (world: World): World => ({ ...world, courses: world.courses.map((course) => ({ ...course, sessions: [] })) });
 
 export function createMockApi(
   source: MockSource,
@@ -135,15 +155,27 @@ export function createMockApi(
   const ctx = (): Ctx => {
     const type = source.schoolType();
     const state = source.state();
-    return { type, state, overlay: overlayOf(state, type), world: buildWorld(type, state.anchor), now: source.now() };
+    // Every call but signing in and out is refused before it gets here when nobody is signed in (see `guarded`).
+    const persona = source.session() ?? "veteran";
+    const world = buildWorld(type, state.anchor);
+    return {
+      type,
+      persona,
+      state,
+      overlay: overlayOf(state, type, persona),
+      world: persona === "novice" ? withoutHistory(world) : world,
+      now: source.now(),
+    };
   };
   /** Save a changed overlay. */
-  const save = (c: Ctx, overlay: Overlay) => source.commit(withOverlay(c.state, c.type, overlay));
+  const save = (c: Ctx, overlay: Overlay) => source.commit(withOverlay(c.state, c.type, overlay, c.persona));
 
   // ---- The teacher's lessons ----
 
   /** The lessons of the school's history and the two prepared ones, as they were before the teacher changed anything. */
   const seededLessons = (c: Ctx): Lesson[] => {
+    // A teacher who has just been invited has made no lesson: the two prepared ones and the six run are Марија's.
+    if (c.persona === "novice") return [];
     const { def, anchor, courses } = c.world;
     const keys: { key: string; course: SeedCourse; prepared: boolean }[] = [];
     for (const course of courses) {
@@ -429,10 +461,26 @@ export function createMockApi(
   });
 
   const api: TeacherApi = {
+    // The redirect to the provider is, in the demo, the sign-in screen with a sheet that stands in for the provider's page.
+    startSignIn: (request) =>
+      run(() => {
+        if (isOffline()) throw new ApiError("network");
+        if (!isProvider(request?.provider)) throw invalid();
+        return { method: "redirect" as const, url: demoProviderUrl(request.provider, request.return_to) };
+      }),
+    signOut: () =>
+      run(() => {
+        // A sign-out that cannot reach the server leaves the teacher signed in, and says so (EC-AUTH-08).
+        if (isOffline()) throw new ApiError("network");
+        // With no session left there is nothing to end, and that is not a failure either: the call is let through.
+        source.setSession(null);
+      }),
+
     getMe: () =>
       run(() => {
         const c = ctx();
-        const { school, teacher } = c.world.def;
+        const { school } = c.world.def;
+        const teacher = c.persona === "novice" ? c.world.def.novice : c.world.def.teacher;
         const me: Me = {
           id: teacher.id,
           name: teacher.name,
@@ -445,6 +493,8 @@ export function createMockApi(
         return me;
       }),
     setFirstRunDone: () => {
+      // A change needs the server: offline, it is not kept, and the guide says so.
+      if (isOffline()) return fail(new ApiError("network"));
       const c = ctx();
       save(c, { ...c.overlay, first_run_done: true });
       return api.getMe();
@@ -679,5 +729,18 @@ export function createMockApi(
     subscribe: (listener) => source.subscribe(listener),
   };
 
-  return api;
+  return guarded(api, source);
+}
+
+/** The calls that need no session: starting a sign-in, ending one, listening. */
+const OPEN: readonly (keyof TeacherApi)[] = ["startSignIn", "signOut", "subscribe", "openChannel"];
+
+/** The API refuses everything else with `unauthenticated` (401) until a teacher is signed in. */
+function guarded(api: TeacherApi, source: MockSource): TeacherApi {
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(api) as (keyof TeacherApi)[]) {
+    const fn = api[key] as (...args: unknown[]) => unknown;
+    out[key] = OPEN.includes(key) ? fn : (...args: unknown[]) => (source.session() ? fn(...args) : fail(new ApiError("unauthenticated", { status: 401 })));
+  }
+  return out as unknown as TeacherApi;
 }

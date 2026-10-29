@@ -1,7 +1,8 @@
 import { getTeacherState, subscribeTeacher } from "../store";
 import type { DemoControls, TeacherApi } from "./client";
 import { createMockApi, memorySource, type MockSource } from "./mock";
-import { freshState, MOCK_KEY, readState, startOfDay, writeState, type MockState } from "./mock-state";
+import { finishSignIn, MOCK_SESSION_KEY, readSession, writeSession, type DemoAccount } from "./mock-session";
+import { freshState, MOCK_KEY, readState, startOfDay, writeState, type MockState, type Persona } from "./mock-state";
 
 /**
  * The mock's own seams to the browser: the saved state in localStorage, and the demo school the teacher
@@ -23,6 +24,9 @@ const storage = (): Storage | null => {
 
 function browserSource(): MockSource & { reset(): void } {
   let state: MockState | null = null;
+  // Read from the key on every call: the sign-in of the demo's provider page is a full page load that writes it, and another
+  // window may write it too. The listeners are told when another window does.
+  const session = (): Persona | null => readSession(storage());
   let lastType = getTeacherState().schoolType;
   const listeners = new Set<() => void>();
   let watching = false;
@@ -45,13 +49,19 @@ function browserSource(): MockSource & { reset(): void } {
       writeState(storage(), next);
     },
     schoolType: () => getTeacherState().schoolType,
+    session,
+    setSession: (next) => {
+      writeSession(storage(), next);
+      notify();
+    },
     now: Date.now,
     subscribe: (listener) => {
       if (!watching) {
         watching = true;
         // Another window may change the demo's data (or clear it) while this one is open.
         window.addEventListener("storage", (e) => {
-          if (e.key !== MOCK_KEY && e.key !== null) return;
+          // The session key too: signing out in another window ends this one's session as well, as a cookie would.
+          if (e.key !== MOCK_KEY && e.key !== MOCK_SESSION_KEY && e.key !== null) return;
           state = null;
           notify();
         });
@@ -80,7 +90,22 @@ export function createBrowserMock(): { api: TeacherApi; demo: DemoControls } {
   return { api: createMockApi(source), demo: { reset: source.reset } };
 }
 
-/** The adapter the server render reads: a fresh demo school as of a fixed day, never saved. */
+/**
+ * The adapter the server render reads: a fresh demo school as of a fixed day, never saved, and nobody signed in. The server
+ * cannot know who is signed in (the browser's session is not sent to it), so what the server draws, and the render that
+ * hydrates it, is the waiting screen of a page that needs a teacher, and nothing protected is ever in the markup.
+ */
 export function createServerMock(): TeacherApi {
-  return createMockApi(memorySource(freshState(SERVER_ANCHOR), { now: () => SERVER_NOW }));
+  return createMockApi(memorySource(freshState(SERVER_ANCHOR), { now: () => SERVER_NOW, persona: null }));
+}
+
+/**
+ * The demo's provider page returning, as `GET /auth/callback/{provider}` does: signs the chosen account in, if it is on the
+ * list, and gives the path the browser goes to next. The caller loads that path as a new page, so the whole app starts again
+ * knowing the session, as it does when the real callback redirects back.
+ */
+export function completeDemoSignIn(account: Exclude<DemoAccount, "offline">, returnTo: string): string {
+  const { persona, location } = finishSignIn(account, returnTo, getTeacherState().schoolType);
+  if (persona) writeSession(storage(), persona);
+  return location;
 }

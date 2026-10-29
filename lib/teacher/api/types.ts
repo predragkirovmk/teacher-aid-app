@@ -52,6 +52,18 @@ export type Me = {
   school: { id: Id; name: string; type: SchoolKind };
 };
 
+/**
+ * POST /auth/start for a teacher. PROPOSED: 11.1 lists `{ email, return_to? }`, with the school found from the typed email
+ * (FR-AUTH-10). The teacher app types nothing: the teacher presses the button of the provider their school uses, as a
+ * student does, so the body is `{ provider, return_to? }` and no email travels. `return_to` is the app path to come back
+ * to: it starts with `/teacher` and may carry a query (the app sends its sign-in screen with the screen the teacher was
+ * heading for, `/teacher/sign-in?next=%2Fteacher%2Fclasses`); the API accepts nothing else.
+ */
+export type SignInRequest = { provider: AuthProvider; return_to?: string };
+
+/** The answer: where to send the browser, that provider's own sign-in address with no login hint. `redirect` is the only method. */
+export type SignInRedirect = { method: "redirect"; url: string };
+
 // ---- Courses and classes (3.1, OPEN-02) ----------------------------------------------------------
 
 export type Subject = { id: Id; name: string };

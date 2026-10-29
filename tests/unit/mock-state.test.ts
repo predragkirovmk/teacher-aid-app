@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { sanitizeTeacherState } from "@/lib/teacher/store";
-import { emptyOverlay, freshState, isDraft, isLesson, MOCK_KEY, MOCK_VERSION, readState, sanitizeState, startOfDay, writeState } from "@/lib/teacher/api/mock-state";
+import { emptyOverlay, freshState, isDraft, isLesson, MOCK_KEY, MOCK_VERSION, overlayOf, readState, sanitizeState, startOfDay, withOverlay, writeState } from "@/lib/teacher/api/mock-state";
 import { bankLesson, bankQuestions } from "@/lib/teacher/api/mock-bank";
 import type { Lesson, LessonDraft } from "@/lib/teacher/api/types";
 
@@ -136,10 +136,67 @@ describe("the mock's saved state", () => {
 
 describe("the teacher's own settings", () => {
   test("a save from an older build never crashes a screen: bad fields fall back, good ones stay", () => {
-    expect(sanitizeTeacherState(null)).toEqual({ locale: "mk", schoolType: "school" });
-    expect(sanitizeTeacherState({ locale: "en", schoolType: "university" })).toEqual({ locale: "en", schoolType: "university" });
-    expect(sanitizeTeacherState({ locale: "de", schoolType: "university" })).toEqual({ locale: "mk", schoolType: "university" });
-    expect(sanitizeTeacherState({ locale: "en", schoolType: 7 })).toEqual({ locale: "en", schoolType: "school" });
-    expect(sanitizeTeacherState("junk")).toEqual({ locale: "mk", schoolType: "school" });
+    expect(sanitizeTeacherState(null)).toEqual({ locale: "mk", schoolType: "school", schoolSeen: false });
+    expect(sanitizeTeacherState({ locale: "en", schoolType: "university" })).toEqual({ locale: "en", schoolType: "university", schoolSeen: false });
+    expect(sanitizeTeacherState({ locale: "de", schoolType: "university" })).toEqual({ locale: "mk", schoolType: "university", schoolSeen: false });
+    expect(sanitizeTeacherState({ locale: "en", schoolType: 7 })).toEqual({ locale: "en", schoolType: "school", schoolSeen: false });
+  });
+
+  test("the type of institution counts as known only once it was learned, and only if it is a real one", () => {
+    expect(sanitizeTeacherState({ locale: "mk", schoolType: "university", schoolSeen: true }).schoolSeen).toBe(true);
+    expect(sanitizeTeacherState({ locale: "mk", schoolType: "university", schoolSeen: "yes" }).schoolSeen).toBe(false);
+    expect(sanitizeTeacherState({ locale: "mk", schoolType: "ministry", schoolSeen: true }).schoolSeen).toBe(false);
+    expect(sanitizeTeacherState("junk")).toEqual({ locale: "mk", schoolType: "school", schoolSeen: false });
+  });
+});
+
+describe("the new teacher's own save", () => {
+  test("starts with the first run not done, and the teacher with history with it done", () => {
+    expect(emptyOverlay().first_run_done).toBe(true);
+    expect(emptyOverlay("veteran").first_run_done).toBe(true);
+    expect(emptyOverlay("novice").first_run_done).toBe(false);
+    const fresh = freshState(TODAY);
+    expect(fresh.novice.school.first_run_done).toBe(false);
+    expect(fresh.novice.university.first_run_done).toBe(false);
+  });
+
+  test("keeps each teacher's overlay apart, in each school", () => {
+    const base = freshState(TODAY);
+    const changed = withOverlay(base, "school", { ...emptyOverlay("novice"), counter: 4, first_run_done: true }, "novice");
+    expect(overlayOf(changed, "school", "novice").counter).toBe(4);
+    expect(overlayOf(changed, "school", "veteran").counter).toBe(0);
+    expect(overlayOf(changed, "university", "novice").counter).toBe(0);
+    expect(overlayOf(changed, "school").first_run_done).toBe(true);
+    const other = withOverlay(base, "university", { ...emptyOverlay(), counter: 9 });
+    expect(overlayOf(other, "university").counter).toBe(9);
+    expect(overlayOf(other, "university", "novice").counter).toBe(0);
+  });
+
+  test("a save from before there was a new teacher is still a good save: the new teacher starts fresh", () => {
+    const old = { v: MOCK_VERSION, anchor: TODAY, school: { ...emptyOverlay(), counter: 3 }, university: emptyOverlay() };
+    const state = sanitizeState(old, NOW);
+    expect(state.school.counter).toBe(3);
+    expect(state.novice.school).toEqual(emptyOverlay("novice"));
+    expect(state.novice.school.first_run_done).toBe(false);
+  });
+
+  test("a damaged save of the new teacher keeps what is good and falls back to a first run for the rest", () => {
+    const saved = { ...freshState(TODAY), novice: { school: { first_run_done: "yes", counter: 2, speed_bonus: { a: true } }, university: "junk" } };
+    const state = sanitizeState(saved, NOW);
+    expect(state.novice.school.first_run_done).toBe(false);
+    expect(state.novice.school.counter).toBe(2);
+    expect(state.novice.school.speed_bonus).toEqual({ a: true });
+    expect(state.novice.university).toEqual(emptyOverlay("novice"));
+    expect(sanitizeState({ ...freshState(TODAY), novice: 7 }, NOW).novice).toEqual(freshState(TODAY).novice);
+  });
+
+  test("a finished first run survives a save and a read", () => {
+    const state = withOverlay(freshState(TODAY), "school", { ...emptyOverlay("novice"), first_run_done: true }, "novice");
+    const map = new Map<string, string>();
+    writeState({ setItem: (k, v) => void map.set(k, v) }, state);
+    const read = readState({ getItem: (k) => map.get(k) ?? null }, NOW);
+    expect(read.novice.school.first_run_done).toBe(true);
+    expect(read.novice.university.first_run_done).toBe(false);
+    expect(read.school.first_run_done).toBe(true);
   });
 });

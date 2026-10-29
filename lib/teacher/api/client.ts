@@ -1,3 +1,4 @@
+import { watchSession } from "./session";
 import type {
   AdhocRequest,
   AdvanceRequest,
@@ -24,6 +25,8 @@ import type {
   Refinement,
   SaveLessonRequest,
   SessionReview,
+  SignInRedirect,
+  SignInRequest,
   SourceCreated,
   SourceInput,
   TeacherChannel,
@@ -42,6 +45,17 @@ export type Unsubscribe = () => void;
  * they are named here and listed in docs/handoff-pending-2.md for the backend.
  */
 export interface TeacherApi {
+  // ---- Signing in (F-01) ----
+  /**
+   * POST /auth/start: the provider the teacher chose. Answers with where to send the browser (a full page load, not a fetch);
+   * the provider returns to `GET /auth/callback/{provider}`, which signs the teacher in and redirects to `return_to`, or to
+   * `return_to` with `?error=unknown_email` or `?error=sign_in_failed` and nobody signed in (EC-AUTH-09, EC-AUTH-10). Those two
+   * codes never arrive as an HTTP error. Rejects `network`, `validation_failed` and `rate_limited` (EC-AUTH-07).
+   */
+  startSignIn(request: SignInRequest): Promise<SignInRedirect>;
+  /** POST /auth/logout, 204. A session the server already ended answers `unauthenticated`, which counts as signed out (EC-AUTH-08). */
+  signOut(): Promise<void>;
+
   // ---- Who is signed in (F-01) ----
   /** GET /me. Rejects `unauthenticated` when nobody is signed in. */
   getMe(): Promise<Me>;
@@ -151,9 +165,13 @@ export type DemoControls = {
 const browserMock =
   process.env.NEXT_PUBLIC_API_MODE === "live" ? null : (require("./mock-browser") as typeof import("./mock-browser")).createBrowserMock();
 
-/** The adapter the app talks to, chosen by NEXT_PUBLIC_API_MODE when it is built. */
-export const api: TeacherApi =
-  process.env.NEXT_PUBLIC_API_MODE === "live" ? (require("./live") as typeof import("./live")).createLiveApi() : browserMock!.api;
+/**
+ * The adapter the app talks to, chosen by NEXT_PUBLIC_API_MODE when it is built, with every call watched for the answer
+ * "you are not signed in" (session.ts), which ends the session wherever in the app it comes from.
+ */
+export const api: TeacherApi = watchSession(
+  process.env.NEXT_PUBLIC_API_MODE === "live" ? (require("./live") as typeof import("./live")).createLiveApi() : browserMock!.api,
+);
 
 /**
  * What the server render, and the render that hydrates it, may know. In mock mode that is a fresh demo school, so both

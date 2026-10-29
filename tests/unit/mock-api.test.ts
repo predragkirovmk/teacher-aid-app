@@ -76,7 +76,8 @@ describe("who and what", () => {
     expect(answer.settled?.ok).toBe(true);
   });
 
-  test("the first run can be marked done, and it is kept", async () => {
+  test("the teacher with history has nothing to finish: the first run is done, and marking it again changes nothing", async () => {
+    expect((await api.getMe()).first_run_done).toBe(true);
     expect((await api.setFirstRunDone()).first_run_done).toBe(true);
   });
 });
@@ -447,3 +448,75 @@ describe("what is not built yet", () => {
     expect((await rejection(api.getPracticeResults("s-none"))).code).toBe("not_found");
   });
 });
+
+describe("the new teacher: invited, signed in for the first time", () => {
+  const novice = () => {
+    const s = memorySource(freshState(ANCHOR), { now: () => NOW, persona: "novice" });
+    return { source: s, api: createMockApi(s, { delay: () => Promise.resolve() }) };
+  };
+
+  test("is somebody else at the same school, with the first run not done", async () => {
+    const { api } = novice();
+    const me = await api.getMe();
+    expect(me).toMatchObject({ name: "Игор Арсовски", role: "teacher", first_run_done: false, school: { type: "gymnasium" } });
+    expect(me.email).toBe("igor.arsovski@gimnazija-svetlina.example");
+    expect((await api.getMe()).id).not.toBe((await build().getMe()).id);
+  });
+
+  test("has the same classes and rosters, and has run nothing: no history, no points", async () => {
+    const { api } = novice();
+    const courses = await api.listCourses();
+    expect(courses.map((c) => c.class.name)).toEqual(["II-4", "III-5", "IV-1"]);
+    expect(courses.map((c) => c.student_count)).toEqual([26, 24, 28]);
+    expect(courses.every((c) => c.lessons_run === 0 && c.last_session_at === null)).toBe(true);
+    const d = await api.getDashboard(courses[0].id);
+    expect(d.students).toHaveLength(26);
+    expect(d.sessions).toEqual([]);
+    expect(d.attendance).toEqual([]);
+    expect(d.students.every((s) => s.points === 0)).toBe(true);
+  });
+
+  test("has made no lesson, and so has nothing prepared for Today; the school library is there to copy from", async () => {
+    const { api } = novice();
+    expect(await api.listLessons()).toEqual([]);
+    expect((await api.listLibrary()).length).toBeGreaterThan(0);
+  });
+
+  test("finishing the first run is kept, for this teacher only", async () => {
+    const { api, source } = novice();
+    expect((await api.setFirstRunDone()).first_run_done).toBe(true);
+    expect((await api.getMe()).first_run_done).toBe(true);
+    // Setting it again changes nothing and is not an error.
+    expect((await api.setFirstRunDone()).first_run_done).toBe(true);
+    // The teacher with history never had a first run to finish, and is not touched.
+    source.setSession("veteran");
+    expect((await api.getMe()).first_run_done).toBe(true);
+    // Signing back in as the new teacher finds it done.
+    source.setSession("novice");
+    expect((await api.getMe()).first_run_done).toBe(true);
+  });
+
+  test("makes lessons of their own, which the teacher with history does not see, and the other way round", async () => {
+    const { api, source } = novice();
+    const draft = await makeDraftWith(api);
+    const saved = await api.saveLesson({ draft_id: draft.id, title: draft.title, review_summary: draft.review_summary, questions: draft.questions });
+    expect((await api.listLessons()).map((l) => l.id)).toEqual([saved.id]);
+    source.setSession("veteran");
+    expect((await api.listLessons()).some((l) => l.id === saved.id)).toBe(false);
+    expect((await api.listLessons()).length).toBeGreaterThan(5);
+  });
+
+  test("at a faculty is still the new teacher, in that school's words", async () => {
+    const { api, source } = novice();
+    source.setSchoolType("university");
+    const me = await api.getMe();
+    expect(me).toMatchObject({ name: "Игор Арсовски", first_run_done: false, school: { type: "faculty" } });
+    expect(me.auth_provider).toBe("microsoft");
+  });
+});
+
+/** A draft made through a new teacher's own adapter, for the tests above. */
+async function makeDraftWith(a: TeacherApi): Promise<LessonDraft> {
+  const { source_id } = await a.createSource({ kind: "typed", text: typed });
+  return a.generateLesson({ source_id, subject_id: "math", year: 2 });
+}
