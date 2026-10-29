@@ -24,6 +24,9 @@ where they differ.
   "клас" or "група" in the same way. Set once per school.
 - Not built: messages, feedback, notifications bell, search bar (all in the screens, none in the
   spec). Student questions arrive in the anonymous inbox.
+- Buttons use the short imperative ("Подготви лекција", "Зачувај"); sentences use "Вие".
+- A question fired before a student joined is not counted as missed for that student, in the
+  practice set or in topic results (OPEN-08, planner's call, reversible).
 
 ## Simplicity first
 
@@ -113,8 +116,8 @@ The app is dark teal only (no light mode).
   style). No backwards-compatibility shims.
 - Small focused commits; end each message with the `Co-Authored-By` line for the model that wrote
   it, for example `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
-- Before finishing: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm build` (and the tests once step 2
-  exists) must pass.
+- Before finishing: `pnpm lint`, `pnpm exec next typegen && pnpm exec tsc --noEmit`, `pnpm build`,
+  `pnpm test` and `pnpm test:e2e` must pass.
 - Preview: commit everything, then run `vercel deploy --yes` from the worktree (project linked in
   `.vercel/`). Verify on the https preview (a production build over http://localhost is unstyled
   because of the CSP).
