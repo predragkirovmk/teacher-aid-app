@@ -719,17 +719,19 @@ test.describe("the guide again", () => {
     await page.goto("/teacher/settings");
     await expect(page.getByRole("heading", { name: "Водич за почеток" })).toBeVisible();
     await page.getByRole("link", { name: "Прикажи го водичот повторно" }).click();
-    await expect(page).toHaveURL(/\/teacher\/welcome$/);
+    await expect(page).toHaveURL(/\/teacher\/welcome\?next=%2Fteacher%2Fsettings$/);
     await expect(page.getByText("Чекор 1 од 3")).toBeVisible();
     const before = await mockState(page);
     await page.getByRole("button", { name: "Следно" }).click();
     await page.getByRole("button", { name: "Следно" }).click();
-    await page.getByRole("button", { name: "Оди на Денес" }).click();
-    await expect(title(page)).toHaveText("Денес");
+    // It goes back to where it was shown from, and says so.
+    await page.getByRole("button", { name: "Назад во Поставки" }).click();
+    await expect(page).toHaveURL(/\/teacher\/settings$/);
+    await expect(title(page)).toHaveText("Поставки");
     expect(await mockState(page)).toEqual(before);
   });
 
-  test("and skipping it does the same", async ({ page }) => {
+  test("and skipping it, when it was opened by its address alone, goes to Today", async ({ page }) => {
     await page.goto("/teacher/welcome");
     await page.getByRole("button", { name: "Прескокни го водичот" }).click();
     await expect(title(page)).toHaveText("Денес");

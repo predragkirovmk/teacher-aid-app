@@ -96,17 +96,21 @@ test.describe("settings", () => {
     await expect(mainMenu(page).getByRole("link", { name: "Класови" })).toHaveCount(0);
     await expect(page.getByText("Марија Петровска, професор")).toBeVisible();
 
-    // It is kept, and Today speaks of the students of a faculty.
+    // It is kept, and Today asks for a group and speaks of the students of a faculty.
     await page.reload();
     await expect(mainMenu(page).getByRole("link", { name: "Групи" })).toBeVisible();
     await mainMenu(page).getByRole("link", { name: "Денес" }).click();
-    await expect(page.getByText("со Вашите студенти")).toBeVisible();
+    await page.getByRole("button", { name: "Започни час" }).first().click();
+    await expect(page.getByRole("dialog", { name: "Со која група?" })).toContainText("28 студенти");
+    await page.getByRole("button", { name: "Откажи" }).click();
 
     await moreMenu(page).getByRole("link", { name: "Поставки" }).click();
     await page.getByRole("radio", { name: "Средно училиште" }).check();
     await expect(mainMenu(page).getByRole("link", { name: "Класови" })).toBeVisible();
     await mainMenu(page).getByRole("link", { name: "Денес" }).click();
-    await expect(page.getByText("со Вашите ученици")).toBeVisible();
+    await page.getByRole("button", { name: "Започни час" }).first().click();
+    await expect(page.getByRole("dialog", { name: "Со кој клас?" })).toContainText("28 ученици");
+    await page.getByRole("button", { name: "Откажи" }).click();
   });
 
   test("in English a faculty has groups and a school has classes", async ({ page }) => {
@@ -240,7 +244,20 @@ test.describe("a narrow window", () => {
 });
 
 test.describe("the pages load clean", () => {
-  const paths = ["/teacher", "/teacher/lessons", "/teacher/lessons/new", "/teacher/classes", "/teacher/library", "/teacher/settings", "/teacher/help", "/teacher/welcome"];
+  const paths = [
+    "/teacher",
+    "/teacher/lessons",
+    "/teacher/lessons/new",
+    "/teacher/lessons/l-procenti",
+    "/teacher/lessons/l-procenti?from=today",
+    "/teacher/live/s-none",
+    "/teacher/classes",
+    "/teacher/library",
+    "/teacher/settings",
+    "/teacher/help",
+    "/teacher/welcome",
+    "/teacher/welcome?next=%2Fteacher%2Fsettings",
+  ];
 
   for (const path of paths) {
     test(`${path} has no console errors, no hydration mismatch and no blocked request`, async ({ page }) => {
