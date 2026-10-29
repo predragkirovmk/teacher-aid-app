@@ -123,6 +123,7 @@ export function PrepareScreen({ s }: { s: S }) {
           <span className="scr-prep__refine">
             {p.refine.map((r, i) => (
               <span key={r} className="scr-chip scr-chip--ghost" data-prep-refine={i === 1 ? "pick" : undefined}>
+                {i === 1 && <i className="scr-chip__on" data-prep-on />}
                 {r}
               </span>
             ))}

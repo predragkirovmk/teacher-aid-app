@@ -382,8 +382,8 @@ body.v2 {
   background: var(--nav-bg);
   color: var(--nav-fg);
   transition:
-    background-color 320ms var(--ease-out),
-    color 320ms var(--ease-out);
+    background-color 240ms ease,
+    color 240ms ease;
 }
 
 .nav[data-nav-theme="teal"] {
@@ -1862,8 +1862,18 @@ body.v2 {
 }
 
 .scr-chip--ghost {
+  position: relative;
   background: none;
   box-shadow: inset 0 0 0 0.12cqw oklch(100% 0 0 / 0.45);
+}
+
+/* The tapped refinement: a yellow ring, shown with opacity. */
+.scr-chip__on {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 0.22cqw var(--yellow);
+  opacity: 0;
 }
 
 .scr-sub {

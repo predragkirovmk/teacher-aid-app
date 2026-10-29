@@ -161,7 +161,7 @@ export function Motion() {
                 .to("[data-stack]", { autoAlpha: 1, duration: 0.01 }, 3.6)
                 // The class is dealt up behind the front phone, nearest first.
                 .fromTo(cards, { y: 0 }, { y: (i) => -(i + 1) * step(), duration: 0.6, ease: "power2.out", stagger: { amount: 1.6 } }, 3.6)
-                .to("[data-hero-count]", { autoAlpha: 1, duration: 0.6 }, 4.8)
+                .fromTo("[data-hero-count]", { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.6, ease: "power2.out" }, 4.8)
                 // Then they answer, front to back, and the count keeps pace.
                 .to("[data-lit]", { opacity: 1, duration: 0.3, stagger: { amount: 3.4, ease: "sine.inOut" } }, 5.4)
                 .to(count, { n: CLASS_SIZE, duration: 3.7, onUpdate: () => (num.textContent = String(Math.round(count.n))) }, 5.4)
@@ -212,10 +212,13 @@ export function Motion() {
                 .to(P("[data-prep-writing]"), { autoAlpha: 0, duration: 0.25 })
                 .to(P("[data-prep-count]"), { autoAlpha: 1, duration: 0.3 })
                 .to(qs, { y: 0, autoAlpha: 1, duration: 0.5, stagger: 0.12 }, "-=0.1")
-                .to(pick, { backgroundColor: "#ffc83e", color: "#0a2e37", duration: 0.2 }, "+=0.5")
+                // Harder is tapped: a press and a yellow ring, opacity and scale only.
+                .to(pick, { scale: 0.95, duration: 0.1, ease: "power2.out" }, "+=0.5")
+                .to(pick, { scale: 1, duration: 0.2, ease: "power2.out" })
+                .to(P("[data-prep-on]"), { opacity: 1, duration: 0.15 }, "<-0.15")
                 .to(qs, { autoAlpha: 0.35, duration: 0.2, stagger: 0.04 }, "+=0.1")
                 .to(qs, { autoAlpha: 1, duration: 0.35, stagger: 0.06 })
-                .to(pick, { backgroundColor: "rgba(255, 200, 62, 0)", color: "#f6f9f9", duration: 0.3, clearProps: "backgroundColor,color" }, "+=0.2");
+                .to(P("[data-prep-on]"), { opacity: 0, duration: 0.3 }, "+=0.2");
               ScrollTrigger.create({ trigger: prep, start: "top 75%", once: true, onEnter: () => void tl.play() });
             }
 
@@ -286,7 +289,7 @@ export function Motion() {
               counter(tl, [L("[data-joined]"), L("[data-c-joined]")], 0, 27, 1.8, 0.2);
               // 2. Send: the button presses, the question leaves the laptop for the board.
               beat(1, 2.1);
-              tl.to(send, { scale: 0.92, duration: 0.12 }, 2.3)
+              tl.to(send, { scale: 0.95, duration: 0.12 }, 2.3)
                 .to(send, { scale: 1, duration: 0.2 }, 2.42)
                 .to(L("[data-send-label]"), { opacity: 0, duration: 0.15 }, 2.45)
                 .to(L("[data-sent-label]"), { opacity: 1, duration: 0.15 }, 2.45)
@@ -303,7 +306,7 @@ export function Motion() {
               tl.to(fills, { scaleX: (_, el) => parseFloat((el as HTMLElement).parentElement?.style.getPropertyValue("--share") ?? "0"), duration: 2.4, ease: "power1.out", stagger: 0.05 }, 4.1);
               // 4. Reveal: the button presses, the right answer rings, the rest step back.
               beat(3, 6.8);
-              tl.to(revealBtn, { scale: 0.92, duration: 0.12 }, 6.9)
+              tl.to(revealBtn, { scale: 0.95, duration: 0.12 }, 6.9)
                 .to(revealBtn, { scale: 1, duration: 0.2 }, 7.02)
                 .to(L("[data-reveal-fill]"), { opacity: 1, duration: 0.2 }, 6.95)
                 .to(L("[data-ring]"), { opacity: 1, duration: 0.35 }, 7.1)
