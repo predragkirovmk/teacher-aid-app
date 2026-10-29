@@ -2,6 +2,7 @@
 
 import { Choices } from "@/components/teacher/Choices";
 import { DemoCard } from "@/components/teacher/DemoCard";
+import { GuideCard } from "@/components/teacher/GuideCard";
 import { InstallCard } from "@/components/teacher/InstallCard";
 import { PageHeader } from "@/components/teacher/PageHeader";
 import { useTeacherName } from "@/lib/teacher/api/hooks";
@@ -41,6 +42,7 @@ export default function SettingsPage() {
             hint={<p>{t("settings.school.hint")}</p>}
           />
         )}
+        <GuideCard />
         <InstallCard />
         <DemoCard />
       </div>
