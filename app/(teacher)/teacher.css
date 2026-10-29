@@ -942,6 +942,8 @@ button {
 .card .guide__body {
   color: var(--text);
   font-size: var(--fs-button);
+  /* Keeps a word such as е-Дневник from being left alone at the start of a line. */
+  text-wrap: pretty;
 }
 .guide__actions {
   display: flex;
@@ -956,6 +958,8 @@ button {
 .btn--quiet {
   min-height: var(--tap-small);
   padding: var(--sp-1) var(--sp-2);
+  /* The words, not the padding, line up with the text above. */
+  margin-left: calc(var(--sp-2) * -1);
   background: transparent;
   font-size: var(--fs-body);
   font-weight: 600;
@@ -974,8 +978,18 @@ button {
   padding-top: var(--sp-3);
   background: linear-gradient(180deg, var(--ground-top) 0%, var(--ground) 100%);
 }
+/* The top row lines up with the page under it: the same side padding as .main, inside the same column. */
 .public .entry__top {
-  padding-inline: var(--sp-3);
+  max-width: calc(var(--page-w) + 2 * var(--sp-5));
+  padding-inline: var(--sp-5);
+}
+.public .brand__link {
+  margin-left: calc(var(--sp-1) * -1);
+}
+@media (max-width: 63.9375rem) {
+  .public .entry__top {
+    padding-inline: var(--sp-2);
+  }
 }
 .main--public {
   min-height: 0;
