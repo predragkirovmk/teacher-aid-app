@@ -1,4 +1,4 @@
-import { GUIDE, guideUrl, safeNext, SIGN_IN, signInUrl, TODAY, type Notice } from "./signin";
+import { GUIDE, guideUrl, HELP, safeNext, SIGN_IN, signInUrl, TODAY, type Notice } from "./signin";
 
 /**
  * Who may see which page, decided in one place (the gate in components/teacher/Gate.tsx asks). Every page under `/teacher`
@@ -13,7 +13,7 @@ export type Access = "sign-in" | "either" | "private";
 export function accessOf(pathname: string): Access {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
   if (path === SIGN_IN) return "sign-in";
-  if (path === "/teacher/help") return "either";
+  if (path === HELP) return "either";
   return "private";
 }
 

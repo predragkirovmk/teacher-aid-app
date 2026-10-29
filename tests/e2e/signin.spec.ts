@@ -57,10 +57,20 @@ test.describe("the sign-in screen", () => {
     await expect(providerButton(page, "Microsoft")).toBeVisible();
     await expect(page.locator("input, textarea, select")).toHaveCount(0);
     await expect(page.getByText(/лозинк|password/i)).toHaveCount(0);
-    // One link to ask for help, with the address written out in case the computer has no mail program.
+    // One link to ask for help, which opens Help and its answer about not being able to sign in, with the address written out
+    // beside it in case the computer has no mail program.
     const help = page.getByRole("link", { name: "Потребна е помош?" });
-    await expect(help).toHaveAttribute("href", "mailto:hello@teacheraid.education");
+    await expect(help).toHaveAttribute("href", "/teacher/help");
     await expect(page.getByText("hello@teacheraid.education")).toBeVisible();
+  });
+
+  test("its help link opens Help, which needs no sign-in, and Sign in comes back", async ({ page }) => {
+    await page.goto("/teacher/sign-in");
+    await page.getByRole("link", { name: "Потребна е помош?" }).click();
+    await expect(page).toHaveURL(/\/teacher\/help$/);
+    await expect(page.getByText("Не можам да се најавам. Што да правам?")).toBeVisible();
+    await page.getByRole("link", { name: "Најави се", exact: true }).click();
+    await expect(page).toHaveURL(/\/teacher\/sign-in$/);
   });
 
   test("the provider buttons follow each provider's guidelines: white, their own logo and grey, and as big as the app's buttons", async ({ page }) => {
@@ -389,6 +399,9 @@ test.describe("when signing in does not work", () => {
       await expect(alert).toContainText(heading);
       await expect(alert).toContainText(words);
       // A warning is led by a red badge with a mark, and has no coloured edge down one side.
+      // Each button says it too when the teacher comes to it, since either one is the next try.
+      await expect(providerButton(page, "Google")).toHaveAccessibleDescription(new RegExp(heading));
+      await expect(providerButton(page, "Microsoft")).toHaveAccessibleDescription(new RegExp(heading));
       await expect(alert.locator(".problem__badge")).toHaveCSS("background-color", "rgb(236, 34, 31)");
       await expect(alert).toHaveCSS("border-left-width", "0px");
       await expect(title(page)).toHaveText("Најава");

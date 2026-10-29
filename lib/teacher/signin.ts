@@ -9,6 +9,8 @@ import type { AuthProvider } from "./api/types";
 export const TODAY = "/teacher";
 export const SIGN_IN = "/teacher/sign-in";
 export const GUIDE = "/teacher/welcome";
+/** Help is open to anyone, signed in or not. */
+export const HELP = "/teacher/help";
 
 /** The identity providers, in the order the buttons come (spec 3.2 `auth_provider`). */
 export const PROVIDERS: readonly { id: AuthProvider; name: string }[] = [

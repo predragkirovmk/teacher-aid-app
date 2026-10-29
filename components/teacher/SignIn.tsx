@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircleIcon, LockKeyIcon } from "@phosphor-icons/react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useState } from "react";
 import { Mark } from "@/components/app/Mark";
@@ -8,7 +9,7 @@ import { ApiError, toApiError } from "@/lib/teacher/api/errors";
 import { startSignIn } from "@/lib/teacher/api/hooks";
 import type { AuthProvider } from "@/lib/teacher/api/types";
 import { useT, type Key } from "@/lib/teacher/i18n";
-import { isNotice, isRefusal, isSafeRedirect, PROVIDERS, safeNext, signInUrl, type Notice } from "@/lib/teacher/signin";
+import { HELP, isNotice, isRefusal, isSafeRedirect, PROVIDERS, safeNext, signInUrl, type Notice } from "@/lib/teacher/signin";
 import { actions, useTeacher } from "@/lib/teacher/store";
 import { PageTitle } from "./PageTitle";
 import { Problem } from "./Problem";
@@ -38,6 +39,9 @@ const PROBLEM_TITLE: Record<string, Key> = {
 const PROBLEM_BODY: Record<string, Key> = {
   network: "signin.problem.network.body",
 };
+
+/** The warning, so each button can say it too: what failed is the attempt, and either button is the next one. */
+const PROBLEM = "signin-problem";
 
 /**
  * Teacher sign-in (F-01, US-T01): the school's Google or Microsoft account, nothing else (2026-10-27). A button asks the API
@@ -157,7 +161,11 @@ export function SignIn() {
               <span>{t(notice === "signed_out" ? "signin.note.signed_out" : "signin.note.expired")}</span>
             </p>
           )}
-          {message && <Problem title={message.title}>{message.body}</Problem>}
+          {message && (
+            <Problem id={PROBLEM} title={message.title}>
+              {message.body}
+            </Problem>
+          )}
 
           <div className="providers">
             {PROVIDERS.map((p) => (
@@ -167,6 +175,7 @@ export function SignIn() {
                 className={`provider provider--${p.id}`}
                 disabled={busy !== null && busy !== p.id}
                 aria-busy={busy === p.id}
+                aria-describedby={message ? PROBLEM : undefined}
                 onClick={() => void go(p.id)}
               >
                 <ProviderMark provider={p.id} />
@@ -176,7 +185,7 @@ export function SignIn() {
           </div>
 
           <p className="entry__help">
-            <a href={`mailto:${t("help.contact.email")}`}>{t("signin.help")}</a>
+            <Link href={HELP}>{t("signin.help")}</Link>
             <span>{t("help.contact.email")}</span>
           </p>
         </div>
