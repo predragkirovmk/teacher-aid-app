@@ -1,12 +1,10 @@
-import { expect, test, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, MOCK_KEY, SETTINGS_KEY, test } from "./fixtures";
 
 /**
  * Smoke tests of the teacher shell, in mock mode, in Macedonian unless a test changes the language. They read like what a
  * teacher does: go to a page, press a button, see what changed.
  */
-
-const MOCK_KEY = "teacheraid-teacher-mock-v1";
-const SETTINGS_KEY = "teacheraid-teacher-v1";
 
 // The two menus, whatever the language: the four places first, then settings, help and sign out.
 const mainMenu = (page: Page) => page.getByRole("navigation").first();
@@ -172,7 +170,7 @@ test.describe("settings", () => {
 });
 
 test.describe("signing out", () => {
-  test("asks first, stays on No and Escape, and leaves on Yes", async ({ page }) => {
+  test("asks first, stays on No and Escape, and leaves on Yes for the sign-in screen", async ({ page }) => {
     await page.goto("/teacher/help");
     const signOut = page.getByRole("button", { name: "Одјави се" });
     const dialog = page.getByRole("alertdialog", { name: "Дали сакате да се одјавите?" });
@@ -192,10 +190,9 @@ test.describe("signing out", () => {
 
     await signOut.click();
     await dialog.getByRole("button", { name: "Да, одјави ме" }).click();
-    await expect(page).toHaveURL(/\/teacher\/signed-out$/);
-    await expect(title(page)).toHaveText("Се одјавивте");
-    await page.getByRole("link", { name: "Врати се на Денес" }).click();
-    await expect(page).toHaveURL(/\/teacher$/);
+    await expect(page).toHaveURL(/\/teacher\/sign-in$/);
+    await expect(title(page)).toHaveText("Најава");
+    await expect(page.getByRole("status")).toHaveText("Успешно се одјавивте.");
   });
 });
 
@@ -243,7 +240,7 @@ test.describe("a narrow window", () => {
 });
 
 test.describe("the pages load clean", () => {
-  const paths = ["/teacher", "/teacher/lessons", "/teacher/lessons/new", "/teacher/classes", "/teacher/library", "/teacher/settings", "/teacher/help", "/teacher/signed-out"];
+  const paths = ["/teacher", "/teacher/lessons", "/teacher/lessons/new", "/teacher/classes", "/teacher/library", "/teacher/settings", "/teacher/help", "/teacher/welcome"];
 
   for (const path of paths) {
     test(`${path} has no console errors, no hydration mismatch and no blocked request`, async ({ page }) => {
