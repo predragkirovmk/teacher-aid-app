@@ -386,6 +386,7 @@ describe("the school library", () => {
 
   test("a copy is a new lesson of the teacher's, and the original is not touched (F-05)", async () => {
     const before = await api.listLibrary();
+    const original = await api.getLesson(before[0].lesson_id);
     const copy = await api.copyFromLibrary(before[0].lesson_id);
     expect(copy.id).not.toBe(before[0].lesson_id);
     expect(copy).toMatchObject({ version: 1, times_run: 0, copied_from: { lesson_id: before[0].lesson_id, owner_name: before[0].owner.name } });
@@ -394,12 +395,12 @@ describe("the school library", () => {
     const after = await api.listLibrary();
     expect(after.map((i) => ({ ...i, already_copied: false }))).toEqual(before);
     expect(after[0].already_copied).toBe(true);
-    expect(await api.getLesson(before[0].lesson_id)).toEqual(await api.getLesson(before[0].lesson_id));
+    expect(await api.getLesson(before[0].lesson_id)).toEqual(original);
 
     // The teacher edits the copy; the colleague's lesson stays as it was.
     const lesson: Lesson = await api.getLesson(copy.id);
     await api.updateLesson(copy.id, { ...lesson, title: "Мое" });
-    expect((await api.getLesson(before[0].lesson_id)).title).toBe(before[0].title);
+    expect(await api.getLesson(before[0].lesson_id)).toEqual(original);
     expect((await rejection(api.copyFromLibrary("lib-none"))).code).toBe("not_found");
   });
 

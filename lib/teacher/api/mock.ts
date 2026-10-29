@@ -35,6 +35,7 @@ import type {
   LibraryItem,
   Me,
   PracticeResults,
+  PracticeSetSummary,
   Question,
 } from "./types";
 
@@ -234,21 +235,22 @@ export function createMockApi(
     };
   };
 
-  const libraryOf = (c: Ctx): LibraryItem[] =>
-    c.world.def.library.map((entry) => {
+  const libraryOf = (c: Ctx): LibraryItem[] => {
+    const copied = new Set(lessonsOf(c).map((l) => l.copied_from?.lesson_id));
+    return c.world.def.library.map((entry) => {
       const lesson = libraryLesson(c, entry.key);
-      const owner = c.world.def.colleagues[entry.colleague];
       return {
         lesson_id: lesson.id,
         title: lesson.title,
         subject: lesson.subject,
         year: lesson.year,
         question_count: lesson.question_count,
-        owner,
+        owner: c.world.def.colleagues[entry.colleague],
         saved_at: lesson.created_at,
-        already_copied: lessonsOf(c).some((l) => l.copied_from?.lesson_id === lesson.id),
+        already_copied: copied.has(lesson.id),
       };
     });
+  };
 
   // ---- Courses and the dashboard ----
 
@@ -333,12 +335,20 @@ export function createMockApi(
     }));
   };
 
+  const practiceSummary = (course: SeedCourse, session: SeedSession, p: NonNullable<SeedSession["practice"]>): PracticeSetSummary => ({
+    id: p.id,
+    session_id: session.id,
+    course_id: course.course_id,
+    created_at: iso(p.created_at),
+    question_count: p.question_ids.length,
+  });
+
   const dashboardPractice = (course: SeedCourse, session: SeedSession): DashboardPractice | null => {
     const p = session.practice;
     if (!p) return null;
     const done = p.results.filter((r) => r.completed_at !== null && r.score !== null);
     return {
-      practice_set: { id: p.id, session_id: session.id, course_id: course.course_id, created_at: iso(p.created_at), question_count: p.question_ids.length },
+      practice_set: practiceSummary(course, session, p),
       students: p.results.length,
       completed: done.length,
       average_score: done.length ? Math.round((done.reduce((sum, r) => sum + (r.score ?? 0), 0) / done.length) * 10) / 10 : null,
@@ -650,7 +660,7 @@ export function createMockApi(
           const names = new Map(course.students.map((s) => [s.id, s.full_name]));
           const p = session.practice;
           const results: PracticeResults = {
-            practice_set: { id: p.id, session_id: session.id, course_id: course.course_id, created_at: iso(p.created_at), question_count: p.question_ids.length },
+            practice_set: practiceSummary(course, session, p),
             students: p.results.map((r) => ({
               student_id: r.student_id,
               full_name: names.get(r.student_id) ?? "",
