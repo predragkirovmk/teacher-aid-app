@@ -91,6 +91,11 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
                 {t.teacher.body}
               </p>
             </div>
+            <div className="wrap opener__stage">
+              <Laptop label={s.alt.console} className="opener__laptop">
+                <ConsoleScreen s={s} />
+              </Laptop>
+            </div>
           </section>
 
           <section className="scene split" id={t.prepare.id} aria-labelledby="prepare-title" tabIndex={-1}>

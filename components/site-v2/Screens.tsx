@@ -238,13 +238,20 @@ export function BoardScreen({ s, lang }: { s: S; lang: "mk" | "en" }) {
           </span>
         </span>
       </div>
+      {/* Two columns: the question and its answers on the left, the clock and the count on the
+          right. The bottom right stays clear, where the teacher's laptop stands in front. */}
       <div className="scr-board__q" data-board-q>
         <div className="scr-board__top">
           <span>{b.course}</span>
           <span>{b.progress}</span>
+        </div>
+        <div className="scr-board__side">
           <span className="scr-timer" data-timer>
             {b.timer}
           </span>
+          <p className="scr-board__count">
+            <b data-answered>{b.answered.n}</b> {b.answered.of}
+          </p>
         </div>
         <p className="scr-board__question" data-board-question>
           {b.question}
@@ -262,9 +269,6 @@ export function BoardScreen({ s, lang }: { s: S; lang: "mk" | "en" }) {
             </li>
           ))}
         </ol>
-        <p className="scr-board__foot">
-          <b data-answered>{b.answered.n}</b> {b.answered.of}
-        </p>
       </div>
       <span className="scr-tag">{s.example}</span>
     </div>

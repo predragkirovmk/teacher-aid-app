@@ -176,6 +176,22 @@ export function Motion() {
               tl.to(o, { n: to, duration, ease: "none", onUpdate: write }, at);
             };
 
+            /* The teacher chapter opens: the laptop grows as it comes up the screen until it fills
+               it, one layer scaling with the scroll. */
+            const openerLaptop = document.querySelector<HTMLElement>(".opener__laptop");
+            if (openerLaptop) {
+              gsap.fromTo(
+                openerLaptop,
+                { scale: 0.76, y: 40 },
+                {
+                  scale: 1,
+                  y: 0,
+                  ease: "none",
+                  scrollTrigger: { trigger: openerLaptop, start: "top bottom", end: "center center", scrub: fine ? 0.6 : 0.35 },
+                },
+              );
+            }
+
             /* Prepare (act 2): once the laptop is in view, the lesson file and the line of emphasis
                arrive, the AI writes, the questions appear, and one tap on Harder rewrites them. */
             const prep = document.querySelector<HTMLElement>("[data-prep]");
