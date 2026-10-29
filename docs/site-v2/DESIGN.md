@@ -122,6 +122,13 @@ teal. One main button per viewport. Secondary actions are chevron links ("Пог
   arrive after first paint. Under a 4x CPU throttle on a 390px viewport, a full touch scroll keeps
   95 % of frames under 20 ms (`node scripts/site-v2-perf.mjs <url>`).
 - Owner check on a real phone with each preview.
+- Measured after step 4 (30 Oct 2026, 390px phone, 4x slower CPU, production preview):
+  - Frames: 100 % under 20 ms through both pinned scenes, no long tasks.
+  - The same 6,000px touch scroll, new site against the first one: raster 246 ms against 625 ms,
+    script 162 ms against 424 ms, style 55 ms against 266 ms, paint 79 ms against 121 ms.
+  - Slow 4G load: first paint 0.9 s, main content 1.5 s, layout shift 0.
+  - Weight: first-load JS 174 KB gzip (Next and React are about 160 of it), motion 45 KB after
+    first paint, CSS 8 KB, fonts 99 KB (two families, Latin and Cyrillic).
 
 ## Chapters
 
