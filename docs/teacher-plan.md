@@ -79,6 +79,19 @@ The app is dark teal only (no light mode).
 - Shared code (`lib/brand.ts`, `components/app/Mark.tsx`) is imported, not changed. Nothing under
   `app/(app)/`, `components/app/`, `lib/app/` or the website is modified.
 
+## Carried notes for later steps
+
+- Step 6: for a teacher whose first run is not done, the guide's last screen leads into
+  `/teacher/lessons/new` (the hands-on first lesson of F-01).
+- Step 7: the class view is a protected page too; a deep link drops its query. Class-view-only
+  data (the live join token, the class-view snapshot) must not travel on a channel or endpoint
+  students can read; propose a class-view-only channel if the spec's `session.{id}.public` is
+  shared with students.
+- Step 8 and 9: anonymous question text never goes on a channel students subscribe to
+  (BR-ANON-06, AC-ANON-07, OPEN-36); the class view gets it from its own channel or snapshot.
+- Step 9: OPEN-08 is read as leaving a late joiner out of both sides of the share for a question
+  fired before they joined (BR-PRA-07, INTERPRETATION); the mock follows that.
+
 ## Steps (one preview link per step, the owner checks each before the next starts)
 
 1. Foundation: route group, teal tokens, logo, sidebar and top bar shell, MK/EN switch, school-type
