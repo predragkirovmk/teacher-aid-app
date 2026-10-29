@@ -11,6 +11,7 @@ export function ConfirmDialog({
   open,
   title,
   body,
+  problem,
   stay,
   confirm,
   onStay,
@@ -19,10 +20,12 @@ export function ConfirmDialog({
   open: boolean;
   title: string;
   body?: string;
+  /** Why the last "yes" did not go through. The question stays open and says so; it is read out when it appears. */
+  problem?: string;
   stay: string;
   confirm: string;
   onStay: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const heading = useId();
@@ -50,6 +53,11 @@ export function ConfirmDialog({
       {body && (
         <p id={description} className="dialog__body">
           {body}
+        </p>
+      )}
+      {problem && (
+        <p role="alert" className="dialog__problem">
+          {problem}
         </p>
       )}
       <div className="dialog__actions">

@@ -19,9 +19,11 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import "@/lib/app/install";
 import { Mark } from "@/components/app/Mark";
 import { ConfirmDialog } from "@/components/teacher/ConfirmDialog";
-import { useSchoolWording } from "@/lib/teacher/api/hooks";
+import { signOut, useAuth, useSchoolWording } from "@/lib/teacher/api/hooks";
 import { useT, type Key } from "@/lib/teacher/i18n";
 import { useNarrow } from "@/lib/teacher/media";
+import { signInUrl } from "@/lib/teacher/signin";
+import { PublicFrame } from "./PublicFrame";
 
 type Destination = { href: string; label: Key; Icon: Icon };
 
@@ -40,10 +42,19 @@ const MORE: Destination[] = [
 
 const FOCUSABLE = "a[href], button:not([disabled])";
 
+/**
+ * The frame of every page of a signed-in teacher: the sidebar and the top bar. Help is open to anyone, and without a teacher
+ * it has no sidebar, because every place the sidebar leads to needs one.
+ */
 export function Shell({ children }: { children: ReactNode }) {
+  const { status } = useAuth();
+  return status === "signedIn" ? <Frame>{children}</Frame> : <PublicFrame>{children}</PublicFrame>;
+}
+
+function Frame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { t } = useT();
+  const { t, te } = useT();
   useSchoolWording();
   const narrow = useNarrow();
   // The path the drawer was opened on, so moving to another page closes it without an effect.
@@ -53,6 +64,8 @@ export function Shell({ children }: { children: ReactNode }) {
   const closeButton = useRef<HTMLButtonElement>(null);
   const drawer = useRef<HTMLDivElement>(null);
   const [signingOut, setSigningOut] = useState(false);
+  // Why the teacher is still signed in after saying yes: the server could not be reached.
+  const [signOutProblem, setSignOutProblem] = useState<string | null>(null);
   const wasOpen = useRef(false);
 
   const isCurrent = (href: string) => (href === "/teacher" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
@@ -169,12 +182,23 @@ export function Shell({ children }: { children: ReactNode }) {
       <ConfirmDialog
         open={signingOut}
         title={t("logout.title")}
+        problem={signOutProblem ?? undefined}
         stay={t("logout.stay")}
         confirm={t("logout.confirm")}
-        onStay={() => setSigningOut(false)}
-        onConfirm={() => {
+        onStay={() => {
           setSigningOut(false);
-          router.push("/teacher/signed-out");
+          setSignOutProblem(null);
+        }}
+        onConfirm={async () => {
+          try {
+            // Ends the session and forgets what was shown. Help is open to anyone, so the gate would leave a teacher who signs
+            // out there where they are: the teacher is taken to the sign-in screen from here, whichever page they were on.
+            await signOut();
+            router.replace(signInUrl({ notice: "signed_out" }));
+          } catch (e) {
+            // Still signed in: the question stays open and says why, and Yes tries again.
+            setSignOutProblem(`${t("logout.failed")} ${te(e)}`);
+          }
         }}
       />
     </div>

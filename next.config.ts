@@ -41,6 +41,12 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        // Where Sign out landed before there was a sign-in screen; old links and bookmarks still arrive.
+        source: "/teacher/signed-out",
+        destination: "/teacher/sign-in?reason=signed_out",
+        permanent: false,
+      },
+      {
         source: "/:path*",
         has: [{ type: "host", value: "www.teacheraid.education" }],
         destination: "https://teacheraid.education/:path*",

@@ -9,6 +9,7 @@ const FAQ: [Key, Key][] = [
   ["help.q2", "help.a2"],
   ["help.q3", "help.a3"],
   ["help.q4", "help.a4"],
+  ["help.q5", "help.a5"],
 ];
 
 export default function HelpPage() {
