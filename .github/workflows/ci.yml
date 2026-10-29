@@ -35,8 +35,12 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # LayoutProps and PageProps are global types that Next writes into .next/types; a fresh checkout has none until
+      # they are generated, so tsc would fail on every layout and page.
       - name: Typecheck
-        run: pnpm exec tsc --noEmit
+        run: |
+          pnpm exec next typegen
+          pnpm exec tsc --noEmit
 
       - name: Build
         run: pnpm build
