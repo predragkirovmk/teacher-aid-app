@@ -165,6 +165,8 @@ test.describe("the sign-in screen", () => {
     await expect(sheet(page).getByRole("button", { name: CHOICE.veteran })).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(sheet(page)).toBeHidden();
+    // Back from the provider's page, the button that was pressed has the focus again, not nothing.
+    await expect(providerButton(page, "Google")).toBeFocused();
   });
 
   test("fits a window 1024 wide and a narrow one, with no sideways scrolling", async ({ page }) => {
@@ -198,6 +200,7 @@ test.describe("the demo's provider page", () => {
     // Back: the screen as it was, where it was heading still remembered.
     await dialog.getByRole("button", { name: "Назад" }).click();
     await expect(dialog).toBeHidden();
+    await expect(providerButton(page, "Google")).toBeFocused();
     await expect(page).toHaveURL(/\/teacher\/sign-in\?next=%2Fteacher%2Fclasses$/);
     expect(await sessionOf(page)).toBeNull();
     await expect(problem(page)).toHaveCount(0);
@@ -209,6 +212,13 @@ test.describe("the demo's provider page", () => {
     await expect(sheet(page, "Microsoft")).toBeVisible();
     await expect(sheet(page, "Microsoft").getByText("Во вистинската верзија тука се отвора страницата на Microsoft.")).toBeVisible();
     await expect(sheet(page, "Microsoft").getByRole("button", { name: CHOICE.novice })).toBeVisible();
+  });
+
+  test("fits a 1280 x 720 window whole, with no scrolling inside it", async ({ page }) => {
+    await page.goto("/teacher/sign-in");
+    await providerButton(page, "Google").click();
+    const room = await sheet(page).evaluate((d) => d.clientHeight - d.scrollHeight);
+    expect(room).toBeGreaterThanOrEqual(0);
   });
 
   test("the buttons are as big as the app's: 56px and up", async ({ page }) => {

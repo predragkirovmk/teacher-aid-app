@@ -3,7 +3,7 @@
 import { CheckCircleIcon, LockKeyIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { startTransition, useEffect, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { Mark } from "@/components/app/Mark";
 import { ApiError, toApiError } from "@/lib/teacher/api/errors";
 import { startSignIn } from "@/lib/teacher/api/hooks";
@@ -65,6 +65,8 @@ export function SignIn() {
   const [refusal, setRefusal] = useState<ApiError | null>(null);
   // The demo's provider page, while the browser is "at" one.
   const [provider, setProvider] = useState<{ id: AuthProvider; returnTo: string } | null>(null);
+  // The buttons, so that leaving the provider's page puts the focus back on the one that was pressed.
+  const buttons = useRef<Partial<Record<AuthProvider, HTMLButtonElement | null>>>({});
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -171,6 +173,9 @@ export function SignIn() {
             {PROVIDERS.map((p) => (
               <button
                 key={p.id}
+                ref={(el) => {
+                  buttons.current[p.id] = el;
+                }}
                 type="button"
                 className={`provider provider--${p.id}`}
                 disabled={busy !== null && busy !== p.id}
@@ -197,14 +202,19 @@ export function SignIn() {
           returnTo={provider.returnTo}
           onClose={() => {
             // Back from the provider's page without choosing: the address goes back to the screen, nothing else changes.
+            // The page was loaded with the sheet already open, so the browser has no button to give the focus back to.
+            const id = provider.id;
             setProvider(null);
             router.replace(provider.returnTo);
+            requestAnimationFrame(() => buttons.current[id]?.focus());
           }}
           onOffline={() => {
             // Nothing reaches the API: the same thing a button press would have said, with the connection down.
+            const id = provider.id;
             setProvider(null);
             setFailed(new ApiError("network"));
             router.replace(provider.returnTo);
+            requestAnimationFrame(() => buttons.current[id]?.focus());
           }}
         />
       )}

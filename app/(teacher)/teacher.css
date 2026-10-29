@@ -1014,9 +1014,11 @@ button {
 }
 
 /* ---- the demo's stand-in for the provider's page ---- */
+/* Tight enough that the whole sheet fits a 1280 x 720 window without scrolling. */
 .dialog--sheet {
   width: min(44rem, calc(100vw - 2rem));
   max-height: calc(100dvh - 2rem);
+  padding: var(--sp-3);
   overflow-y: auto;
 }
 .tag.tag--solo {
@@ -1028,7 +1030,7 @@ button {
   gap: 0.75rem;
 }
 .sheet__label {
-  margin: var(--sp-3) 0 var(--sp-1);
+  margin: var(--sp-2) 0 var(--sp-1);
   font-family: var(--font-display);
   font-size: var(--fs-h3);
   font-weight: 700;
@@ -1048,7 +1050,7 @@ button {
 }
 .sheet__back {
   width: 100%;
-  margin-top: var(--sp-3);
+  margin-top: var(--sp-2);
 }
 .btn--who {
   flex-direction: column;
