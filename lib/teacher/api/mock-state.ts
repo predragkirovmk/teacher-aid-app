@@ -1,4 +1,4 @@
-import { isValidContent } from "../lessons";
+import { isObject, isText, isValidContent } from "../lessons";
 import type { SchoolType } from "../store";
 import type { Lesson, LessonDraft, Refinement, SourceKind } from "./types";
 
@@ -71,8 +71,6 @@ export const withOverlay = (state: MockState, type: SchoolType, overlay: Overlay
 
 // ---- Reading what was saved -----------------------------------------------------------------
 
-const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
-const isText = (v: unknown): v is string => typeof v === "string";
 const isCount = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v) && v >= 0;
 
 const REFINEMENTS: readonly Refinement[] = ["easier", "harder", "more_questions", "shorter_timers"];
@@ -90,14 +88,15 @@ export function isLesson(v: unknown): v is Lesson {
     isCount(l.year) &&
     isCount(l.version) &&
     l.version >= 1 &&
-    isCount(l.question_count) &&
+    l.question_count === (l.questions as unknown[]).length &&
     isCount(l.times_run) &&
     (l.last_run_at === null || isText(l.last_run_at)) &&
     (copied === null || (isObject(copied) && isText(copied.lesson_id) && isText(copied.owner_name))) &&
     isText(l.created_at) &&
     isText(l.updated_at) &&
     (l.emphasis === null || isText(l.emphasis)) &&
-    (source === null || (isObject(source) && isText(source.id) && (source.kind === "upload" || source.kind === "typed")))
+    (source === null ||
+      (isObject(source) && isText(source.id) && (source.kind === "upload" || source.kind === "typed") && (source.file_name === null || isText(source.file_name))))
   );
 }
 

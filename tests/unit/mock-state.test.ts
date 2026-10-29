@@ -107,6 +107,12 @@ describe("the mock's saved state", () => {
     expect(isDraft(draft())).toBe(true);
   });
 
+  test("a lesson that counts more or fewer questions than it holds is not kept, nor one with a nameless file", () => {
+    expect(isLesson(lesson({ question_count: 9 }))).toBe(false);
+    expect(isLesson(lesson({ source: { id: "src-1", kind: "upload", file_name: "план.docx" } }))).toBe(true);
+    expect(isLesson(lesson({ source: { id: "src-1", kind: "upload" } as never }))).toBe(false);
+  });
+
   test("is read from storage, and a storage that fails or holds junk gives a fresh state", () => {
     const saved = { ...freshState(TODAY), school: { ...emptyOverlay(), counter: 9 } };
     const memory = new Map<string, string>();

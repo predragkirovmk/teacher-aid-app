@@ -9,8 +9,8 @@ export const TIMER_MAX_SECONDS = 300;
 export const OPTIONS_MIN = 2;
 export const OPTIONS_MAX = 4;
 
-const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
-const isText = (v: unknown): v is string => typeof v === "string";
+export const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+export const isText = (v: unknown): v is string => typeof v === "string";
 const isFiniteNumber = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
 /**
@@ -20,7 +20,7 @@ const isFiniteNumber = (v: unknown): v is number => typeof v === "number" && Num
 export function isValidQuestion(q: unknown): q is Question {
   if (!isObject(q)) return false;
   if (!isText(q.id) || !Number.isInteger(q.order) || !isText(q.prompt) || !q.prompt.trim() || !isText(q.topic)) return false;
-  if (!isFiniteNumber(q.timer_seconds) || q.timer_seconds < TIMER_MIN_SECONDS || q.timer_seconds > TIMER_MAX_SECONDS) return false;
+  if (!Number.isInteger(q.timer_seconds) || (q.timer_seconds as number) < TIMER_MIN_SECONDS || (q.timer_seconds as number) > TIMER_MAX_SECONDS) return false;
   if (q.explanation !== null && !isText(q.explanation)) return false;
   if (q.media !== null) {
     const m = q.media;
@@ -35,15 +35,13 @@ export function isValidQuestion(q: unknown): q is Question {
     }
     case "true_false":
       return q.correct === "true" || q.correct === "false";
-    case "numeric":
-      return (
-        isText(q.correct) &&
-        parseNumeric(q.correct) !== null &&
-        isFiniteNumber(q.tolerance) &&
-        q.tolerance >= 0 &&
-        (q.unit === null || isText(q.unit)) &&
-        typeof q.allow_negative === "boolean"
-      );
+    case "numeric": {
+      if (!isText(q.correct) || !isFiniteNumber(q.tolerance) || q.tolerance < 0 || (q.unit !== null && !isText(q.unit))) return false;
+      if (typeof q.allow_negative !== "boolean") return false;
+      const correct = parseNumeric(q.correct);
+      // A right answer below zero on a question that does not take a minus could never be given (BR-ANS-03).
+      return correct !== null && (correct >= 0 || q.allow_negative);
+    }
     default:
       return false;
   }

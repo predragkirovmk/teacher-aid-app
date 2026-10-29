@@ -68,9 +68,20 @@ describe("questions and lessons (BR-Q-01, BR-Q-02)", () => {
     expect(isValidQuestion({ ...num, allow_negative: "no" })).toBe(false);
   });
 
+  test("a right answer below zero needs a question that takes a minus, or nobody could give it (BR-ANS-03)", () => {
+    const num = good.find((q) => q.kind === "numeric")!;
+    expect(isValidQuestion({ ...num, correct: "-4", allow_negative: false })).toBe(false);
+    expect(isValidQuestion({ ...num, correct: "-4", allow_negative: true })).toBe(true);
+    expect(isValidQuestion({ ...num, correct: "4", allow_negative: false })).toBe(true);
+    expect(isValidQuestion({ ...num, correct: "-0.5", allow_negative: false })).toBe(false);
+  });
+
   test("a timer is between 5 and 300 seconds, and the prompt is not empty", () => {
     expect(isValidQuestion({ ...good[0], timer_seconds: 2 })).toBe(false);
     expect(isValidQuestion({ ...good[0], timer_seconds: 900 })).toBe(false);
+    expect(isValidQuestion({ ...good[0], timer_seconds: 12.5 })).toBe(false);
+    expect(isValidQuestion({ ...good[0], timer_seconds: 5 })).toBe(true);
+    expect(isValidQuestion({ ...good[0], timer_seconds: 300 })).toBe(true);
     expect(isValidQuestion({ ...good[0], prompt: "  " })).toBe(false);
     expect(isValidQuestion({ ...good[0], kind: "ordering" })).toBe(false);
     expect(isValidQuestion(null)).toBe(false);
