@@ -388,6 +388,9 @@ test.describe("when signing in does not work", () => {
       await expect(alert).toBeVisible();
       await expect(alert).toContainText(heading);
       await expect(alert).toContainText(words);
+      // A warning is led by a red badge with a mark, and has no coloured edge down one side.
+      await expect(alert.locator(".problem__badge")).toHaveCSS("background-color", "rgb(236, 34, 31)");
+      await expect(alert).toHaveCSS("border-left-width", "0px");
       await expect(title(page)).toHaveText("Најава");
       expect(await sessionOf(page)).toBeNull();
       // The refusal is taken off the address, so a reload does not tell it again.
@@ -716,6 +719,7 @@ test.describe("when the first run cannot be saved", () => {
     await page.getByRole("button", { name: "Прескокни го водичот" }).waitFor();
     await context.setOffline(true);
     await page.getByRole("button", { name: "Прескокни го водичот" }).click();
+    await expect(problem(page)).toContainText("Не успеавме да продолжиме");
     await expect(problem(page)).toContainText("Нема врска со интернет. Проверете ја врската и обидете се повторно.");
     await expect(page).toHaveURL(/\/teacher\/welcome$/);
     expect((await mockState(page)).novice.school.first_run_done).toBe(false);

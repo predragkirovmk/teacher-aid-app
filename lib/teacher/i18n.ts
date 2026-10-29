@@ -160,6 +160,7 @@ const en = {
   "guide.next": "Next",
   "guide.skip": "Skip the guide",
   "guide.done": "Go to Today",
+  "guide.error.title": "We could not carry on",
 
   "notfound.title": "This page does not exist",
   "notfound.body": "The link may be old or wrong. Go back to the start.",
@@ -349,6 +350,7 @@ const mk: Record<Key, Entry> = {
   "guide.next": "Следно",
   "guide.skip": "Прескокни го водичот",
   "guide.done": "Оди на Денес",
+  "guide.error.title": "Не успеавме да продолжиме",
 
   "notfound.title": "Оваа страница не постои",
   "notfound.body": "Можеби врската е стара или погрешна. Вратете се на почеток.",

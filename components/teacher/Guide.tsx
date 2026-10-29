@@ -9,6 +9,7 @@ import { GUIDE_STEPS, isLastStep, stepAfter, type GuideIcon } from "@/lib/teache
 import { useT } from "@/lib/teacher/i18n";
 import { safeNext, TODAY } from "@/lib/teacher/signin";
 import { PageTitle } from "./PageTitle";
+import { Problem } from "./Problem";
 
 const ICONS: Record<GuideIcon, Icon> = { prepare: FileTextIcon, hold: QrCodeIcon, review: ListChecksIcon };
 
@@ -82,11 +83,7 @@ export function Guide() {
           </div>
           <p className="guide__body">{t(current.body)}</p>
 
-          {error !== null && (
-            <p className="problem__body guide__error" role="alert">
-              {te(error)}
-            </p>
-          )}
+          {error !== null && <Problem title={t("guide.error.title")}>{te(error)}</Problem>}
 
           <div className="guide__actions">
             {step > 0 && (

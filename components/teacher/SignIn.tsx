@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircleIcon, LockKeyIcon, WarningCircleIcon } from "@phosphor-icons/react";
+import { CheckCircleIcon, LockKeyIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useState } from "react";
 import { Mark } from "@/components/app/Mark";
@@ -11,6 +11,7 @@ import { useT, type Key } from "@/lib/teacher/i18n";
 import { isNotice, isRefusal, isSafeRedirect, PROVIDERS, safeNext, signInUrl, type Notice } from "@/lib/teacher/signin";
 import { actions, useTeacher } from "@/lib/teacher/store";
 import { PageTitle } from "./PageTitle";
+import { Problem } from "./Problem";
 import { ProviderMark } from "./ProviderMark";
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -149,15 +150,7 @@ export function SignIn() {
               <span>{t(notice === "signed_out" ? "signin.note.signed_out" : "signin.note.expired")}</span>
             </p>
           )}
-          {message && (
-            <div className="problem" role="alert">
-              <WarningCircleIcon size={28} weight="fill" aria-hidden="true" />
-              <div>
-                <p className="problem__title">{message.title}</p>
-                <p className="problem__body">{message.body}</p>
-              </div>
-            </div>
-          )}
+          {message && <Problem title={message.title}>{message.body}</Problem>}
 
           <div className="providers">
             {PROVIDERS.map((p) => (

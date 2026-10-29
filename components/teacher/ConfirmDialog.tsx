@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef } from "react";
+import { Problem } from "./Problem";
 
 /**
  * A question before something that cannot be undone, in plain words, with the safe answer in hand: it is the yellow
@@ -55,11 +56,7 @@ export function ConfirmDialog({
           {body}
         </p>
       )}
-      {problem && (
-        <p role="alert" className="dialog__problem">
-          {problem}
-        </p>
-      )}
+      {problem && <Problem>{problem}</Problem>}
       <div className="dialog__actions">
         <button type="button" className="btn btn--primary" onClick={onStay}>
           {stay}
