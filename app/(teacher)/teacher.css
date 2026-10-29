@@ -718,6 +718,327 @@ button {
   margin-top: var(--sp-1);
 }
 
+/* ---- entry screens: sign-in and the welcome guide (no sidebar; a way back to nothing, because nothing is behind them yet) ---- */
+.entry {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-3) var(--sp-5);
+  background: linear-gradient(180deg, var(--ground-top) 0%, var(--ground) 100%);
+}
+.entry__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-1) var(--sp-2);
+  width: 100%;
+  max-width: var(--page-w);
+  margin-inline: auto;
+}
+.entry__body {
+  flex: 1;
+  display: grid;
+  place-items: center;
+}
+.entry__card {
+  width: min(100%, 36rem);
+}
+.entry h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  letter-spacing: -0.015em;
+}
+.card .entry__sub {
+  color: var(--text);
+  font-size: var(--fs-button);
+}
+
+/* The language switch: two toggle buttons, the chosen one bold with a white edge, never colour alone. */
+.lang {
+  display: inline-flex;
+  gap: 0.5rem;
+}
+.pill {
+  min-width: 3.5rem;
+  min-height: var(--tap-small);
+  padding: 0 var(--sp-2);
+  border: 2px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--deep);
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  transition: background-color var(--dur) var(--ease);
+}
+.pill[aria-pressed="true"] {
+  border-color: var(--text);
+  background: var(--shadow);
+  font-weight: 700;
+}
+@media (hover: hover) {
+  .pill[aria-pressed="false"]:hover {
+    background: var(--shadow);
+  }
+}
+
+/* What the screen says about how the visit went: signed out on purpose, signed out for safety, or a sign-in that did not work. */
+.card .note-box,
+.problem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  padding: var(--sp-2);
+  border-radius: var(--r-m);
+  background: var(--deep);
+  color: var(--text);
+  font-weight: 600;
+  animation: pop var(--dur) var(--ease);
+}
+.note-box svg,
+.problem svg {
+  flex: none;
+  margin-top: 0.125rem;
+}
+/* A warning: the red edge is only an extra, the icon and the words say it. */
+.problem {
+  border-left: 0.375rem solid var(--red);
+}
+.card .problem p {
+  color: var(--text);
+}
+.card .problem__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+.card .problem__body {
+  margin-top: 0.25rem;
+  font-weight: 500;
+}
+
+/*
+ * The provider buttons keep each provider's own look, as their guidelines ask: a white button, a thin grey edge, the
+ * provider's logo and its words in its own grey, nothing recoloured. They are as tall and as wide as the app's buttons.
+ */
+.providers {
+  display: grid;
+  gap: var(--sp-2);
+  width: 100%;
+}
+.provider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0.75rem var(--sp-3);
+  border: 1px solid;
+  border-radius: var(--r-m);
+  background: #ffffff;
+  font-size: var(--fs-button);
+  line-height: 1.2;
+  text-align: center;
+  transition:
+    background-color var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+.provider svg {
+  flex: none;
+}
+.provider--google {
+  border-color: #747775;
+  color: #1f1f1f;
+  font-family: Roboto, var(--font);
+  font-weight: 500;
+}
+.provider--microsoft {
+  border-color: #8c8c8c;
+  color: #5e5e5e;
+  font-family: "Segoe UI", var(--font);
+  font-weight: 600;
+}
+.provider:active {
+  background: #e6e6e6;
+  transform: scale(0.98);
+}
+.provider:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+@media (hover: hover) {
+  .provider:hover:not(:disabled) {
+    background: #f1f1f1;
+  }
+  .provider:hover:active:not(:disabled) {
+    background: #e6e6e6;
+  }
+}
+
+.card .entry__help {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--sp-2);
+  width: 100%;
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--line);
+}
+.entry__help a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-small);
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.entry__help span {
+  overflow-wrap: anywhere;
+}
+
+/* ---- the welcome guide ---- */
+.card .guide__step {
+  color: var(--text);
+  font-weight: 600;
+}
+.guide__bars {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+.guide__bars span {
+  flex: 1;
+  height: 0.5rem;
+  border-radius: var(--r-pill);
+  background: var(--deep);
+}
+.guide__bars span[data-on="true"] {
+  background: var(--text);
+}
+.guide__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
+}
+.guide__head .card__icon {
+  flex: none;
+}
+.guide h2.guide__title {
+  font-size: var(--fs-h2);
+}
+.guide__title:focus {
+  outline: none;
+  box-shadow: none;
+}
+.card .guide__body {
+  color: var(--text);
+  font-size: var(--fs-button);
+}
+.guide__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  width: 100%;
+  margin-top: var(--sp-1);
+}
+.guide__actions .btn--primary {
+  flex: 1 1 14rem;
+}
+.btn--quiet {
+  min-height: var(--tap-small);
+  padding: var(--sp-1) var(--sp-2);
+  background: transparent;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+@media (hover: hover) {
+  .btn--quiet:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* ---- a page anyone may open without signing in (Help): no sidebar ---- */
+.public {
+  min-height: 100dvh;
+  padding-top: var(--sp-3);
+  background: linear-gradient(180deg, var(--ground-top) 0%, var(--ground) 100%);
+}
+.public .entry__top {
+  padding-inline: var(--sp-3);
+}
+.main--public {
+  min-height: 0;
+  background: none;
+}
+
+/* ---- the demo's stand-in for the provider's page ---- */
+.dialog--sheet {
+  width: min(44rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
+.tag.tag--solo {
+  margin: 0 0 var(--sp-1);
+}
+.sheet__title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.sheet__label {
+  margin: var(--sp-3) 0 var(--sp-1);
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+.sheet__group {
+  display: grid;
+  gap: 0.75rem;
+}
+.sheet__group--grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 40rem) {
+  .sheet__group--grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.sheet__back {
+  width: 100%;
+  margin-top: var(--sp-3);
+}
+.btn--who {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  text-align: left;
+}
+.btn--who small {
+  font-family: var(--font);
+  font-size: var(--fs-small);
+  font-weight: 500;
+}
+.dialog__problem {
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-2);
+  border-left: 0.375rem solid var(--red);
+  border-radius: var(--r-s);
+  background: var(--deep);
+  font-weight: 600;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -735,7 +1056,11 @@ button {
 @media (forced-colors: active) {
   .card,
   .dialog,
-  .me {
+  .me,
+  .provider,
+  .pill,
+  .problem,
+  .note-box {
     border: 2px solid CanvasText;
   }
   .nav__item[aria-current="page"] {
