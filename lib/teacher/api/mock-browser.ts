@@ -29,11 +29,11 @@ function browserSource(): MockSource & { reset(): void } {
   const load = (): MockState => {
     if (state) return state;
     const store = storage();
-    const read = readState(store, Date.now());
-    // Keep the day the demo started on, so its history does not slide from one day to the next.
-    if (!store?.getItem(MOCK_KEY)) writeState(store, read);
-    state = read;
-    return read;
+    state = readState(store, Date.now());
+    // Saved straight away, so a first visit, or a save that could not be read, keeps the day it starts on and the demo's
+    // history does not slide from one day to the next. A good save is written back with anything damaged left out.
+    writeState(store, state);
+    return state;
   };
 
   return {
