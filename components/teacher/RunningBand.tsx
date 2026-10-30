@@ -48,7 +48,8 @@ export function RunningBand({ session, serverNow }: { session: NonNullable<OpenS
         </h2>
         <p className="band__line">
           {session.lesson.title}
-          <span aria-hidden="true"> · </span>
+          {/* The dot stays with the title, so a line never starts with it; the space after it is where the line may break. */}
+          <span aria-hidden="true">{"\u00a0·"}</span>{" "}
           <span className="sr">. </span>
           {/* How long stays in one piece: "Трае" at the end of a line and "12 минути" on the next is hard to read. */}
           <span className="keep">{how}</span>

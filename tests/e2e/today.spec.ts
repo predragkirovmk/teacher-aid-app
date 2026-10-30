@@ -256,6 +256,31 @@ test.describe("Today with a lesson running", () => {
     expect(await band.locator(".band__course .nowrap").evaluate((el) => el.getClientRects().length)).toBe(1);
   });
 
+  test("a long title keeps the dot beside its last word and \"Трае 12 минути\" whole, never a line that starts with the dot", async ({ page }) => {
+    await page.addInitScript((key) => localStorage.setItem(key, JSON.stringify({ locale: "mk", schoolType: "university", schoolSeen: true })), SETTINGS_KEY);
+    await page.goto("/teacher/settings");
+    await demoButton(page, "Симулирај час во тек").click();
+    await mainMenu(page).getByRole("link", { name: "Денес" }).click();
+    const line = page.getByRole("region", { name: "Час во тек" }).locator(".band__line");
+    await expect(line).toContainText("Тригонометрија на правоаголен триаголник");
+    const where = await line.evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el.firstChild as Text);
+      const rects = range.getClientRects();
+      const dot = el.querySelector("[aria-hidden]")!.getBoundingClientRect();
+      return {
+        titleEnds: rects[rects.length - 1].top,
+        dotTop: dot.top,
+        dotAfterWord: dot.left - rects[rects.length - 1].right,
+        howLines: el.querySelector(".keep")!.getClientRects().length,
+      };
+    });
+    // The dot is on the line where the title ends, right after its last word, not at the start of a line.
+    expect(Math.abs(where.dotTop - where.titleEnds)).toBeLessThan(4);
+    expect(where.dotAfterWord).toBeLessThan(8);
+    expect(where.howLines).toBe(1);
+  });
+
   test("the way back leads to the live lesson, which says it is coming", async ({ page }) => {
     await simulate(page);
     await page.getByRole("link", { name: "Врати се на часот" }).click();
