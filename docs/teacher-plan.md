@@ -85,8 +85,20 @@ The app is dark teal only (no light mode).
   still lands on Today). The sign-in screen has no yellow button on purpose: the provider buttons
   follow Google's and Microsoft's branding.
 
+- Step 4 (decided by the planner): one open lesson per teacher, whatever the course. Today's one
+  yellow button stays "Подготви лекција" when lessons are prepared (the yellow button keeps its
+  place and meaning); while a lesson runs, the band's "Врати се на часот" takes the yellow and
+  "Подготви лекција" is outlined. The reminder in the frame reads "Врати се" (one string,
+  `running.here.back`).
 - Step 6: for a teacher whose first run is not done, the guide's last screen leads into
   `/teacher/lessons/new` (the hands-on first lesson of F-01).
+- Step 6: once a lesson can be edited, rename the card's "Отвори" if the page it opens is no
+  longer read-only (for example "Уреди"), and keep one word for it everywhere.
+- Step 7: the start button in "Со кој клас?" names the chosen class ("Започни со IV-1") so a
+  wrong pick is visible before it is made; update the tests that rely on the label. The
+  `/teacher/live/[sessionId]` placeholder is replaced by the console.
+- Step 9: End replaces the demo's "Затвори го демо часот" in Settings as the way a lesson closes;
+  keep the Settings control for the demo only.
 - Step 7: the class view is a protected page too; a deep link drops its query. Class-view-only
   data (the live join token, the class-view snapshot) must not travel on a channel or endpoint
   students can read; propose a class-view-only channel if the spec's `session.{id}.public` is
