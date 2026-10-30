@@ -1,6 +1,6 @@
 "use client";
 
-import { MagnifyingGlassIcon, PencilSimpleIcon } from "@phosphor-icons/react";
+import { InfoIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useDraft } from "@/lib/teacher/api/hooks";
@@ -72,7 +72,7 @@ export function DraftView() {
           <>
             <div className="card card--compact draft__note">
               <span className="card__icon card__icon--small">
-                <PencilSimpleIcon size={24} aria-hidden="true" />
+                <InfoIcon size={24} aria-hidden="true" />
               </span>
               <p>
                 <strong>{t("draft.note.lead")}</strong> {t("draft.note.body")}
