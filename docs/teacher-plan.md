@@ -98,6 +98,13 @@ The app is dark teal only (no light mode).
   note (`draft.note.*`) with the real controls. Its Back follows `?from=` as a lesson's does. Edits not yet saved must be asked about
   before the page is left (`LeaveGuard`, with the rule `hasWork` of `lib/teacher/prepare.ts` as the model), until they save themselves.
   A single choice (one subject, one year) is a plain line ("Предмет: Математика"), never a chosen-looking row.
+- Step 6 (planner, after step 5's handoff): generation becomes a job (`POST /lessons/generate`
+  answers `202` with a `pending` draft; the wait polls `GET /lessons/drafts/{id}` for `ready` or
+  `failed`; Cancel is `DELETE`; retry is `POST /lessons/drafts/{id}/retry`). Switch the wait,
+  mock and live adapter to it; the wait view itself stays as built. Build the list of unsaved
+  drafts (`GET /lessons/drafts`, latest of each chain) on Today, a pending one shown as
+  "Се подготвува", so leaving the page loses nothing. Typed text gets a maximum
+  (`TYPED_TEXT_MAX_CHARS` = 20 000, reason `text_too_long`). Brain spec 2.7 has the shapes.
 - Step 7: the start button in "Со кој клас?" names the chosen class ("Започни со IV-1") so a
   wrong pick is visible before it is made; update the tests that rely on the label. The
   `/teacher/live/[sessionId]` placeholder is replaced by the console.
