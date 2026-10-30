@@ -882,3 +882,63 @@ test.describe("zoomed", () => {
     await cancel(page).click();
   });
 });
+
+test.describe("the drawer layout and a laptop's small window", () => {
+  test.slow();
+
+  test("at 900 wide the wait is in the page, the drawer's links ask first, Cancel is a full-height button, and the failure fits", async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 700 });
+    await yearTwo(page);
+    await typeSentences(page, `${TYPED} [fail]`);
+    await go(page).click();
+    await expect(phase(page, "Ги пишуваме прашањата")).toBeVisible();
+    expect((await cancel(page).boundingBox())!.height).toBeGreaterThanOrEqual(56);
+    await expect(cancel(page)).toBeInViewport();
+
+    await page.getByRole("button", { name: "Мени", exact: true }).click();
+    await menu(page).getByRole("link", { name: "Библиотека" }).click();
+    const dialog = leaveDialog(page);
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Остани" }).click();
+    // Staying leaves the drawer as it was and the wait going on.
+    await expect(page).toHaveURL(/\/teacher\/lessons\/new/);
+    await expect(phase(page, "Ги пишуваме прашањата")).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    await expect(retry(page)).toBeVisible({ timeout: 20_000 });
+    expect(await overflow(page)).toBeLessThanOrEqual(0);
+    for (const button of [retry(page), backToForm(page)]) expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(56);
+  });
+
+  test("at 1024 x 768 the sidebar and the whole form are there with nothing running off the side", async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await expect(menu(page)).toBeVisible();
+    expect(await overflow(page)).toBeLessThanOrEqual(0);
+    await go(page).click();
+    await expect(alerts(page)).toHaveCount(2);
+    expect(await overflow(page)).toBeLessThanOrEqual(0);
+    // Everything that can be pressed is at least 48px tall, and the one that matters 56px.
+    const buttons = await page.locator("main button:visible, main a.btn:visible").all();
+    for (const button of buttons) expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+    expect((await go(page).boundingBox())!.height).toBeGreaterThanOrEqual(56);
+  });
+
+  test("the words on the ground are large text, the only kind that white has enough contrast for there", async ({ page }) => {
+    await expect(page.locator(".head__sub")).toBeVisible();
+    // 24px and up on the gradient (white on #32878C is 4.2:1; 3:1 is what large text needs). Everything smaller sits on a panel.
+    const size = (selector: string) => page.locator(selector).evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    expect(await size(".head__sub")).toBeGreaterThanOrEqual(24);
+    expect(await size(".prepare__go p")).toBeGreaterThanOrEqual(24);
+    // Nothing on the form is under 16px, and the text that is read (not a badge or a label) is 18px or more.
+    const small = await page.locator("main *:visible").evaluateAll((els) =>
+      els
+        .filter((el) => [...el.childNodes].some((n) => n.nodeType === Node.TEXT_NODE && n.textContent!.trim() !== ""))
+        .filter((el) => !el.closest(".sr, .me"))
+        .map((el) => ({ text: el.textContent!.trim().slice(0, 30), size: parseFloat(getComputedStyle(el).fontSize), tag: el.classList.contains("tag") }))
+        .filter((x) => x.size < 18),
+    );
+    expect(small.filter((x) => x.size < 16)).toEqual([]);
+    // The one text under 18px is the "По желба" badge.
+    expect(small.filter((x) => !x.tag)).toEqual([]);
+  });
+});

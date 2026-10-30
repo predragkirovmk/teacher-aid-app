@@ -42,6 +42,46 @@ test.describe("the sidebar", () => {
   });
 });
 
+test.describe("the frame on a long page", () => {
+  // A long page is one that scrolls: the new lesson's form with its sentences open.
+  for (const [width, height] of [
+    [1440, 900],
+    [1280, 720],
+    [1024, 768],
+    [900, 700],
+  ] as const) {
+    test(`at ${width} x ${height}, scrolled to the bottom: the skip link is out of sight and the sidebar (or the top bar) still fills its place`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto("/teacher/lessons/new");
+      await page.getByRole("radio", { name: /^Неколку реченици/ }).check();
+      await page.mouse.move(width / 2, height / 2);
+      for (let i = 0; i < 12; i++) await page.mouse.wheel(0, 400);
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(200);
+
+      await expect(page.getByRole("link", { name: "Прескокни кон содржината" })).not.toBeInViewport();
+      if (width >= 1024) {
+        const sidebar = (await page.locator("#sidebar").boundingBox())!;
+        expect(sidebar.y).toBe(0);
+        expect(sidebar.height).toBe(height);
+      } else {
+        const bar = (await page.locator(".topbar").boundingBox())!;
+        expect(bar.y).toBe(0);
+      }
+    });
+  }
+
+  test("the first Tab shows the skip link, and Enter moves the focus to the page's content", async ({ page }) => {
+    await page.goto("/teacher/lessons/new");
+    await page.keyboard.press("Tab");
+    const skip = page.getByRole("link", { name: "Прескокни кон содржината" });
+    await expect(skip).toBeFocused();
+    await expect(skip).toBeInViewport();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#main")).toBeFocused();
+    await expect(skip).not.toBeInViewport();
+  });
+});
+
 test.describe("the teacher", () => {
   test("the name, the initials and the greeting come from the account", async ({ page }) => {
     await page.goto("/teacher");
