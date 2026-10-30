@@ -2808,3 +2808,18 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
   font-size: 2.6cqw;
   color: var(--ink-2);
 }
+
+/* ---------- Not found ---------- */
+
+.lost {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(1.25rem, 3vh, 2rem);
+  min-height: 100svh;
+  padding-block: var(--scene-y);
+}
+
+.lost__en {
+  color: var(--ink-2);
+}

@@ -21,7 +21,7 @@ export const mk: SiteV2Dict = {
     skip: "Прескокни до содржината",
     switchLabel: "Read in English",
     switchShort: "EN",
-    switchHref: "/v2/en",
+    switchHref: "/en",
   },
   hero: {
     kicker: "За наставници и директори",
@@ -178,8 +178,8 @@ export const mk: SiteV2Dict = {
     line: "TeacherAid · Битола, 2026",
     langLabel: "Јазик",
     langs: [
-      { href: "/v2", label: "Македонски", lang: "mk" },
-      { href: "/v2/en", label: "English", lang: "en" },
+      { href: "/", label: "Македонски", lang: "mk" },
+      { href: "/en", label: "English", lang: "en" },
     ],
   },
   screens: {

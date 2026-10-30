@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { siteUrl } from "@/components/site/SiteDocument";
+import { siteUrl } from "@/components/site-v2/Document";
 
 // The site is public; the Startup Weekend demo screens stay out of search.
 export default function robots(): MetadataRoute.Robots {

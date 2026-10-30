@@ -1,9 +1,9 @@
-import { SiteDocument, siteMetadata, siteViewport } from "@/components/site/SiteDocument";
-import { mk } from "@/content/site/mk";
+import { SiteV2Document, siteV2Metadata, siteV2Viewport } from "@/components/site-v2/Document";
+import { mk } from "@/content/site-v2/mk";
 
-export const metadata = siteMetadata(mk);
-export const viewport = siteViewport;
+export const metadata = siteV2Metadata(mk);
+export const viewport = siteV2Viewport;
 
-export default function MacedonianLayout({ children }: LayoutProps<"/">) {
-  return <SiteDocument lang="mk">{children}</SiteDocument>;
+export default function MacedonianLayout({ children }: { children: React.ReactNode }) {
+  return <SiteV2Document lang="mk">{children}</SiteV2Document>;
 }

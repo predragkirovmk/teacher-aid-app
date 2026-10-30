@@ -21,7 +21,7 @@ export const en: SiteV2Dict = {
     skip: "Skip to content",
     switchLabel: "Прочитајте на македонски",
     switchShort: "МК",
-    switchHref: "/v2",
+    switchHref: "/",
   },
   hero: {
     kicker: "For teachers and school directors",
@@ -172,8 +172,8 @@ export const en: SiteV2Dict = {
     line: "TeacherAid · Bitola, 2026",
     langLabel: "Language",
     langs: [
-      { href: "/v2", label: "Македонски", lang: "mk" },
-      { href: "/v2/en", label: "English", lang: "en" },
+      { href: "/", label: "Македонски", lang: "mk" },
+      { href: "/en", label: "English", lang: "en" },
     ],
   },
   screens: {

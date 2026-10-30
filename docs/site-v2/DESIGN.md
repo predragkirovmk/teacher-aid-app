@@ -1,8 +1,8 @@
 # TeacherAid website v2: design brief
 
-Started 2026-10-29. A brand-new marketing site that replaces the old one (`app/(mk)`, `app/(en)`,
-`components/site/`). The old site is never edited; v2 is built beside it at `/v2` and `/v2/en`
-and swapped onto `/` only when the owner says so.
+Started 2026-10-29. A brand-new marketing site that replaces the old one. Built beside it at
+`/v2` and `/v2/en`, then swapped onto `/` and `/en` on 2026-10-30, when the owner said so; the old
+site's code was removed then (it stays in git history).
 
 ## Owner decisions (2026-10-29, do not re-ask)
 
@@ -195,8 +195,8 @@ the hero). Refresh them whenever an app changes:
 
 ## Code layout
 
-- Routes: `app/(v2-mk)/v2/page.tsx` and `app/(v2-en)/v2/en/page.tsx`, each group with its own
-  root layout (the `lang` attribute differs). Both are `noindex` until the swap.
+- Routes: `app/(mk)/page.tsx` (`/`) and `app/(en)/en/page.tsx` (`/en`), each group with its own
+  root layout (the `lang` attribute differs). `app/global-not-found.tsx` uses the same styles.
 - Components in `components/site-v2/`, copy in `content/site-v2/` (MK and EN dictionaries with a
   shared type), styles in `app/site-v2.css`, logic in `lib/site-v2/`.
 - Shared brand code (`lib/brand.ts`, `components/app/Mark.tsx`) is imported, never changed.

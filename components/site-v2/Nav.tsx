@@ -18,7 +18,7 @@ export function Nav({ t, ctaHref }: { t: SiteV2Dict["nav"]; ctaHref: string }) {
   const sentinel = useRef<HTMLSpanElement>(null);
   const toggle = useRef<HTMLButtonElement>(null);
   const sheet = useRef<HTMLDivElement>(null);
-  const otherLang = t.switchHref === "/v2" ? "mk" : "en";
+  const otherLang = t.switchHref === "/" ? "mk" : "en";
 
   // The theme under the bar: a one-pixel line through its middle decides which section it is on.
   useEffect(() => {

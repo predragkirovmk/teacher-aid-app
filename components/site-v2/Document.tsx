@@ -17,9 +17,8 @@ const golos = Golos_Text({
   display: "swap",
 });
 
-// The main domain; previews and local builds point at themselves. Not imported from the first
-// site's document, which would bring its stylesheet along.
-const siteUrl =
+// The main domain; previews and local builds point at themselves.
+export const siteUrl =
   process.env.VERCEL_ENV === "production"
     ? "https://teacheraid.education"
     : process.env.VERCEL_URL
@@ -27,15 +26,13 @@ const siteUrl =
       : "http://localhost:3000";
 
 export function siteV2Metadata(t: SiteV2Dict): Metadata {
-  const path = t.lang === "mk" ? "/v2" : "/v2/en";
+  const path = t.lang === "mk" ? "/" : "/en";
   return {
     metadataBase: new URL(siteUrl),
     title: t.meta.title,
     description: t.meta.description,
     applicationName: "TeacherAid",
-    // Not indexed until the owner moves it onto the main address.
-    robots: { index: false, follow: false },
-    alternates: { canonical: path, languages: { mk: "/v2", en: "/v2/en" } },
+    alternates: { canonical: path, languages: { mk: "/", en: "/en", "x-default": "/" } },
     openGraph: {
       type: "website",
       url: path,
@@ -44,6 +41,7 @@ export function siteV2Metadata(t: SiteV2Dict): Metadata {
       description: t.meta.description,
       locale: t.lang === "mk" ? "mk_MK" : "en_US",
     },
+    twitter: { card: "summary_large_image", title: t.meta.title, description: t.meta.description },
   };
 }
 

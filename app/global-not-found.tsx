@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { Golos_Text } from "next/font/google";
+import { Geologica, Golos_Text } from "next/font/google";
 import Link from "next/link";
-import "./site.css";
+import "./site-v2.css";
 
+const geologica = Geologica({ variable: "--font-geologica", subsets: ["latin", "cyrillic"], display: "swap" });
 const golos = Golos_Text({ variable: "--font-golos", subsets: ["latin", "cyrillic"], display: "swap" });
 
 export const metadata: Metadata = {
@@ -12,32 +13,23 @@ export const metadata: Metadata = {
 
 export default function GlobalNotFound() {
   return (
-    <html lang="mk" className={golos.variable}>
-      <body>
-        <div className="site">
-          <div className="field" aria-hidden="true">
-            <div className="field__blooms">
-              <span className="field__bloom field__bloom--steel" />
-              <span className="field__bloom field__bloom--haze" />
-              <span className="field__bloom field__bloom--navy" />
-            </div>
+    <html lang="mk" className={`${geologica.variable} ${golos.variable}`}>
+      <body className="v2">
+        <main className="wrap lost">
+          <p className="kicker kicker--deep">404</p>
+          <h1 className="display">Ова прашање нема одговор.</h1>
+          <p className="lead lost__en" lang="en">
+            This page does not exist.
+          </p>
+          <div className="actions">
+            <Link className="btn btn--primary" href="/">
+              Почетна
+            </Link>
+            <Link className="chev" href="/en" lang="en">
+              English
+            </Link>
           </div>
-          <main className="wrap lost">
-            <p className="numeral lost__num">404</p>
-            <h1 className="display display--m">Ова прашање нема одговор.</h1>
-            <p className="lead" lang="en">
-              This page does not exist.
-            </p>
-            <div className="lost__actions">
-              <Link className="btn btn--primary" href="/">
-                Почетна
-              </Link>
-              <Link className="btn btn--ghost" href="/en" lang="en">
-                English
-              </Link>
-            </div>
-          </main>
-        </div>
+        </main>
       </body>
     </html>
   );
