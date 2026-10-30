@@ -1515,7 +1515,67 @@ body.v2 {
   background: var(--graphite);
 }
 
-/* ---------- Placeholder screens (cqw: they scale with their device) ---------- */
+/* ---------- Captures of the real apps ---------- */
+
+/* A teacher capture fills the laptop's 16:10 screen exactly. */
+.laptop__screen > .shot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+/* A student capture: the status bar's strip in the app's top colour, the capture under it
+   (390x798 under a 47px bar on the phone's 390x845 screen). */
+.phone-shot {
+  position: absolute;
+  inset: 0;
+  background: var(--top, var(--blue));
+}
+
+.phone-shot > .shot {
+  position: absolute;
+  top: 5.56%;
+  left: 0;
+  width: 100%;
+  height: auto;
+}
+
+.phone__time {
+  position: absolute;
+  top: 2.9%;
+  left: 10%;
+  z-index: 3;
+  font: 600 4.3cqw/1 var(--text);
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+/* Without motion the answer phone shows its verdict capture, and the scan phone the lesson it
+   opened (the last capture, on top). */
+html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
+  visibility: hidden;
+}
+
+/* Where the student's thumb lands on "Б x = 5" in the question capture. */
+.answer__tap {
+  position: absolute;
+  left: 50%;
+  top: 74.7%;
+  z-index: 2;
+  width: 20cqw;
+  height: 20cqw;
+  margin: -10cqw 0 0 -10cqw;
+  border-radius: 50%;
+  background: oklch(100% 0 0 / 0.6);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------- Drawn screens, for what the apps have not built yet (cqw: they scale with their
+   device) ---------- */
 
 .scr {
   position: absolute;
@@ -1624,6 +1684,7 @@ body.v2 {
   box-shadow: none;
 }
 
+
 .scr-main {
   display: flex;
   flex-direction: column;
@@ -1631,16 +1692,16 @@ body.v2 {
   padding: 3.4cqw 3.6cqw;
 }
 
-.scr-greet {
-  font-size: 1.5cqw;
-  color: var(--on-teal-2);
-}
-
 .scr-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1cqw;
+}
+
+.scr-head .scr-btn {
+  padding: 1.2cqw 2.2cqw;
+  font-size: 1.45cqw;
 }
 
 .scr-head .scr-h3 {
@@ -1651,86 +1712,17 @@ body.v2 {
   line-height: 1;
 }
 
-.scr-head .scr-btn {
-  padding: 1.2cqw 2.2cqw;
-  font-size: 1.45cqw;
-}
 
-.scr-lessons {
-  display: flex;
-  flex-direction: column;
-  gap: 1.1cqw;
-}
 
-.scr-lessons li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 2cqw;
-  padding: 1.8cqw 2cqw;
-  border-radius: 1.4cqw;
-  background: var(--panel);
-}
 
-.scr-lessons__text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4cqw;
-}
 
-.scr-lessons b {
-  font-size: 1.6cqw;
-  font-weight: 600;
-}
 
-.scr-lessons__text span {
-  font-size: 1.3cqw;
-  color: var(--on-teal-2);
-}
 
-.scr-recent {
-  display: flex;
-  flex-direction: column;
-  gap: 1cqw;
-  margin-top: 1.4cqw;
-}
 
-.scr-recent .scr-h4 {
-  margin: 0;
-  font-size: 1.45cqw;
-  font-weight: 600;
-  color: var(--on-teal-2);
-}
 
-.scr-recent__row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1.1cqw;
-}
 
-.scr-recent__row span {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4cqw;
-  padding: 1.6cqw 2cqw;
-  border-radius: 1.4cqw;
-  background: oklch(100% 0 0 / 0.08);
-  font-size: 1.25cqw;
-  color: var(--on-teal-2);
-}
 
-.scr-recent__row b {
-  font-family: var(--display);
-  font-size: 2.6cqw;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--on-teal);
-}
 
-.scr-lessons .scr-btn {
-  padding: 0.9cqw 1.8cqw;
-  font-size: 1.3cqw;
-}
 
 /* The class view on the board: the join screen, then the question layer. */
 .scr--board {
@@ -1954,31 +1946,8 @@ body.v2 {
   color: var(--on-teal-2);
 }
 
-.scr-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.7cqw 1.4cqw;
-  border-radius: 999px;
-  background: oklch(100% 0 0 / 0.1);
-  font-size: 1.3cqw;
-  font-weight: 600;
-  white-space: nowrap;
-}
 
-.scr-chip--ghost {
-  position: relative;
-  background: none;
-  box-shadow: inset 0 0 0 0.12cqw oklch(100% 0 0 / 0.45);
-}
 
-/* The tapped refinement: a yellow ring, shown with opacity. */
-.scr-chip__on {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0 0.22cqw var(--yellow);
-  opacity: 0;
-}
 
 .scr-sub {
   display: block;
@@ -1996,137 +1965,22 @@ body.v2 {
   background: oklch(100% 0 0 / 0.1);
 }
 
-/* Prepare a lesson. */
-.scr-prep {
-  gap: 1.4cqw;
-}
 
-.scr-prep__in {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
-  gap: 1.2cqw;
-}
 
-.scr-file,
-.scr-prep__emph {
-  display: flex;
-  gap: 1cqw;
-  padding: 1.4cqw 1.6cqw;
-  border-radius: 1.2cqw;
-  background: var(--panel);
-  font-size: 1.35cqw;
-  font-weight: 600;
-}
 
-.scr-file {
-  align-items: center;
-}
 
-.scr-file__icon {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 3.4cqw;
-  height: 3.4cqw;
-  border-radius: 0.6cqw;
-  background: var(--yellow);
-  color: var(--shadow);
-  font-size: 0.95cqw;
-  font-weight: 800;
-}
 
-.scr-prep__emph {
-  flex-direction: column;
-  gap: 0.3cqw;
-  font-weight: 500;
-}
 
-.scr-prep__emph small {
-  font-size: 1.1cqw;
-  color: var(--on-teal-2);
-}
 
-.scr-prep__out {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0.9cqw;
-}
 
-/* The wait while the AI writes; gone in the finished state. */
-.scr-prep__writing {
-  position: absolute;
-  inset: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1cqw;
-  font-size: 1.4cqw;
-  color: var(--on-teal-2);
-  opacity: 0;
-}
 
-.scr-prep__bar {
-  display: block;
-  height: 0.5cqw;
-  border-radius: 999px;
-  background: oklch(100% 0 0 / 0.12);
-  overflow: hidden;
-}
 
-.scr-prep__bar i {
-  display: block;
-  height: 100%;
-  background: var(--yellow);
-  transform-origin: left center;
-}
 
-.scr-prep__count {
-  font-size: 1.3cqw;
-  font-weight: 600;
-  color: var(--on-teal-2);
-}
 
-.scr-prep__qs {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8cqw;
-}
 
-.scr-prep__qs li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 2cqw;
-  padding: 1.2cqw 1.6cqw;
-  border-radius: 1.2cqw;
-  background: var(--panel);
-  font-size: 1.4cqw;
-}
 
-.scr-prep__qs small {
-  flex: none;
-  font-size: 1.1cqw;
-  color: var(--on-teal-2);
-}
 
-.scr-prep__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.6cqw;
-  margin-top: auto;
-}
 
-.scr-prep__refine {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.8cqw;
-}
-
-.scr-prep__foot .scr-btn {
-  padding: 1.1cqw 2cqw;
-  font-size: 1.35cqw;
-}
 
 /* The live console. */
 .scr--live {
@@ -2358,402 +2212,50 @@ body.v2 {
   gap: 0.8cqw;
 }
 
-/* The student scanner: the camera's view, the board's code in the frame, then Present. */
-.scr--scan {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 7cqw;
-  padding: 26cqw 9cqw 10cqw;
-  background: linear-gradient(180deg, oklch(26% 0.02 240), oklch(18% 0.02 240));
-}
 
-.scr-scan__aim {
-  font-size: 5cqw;
-  font-weight: 600;
-  text-align: center;
-  color: var(--on-teal);
-}
 
-.scr-scan__frame {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 78cqw;
-  aspect-ratio: 1;
-  overflow: hidden;
-  border-radius: 6cqw;
-}
 
-.scr-scan__qr {
-  width: 62cqw;
-  padding: 3cqw;
-  border-radius: 3cqw;
-  background: #fff;
-}
 
-.scr-scan__qr svg {
-  display: block;
-  width: 100%;
-}
 
-/* The four corner marks of the viewfinder. */
-.scr-scan__corners {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    linear-gradient(var(--yellow), var(--yellow)) top left / 14cqw 1.4cqw no-repeat,
-    linear-gradient(var(--yellow), var(--yellow)) top left / 1.4cqw 14cqw no-repeat,
-    linear-gradient(var(--yellow), var(--yellow)) top right / 14cqw 1.4cqw no-repeat,
-    linear-gradient(var(--yellow), var(--yellow)) top right / 1.4cqw 14cqw no-repeat,
-    linear-gradient(var(--yellow), var(--yellow)) bottom left / 14cqw 1.4cqw no-repeat,
-    linear-gradient(var(--yellow), var(--yellow)) bottom left / 1.4cqw 14cqw no-repeat,
-    linear-gradient(var(--yellow), var(--yellow)) bottom right / 14cqw 1.4cqw no-repeat,
-    linear-gradient(var(--yellow), var(--yellow)) bottom right / 1.4cqw 14cqw no-repeat;
-}
 
-/* The scan line; finished, it is gone. */
-.scr-scan__line {
-  position: absolute;
-  top: 0;
-  left: 6cqw;
-  right: 6cqw;
-  height: 1.2cqw;
-  border-radius: 999px;
-  background: var(--yellow);
-  opacity: 0;
-}
 
-.scr-scan__done {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto auto;
-  column-gap: 4cqw;
-  align-items: center;
-  width: 100%;
-  padding: 5cqw;
-  border-radius: 5cqw;
-  background: var(--blue);
-}
 
-.scr-scan__check {
-  grid-row: 1 / 3;
-  display: grid;
-  place-items: center;
-  width: 13cqw;
-  height: 13cqw;
-  border-radius: 50%;
-  background: var(--yellow);
-  color: var(--shadow);
-}
 
-.scr-scan__check svg {
-  width: 62%;
-}
 
-.scr-scan__done b {
-  font-family: var(--display);
-  font-size: 7cqw;
-  font-weight: 800;
-}
 
-.scr-scan__done small {
-  font-size: 4.2cqw;
-  color: var(--on-blue-2);
-}
 
-/* The student answering. Finished: the question with the pick and the verdict; the table and the
-   wait are the motion layer's. */
-.scr--answer {
-  display: flex;
-  flex-direction: column;
-  padding: 18cqw 6cqw 7cqw;
-  background: linear-gradient(180deg, var(--blue), var(--blue-deep));
-  overflow: hidden;
-}
 
-.scr-ans__top {
-  font-size: 4.4cqw;
-  font-weight: 600;
-  color: var(--on-blue-2);
-}
 
-.scr-ans__wait {
-  position: absolute;
-  inset: 40% 8cqw auto;
-  font-family: var(--display);
-  font-size: 7cqw;
-  font-weight: 800;
-  text-align: center;
-  line-height: 1.15;
-  opacity: 0;
-}
 
-.scr-ans__q {
-  display: flex;
-  flex-direction: column;
-  gap: 4.5cqw;
-  margin-top: 5cqw;
-}
 
-.scr-ans__timer {
-  display: grid;
-  place-items: center;
-  width: 15cqw;
-  height: 15cqw;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1.2cqw var(--yellow);
-  font-family: var(--display);
-  font-size: 6.5cqw;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
 
-.scr-ans__question {
-  font-family: var(--display);
-  font-size: 7.4cqw;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.12;
-}
 
-.scr-ans__answers {
-  display: flex;
-  flex-direction: column;
-  gap: 3cqw;
-}
 
-.scr-ans__answers li {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 3.4cqw;
-  padding: 4cqw 4.4cqw;
-  border-radius: 4.4cqw;
-  background: var(--blue-card);
-  overflow: hidden;
-  font-size: 5.2cqw;
-  font-weight: 600;
-}
 
-/* The pick: a yellow layer over the row (finished: shown), with dark ink on top of it. */
-.scr-ans__pick {
-  position: absolute;
-  inset: 0;
-  background: var(--yellow);
-}
 
-[data-ans-answer="pick"] .scr-ans__key,
-[data-ans-answer="pick"] .scr-ans__label {
-  position: relative;
-  color: var(--shadow);
-}
 
-/* Where the thumb lands. */
-.scr-ans__tap {
-  position: absolute;
-  left: 60%;
-  top: 50%;
-  width: 16cqw;
-  height: 16cqw;
-  margin: -8cqw 0 0 -8cqw;
-  border-radius: 50%;
-  background: oklch(100% 0 0 / 0.55);
-  opacity: 0;
-}
 
-.scr-ans__key {
-  display: grid;
-  place-items: center;
-  width: 8cqw;
-  height: 8cqw;
-  border-radius: 2.4cqw;
-  background: oklch(100% 0 0 / 0.16);
-  font-family: var(--display);
-  font-weight: 800;
-}
 
-.scr-ans__verdict {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 3.4cqw;
-  margin-top: auto;
-  padding: 4.4cqw;
-  border-radius: 5cqw;
-  background: oklch(100% 0 0 / 0.14);
-}
 
-.scr-ans__ok {
-  display: grid;
-  place-items: center;
-  width: 11cqw;
-  height: 11cqw;
-  border-radius: 50%;
-  background: var(--yellow);
-  color: var(--shadow);
-}
 
-.scr-ans__ok svg {
-  width: 62%;
-}
 
-.scr-ans__verdict b {
-  display: block;
-  font-family: var(--display);
-  font-size: 6.4cqw;
-  font-weight: 800;
-}
 
-.scr-ans__verdict small {
-  font-size: 3.6cqw;
-  color: var(--on-blue-2);
-}
 
-.scr-ans__verdict strong {
-  font-family: var(--display);
-  font-size: 9cqw;
-  font-weight: 800;
-  color: var(--yellow);
-}
 
-/* The class table, over everything once the answer is in. */
-.scr-ans__table {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5cqw;
-  padding: 22cqw 6cqw 8cqw;
-  background: linear-gradient(180deg, var(--blue), var(--blue-deep));
-  opacity: 0;
-  visibility: hidden;
-}
 
-.scr-ans__table-title {
-  font-family: var(--display);
-  font-size: 7.4cqw;
-  font-weight: 800;
-}
 
-.scr-ans__rank {
-  display: grid;
-  grid-template-columns: 9cqw 1fr;
-  gap: 3cqw;
-}
 
-.scr-ans__places,
-.scr-ans__rows {
-  display: flex;
-  flex-direction: column;
-  gap: 2.4cqw;
-}
 
-.scr-ans__places li {
-  display: grid;
-  place-items: center;
-  height: 12.5cqw;
-  font-family: var(--display);
-  font-size: 5cqw;
-  font-weight: 800;
-  color: var(--on-blue-2);
-}
 
-.scr-ans__rows li {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 12.5cqw;
-  padding: 0 4.4cqw;
-  border-radius: 4cqw;
-  background: var(--blue-card);
-  font-size: 5cqw;
-  font-weight: 600;
-}
 
-.scr-ans__rows b {
-  font-family: var(--display);
-  font-variant-numeric: tabular-nums;
-}
 
-.scr-ans__rows li.is-you {
-  z-index: 1;
-  background: var(--yellow);
-  color: var(--shadow);
-}
 
-.scr-tag--phone {
-  right: 6cqw;
-  bottom: 3cqw;
-  font-size: 3.4cqw;
-  padding: 1cqw 2.6cqw;
-}
 
-/* The student phone: the blue app with one yellow choice. */
-.scr--phone {
-  display: flex;
-  flex-direction: column;
-  gap: 5cqw;
-  padding: 22cqw 6cqw 8cqw;
-  background: linear-gradient(180deg, var(--blue), var(--blue-deep));
-}
 
-.scr-phone__course {
-  font-size: 4.6cqw;
-  font-weight: 600;
-  color: oklch(90% 0.03 255);
-}
 
-.scr-phone__q {
-  font-family: var(--display);
-  font-size: 7.6cqw;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.12;
-}
 
-.scr-phone__answers {
-  display: flex;
-  flex-direction: column;
-  gap: 3cqw;
-}
 
-.scr-phone__answers li {
-  display: flex;
-  align-items: center;
-  gap: 3.4cqw;
-  padding: 4cqw 4.4cqw;
-  border-radius: 4.4cqw;
-  background: var(--blue-card);
-  font-size: 5.2cqw;
-  font-weight: 600;
-}
 
-.scr-phone__answers span {
-  display: grid;
-  place-items: center;
-  width: 8cqw;
-  height: 8cqw;
-  border-radius: 2.4cqw;
-  background: oklch(100% 0 0 / 0.16);
-  font-family: var(--display);
-  font-weight: 800;
-}
 
-.scr-phone__answers .is-picked {
-  background: var(--yellow);
-  color: var(--shadow);
-}
 
-.scr-phone__answers .is-picked span {
-  background: oklch(20% 0.04 230 / 0.12);
-}
 
-.scr-phone__send {
-  justify-content: center;
-  margin-top: auto;
-  padding: 4.4cqw;
-  font-size: 5.2cqw;
-}

@@ -4,17 +4,7 @@ import { ClassStack } from "./ClassStack";
 import { Board, Laptop, Phone } from "./Devices";
 import { Motion } from "./Motion";
 import { Nav } from "./Nav";
-import {
-  AnswerScreen,
-  BoardScreen,
-  ConsoleScreen,
-  EndScreen,
-  LiveConsoleScreen,
-  PhoneScreen,
-  PrepareScreen,
-  ResultsScreen,
-  ScanScreen,
-} from "./Screens";
+import { BoardScreen, EndScreen, LiveConsoleScreen, PhoneShot, ResultsScreen, Shot } from "./Screens";
 
 /*
   The page, server-rendered and complete without JavaScript. Motion adds itself on top.
@@ -65,10 +55,10 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
 
           <div className="wrap hero__stage">
             <Laptop label={s.alt.console} className="hero__laptop">
-              <ConsoleScreen s={s} />
+              <Shot name="t-today" lang={t.lang} sizes="(max-width: 899px) 92vw, 1000px" eager />
             </Laptop>
             <Phone label={s.alt.phone} className="hero__phone">
-              <PhoneScreen s={s} lang={t.lang} />
+              <PhoneShot name="s-question" lang={t.lang} sizes="(max-width: 767px) 30vw, 230px" eager />
             </Phone>
           </div>
 
@@ -104,7 +94,7 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
             </div>
             <div className="wrap opener__stage">
               <Laptop label={s.alt.console} className="opener__laptop">
-                <ConsoleScreen s={s} />
+                <Shot name="t-today" lang={t.lang} sizes="(max-width: 899px) 92vw, 1240px" />
               </Laptop>
             </div>
           </section>
@@ -137,7 +127,7 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
               </div>
               <div className="split__media" data-reveal>
                 <Laptop label={s.alt.prepare}>
-                  <PrepareScreen s={s} />
+                  <Shot name="t-lesson" lang={t.lang} sizes="(max-width: 899px) 92vw, 640px" />
                 </Laptop>
               </div>
             </div>
@@ -279,7 +269,8 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
               </div>
               <div className="split__media scan__media" data-reveal>
                 <Phone label={s.alt.scan} className="scan__phone">
-                  <ScanScreen s={s} />
+                  <PhoneShot name="s-scan" lang={t.lang} sizes="300px" top="#04122b" />
+                  <PhoneShot name="s-lobby" lang={t.lang} sizes="300px" data-scan-in />
                 </Phone>
               </div>
             </div>
@@ -307,7 +298,10 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
                   ))}
                 </ol>
                 <Phone label={s.alt.answer} className="answer__phone">
-                  <AnswerScreen s={s} lang={t.lang} />
+                  {["s-question", "s-answered", "s-verdict", "s-standings"].map((name, i) => (
+                    <PhoneShot key={name} name={name} lang={t.lang} sizes="(max-width: 899px) 78vw, 380px" data-ans-shot={i} />
+                  ))}
+                  <i className="answer__tap" data-ans-tap />
                 </Phone>
               </div>
             </div>

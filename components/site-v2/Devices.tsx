@@ -31,13 +31,17 @@ export function Board({ label, className = "", children }: DeviceProps) {
   );
 }
 
+/** A phone: its captures (PhoneShot) sit under the status bar, each in its app's top colour. */
 export function Phone({ label, className = "", children }: DeviceProps) {
   return (
     <figure className={`phone ${className}`} {...described(label)}>
       <div className="phone__body">
         <div className="phone__screen">
-          <span className="phone__island" />
           {children}
+          <span className="phone__time" aria-hidden="true">
+            9:41
+          </span>
+          <span className="phone__island" />
         </div>
       </div>
     </figure>

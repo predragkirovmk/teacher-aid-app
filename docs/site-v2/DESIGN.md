@@ -88,7 +88,23 @@ teal. One main button per viewport. Secondary actions are chevron links ("Пог
 - Scene padding `clamp(6rem, 14vh, 11rem)`; scenes are at least one viewport tall when pinned.
 - Below 768px everything collapses to one column with a 20px gutter; nothing scrolls sideways.
 
-### Devices (drawn in HTML and CSS, no images)
+### Screens: captures of the real apps (30 Oct 2026)
+
+The devices show captures of the real apps wherever the app has the screen, in the page's
+language, as WebP at two widths (`public/site-v2/screens/`, about 470 KB per language, lazy below
+the hero). Refresh them whenever an app changes:
+
+    node scripts/site-v2-capture.mjs <teacher-preview-url> <student-app-url> <dir>
+    python3 scripts/site-v2-screens.py <dir>
+
+- Real now: the teacher's Today (hero, opener) and a prepared lesson (Prepare); the student's
+  question (hero, the front of the stack), the scanner and the lesson it opens (Scan), and the
+  question, the locked-in answer, "Correct! +15" and the place in the quiz (Answer).
+- Still drawn, tagged "Example", because the teacher app has not built them yet: the live console
+  and the projected class view (In class), the end of a lesson (After class), a class's page
+  (Results). Each becomes a capture once the teacher app has it.
+
+### Devices (drawn in HTML and CSS)
 - **Laptop**: aluminium-tinted lid and base, 16:10 screen. Holds the teacher console.
 - **Board**: a wall screen, thin dark frame, 16:9. Holds the projected class view.
 - **Phone**: rounded body with an island, 9:19.5. Holds the student app (student chapter).

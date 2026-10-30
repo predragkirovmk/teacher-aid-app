@@ -195,35 +195,6 @@ export function Motion() {
               );
             }
 
-            /* Prepare (act 2): once the laptop is in view, the lesson file and the line of emphasis
-               arrive, the AI writes, the questions appear, and one tap on Harder rewrites them. */
-            const prep = document.querySelector<HTMLElement>("[data-prep]");
-            if (prep) {
-              const P = (sel: string) => Array.from(prep.querySelectorAll<HTMLElement>(sel));
-              const pick = P('[data-prep-refine="pick"]');
-              const qs = P("[data-prep-q]");
-              gsap.set([...P("[data-prep-file]"), ...P("[data-prep-emph]")], { y: 14, autoAlpha: 0 });
-              gsap.set([...P("[data-prep-writing]"), ...P("[data-prep-count]")], { autoAlpha: 0 });
-              gsap.set(P("[data-prep-bar]"), { scaleX: 0 });
-              gsap.set(qs, { y: 10, autoAlpha: 0 });
-              const tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
-              tl.to(P("[data-prep-file]"), { y: 0, autoAlpha: 1, duration: 0.6 })
-                .to(P("[data-prep-emph]"), { y: 0, autoAlpha: 1, duration: 0.6 }, "-=0.35")
-                .to(P("[data-prep-writing]"), { autoAlpha: 1, duration: 0.3 })
-                .to(P("[data-prep-bar]"), { scaleX: 1, duration: 1.4, ease: "power1.inOut" })
-                .to(P("[data-prep-writing]"), { autoAlpha: 0, duration: 0.25 })
-                .to(P("[data-prep-count]"), { autoAlpha: 1, duration: 0.3 })
-                .to(qs, { y: 0, autoAlpha: 1, duration: 0.5, stagger: 0.12 }, "-=0.1")
-                // Harder is tapped: a press and a yellow ring, opacity and scale only.
-                .to(pick, { scale: 0.95, duration: 0.1, ease: "power2.out" }, "+=0.5")
-                .to(pick, { scale: 1, duration: 0.2, ease: "power2.out" })
-                .to(P("[data-prep-on]"), { opacity: 1, duration: 0.15 }, "<-0.15")
-                .to(qs, { autoAlpha: 0.35, duration: 0.2, stagger: 0.04 }, "+=0.1")
-                .to(qs, { autoAlpha: 1, duration: 0.35, stagger: 0.06 })
-                .to(P("[data-prep-on]"), { opacity: 0, duration: 0.3 }, "+=0.2");
-              ScrollTrigger.create({ trigger: prep, start: "top 75%", once: true, onEnter: () => void tl.play() });
-            }
-
             /* In class (act 2, climax): the stage pins for three screens of scroll and plays one
                question through. Students join, the teacher clicks Send, the question flies from the
                laptop to the board, the answers come in on both screens, and the right one is
@@ -346,50 +317,34 @@ export function Motion() {
               ScrollTrigger.create({ trigger: results, start: "top 75%", once: true, onEnter: () => void tl.play() });
             }
 
-            /* Student, scan: once the phone is in view, the line sweeps the code twice and the
-               check lands: present. */
-            const scan = document.querySelector<HTMLElement>("[data-scan]");
-            if (scan) {
-              const line = scan.querySelector<HTMLElement>("[data-scan-line]");
-              const frame = scan.querySelector<HTMLElement>("[data-scan-frame]");
-              const done = scan.querySelector<HTMLElement>("[data-scan-done]");
-              gsap.set(line, { opacity: 1, y: 0 });
-              gsap.set(done, { autoAlpha: 0, y: 12, scale: 0.96 });
+            /* Student, scan: once the phone is in view, the app's scanner gives way to the lesson
+               it opens: in, with the classmates already there. Both are captures of the real app. */
+            const scanIn = document.querySelector<HTMLElement>("[data-scan-in]");
+            if (scanIn) {
+              gsap.set(scanIn, { autoAlpha: 0, scale: 1.04 });
               const tl = gsap.timeline({ paused: true });
-              tl.to(line, { y: () => (frame?.offsetHeight ?? 0) - (line?.offsetHeight ?? 0), duration: 0.9, ease: "sine.inOut", repeat: 1, yoyo: true })
-                .to(line, { opacity: 0, duration: 0.2 })
-                .to(done, { autoAlpha: 1, y: 0, scale: 1, duration: 0.5, ease: "power3.out" }, "-=0.05");
-              ScrollTrigger.create({ trigger: scan, start: "top 70%", once: true, onEnter: () => void tl.play() });
+              tl.to(scanIn, { autoAlpha: 1, scale: 1, duration: 0.6, ease: "power3.out", delay: 0.9 });
+              ScrollTrigger.create({ trigger: scanIn.closest(".phone"), start: "top 65%", once: true, onEnter: () => void tl.play() });
             }
 
-            /* Student, answer (the chapter's climax): the phone pins for two and a half screens and
-               plays one question through: it arrives, one tap answers, the verdict and the points
-               land, then the class table, where "You" climbs from sixth to third. */
+            /* Student, answer (the chapter's climax): the phone pins for a little over two screens and
+               steps through four captures of the real app's lesson: the question with its timer,
+               the answer locked in after one tap, "Correct! +15", and the place in the quiz. */
             const answerPin = document.querySelector<HTMLElement>("[data-answer-pin]");
-            const ans = answerPin?.querySelector<HTMLElement>("[data-answer]");
-            if (answerPin && ans) {
-              const A = (sel: string) => ans.querySelector<HTMLElement>(sel);
+            const shots = Array.from(answerPin?.querySelectorAll<HTMLElement>("[data-ans-shot]") ?? []);
+            if (answerPin && shots.length === 4) {
               const steps = Array.from(answerPin.querySelectorAll<HTMLElement>("[data-ans-step]"));
-              const rows = Array.from(ans.querySelectorAll<HTMLElement>("[data-ans-row]"));
-              const you = A("[data-ans-you]");
-              const youPoints = A("[data-ans-you-points]");
-              const before = Number(youPoints?.textContent ?? 0) - 13;
-              // One row's pitch on the table: the distance between two rows' tops.
-              const pitch = () => (rows[1] && rows[0] ? rows[1].offsetTop - rows[0].offsetTop : 0);
-
+              const tap = answerPin.querySelector<HTMLElement>("[data-ans-tap]");
               gsap.set(steps, { autoAlpha: (i) => (i === 0 ? 1 : 0) });
-              gsap.set(A("[data-ans-wait]"), { autoAlpha: 1 });
-              gsap.set(A("[data-ans-q]"), { autoAlpha: 0, y: 24 });
-              gsap.set([A("[data-ans-pick]"), A("[data-ans-tap]")], { opacity: 0 });
-              gsap.set(A("[data-ans-verdict]"), { autoAlpha: 0, yPercent: 60 });
-              gsap.set(A("[data-ans-table]"), { autoAlpha: 0, xPercent: 18 });
+              gsap.set(shots.slice(1), { autoAlpha: 0 });
+              gsap.set(tap, { opacity: 0 });
 
               const tl = gsap.timeline({
                 defaults: { ease: "none" },
                 scrollTrigger: {
                   trigger: answerPin,
                   start: "center center",
-                  end: "+=250%",
+                  end: "+=220%",
                   pin: true,
                   pinSpacing: true,
                   anticipatePin: 1,
@@ -401,29 +356,20 @@ export function Motion() {
                 tl
                   .to(steps[i - 1], { autoAlpha: 0, y: -10, duration: 0.22 }, at)
                   .fromTo(steps[i], { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.35 }, at + 0.26);
+              // A screen arrives: it settles from a touch larger as it fades in.
+              const arrive = (shot: HTMLElement, at: number) =>
+                tl.fromTo(shot, { autoAlpha: 0, scale: 1.03 }, { autoAlpha: 1, scale: 1, duration: 0.22, ease: "power2.out", immediateRender: false }, at);
 
-              // 1. The question arrives; the timer runs.
-              tl.to(A("[data-ans-wait]"), { autoAlpha: 0, duration: 0.3 }, 0.3)
-                .to(A("[data-ans-q]"), { autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.45);
-              counter(tl, [A("[data-ans-timer]")], 15, 9, 1.6, 0.9);
-              // 2. One tap: the thumb lands, the row presses and turns yellow.
-              beat(1, 2.5);
-              // immediateRender off: the ripple's start must not show before the tap.
-              tl.fromTo(A("[data-ans-tap]"), { opacity: 0.6, scale: 0.6 }, { opacity: 0, scale: 1.4, duration: 0.45, ease: "power2.out", immediateRender: false }, 2.75)
-                .to(A('[data-ans-answer="pick"]'), { scale: 0.97, duration: 0.1 }, 2.75)
-                .to(A('[data-ans-answer="pick"]'), { scale: 1, duration: 0.2 }, 2.85)
-                .to(A("[data-ans-pick]"), { opacity: 1, duration: 0.2 }, 2.8);
-              // 3. The verdict: right, 10 and 3 for speed.
-              beat(2, 3.5);
-              tl.to(A("[data-ans-verdict]"), { autoAlpha: 1, yPercent: 0, duration: 0.5, ease: "power3.out" }, 3.7);
-              // 4. The class table: "You" climbs three places as the points count in.
-              beat(3, 5);
-              tl.to(A("[data-ans-q]"), { autoAlpha: 0, x: -24, duration: 0.4 }, 5.15)
-                .to(A("[data-ans-verdict]"), { autoAlpha: 0, duration: 0.3 }, 5.15)
-                .to(A("[data-ans-table]"), { autoAlpha: 1, xPercent: 0, duration: 0.5, ease: "power2.out" }, 5.25)
-                .to(you, { y: () => -3 * pitch(), duration: 0.9, ease: "power2.inOut" }, 6)
-                .to(rows.slice(2), { y: () => pitch(), duration: 0.9, ease: "power2.inOut" }, 6);
-              counter(tl, [youPoints], before, before + 13, 0.9, 6);
+              // 1. The question, with its timer. 2. One tap: the thumb lands, the answer locks in.
+              beat(1, 1.6);
+              tl.fromTo(tap, { opacity: 0.6, scale: 0.6 }, { opacity: 0, scale: 1.5, duration: 0.45, ease: "power2.out", immediateRender: false }, 1.9);
+              arrive(shots[1], 2.05);
+              // 3. Correct: 10 for the answer and 5 for speed.
+              beat(2, 3.4);
+              arrive(shots[2], 3.6);
+              // 4. The place in the quiz, live.
+              beat(3, 5.2);
+              arrive(shots[3], 5.4);
               tl.to({}, { duration: 1.2 });
             }
 

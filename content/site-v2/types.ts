@@ -59,16 +59,8 @@ export type SiteV2Dict = {
       scan: string;
       answer: string;
     };
-    console: {
-      nav: string[];
-      greet: string;
-      title: string;
-      prepare: string;
-      lessons: { course: string; topic: string; count: string }[];
-      recentTitle: string;
-      recent: { value: string; label: string }[];
-      start: string;
-    };
+    /** The teacher app's sidebar, for the screens that are still drawn. */
+    console: { nav: string[] };
     board: {
       course: string;
       progress: string;
@@ -78,18 +70,6 @@ export type SiteV2Dict = {
       answered: { n: string; of: string };
       /** Before the first question: the join code and who is in. */
       lobby: { scan: string; code: string; joined: string; of: string };
-    };
-    prepare: {
-      title: string;
-      course: string;
-      file: string;
-      emphasisLabel: string;
-      emphasis: string;
-      writing: string;
-      count: string;
-      questions: { text: string; kind: string }[];
-      refine: string[];
-      save: string;
     };
     live: {
       course: string;
@@ -122,22 +102,6 @@ export type SiteV2Dict = {
       weakUnit: string;
       askedTitle: string;
       asked: string[];
-    };
-    phone: { course: string; question: string; answers: string[]; send: string };
-    scan: { aim: string; present: string; detail: string };
-    answer: {
-      inClass: string;
-      waiting: string;
-      timer: string;
-      right: string;
-      points: string;
-      detail: string;
-      tableTitle: string;
-      you: string;
-      /** The class table before the answer, top to bottom; the student is last. */
-      table: { name: string; points: number }[];
-      youBefore: number;
-      youAfter: number;
     };
   };
 };

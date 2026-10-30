@@ -2,15 +2,78 @@ import { Mark } from "@/components/app/Mark";
 import type { SiteV2Dict } from "@/content/site-v2/types";
 
 /*
-  Placeholder screens, laid out like the real apps so the page reads true while they are built.
-  Each carries an "Example" tag. They are swapped for real screenshots once the apps are done.
+  The devices' screens. Where an app has the screen, it is a capture of the real app (Shot, from
+  scripts/site-v2-capture.mjs). Where the teacher app has not built it yet (the live console, the
+  class view, the end of a lesson, a class's page), it is drawn here, laid out like the app will be
+  and tagged "Example"; each is replaced by a capture once the app has it.
 
-  The screens are pictures, so their titles are styled text, not headings: they never enter the
-  page's outline. Every screen renders in its final state; the motion layer sets the earlier states itself and
+  The drawn screens are pictures, so their titles are styled text, not headings: they never enter
+  the page's outline. Every screen renders in its final state; the motion layer sets the earlier states itself and
   plays them through (the data-* hooks below), so without it each screen still reads complete.
 */
 
 type S = SiteV2Dict["screens"];
+
+// The captures' sizes: teacher screens are the laptop's 16:10, student screens the phone's screen
+// under its status bar (390x798).
+const SHOTS = {
+  t: { widths: [960, 1800], w: 1800, h: 1125 },
+  s: { widths: [420, 780], w: 780, h: 1596 },
+} as const;
+
+/**
+ * A student capture in a phone: the status bar's strip in the app's own top colour, the capture
+ * under it. Data attributes go on the frame, so the motion layer can crossfade whole screens.
+ */
+export function PhoneShot({
+  name,
+  lang,
+  sizes,
+  top = "#1a5dae",
+  eager = false,
+  ...data
+}: { name: string; lang: "mk" | "en"; sizes: string; top?: string; eager?: boolean } & Record<`data-${string}`, string | boolean>) {
+  return (
+    <div className="phone-shot" style={{ "--top": top } as React.CSSProperties} {...data}>
+      <Shot name={name} lang={lang} sizes={sizes} eager={eager} />
+    </div>
+  );
+}
+
+/** A capture of the real app, in the page's language, at the width the device needs. */
+export function Shot({
+  name,
+  lang,
+  sizes,
+  eager = false,
+  className = "",
+  ...data
+}: {
+  name: string;
+  lang: "mk" | "en";
+  sizes: string;
+  eager?: boolean;
+  className?: string;
+} & Record<`data-${string}`, string | boolean>) {
+  const k = SHOTS[name[0] as "t" | "s"];
+  const src = (w: number) => `/site-v2/screens/${name}-${lang}-${w}.webp`;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- static captures with their own srcset; no optimiser needed
+    <img
+      className={`shot ${className}`}
+      src={src(k.widths[0])}
+      srcSet={k.widths.map((w) => `${src(w)} ${w}w`).join(", ")}
+      sizes={sizes}
+      width={k.w}
+      height={k.h}
+      alt=""
+      decoding="async"
+      loading={eager ? "eager" : "lazy"}
+      fetchPriority={eager ? "high" : undefined}
+      {...data}
+    />
+  );
+}
 
 const KEYS = ["А", "Б", "В", "Г"];
 const KEYS_EN = ["A", "B", "C", "D"];
@@ -35,105 +98,6 @@ function Side({ s, on }: { s: S; on: number }) {
         ))}
       </ul>
     </aside>
-  );
-}
-
-/** The teacher app's Today screen: the prepared lessons and the last lesson's summary. */
-export function ConsoleScreen({ s }: { s: S }) {
-  const c = s.console;
-  return (
-    <div className="scr scr--console">
-      <Side s={s} on={0} />
-      <div className="scr-main">
-        <p className="scr-greet">{c.greet}</p>
-        <div className="scr-head">
-          <p className="scr-h3">{c.title}</p>
-          <span className="scr-btn scr-btn--yellow">{c.prepare}</span>
-        </div>
-        <ul className="scr-lessons">
-          {c.lessons.map((l) => (
-            <li key={l.course}>
-              <span className="scr-lessons__text">
-                <b>{l.course}</b>
-                <span>
-                  {l.topic} · {l.count}
-                </span>
-              </span>
-              <span className="scr-btn scr-btn--ghost">{c.start}</span>
-            </li>
-          ))}
-        </ul>
-        <div className="scr-recent">
-          <p className="scr-h4">{c.recentTitle}</p>
-          <p className="scr-recent__row">
-            {c.recent.map((r) => (
-              <span key={r.label}>
-                <b>{r.value}</b>
-                {r.label}
-              </span>
-            ))}
-          </p>
-        </div>
-      </div>
-      <span className="scr-tag">{s.example}</span>
-    </div>
-  );
-}
-
-/** Prepare a lesson: the file, the line of emphasis, the AI's draft and the four refinements. */
-export function PrepareScreen({ s }: { s: S }) {
-  const p = s.prepare;
-  return (
-    <div className="scr scr--console" data-prep>
-      <Side s={s} on={1} />
-      <div className="scr-main scr-prep">
-        <div className="scr-head">
-          <p className="scr-h3">{p.title}</p>
-          <span className="scr-chip">{p.course}</span>
-        </div>
-        <div className="scr-prep__in">
-          <span className="scr-file" data-prep-file>
-            <span className="scr-file__icon">PDF</span>
-            {p.file}
-          </span>
-          <span className="scr-prep__emph" data-prep-emph>
-            <small>{p.emphasisLabel}</small>
-            {p.emphasis}
-          </span>
-        </div>
-        <div className="scr-prep__out">
-          <p className="scr-prep__writing" data-prep-writing>
-            {p.writing}
-            <span className="scr-prep__bar">
-              <i data-prep-bar />
-            </span>
-          </p>
-          <p className="scr-prep__count" data-prep-count>
-            {p.count}
-          </p>
-          <ol className="scr-prep__qs">
-            {p.questions.map((q) => (
-              <li key={q.text} data-prep-q>
-                <span>{q.text}</span>
-                <small>{q.kind}</small>
-              </li>
-            ))}
-          </ol>
-        </div>
-        <div className="scr-prep__foot">
-          <span className="scr-prep__refine">
-            {p.refine.map((r, i) => (
-              <span key={r} className="scr-chip scr-chip--ghost" data-prep-refine={i === 1 ? "pick" : undefined}>
-                {i === 1 && <i className="scr-chip__on" data-prep-on />}
-                {r}
-              </span>
-            ))}
-          </span>
-          <span className="scr-btn scr-btn--yellow">{p.save}</span>
-        </div>
-      </div>
-      <span className="scr-tag">{s.example}</span>
-    </div>
   );
 }
 
@@ -370,123 +334,3 @@ export function ResultsScreen({ s }: { s: S }) {
   );
 }
 
-/** The student app's answer screen, in its own blue and yellow. */
-export function PhoneScreen({ s, lang }: { s: S; lang: "mk" | "en" }) {
-  const p = s.phone;
-  const keys = lang === "mk" ? KEYS : KEYS_EN;
-  return (
-    <div className="scr scr--phone">
-      <p className="scr-phone__course">{p.course}</p>
-      <p className="scr-phone__q">{p.question}</p>
-      <ol className="scr-phone__answers">
-        {p.answers.map((a, i) => (
-          <li key={a} className={i === 1 ? "is-picked" : undefined}>
-            <span>{keys[i]}</span>
-            {a}
-          </li>
-        ))}
-      </ol>
-      <span className="scr-btn scr-btn--yellow scr-phone__send">{p.send}</span>
-    </div>
-  );
-}
-
-// A plain check mark, drawn so it stays sharp at any size.
-function Check() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-/** The student app's scanner: the board's code in the frame, then "Present". */
-export function ScanScreen({ s }: { s: S }) {
-  const c = s.scan;
-  return (
-    <div className="scr scr--scan" data-scan>
-      <p className="scr-scan__aim">{c.aim}</p>
-      <span className="scr-scan__frame" data-scan-frame>
-        <span className="scr-scan__qr">
-          <FakeQr />
-        </span>
-        <span className="scr-scan__corners" />
-        <i className="scr-scan__line" data-scan-line />
-      </span>
-      <span className="scr-scan__done" data-scan-done>
-        <span className="scr-scan__check">
-          <Check />
-        </span>
-        <b>{c.present}</b>
-        <small>{c.detail}</small>
-      </span>
-    </div>
-  );
-}
-
-/**
- * The student app during a question: waiting, the question with its timer, the tap, the verdict,
- * then the class table. Finished, it shows the picked answer and the verdict; the motion layer
- * plays the rest, ending on the table where "You" has climbed.
- */
-export function AnswerScreen({ s, lang }: { s: S; lang: "mk" | "en" }) {
-  const a = s.answer;
-  const keys = lang === "mk" ? KEYS : KEYS_EN;
-  return (
-    <div className="scr scr--answer" data-answer>
-      <p className="scr-ans__top">{a.inClass}</p>
-      <p className="scr-ans__wait" data-ans-wait>
-        {a.waiting}
-      </p>
-      <div className="scr-ans__q" data-ans-q>
-        <span className="scr-ans__timer" data-ans-timer>
-          9
-        </span>
-        <p className="scr-ans__question">{s.phone.question}</p>
-        <ol className="scr-ans__answers">
-          {s.phone.answers.map((ans, i) => (
-            <li key={ans} data-ans-answer={i === 1 ? "pick" : undefined}>
-              {i === 1 && <b className="scr-ans__pick" data-ans-pick />}
-              {i === 1 && <i className="scr-ans__tap" data-ans-tap />}
-              <span className="scr-ans__key">{keys[i]}</span>
-              <span className="scr-ans__label">{ans}</span>
-            </li>
-          ))}
-        </ol>
-      </div>
-      <div className="scr-ans__verdict" data-ans-verdict>
-        <span className="scr-ans__ok">
-          <Check />
-        </span>
-        <span>
-          <b>{a.right}</b>
-          <small>{a.detail}</small>
-        </span>
-        <strong>{a.points}</strong>
-      </div>
-      <div className="scr-ans__table" data-ans-table>
-        <p className="scr-ans__table-title">{a.tableTitle}</p>
-        <div className="scr-ans__rank">
-          <ol className="scr-ans__places" aria-hidden="true">
-            {[...a.table, null].map((_, i) => (
-              <li key={i}>{i + 1}</li>
-            ))}
-          </ol>
-          <ol className="scr-ans__rows">
-            {a.table.map((r, i) => (
-              <li key={r.name} data-ans-row={i}>
-                <span>{r.name}</span>
-                <b>{r.points}</b>
-              </li>
-            ))}
-            <li className="is-you" data-ans-you>
-              <span>{a.you}</span>
-              <b data-ans-you-points>{a.youAfter}</b>
-            </li>
-          </ol>
-        </div>
-      </div>
-      <span className="scr-tag scr-tag--phone">{s.example}</span>
-    </div>
-  );
-}
