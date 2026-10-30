@@ -346,6 +346,87 @@ export function Motion() {
               ScrollTrigger.create({ trigger: results, start: "top 75%", once: true, onEnter: () => void tl.play() });
             }
 
+            /* Student, scan: once the phone is in view, the line sweeps the code twice and the
+               check lands: present. */
+            const scan = document.querySelector<HTMLElement>("[data-scan]");
+            if (scan) {
+              const line = scan.querySelector<HTMLElement>("[data-scan-line]");
+              const frame = scan.querySelector<HTMLElement>("[data-scan-frame]");
+              const done = scan.querySelector<HTMLElement>("[data-scan-done]");
+              gsap.set(line, { opacity: 1, y: 0 });
+              gsap.set(done, { autoAlpha: 0, y: 12, scale: 0.96 });
+              const tl = gsap.timeline({ paused: true });
+              tl.to(line, { y: () => (frame?.offsetHeight ?? 0) - (line?.offsetHeight ?? 0), duration: 0.9, ease: "sine.inOut", repeat: 1, yoyo: true })
+                .to(line, { opacity: 0, duration: 0.2 })
+                .to(done, { autoAlpha: 1, y: 0, scale: 1, duration: 0.5, ease: "power3.out" }, "-=0.05");
+              ScrollTrigger.create({ trigger: scan, start: "top 70%", once: true, onEnter: () => void tl.play() });
+            }
+
+            /* Student, answer (the chapter's climax): the phone pins for two and a half screens and
+               plays one question through: it arrives, one tap answers, the verdict and the points
+               land, then the class table, where "You" climbs from sixth to third. */
+            const answerPin = document.querySelector<HTMLElement>("[data-answer-pin]");
+            const ans = answerPin?.querySelector<HTMLElement>("[data-answer]");
+            if (answerPin && ans) {
+              const A = (sel: string) => ans.querySelector<HTMLElement>(sel);
+              const steps = Array.from(answerPin.querySelectorAll<HTMLElement>("[data-ans-step]"));
+              const rows = Array.from(ans.querySelectorAll<HTMLElement>("[data-ans-row]"));
+              const you = A("[data-ans-you]");
+              const youPoints = A("[data-ans-you-points]");
+              const before = Number(youPoints?.textContent ?? 0) - 13;
+              // One row's pitch on the table: the distance between two rows' tops.
+              const pitch = () => (rows[1] && rows[0] ? rows[1].offsetTop - rows[0].offsetTop : 0);
+
+              gsap.set(steps, { autoAlpha: (i) => (i === 0 ? 1 : 0) });
+              gsap.set(A("[data-ans-wait]"), { autoAlpha: 1 });
+              gsap.set(A("[data-ans-q]"), { autoAlpha: 0, y: 24 });
+              gsap.set([A("[data-ans-pick]"), A("[data-ans-tap]")], { opacity: 0 });
+              gsap.set(A("[data-ans-verdict]"), { autoAlpha: 0, yPercent: 60 });
+              gsap.set(A("[data-ans-table]"), { autoAlpha: 0, xPercent: 18 });
+
+              const tl = gsap.timeline({
+                defaults: { ease: "none" },
+                scrollTrigger: {
+                  trigger: answerPin,
+                  start: "center center",
+                  end: "+=250%",
+                  pin: true,
+                  pinSpacing: true,
+                  anticipatePin: 1,
+                  scrub: fine ? 0.6 : 0.35,
+                  invalidateOnRefresh: true,
+                },
+              });
+              const beat = (i: number, at: number) =>
+                tl
+                  .to(steps[i - 1], { autoAlpha: 0, y: -10, duration: 0.22 }, at)
+                  .fromTo(steps[i], { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.35 }, at + 0.26);
+
+              // 1. The question arrives; the timer runs.
+              tl.to(A("[data-ans-wait]"), { autoAlpha: 0, duration: 0.3 }, 0.3)
+                .to(A("[data-ans-q]"), { autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.45);
+              counter(tl, [A("[data-ans-timer]")], 15, 9, 1.6, 0.9);
+              // 2. One tap: the thumb lands, the row presses and turns yellow.
+              beat(1, 2.5);
+              // immediateRender off: the ripple's start must not show before the tap.
+              tl.fromTo(A("[data-ans-tap]"), { opacity: 0.6, scale: 0.6 }, { opacity: 0, scale: 1.4, duration: 0.45, ease: "power2.out", immediateRender: false }, 2.75)
+                .to(A('[data-ans-answer="pick"]'), { scale: 0.97, duration: 0.1 }, 2.75)
+                .to(A('[data-ans-answer="pick"]'), { scale: 1, duration: 0.2 }, 2.85)
+                .to(A("[data-ans-pick]"), { opacity: 1, duration: 0.2 }, 2.8);
+              // 3. The verdict: right, 10 and 3 for speed.
+              beat(2, 3.5);
+              tl.to(A("[data-ans-verdict]"), { autoAlpha: 1, yPercent: 0, duration: 0.5, ease: "power3.out" }, 3.7);
+              // 4. The class table: "You" climbs three places as the points count in.
+              beat(3, 5);
+              tl.to(A("[data-ans-q]"), { autoAlpha: 0, x: -24, duration: 0.4 }, 5.15)
+                .to(A("[data-ans-verdict]"), { autoAlpha: 0, duration: 0.3 }, 5.15)
+                .to(A("[data-ans-table]"), { autoAlpha: 1, xPercent: 0, duration: 0.5, ease: "power2.out" }, 5.25)
+                .to(you, { y: () => -3 * pitch(), duration: 0.9, ease: "power2.inOut" }, 6)
+                .to(rows.slice(2), { y: () => pitch(), duration: 0.9, ease: "power2.inOut" }, 6);
+              counter(tl, [youPoints], before, before + 13, 0.9, 6);
+              tl.to({}, { duration: 1.2 });
+            }
+
             // Reveals: each block rises into place as it enters, in reading order, once. Opacity only,
             // never visibility, so a link that has not been revealed yet can still take keyboard focus;
             // focusing it scrolls it into view, which reveals it.

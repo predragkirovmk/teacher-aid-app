@@ -6,6 +6,10 @@ and swapped onto `/` only when the owner says so.
 
 ## Owner decisions (2026-10-29, do not re-ask)
 
+- 30 Oct: the student chapter follows Results, in the student app's blue, with two scenes: scan to
+  join, and the pinned "answer in your hand" (the signature). The nav reads Teacher · In class ·
+  Student.
+
 - Keep from the old site: the boldness, huge type, bold effects, the premium Apple feel, smooth
   scroll-triggered motion. Everything else is new.
 - Direction: `modern-frontend` cinematic-scroll, nothing blended in.
@@ -140,7 +144,9 @@ teal. One main button per viewport. Secondary actions are chevron links ("Пог
 | Climax | In class: pinned for three screens. Students join (0 to 27), Send is pressed, the question flies from the laptop to the board, answers and the timer count, the bars fill, the right answer is revealed. One caption per beat | Teal |
 | Build | After class: plays once. Present, late and absent count in; the most-missed questions fill | Teal to paper |
 | Build | Class results: plays once. Attendance bars grow, topics and anonymous questions arrive | Paper |
-| Later | Student chapter (phone) | Blue and yellow |
+| Build | Student opener: same phone, a different job (school Google or Microsoft sign-in) | Blue |
+| Build | Student, scan: plays once. The line sweeps the board's code, the check lands: present | Blue |
+| Climax | Student, answer: pinned for two and a half screens. The question lands with a timer, one tap answers, "Right +13" (10 and 3 for speed), then the class table, where "You" climbs from sixth to third | Blue |
 | Later | Trust: data, privacy, the director's monthly report | Paper |
 | Epilogue | Book a free lesson, footer | Paper |
 

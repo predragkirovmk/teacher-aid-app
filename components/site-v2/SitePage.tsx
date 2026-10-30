@@ -4,7 +4,17 @@ import { ClassStack } from "./ClassStack";
 import { Board, Laptop, Phone } from "./Devices";
 import { Motion } from "./Motion";
 import { Nav } from "./Nav";
-import { BoardScreen, ConsoleScreen, EndScreen, LiveConsoleScreen, PhoneScreen, PrepareScreen, ResultsScreen } from "./Screens";
+import {
+  AnswerScreen,
+  BoardScreen,
+  ConsoleScreen,
+  EndScreen,
+  LiveConsoleScreen,
+  PhoneScreen,
+  PrepareScreen,
+  ResultsScreen,
+  ScanScreen,
+} from "./Screens";
 
 /*
   The page, server-rendered and complete without JavaScript. Motion adds itself on top.
@@ -232,6 +242,77 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
             </div>
           </div>
         </section>
+
+        {/* Act 2 again, from the other side: the student chapter, in the student app's blue. */}
+        <div className="chapter chapter--student" id="student" data-theme="blue" tabIndex={-1}>
+          <section className="scene opener" aria-labelledby="student-title">
+            <div className="wrap">
+              <p className="kicker kicker--on-teal" data-reveal>
+                {t.student.label}
+              </p>
+              <h2 className="display" id="student-title" data-reveal>
+                {t.student.title}
+              </h2>
+              <p className="lead opener__body" data-reveal>
+                {t.student.body}
+              </p>
+            </div>
+          </section>
+
+          <section className="scene split" id={t.scan.id} aria-labelledby="scan-title">
+            <div className="wrap scene__head">
+              <p className="index" data-reveal>
+                <span>{t.scan.index}</span> {t.scan.label}
+              </p>
+              <h2 className="display" id="scan-title" data-reveal>
+                {t.scan.title}
+              </h2>
+            </div>
+            <div className="wrap split__grid">
+              <div className="split__copy">
+                <p className="body" data-reveal>
+                  {t.scan.body}
+                </p>
+                <p className="note" data-reveal>
+                  {t.scan.note}
+                </p>
+              </div>
+              <div className="split__media scan__media" data-reveal>
+                <Phone label={s.alt.scan} className="scan__phone">
+                  <ScanScreen s={s} />
+                </Phone>
+              </div>
+            </div>
+          </section>
+
+          {/* The student's climax: pinned, the answer plays through on one phone. */}
+          <section className="scene answer" id={t.answer.id} aria-labelledby="answer-title">
+            <div className="wrap">
+              <p className="index" data-reveal>
+                <span>{t.answer.index}</span> {t.answer.label}
+              </p>
+              <h2 className="display" id="answer-title" data-reveal>
+                {t.answer.title}
+              </h2>
+              <p className="lead answer__lead" data-reveal>
+                {t.answer.body}
+              </p>
+              <div className="answer__pin" data-answer-pin>
+                <ol className="answer__steps">
+                  {t.answer.steps.map((step, i) => (
+                    <li key={step} data-ans-step>
+                      <span>{String(i + 1).padStart(2, "0")}</span>
+                      {step}
+                    </li>
+                  ))}
+                </ol>
+                <Phone label={s.alt.answer} className="answer__phone">
+                  <AnswerScreen s={s} lang={t.lang} />
+                </Phone>
+              </div>
+            </div>
+          </section>
+        </div>
 
         {/* Epilogue: the one thing to do next, the page's one field of yellow. */}
         <section className="scene book" id="book" data-theme="yellow" aria-labelledby="book-title" tabIndex={-1}>

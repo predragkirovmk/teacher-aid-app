@@ -39,12 +39,26 @@ export type SiteV2Dict = {
   live: Scene & { steps: string[]; join: string; anonymous: string };
   after: Scene & { practice: string; note: string };
   results: Scene;
+  /** The student chapter: the opener, joining by scan, and the pinned answer scene. */
+  student: { label: string; title: string; body: string };
+  scan: Scene & { note: string };
+  answer: Scene & { steps: string[] };
   book: { title: string; body: string; cta: string; email: string; pilot: string };
   footer: { line: string; langLabel: string; langs: { href: string; label: string; lang: Lang }[] };
   screens: {
     example: string;
     /** What each device shows, read out in place of the placeholder interface. */
-    alt: { console: string; board: string; phone: string; prepare: string; live: string; end: string; results: string };
+    alt: {
+      console: string;
+      board: string;
+      phone: string;
+      prepare: string;
+      live: string;
+      end: string;
+      results: string;
+      scan: string;
+      answer: string;
+    };
     console: {
       nav: string[];
       greet: string;
@@ -110,5 +124,20 @@ export type SiteV2Dict = {
       asked: string[];
     };
     phone: { course: string; question: string; answers: string[]; send: string };
+    scan: { aim: string; present: string; detail: string };
+    answer: {
+      inClass: string;
+      waiting: string;
+      timer: string;
+      right: string;
+      points: string;
+      detail: string;
+      tableTitle: string;
+      you: string;
+      /** The class table before the answer, top to bottom; the student is last. */
+      table: { name: string; points: number }[];
+      youBefore: number;
+      youAfter: number;
+    };
   };
 };

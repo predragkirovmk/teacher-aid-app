@@ -390,3 +390,103 @@ export function PhoneScreen({ s, lang }: { s: S; lang: "mk" | "en" }) {
     </div>
   );
 }
+
+// A plain check mark, drawn so it stays sharp at any size.
+function Check() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** The student app's scanner: the board's code in the frame, then "Present". */
+export function ScanScreen({ s }: { s: S }) {
+  const c = s.scan;
+  return (
+    <div className="scr scr--scan" data-scan>
+      <p className="scr-scan__aim">{c.aim}</p>
+      <span className="scr-scan__frame" data-scan-frame>
+        <span className="scr-scan__qr">
+          <FakeQr />
+        </span>
+        <span className="scr-scan__corners" />
+        <i className="scr-scan__line" data-scan-line />
+      </span>
+      <span className="scr-scan__done" data-scan-done>
+        <span className="scr-scan__check">
+          <Check />
+        </span>
+        <b>{c.present}</b>
+        <small>{c.detail}</small>
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The student app during a question: waiting, the question with its timer, the tap, the verdict,
+ * then the class table. Finished, it shows the picked answer and the verdict; the motion layer
+ * plays the rest, ending on the table where "You" has climbed.
+ */
+export function AnswerScreen({ s, lang }: { s: S; lang: "mk" | "en" }) {
+  const a = s.answer;
+  const keys = lang === "mk" ? KEYS : KEYS_EN;
+  return (
+    <div className="scr scr--answer" data-answer>
+      <p className="scr-ans__top">{a.inClass}</p>
+      <p className="scr-ans__wait" data-ans-wait>
+        {a.waiting}
+      </p>
+      <div className="scr-ans__q" data-ans-q>
+        <span className="scr-ans__timer" data-ans-timer>
+          9
+        </span>
+        <p className="scr-ans__question">{s.phone.question}</p>
+        <ol className="scr-ans__answers">
+          {s.phone.answers.map((ans, i) => (
+            <li key={ans} data-ans-answer={i === 1 ? "pick" : undefined}>
+              {i === 1 && <b className="scr-ans__pick" data-ans-pick />}
+              {i === 1 && <i className="scr-ans__tap" data-ans-tap />}
+              <span className="scr-ans__key">{keys[i]}</span>
+              <span className="scr-ans__label">{ans}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+      <div className="scr-ans__verdict" data-ans-verdict>
+        <span className="scr-ans__ok">
+          <Check />
+        </span>
+        <span>
+          <b>{a.right}</b>
+          <small>{a.detail}</small>
+        </span>
+        <strong>{a.points}</strong>
+      </div>
+      <div className="scr-ans__table" data-ans-table>
+        <p className="scr-ans__table-title">{a.tableTitle}</p>
+        <div className="scr-ans__rank">
+          <ol className="scr-ans__places" aria-hidden="true">
+            {[...a.table, null].map((_, i) => (
+              <li key={i}>{i + 1}</li>
+            ))}
+          </ol>
+          <ol className="scr-ans__rows">
+            {a.table.map((r, i) => (
+              <li key={r.name} data-ans-row={i}>
+                <span>{r.name}</span>
+                <b>{r.points}</b>
+              </li>
+            ))}
+            <li className="is-you" data-ans-you>
+              <span>{a.you}</span>
+              <b data-ans-you-points>{a.youAfter}</b>
+            </li>
+          </ol>
+        </div>
+      </div>
+      <span className="scr-tag scr-tag--phone">{s.example}</span>
+    </div>
+  );
+}
