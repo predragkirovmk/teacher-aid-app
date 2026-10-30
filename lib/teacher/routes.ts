@@ -14,10 +14,16 @@ export const FROM_TODAY = "today";
 export const lessonUrl = (lessonId: Id, from?: typeof FROM_TODAY): string =>
   `${LESSONS}/${encodeURIComponent(lessonId)}${from ? `?from=${from}` : ""}`;
 
+/** The page that prepares a lesson; it too is told where the teacher came from, so its Back can go there. */
+export const newLessonUrl = (from?: typeof FROM_TODAY): string => `${NEW_LESSON}${from ? `?from=${from}` : ""}`;
+
+/** A lesson that has been made and not saved yet: where the questions of a generation are read, and found again after a reload. */
+export const draftUrl = (draftId: Id): string => `${LESSONS}/drafts/${encodeURIComponent(draftId)}`;
+
 /** The live lesson of a session: the console. Step 7 builds it; until then it says it is coming. */
 export const liveUrl = (sessionId: Id): string => `/teacher/live/${encodeURIComponent(sessionId)}`;
 
-/** Where Back goes from a lesson, and what it is called: the screen the teacher came from, else the lessons. */
+/** Where Back goes from a lesson or from the page that prepares one, and what it is called: the screen the teacher came from, else the lessons. */
 export function backFromLesson(from: string | null): { href: string; label: Key } {
   return from === FROM_TODAY ? { href: TODAY, label: "back.today" } : { href: LESSONS, label: "back.lessons" };
 }

@@ -1,18 +1,11 @@
-"use client";
+import { Suspense } from "react";
+import { PrepareLesson } from "@/components/teacher/PrepareLesson";
 
-import { PlusCircleIcon } from "@phosphor-icons/react";
-import { PageHeader } from "@/components/teacher/PageHeader";
-import { SoonCard } from "@/components/teacher/SoonCard";
-import { useT } from "@/lib/teacher/i18n";
-
+/** Prepare a lesson. The address may carry where the teacher came from (`?from=today`), which only the browser knows, so the page waits for it. */
 export default function NewLessonPage() {
-  const { t } = useT();
   return (
-    <>
-      <PageHeader title={t("lessonsNew.title")} back="/teacher/lessons" />
-      <div className="content">
-        <SoonCard icon={PlusCircleIcon} what={t("lessonsNew.what")} />
-      </div>
-    </>
+    <Suspense fallback={null}>
+      <PrepareLesson />
+    </Suspense>
   );
 }

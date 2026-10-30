@@ -1493,7 +1493,237 @@ button {
   border-top: 1px solid var(--line);
 }
 
+/* ---- Prepare a lesson: three parts, one yellow button, and the wait on the same page ---- */
+.prepare {
+  display: grid;
+  gap: var(--sp-3);
+}
+.prepare__part {
+  display: grid;
+  gap: var(--sp-3);
+  align-content: start;
+}
+.prepare__group {
+  display: grid;
+  gap: var(--sp-2);
+}
+.prepare__label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+.prepare__label svg {
+  flex: none;
+}
+.card .prepare__hint {
+  max-width: var(--measure);
+  text-wrap: pretty;
+}
+/* Choices as tiles side by side where there is room, one under the other where there is not; the second line of a tile is its detail. */
+.prepare__tiles .choices {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+}
+.prepare__tiles .choice {
+  flex-wrap: wrap;
+  row-gap: 0;
+}
+.prepare__tiles .choice__text {
+  flex: 1 1 8rem;
+}
+.prepare__tiles .choice__detail {
+  flex: 1 0 100%;
+  margin-left: calc(28px + var(--sp-2));
+}
+/* A choice that was made for the teacher because there was only one: it looks like a chosen row, and is not a control. */
+.card .prepare__stated {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  max-width: none;
+  min-height: 4rem;
+  padding: 0.75rem var(--sp-3);
+  border: 2px solid var(--text);
+  border-radius: var(--r-m);
+  background: var(--shadow);
+  color: var(--text);
+  font-size: var(--fs-button);
+  font-weight: 700;
+}
+.prepare__stated svg {
+  flex: none;
+}
+
+/* The two kinds of box the teacher writes in: 18px, a plain edge that reads as a box, the same yellow ring as everything. */
+.field {
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0.75rem var(--sp-2);
+  border: 2px solid var(--line-strong);
+  border-radius: var(--r-m);
+  background: var(--deep);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+.field--area {
+  min-height: 10rem;
+  resize: vertical;
+}
+.card .prepare__count {
+  justify-self: end;
+  font-weight: 600;
+}
+
+/* The document: a big button inside an area a file may also be dropped on. The input itself is the real, hidden-but-focusable one. */
+.drop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-3);
+  border: 3px dashed var(--line-strong);
+  border-radius: var(--r-l);
+  background: var(--deep);
+  transition: background-color var(--dur) var(--ease);
+}
+.drop[data-chosen="false"] {
+  flex-direction: column;
+  justify-content: center;
+  padding-block: var(--sp-4);
+  text-align: center;
+}
+.drop[data-over="true"] {
+  border-color: var(--text);
+  background: var(--shadow);
+}
+.drop:has(.sr:focus-visible) .drop__pick {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--shadow);
+}
+.drop__file {
+  display: flex;
+  flex: 1 1 16rem;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.drop__file svg {
+  flex: none;
+}
+.drop__text {
+  min-width: 0;
+}
+.card .drop__text p {
+  max-width: none;
+}
+.card .drop__name {
+  color: var(--text);
+  font-size: var(--fs-button);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.drop__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-2);
+}
+.drop__pick {
+  cursor: pointer;
+}
+
+/* On the ground, so the words are 24px: white on the ground is only large-text contrast. */
+.prepare__go {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-2);
+}
+.prepare__go p {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: var(--fs-lead);
+  font-weight: 500;
+  line-height: 1.3;
+  text-wrap: pretty;
+}
+.btn--big {
+  min-height: 4rem;
+  padding-inline: var(--sp-5);
+  font-size: var(--fs-h3);
+}
+.prepare__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+@media (max-width: 40rem) {
+  .prepare__go .btn,
+  .prepare__actions .btn,
+  .waiting .btn,
+  .drop__actions .btn {
+    width: 100%;
+  }
+  .btn--big {
+    padding-inline: var(--sp-3);
+  }
+}
+
+/* The wait: what is being done, how long it may take, and a way out. Three dots breathe; with Reduce Motion they stand still. */
+.waiting h2:focus {
+  outline: none;
+  box-shadow: none;
+}
+.card .waiting__step {
+  color: var(--text);
+  font-weight: 600;
+}
+.waiting__dots {
+  display: flex;
+  gap: 0.5rem;
+}
+.waiting__dots span {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: var(--text);
+  animation: breathe 1.6s ease-in-out infinite;
+}
+.waiting__dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.waiting__dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes breathe {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+/* Room for the calm line before it comes, so the button under it does not move away from a hand that is going to it. */
+.waiting__still {
+  min-height: 3.5rem;
+}
+.card .waiting__still p {
+  color: var(--text);
+  font-weight: 600;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .waiting__dots span {
+    animation: none;
+  }
   *,
   *::before,
   *::after {
@@ -1518,7 +1748,9 @@ button {
   .lesson,
   .question,
   .running,
-  .option {
+  .option,
+  .field,
+  .prepare__stated {
     border: 2px solid CanvasText;
   }
   .band {
