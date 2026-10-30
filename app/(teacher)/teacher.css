@@ -1580,23 +1580,26 @@ button {
 .prepare__tiles--rows .choices {
   grid-template-columns: minmax(0, 1fr);
 }
-/* A choice that was made for the teacher because there was only one: it looks like a chosen row, and is not a control. */
+/* What there is no choice about, because there is only one: a plain line to read, not a row that looks chosen (and so pressable). */
 .card .prepare__stated {
   display: flex;
-  align-items: center;
-  gap: var(--sp-2);
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
   max-width: none;
-  min-height: 4rem;
-  padding: 0.75rem var(--sp-3);
-  border: 2px solid var(--text);
-  border-radius: var(--r-m);
-  background: var(--shadow);
   color: var(--text);
   font-size: var(--fs-button);
+}
+.prepare__stated-label {
+  color: var(--text-2);
+}
+.prepare__stated-value {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
   font-weight: 700;
 }
-.prepare__stated svg {
-  flex: none;
+.prepare__stated-detail {
+  color: var(--text-2);
 }
 
 /* The two kinds of box the teacher writes in: 18px, a plain edge that reads as a box, the same yellow ring as everything. */
@@ -1795,8 +1798,7 @@ button {
   .question,
   .running,
   .option,
-  .field,
-  .prepare__stated {
+  .field {
     border: 2px solid CanvasText;
   }
   .band {

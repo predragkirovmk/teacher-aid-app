@@ -72,10 +72,14 @@ test.describe("the form", () => {
     for (const heading of ["1. Предмет и година", "2. Материјал", "3. Што да се нагласи?"]) {
       await expect(page.getByRole("heading", { level: 2, name: new RegExp(`^${heading.replace("?", "\\?")}`) })).toBeVisible();
     }
-    // One subject: stated, not offered. Several years: offered, none chosen.
+    // One subject: stated as a plain line, not offered and not a row that looks chosen. Several years: offered, none chosen.
     await expect(page.getByRole("radio", { name: /^Математика/ })).toHaveCount(0);
-    await expect(page.getByRole("heading", { level: 3, name: "Предмет" })).toBeVisible();
-    await expect(page.locator(".prepare__stated")).toHaveText("Математика");
+    await expect(page.getByRole("heading", { level: 3, name: "Предмет" })).toHaveCount(0);
+    await expect(page.locator(".prepare__stated")).toHaveText("Предмет: Математика");
+    const stated = page.locator(".prepare__stated");
+    await expect(stated.locator("svg")).toHaveCount(0);
+    expect(await stated.evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe("0px");
+    expect(await stated.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
     const years = page.getByRole("radio", { name: / година/ });
     await expect(years).toHaveCount(3);
     for (const radio of await years.all()) await expect(radio).not.toBeChecked();
@@ -678,14 +682,13 @@ test.describe("wording", () => {
 
     await page.getByRole("radio", { name: /Линеарна алгебра/ }).check();
     // One year for the subject: stated, with its group, not offered.
-    await expect(page.getByRole("heading", { level: 3, name: "Година" })).toBeVisible();
-    await expect(page.locator(".prepare__stated").nth(0)).toHaveText("2. годинаГрупа 2Б");
+    await expect(page.locator(".prepare__stated").nth(0)).toHaveText("Година: 2 · Група 2Б");
     await expect(page.getByRole("radio", { name: /година/ })).toHaveCount(0);
     await page.getByRole("radio", { name: /^Документ/ }).check();
     await expect(page.getByText("Не прикачувајте документи со имиња или други податоци на Вашите студенти.")).toBeVisible();
     // Changing the subject changes the year with it.
     await page.getByRole("radio", { name: /Веројатност и статистика/ }).check();
-    await expect(page.locator(".prepare__stated").nth(0)).toHaveText("3. годинаГрупа 3А");
+    await expect(page.locator(".prepare__stated").nth(0)).toHaveText("Година: 3 · Група 3А");
   });
 
   test("a faculty teacher prepares a lesson for the subject they chose, in English too", async ({ page }) => {
@@ -693,7 +696,7 @@ test.describe("wording", () => {
     await page.addInitScript((key) => localStorage.setItem(key, JSON.stringify({ locale: "en", schoolType: "university", schoolSeen: true })), SETTINGS_KEY);
     await page.goto(NEW);
     await page.getByRole("radio", { name: /Линеарна алгебра/ }).check();
-    await expect(page.locator(".prepare__stated").nth(0)).toHaveText("Year 2Група 2Б");
+    await expect(page.locator(".prepare__stated").nth(0)).toHaveText("Year: 2 · Група 2Б");
     await page.getByRole("radio", { name: /^A few sentences/ }).check();
     await page.getByRole("textbox", { name: "Write a few sentences about the topic" }).fill("Вектори и матрици. Операции со матрици и детерминанти на матрици.");
     await page.getByRole("button", { name: "Prepare questions", exact: true }).click();

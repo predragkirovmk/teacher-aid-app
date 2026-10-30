@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircleIcon, SparkleIcon, UsersThreeIcon } from "@phosphor-icons/react";
+import { SparkleIcon, UsersThreeIcon } from "@phosphor-icons/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import { createSource, generateLesson, useCourses } from "@/lib/teacher/api/hooks";
@@ -267,55 +267,63 @@ export function PrepareLesson() {
             <section className="card prepare__part" aria-labelledby="prepare-1">
               <h2 id="prepare-1">{t("prepare.part1")}</h2>
               <div className="prepare__group">
-                <h3 className="prepare__label" id="prepare-subject">
-                  {t("prepare.subject")}
-                </h3>
                 {subjects.length === 1 ? (
-                  <Stated text={subjects[0].name} />
+                  <Stated label={t("prepare.subject")} text={subjects[0].name} />
                 ) : (
-                  <div className="prepare__tiles prepare__tiles--rows" data-focus="subject">
-                    <Choices
-                      name="subject"
-                      labelledBy="prepare-subject"
-                      describedBy={problems.subject ? "prepare-subject-problem" : undefined}
-                      value={subject}
-                      options={subjects.map((s) => ({ value: s.id, label: s.name }))}
-                      onChange={(id) => {
-                        setPickedSubject(id);
-                        setPickedYear(null);
-                        forget("subject");
-                        forget("year");
-                      }}
-                    />
-                  </div>
+                  <>
+                    <h3 className="prepare__label" id="prepare-subject">
+                      {t("prepare.subject")}
+                    </h3>
+                    <div className="prepare__tiles prepare__tiles--rows" data-focus="subject">
+                      <Choices
+                        name="subject"
+                        labelledBy="prepare-subject"
+                        describedBy={problems.subject ? "prepare-subject-problem" : undefined}
+                        value={subject}
+                        options={subjects.map((s) => ({ value: s.id, label: s.name }))}
+                        onChange={(id) => {
+                          setPickedSubject(id);
+                          setPickedYear(null);
+                          forget("subject");
+                          forget("year");
+                        }}
+                      />
+                    </div>
+                  </>
                 )}
                 {problems.subject && <Problem id="prepare-subject-problem">{t("prepare.problem.subject")}</Problem>}
               </div>
               {subject !== null && (
                 <div className="prepare__group">
-                  <h3 className="prepare__label" id="prepare-year">
-                    {t("prepare.year")}
-                  </h3>
                   {years.length === 1 ? (
-                    <Stated text={t("lesson.year", { n: years[0], roman: romanYear(years[0]) })} detail={classesOf(courses.data ?? [], subject, years[0]).join(", ")} />
+                    <Stated
+                      label={t("prepare.year")}
+                      text={t("prepare.year.value", { n: years[0], roman: romanYear(years[0]) })}
+                      detail={classesOf(courses.data ?? [], subject, years[0]).join(", ")}
+                    />
                   ) : (
-                    <div className="prepare__tiles" data-focus="year">
-                      <Choices
-                        name="year"
-                        labelledBy="prepare-year"
-                        describedBy={problems.year ? "prepare-year-problem" : undefined}
-                        value={year === null ? null : String(year)}
-                        options={years.map((y) => ({
-                          value: String(y),
-                          label: t("lesson.year", { n: y, roman: romanYear(y) }),
-                          detail: classesOf(courses.data ?? [], subject, y).join(", "),
-                        }))}
-                        onChange={(value) => {
-                          setPickedYear(Number(value));
-                          forget("year");
-                        }}
-                      />
-                    </div>
+                    <>
+                      <h3 className="prepare__label" id="prepare-year">
+                        {t("prepare.year")}
+                      </h3>
+                      <div className="prepare__tiles" data-focus="year">
+                        <Choices
+                          name="year"
+                          labelledBy="prepare-year"
+                          describedBy={problems.year ? "prepare-year-problem" : undefined}
+                          value={year === null ? null : String(year)}
+                          options={years.map((y) => ({
+                            value: String(y),
+                            label: t("lesson.year", { n: y, roman: romanYear(y) }),
+                            detail: classesOf(courses.data ?? [], subject, y).join(", "),
+                          }))}
+                          onChange={(value) => {
+                            setPickedYear(Number(value));
+                            forget("year");
+                          }}
+                        />
+                      </div>
+                    </>
                   )}
                   {problems.year && <Problem id="prepare-year-problem">{t("prepare.problem.year")}</Problem>}
                 </div>
@@ -360,9 +368,13 @@ export function PrepareLesson() {
 function Stated({ text, detail }: { text: string; detail?: string }) {
   return (
     <p className="prepare__stated">
-      <CheckCircleIcon size={28} weight="fill" aria-hidden="true" />
-      <span className="choice__text">{text}</span>
-      {detail && <span className="choice__detail">{detail}</span>}
+      <span className="prepare__stated-label">{label}:</span> <span className="prepare__stated-value">{text}</span>
+      {detail && (
+        <>
+          {" "}
+          <span aria-hidden="true">·</span> <span className="prepare__stated-detail">{detail}</span>
+        </>
+      )}
     </p>
   );
 }
