@@ -56,22 +56,30 @@ export function LessonView() {
                 <p>{`„${lesson.emphasis}“`}</p>
               </div>
             )}
-            <section aria-labelledby="questions">
-              <h2 className="section__title" id="questions">
-                {t("lesson.questions.title")}
-              </h2>
-              <ol className="questions">
-                {[...lesson.questions]
-                  .sort((a, b) => a.order - b.order)
-                  .map((question, i, all) => (
-                    <QuestionCard key={question.id} question={question} n={i + 1} total={all.length} />
-                  ))}
-              </ol>
-            </section>
+            <QuestionList questions={lesson.questions} />
           </>
         )}
       </div>
     </>
+  );
+}
+
+/** The questions of a lesson or a draft, in order, each to read. Step 6 makes the cards editable here. */
+export function QuestionList({ questions }: { questions: readonly Question[] }) {
+  const { t } = useT();
+  return (
+    <section aria-labelledby="questions">
+      <h2 className="section__title" id="questions">
+        {t("lesson.questions.title")}
+      </h2>
+      <ol className="questions">
+        {[...questions]
+          .sort((a, b) => a.order - b.order)
+          .map((question, i, all) => (
+            <QuestionCard key={question.id} question={question} n={i + 1} total={all.length} />
+          ))}
+      </ol>
+    </section>
   );
 }
 
