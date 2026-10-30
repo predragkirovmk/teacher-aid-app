@@ -257,6 +257,32 @@ test.describe("with a lesson running, in a zoomed window", () => {
     });
   }
 
+  test("at a phone's width the words come first and the button under them, and the bar scrolls away with the page", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await simulate(page);
+    await page.goto("/teacher/library");
+    const bar = page.locator("header.topbar");
+    const group = bar.getByRole("group", { name: /^Час во тек\s*,\s*IV-1$/ });
+    const link = bar.getByRole("link", { name: "Врати се на часот, IV-1", exact: true });
+    await expect(group).toBeVisible();
+    const [words, button, tile] = [(await group.locator(".running__tag").boundingBox())!, (await link.boundingBox())!, (await group.boundingBox())!];
+    expect(button.y).toBeGreaterThanOrEqual(words.y + words.height);
+    expect(button.width).toBeGreaterThan(tile.width * 0.8);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+    await expect(bar).toHaveCSS("position", "static");
+  });
+
+  test("in a window that is wide and tall enough the bar holds the words and the button in one row, and stays on top", async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 800 });
+    await simulate(page);
+    await page.goto("/teacher/library");
+    const bar = page.locator("header.topbar");
+    const group = bar.getByRole("group", { name: /^Час во тек\s*,\s*IV-1$/ });
+    const [words, button] = [(await group.locator(".running__tag").boundingBox())!, (await bar.getByRole("link", { name: "Врати се на часот, IV-1", exact: true }).boundingBox())!];
+    expect(Math.abs(words.y + words.height / 2 - (button.y + button.height / 2))).toBeLessThan(8);
+    await expect(bar).toHaveCSS("position", "sticky");
+  });
+
   test("in a window that is tall enough the top bar stays on top, whole, with the reminder in it", async ({ page }) => {
     await page.setViewportSize({ width: 640, height: 800 });
     await simulate(page);

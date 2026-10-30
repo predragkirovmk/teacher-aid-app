@@ -324,7 +324,7 @@ button {
  * A lesson is running: said on every page but Today, in the sidebar on a laptop and in the top bar where the sidebar is a
  * drawer. A white edge, the icon and the words make it stand out from the menu; it is never yellow (the yellow of a screen is
  * one button's) and it does not move. The top bar then has room for a second row, so tabbing back up keeps clear of it, and
- * in a window too short to spare it (a zoomed one) it scrolls away with the page instead of covering half of it.
+ * in a window too short or too narrow to spare it (a zoomed one) it scrolls away with the page instead of covering a third of it.
  */
 .running {
   display: grid;
@@ -367,8 +367,9 @@ button {
   .running--side {
     display: none;
   }
+  /* One row of the words and the button, as wide as they need; when the row of the Menu cannot hold it, it takes the next one whole. */
   .running--top {
-    flex: 1 1 18rem;
+    flex: 1 0 auto;
     grid-auto-flow: column;
     align-items: center;
     justify-content: space-between;
@@ -376,6 +377,7 @@ button {
   }
   .running--top .running__tag {
     align-items: center;
+    white-space: nowrap;
   }
   .running--top .running__back {
     width: auto;
@@ -384,7 +386,22 @@ button {
     scroll-padding-top: 9.5rem;
   }
 }
-@media (max-width: 63.9375rem) and (max-height: 40rem) {
+/* A phone's width (or a laptop's, zoomed to 400%): the words, then the button under them. */
+@media (max-width: 29.9375rem) {
+  .running--top {
+    grid-auto-flow: row;
+    justify-content: stretch;
+    padding: 0.75rem;
+  }
+  .running--top .running__tag {
+    align-items: flex-start;
+    white-space: normal;
+  }
+  .running--top .running__back {
+    width: 100%;
+  }
+}
+@media (max-width: 63.9375rem) and (max-height: 40rem), (max-width: 29.9375rem) {
   .topbar--running {
     position: static;
   }
