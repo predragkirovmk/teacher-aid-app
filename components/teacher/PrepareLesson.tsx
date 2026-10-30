@@ -17,6 +17,7 @@ import {
   failureOf,
   firstProblem,
   focusKeyOf,
+  hasWork,
   materialProblemOf,
   showsEmphasisCount,
   sourceToKeep,
@@ -269,7 +270,7 @@ export function PrepareLesson() {
         {stage.name === "wait" && (
           <>
             <Waiting phase={stage.phase} withDocument={kind === "file"} onCancel={cancel} />
-            <LeaveGuard />
+            <LeaveGuard body="prepare.leave.body" />
           </>
         )}
         {stage.name === "failed" && <WaitFailure failure={stage.failure} error={stage.error} onRetry={retry} onBack={backToForm} />}
@@ -370,6 +371,8 @@ export function PrepareLesson() {
             </div>
           </form>
         )}
+        {/* Leaving the form, or the failure that keeps it, loses what was entered, so it asks first. */}
+        {stage.name !== "wait" && hasWork({ file, text, emphasis }) && <LeaveGuard body="prepare.leave.form.body" />}
       </div>
     </>
   );

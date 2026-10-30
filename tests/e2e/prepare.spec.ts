@@ -525,6 +525,75 @@ test.describe("leaving during the wait", () => {
   });
 });
 
+// ---- Leaving a form that holds work ---------------------------------------------------------------------------------
+
+test.describe("leaving a form that holds work", () => {
+  test("typed sentences are asked about before the page is left: Остани keeps them, Излези goes", async ({ page }) => {
+    await yearTwo(page);
+    await typeSentences(page);
+    await menu(page).getByRole("link", { name: "Денес" }).click();
+    const dialog = leaveDialog(page);
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText("Ако излезете, она што го внесовте се губи.");
+    // The question about the wait is not the one asked here: nothing is being prepared.
+    await expect(dialog).not.toContainText("Прашањата уште се подготвуваат");
+    await expect(dialog.getByRole("button", { name: "Остани" })).toBeFocused();
+    await expect(dialog.getByRole("button", { name: "Остани" })).toHaveClass(/btn--primary/);
+    await dialog.getByRole("button", { name: "Остани" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(page).toHaveURL(/\/teacher\/lessons\/new/);
+    await expect(textbox(page)).toHaveValue(TYPED);
+
+    // The page's own Back asks too.
+    await page.getByRole("link", { name: "Назад кон Лекции" }).click();
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Излези" }).click();
+    await expect(title(page)).toHaveText("Лекции");
+  });
+
+  test("a chosen document, or only a sentence of emphasis, is work too; a year and a way of adding the material are not", async ({ page }) => {
+    await yearTwo(page);
+    await page.getByRole("radio", { name: /^Документ/ }).check();
+    await page.getByRole("radio", { name: /^Неколку реченици/ }).check();
+    await menu(page).getByRole("link", { name: "Денес" }).click();
+    await expect(title(page)).toHaveText("Денес");
+    await expect(leaveDialog(page)).toHaveCount(0);
+
+    await page.goto(NEW);
+    await emphasis(page).fill("Повеќе примери.");
+    await menu(page).getByRole("link", { name: "Денес" }).click();
+    await expect(leaveDialog(page)).toBeVisible();
+    await leaveDialog(page).getByRole("button", { name: "Остани" }).click();
+    await emphasis(page).fill("");
+    await chooseDocument(page);
+    await menu(page).getByRole("link", { name: "Денес" }).click();
+    await expect(leaveDialog(page)).toBeVisible();
+  });
+
+  test("a failure that says everything is kept does not let it be lost with a click: the page asks first there too", async ({ page }) => {
+    test.slow();
+    await yearTwo(page);
+    await typeSentences(page, `${TYPED} [fail]`);
+    await go(page).click();
+    await expect(retry(page)).toBeVisible({ timeout: 20_000 });
+    await page.getByRole("link", { name: "Назад кон Лекции" }).click();
+    await expect(leaveDialog(page)).toBeVisible();
+    await expect(leaveDialog(page)).toContainText("Ако излезете, она што го внесовте се губи.");
+    await leaveDialog(page).getByRole("button", { name: "Остани" }).click();
+    await expect(retry(page)).toBeVisible();
+    await backToForm(page).click();
+    await expect(textbox(page)).toHaveValue(`${TYPED} [fail]`);
+  });
+
+  test("an empty form is left without a question, in the drawer layout too", async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 700 });
+    await page.getByRole("button", { name: "Мени", exact: true }).click();
+    await menu(page).getByRole("link", { name: "Денес" }).click();
+    await expect(title(page)).toHaveText("Денес");
+    await expect(leaveDialog(page)).toHaveCount(0);
+  });
+});
+
 // ---- The draft ------------------------------------------------------------------------------------------------------
 
 test.describe("the draft page", () => {

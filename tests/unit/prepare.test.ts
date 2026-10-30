@@ -15,6 +15,7 @@ import {
   fileSize,
   firstProblem,
   focusKeyOf,
+  hasWork,
   materialProblemOf,
   showsEmphasisCount,
   sourceToKeep,
@@ -186,6 +187,22 @@ describe("a refusal of the material, said at part 2 (EC-LES-06, EC-LES-07)", () 
   });
 });
 
+describe("what the teacher would have to do again (leaving the form asks first)", () => {
+  const empty = { file: null, text: "", emphasis: "" };
+
+  test("a form with nothing typed or chosen as a document holds no work, however many years and kinds were picked", () => {
+    expect(hasWork(empty)).toBe(false);
+    expect(hasWork({ ...empty, text: "   \n " })).toBe(false);
+    expect(hasWork({ ...empty, emphasis: "  " })).toBe(false);
+  });
+
+  test("sentences, a document, or only the sentence of emphasis are work", () => {
+    expect(hasWork({ ...empty, text: "Равенки" })).toBe(true);
+    expect(hasWork({ ...empty, file: { name: "план.pdf" } })).toBe(true);
+    expect(hasWork({ ...empty, emphasis: "Повеќе примери." })).toBe(true);
+  });
+});
+
 describe("the sentence of emphasis (BR-LES-07)", () => {
   test("it is sent trimmed and cut at 200 characters, or not at all", () => {
     expect(emphasisOf("  Повеќе примери.  ")).toBe("Повеќе примери.");
@@ -251,6 +268,19 @@ describe("the words of the page", () => {
       expect(translate(locale, "school", "prepare.emphasis.count", { n: 170 })).toContain(String(EMPHASIS_MAX_CHARS));
       expect(translate(locale, "school", "prepare.emphasis.max")).toContain(String(EMPHASIS_MAX_CHARS));
     }
+  });
+
+  test("the third part says it is optional once, the draft says it is a suggestion, and the failure's second button does not say Back", () => {
+    for (const locale of ["mk", "en"] as const) {
+      expect(translate(locale, "school", "prepare.emphasis.hint")).not.toMatch(/не мора|do not have to/i);
+      expect(translate(locale, "school", "prepare.fail.change")).not.toBe(translate(locale, "school", "back"));
+      expect(translate(locale, "school", "draft.note.lead").length + translate(locale, "school", "draft.note.body").length).toBeLessThan(170);
+      expect(translate(locale, "school", "prepare.leave.form.body")).not.toBe(translate(locale, "school", "prepare.leave.body"));
+    }
+    expect(translate("mk", "school", "prepare.optional")).toBe("По желба");
+    // The year of a teacher with one year is said by its number alone, after "Година:".
+    expect(translate("mk", "school", "prepare.year.value", { n: 2, roman: "II" })).toBe("II");
+    expect(translate("mk", "university", "prepare.year.value", { n: 2, roman: "II" })).toBe("2");
   });
 
   test("the page is worded for a faculty too: groups, students", () => {

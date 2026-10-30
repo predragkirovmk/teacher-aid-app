@@ -3,11 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { leavesTo } from "@/lib/teacher/leave";
-import { useT } from "@/lib/teacher/i18n";
+import { useT, type Key } from "@/lib/teacher/i18n";
 import { ConfirmDialog } from "./ConfirmDialog";
 
 /**
- * Mounted only while the questions are being written, because leaving then loses the wait. A click on any of the app's own
+ * Mounted while leaving would lose something the teacher cannot get back without doing it again: the wait for the questions
+ * (what it says is `prepare.leave.body`), or a form that holds sentences, a document or a sentence of emphasis
+ * (`prepare.leave.form.body`). A click on any of the app's own
  * links (the menu, Back, the reminder of a running lesson) is held and the teacher is asked, with "Остани" as the answer in
  * hand; Yes goes where the link went. Closing the tab or reloading is the browser's own question (`beforeunload`), which a
  * page can only ask for, not word. The browser's Back button cannot be held by a page, so it is not.
@@ -16,7 +18,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
  * one having to know. A link that opens elsewhere (a new tab, a download), a click with a modifier key and a link to the
  * page itself are left alone.
  */
-export function LeaveGuard() {
+export function LeaveGuard({ body }: { body: Key }) {
   const { t } = useT();
   const router = useRouter();
   const [target, setTarget] = useState<string | null>(null);
@@ -48,7 +50,7 @@ export function LeaveGuard() {
     <ConfirmDialog
       open={target !== null}
       title={t("prepare.leave.title")}
-      body={t("prepare.leave.body")}
+      body={t(body)}
       stay={t("prepare.leave.stay")}
       confirm={t("prepare.leave.confirm")}
       onStay={() => setTarget(null)}

@@ -113,6 +113,13 @@ export function checkForm(input: FormInput): Problems {
   return problems;
 }
 
+/**
+ * Whether the form holds something the teacher put there by hand and would have to do again: sentences, a document, or the
+ * sentence of emphasis. Choosing a year or a way to add the material is not work. Leaving a form that has some asks first.
+ */
+export const hasWork = (form: { file: unknown; text: string; emphasis: string }): boolean =>
+  form.file !== null || form.text.trim() !== "" || form.emphasis.trim() !== "";
+
 /** The first part with a problem, top to bottom: where the focus goes. */
 export const firstProblem = (problems: Problems): Part | null => PARTS.find((part) => problems[part] !== undefined) ?? null;
 
