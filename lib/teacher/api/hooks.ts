@@ -6,9 +6,9 @@ import { authStatusOf, type AuthStatus, type EndReason } from "../guard";
 import { preparedLessons } from "../today";
 import { actions, useTeacher } from "../store";
 import { apiMode } from "./config";
-import { api } from "./client";
+import { api, type CallOptions } from "./client";
 import { toApiError } from "./errors";
-import { change, invalidate, mapQuery, resetQueries, seed, useQuery, type Query } from "./query";
+import { change, invalidate, mapQuery, resetQueries, seed, slotFor, useQuery, type Query } from "./query";
 import { endSession, useSessionEnd } from "./session";
 import type {
   ConsoleSnapshot,
@@ -187,11 +187,23 @@ export async function setFirstRunDone(): Promise<Me> {
 export const updateCourse = (courseId: Id, patch: CoursePatch): Promise<CourseSummary> =>
   change((a) => a.updateCourse(courseId, patch), ["courses", "dashboard"]);
 
-/** Add the material a lesson is made from: a document or typed sentences. Nothing is listed yet, so nothing is loaded again. */
-export const createSource = (input: SourceInput): Promise<SourceCreated> => change((a) => a.createSource(input));
+/**
+ * Add the material a lesson is made from: a document or typed sentences. Nothing is listed yet, so nothing is loaded again.
+ * A document takes a while; the `signal` is how the screen stops waiting for it.
+ */
+export const createSource = (input: SourceInput, options?: CallOptions): Promise<SourceCreated> =>
+  change((a) => a.createSource(input, options));
 
-/** Ask for a lesson. Takes a while: the AI writes it. */
-export const generateLesson = (request: GenerateRequest): Promise<LessonDraft> => change((a) => a.generateLesson(request));
+/**
+ * Ask for a lesson. Takes a while: the AI writes it. The draft is put straight into the cache, so the page it opens finds
+ * it without asking again; a reload of that page asks the API (EC-LES-09).
+ */
+export async function generateLesson(request: GenerateRequest, options?: CallOptions): Promise<LessonDraft> {
+  const draft = await change((a) => a.generateLesson(request, options));
+  // Nobody has read this draft yet, so there is no slot to seed: make it, with the draft in it.
+  slotFor(`drafts:${draft.id}`, (a) => a.getDraft(draft.id)).put(draft);
+  return draft;
+}
 
 /** One of the four refinements of a draft: a new draft. */
 export const refineDraft = (draftId: Id, refinement: Refinement): Promise<LessonDraft> =>

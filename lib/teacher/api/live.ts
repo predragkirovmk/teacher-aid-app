@@ -44,9 +44,11 @@ type Options = {
   /** A JSON body, or a FormData sent as it is (a file). */
   body?: unknown;
   timeout?: number;
+  /** The screen stopped waiting (Cancel, or the connection dropped): the request is abandoned and counts as a network failure. */
+  signal?: AbortSignal;
 };
 
-async function request<T>(method: string, path: string, { body, timeout = TIMEOUT_MS }: Options = {}): Promise<T> {
+async function request<T>(method: string, path: string, { body, timeout = TIMEOUT_MS, signal }: Options = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
   let payload: BodyInit | undefined;
   if (body instanceof FormData) {
@@ -58,6 +60,9 @@ async function request<T>(method: string, path: string, { body, timeout = TIMEOU
 
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), timeout);
+  const stop = () => abort.abort();
+  if (signal?.aborted) stop();
+  else signal?.addEventListener("abort", stop, { once: true });
   let res: Response;
   try {
     res = await fetch(`${apiBase}${path}`, { method, headers, body: payload, credentials: "include", signal: abort.signal });
@@ -66,6 +71,7 @@ async function request<T>(method: string, path: string, { body, timeout = TIMEOU
     throw new ApiError("network", { cause: e });
   } finally {
     clearTimeout(timer);
+    signal?.removeEventListener("abort", stop);
   }
   if (!res.ok) throw await parseErrorResponse(res);
   if (res.status === 204) return undefined as T;
@@ -96,13 +102,13 @@ export function createLiveApi(): TeacherApi {
     getDashboard: (courseId) => request<CourseDashboard>("GET", `/courses/${id(courseId)}/dashboard`),
     updateCourse: (courseId, patch) => request<CourseSummary>("PATCH", `/courses/${id(courseId)}`, { body: patch }),
 
-    createSource: (input) => {
-      if (input.kind === "typed") return request<SourceCreated>("POST", "/lessons/sources", { body: { text: input.text } });
+    createSource: (input, { signal } = {}) => {
+      if (input.kind === "typed") return request<SourceCreated>("POST", "/lessons/sources", { body: { text: input.text }, signal });
       const form = new FormData();
       form.append("file", input.file);
-      return request<SourceCreated>("POST", "/lessons/sources", { body: form, timeout: SLOW_TIMEOUT_MS });
+      return request<SourceCreated>("POST", "/lessons/sources", { body: form, timeout: SLOW_TIMEOUT_MS, signal });
     },
-    generateLesson: (req) => request<LessonDraft>("POST", "/lessons/generate", { body: req, timeout: SLOW_TIMEOUT_MS }),
+    generateLesson: (req, { signal } = {}) => request<LessonDraft>("POST", "/lessons/generate", { body: req, timeout: SLOW_TIMEOUT_MS, signal }),
     getDraft: (draftId) => request<LessonDraft>("GET", `/lessons/drafts/${id(draftId)}`),
     refineDraft: (draftId, refinement) =>
       request<LessonDraft>("POST", `/lessons/drafts/${id(draftId)}/refine`, { body: { refinement }, timeout: SLOW_TIMEOUT_MS }),

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { ApiError } from "@/lib/teacher/api/errors";
-import { createMock, createMockApi, memorySource } from "@/lib/teacher/api/mock";
+import { createMock, createMockApi, GENERATE_MS, memorySource, REFINE_MS, SOURCE_MS } from "@/lib/teacher/api/mock";
 import { freshState } from "@/lib/teacher/api/mock-state";
 import type { TeacherApi } from "@/lib/teacher/api/client";
 import type { Lesson, LessonDraft, QuestionKind } from "@/lib/teacher/api/types";
@@ -232,13 +232,59 @@ describe("making a lesson", () => {
     expect((await rejection(api.generateLesson({ source_id, subject_id: "math", year: 0 }))).code).toBe("validation_failed");
   });
 
-  test("the generation waits as the AI does, and the wait can be set", async () => {
+  test("the generation waits as the AI does, a document is read first, typed sentences are taken at once, and the wait can be set", async () => {
     const waits: number[] = [];
     const slow = createMockApi(source, { delay: async (ms) => void waits.push(ms) });
     const { source_id } = await slow.createSource({ kind: "typed", text: typed });
+    expect(waits).toEqual([]);
     const draft = await slow.generateLesson({ source_id, subject_id: "math", year: 2 });
     await slow.refineDraft(draft.id, "easier");
-    expect(waits).toEqual([1600, 900]);
+    expect(waits).toEqual([GENERATE_MS, REFINE_MS]);
+    // Long enough to see both parts of the wait on a preview.
+    expect(SOURCE_MS).toBeGreaterThanOrEqual(1000);
+    expect(GENERATE_MS).toBeGreaterThanOrEqual(5000);
+    await slow.createSource({ kind: "upload", file: file("план.pdf") });
+    expect(waits.at(-1)).toBe(SOURCE_MS);
+  });
+
+  test("a screen that stops waiting ends the call as a dropped connection, and nothing is kept", async () => {
+    const real = createMockApi(source);
+    const stop = new AbortController();
+    const reading = rejection(real.createSource({ kind: "upload", file: file("план.pdf") }, { signal: stop.signal }));
+    stop.abort("cancel");
+    expect((await reading).code).toBe("network");
+    expect(source.state().school.sources).toEqual([]);
+
+    const { source_id } = await api.createSource({ kind: "typed", text: typed });
+    const writing = new AbortController();
+    const asked = rejection(real.generateLesson({ source_id, subject_id: "math", year: 2 }, { signal: writing.signal }));
+    writing.abort("timeout");
+    expect((await asked).code).toBe("network");
+    expect(source.state().school.drafts).toEqual([]);
+    // Already stopped before it began.
+    expect((await rejection(real.generateLesson({ source_id, subject_id: "math", year: 2 }, { signal: writing.signal }))).code).toBe("network");
+  });
+
+  test("[fail-once] fails the first time for a source and works the second, so a retry can be seen to help", async () => {
+    const { source_id } = await api.createSource({ kind: "typed", text: `${typed} [fail-once]` });
+    const request = { source_id, subject_id: "math", year: 2 };
+    expect((await rejection(api.generateLesson(request))).code).toBe("generation_failed");
+    expect((await api.generateLesson(request)).source_id).toBe(source_id);
+    // Another source starts over; and a plain [fail] never gives in.
+    const other = await api.createSource({ kind: "typed", text: `${typed} [fail-once]` });
+    expect((await rejection(api.generateLesson({ ...request, source_id: other.source_id }))).code).toBe("generation_failed");
+  });
+
+  test("[slow] is an AI that never answers until the screen stops waiting", async () => {
+    const real = createMockApi(source);
+    const { source_id } = await api.createSource({ kind: "typed", text: `${typed} [slow]` });
+    const stop = new AbortController();
+    let settled = false;
+    const asked = rejection(real.generateLesson({ source_id, subject_id: "math", year: 2 }, { signal: stop.signal })).finally(() => (settled = true));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(settled).toBe(false);
+    stop.abort("timeout");
+    expect((await asked).code).toBe("network");
   });
 
   test("a draft is found again by its id, as after a reload", async () => {

@@ -6,7 +6,7 @@ import {
   TYPED_TEXT_MIN_CHARS,
 } from "../lessons";
 import type { SchoolType } from "../store";
-import type { DemoControls, SettledPromise, TeacherApi, Unsubscribe } from "./client";
+import type { CallOptions, DemoControls, SettledPromise, TeacherApi, Unsubscribe } from "./client";
 import { isProvider } from "../signin";
 import { ApiError, toApiError, type ValidationReason } from "./errors";
 import { BANK, bankLesson, bankQuestions, refineQuestions, type BankLesson } from "./mock-bank";
@@ -56,8 +56,9 @@ import type {
  * and has done nothing yet.
  *
  * What a real teacher cannot trigger, the demo can, so the screens' failure states can be tried:
- * a typed text or emphasis containing `[fail]` makes the AI fail, and a document named like a scan
- * (`scan` or `скен`) has no text in it.
+ * a typed text or emphasis containing `[fail]` makes the AI fail, `[fail-once]` makes it fail the first time and work the
+ * second (so a retry can be seen to help), `[slow]` makes it never answer (the screen gives up at its limit), and a document named like a scan (`scan` or `скен`) has no text in it. A computer that is offline cannot reach it,
+ * as the real API cannot be reached.
  *
  * The live lesson (the console, the class view, realtime) is not built yet: those calls answer `not_implemented`. What
  * Today needs is: `createSession` opens a lesson in the lobby, `getOpenSession` reports it, and a teacher has one open
@@ -142,8 +143,12 @@ const iso = (ms: number) => new Date(ms).toISOString();
 const notFound = () => new ApiError("not_found", { status: 404 });
 const invalid = (reason?: ValidationReason) => new ApiError("validation_failed", { status: 422, reason });
 
-/** How long the AI takes in the demo: long enough to see the wait, short enough not to be a chore. */
-export const GENERATE_MS = 1600;
+/**
+ * How long the demo takes: long enough to see both parts of the wait on a preview (reading a document, then writing the
+ * questions), short enough not to be a chore. Typed sentences are taken at once, as the real API would.
+ */
+export const SOURCE_MS = 1500;
+export const GENERATE_MS = 8000;
 export const REFINE_MS = 900;
 const MAX_DRAFTS = 20;
 const MAX_SOURCES = 20;
@@ -153,15 +158,41 @@ type Ctx = { type: SchoolType; persona: Persona; state: MockState; overlay: Over
 /** A school as a teacher who has just been invited sees it: the same classes and rosters, and no lesson has ever been run. */
 const withoutHistory = (world: World): World => ({ ...world, courses: world.courses.map((course) => ({ ...course, sessions: [] })) });
 
-/** The adapter alone, for the tests and the server render. */
-export const createMockApi = (source: MockSource, options: { delay?: (ms: number) => Promise<void> } = {}): TeacherApi =>
-  createMock(source, options).api;
+/** How the mock lets time pass. Tests give their own; the `signal` is how a screen stops waiting. */
+export type Delay = (ms: number, signal?: AbortSignal) => Promise<void>;
 
-export function createMock(
-  source: MockSource,
-  options: { delay?: (ms: number) => Promise<void> } = {},
-): { api: TeacherApi; demo: MockDemo } {
-  const delay = options.delay ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+/** A request the screen stopped waiting for fails as a dropped connection does. */
+const dropped = (signal?: AbortSignal) => new ApiError("network", { cause: signal?.reason });
+
+/** Wait `ms`, or fail the moment the screen stops waiting. */
+const wait: Delay = (ms, signal) =>
+  new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) return reject(dropped(signal));
+    const stop = () => {
+      clearTimeout(timer);
+      reject(dropped(signal));
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", stop);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", stop, { once: true });
+  });
+
+/** An answer that never comes, until the screen stops waiting. */
+const never = (signal?: AbortSignal) =>
+  new Promise<never>((_, reject) => {
+    if (signal?.aborted) return reject(dropped(signal));
+    signal?.addEventListener("abort", () => reject(dropped(signal)), { once: true });
+  });
+
+/** The adapter alone, for the tests and the server render. */
+export const createMockApi = (source: MockSource, options: { delay?: Delay } = {}): TeacherApi => createMock(source, options).api;
+
+export function createMock(source: MockSource, options: { delay?: Delay } = {}): { api: TeacherApi; demo: MockDemo } {
+  const delay = options.delay ?? wait;
+  // The sources that have failed once already, for `[fail-once]`. Kept only for as long as the page is open.
+  const failedOnce = new Set<string>();
 
   const ctx = (): Ctx => {
     const type = source.schoolType();
@@ -582,37 +613,52 @@ export function createMock(
         return courseSummary(ctx(), course);
       }),
 
-    createSource: (input) =>
-      run(() => {
-        const c = ctx();
-        let record;
-        if (input.kind === "typed") {
-          const text = input.text.trim();
-          if (text.length < TYPED_TEXT_MIN_CHARS) throw invalid("text_too_short");
-          record = { id: nextId(c.overlay, "src-n"), kind: "typed" as const, file_name: null, text: text.slice(0, 4000) };
-        } else {
-          const { file } = input;
-          const name = file.name.toLowerCase();
-          if (!LESSON_UPLOAD_EXTENSIONS.some((ext) => name.endsWith(ext))) throw invalid("file_type");
-          if (file.size === 0) throw invalid("empty");
-          if (file.size > LESSON_UPLOAD_MAX_BYTES) throw invalid("file_too_large");
-          // A scan is a picture of a page: there is no text to read (BR-LES-05).
-          if (/scan|скен/i.test(name)) throw invalid("no_text");
-          record = { id: nextId(c.overlay, "src-n"), kind: "upload" as const, file_name: file.name, text: file.name };
-        }
-        save(c, { ...c.overlay, counter: c.overlay.counter + 1, sources: [...c.overlay.sources, record].slice(-MAX_SOURCES) });
-        return { source_id: record.id };
-      }),
+    createSource: async (input, { signal }: CallOptions = {}) => {
+      if (isOffline()) throw new ApiError("network");
+      // A document is read on the server, which takes a moment; typed sentences are taken at once.
+      if (input.kind === "upload") {
+        await delay(SOURCE_MS, signal);
+        if (isOffline()) throw new ApiError("network");
+      }
+      const c = ctx();
+      let record;
+      if (input.kind === "typed") {
+        const text = input.text.trim();
+        if (text.length < TYPED_TEXT_MIN_CHARS) throw invalid("text_too_short");
+        record = { id: nextId(c.overlay, "src-n"), kind: "typed" as const, file_name: null, text: text.slice(0, 4000) };
+      } else {
+        const { file } = input;
+        const name = file.name.toLowerCase();
+        if (!LESSON_UPLOAD_EXTENSIONS.some((ext) => name.endsWith(ext))) throw invalid("file_type");
+        if (file.size === 0) throw invalid("empty");
+        if (file.size > LESSON_UPLOAD_MAX_BYTES) throw invalid("file_too_large");
+        // A scan is a picture of a page: there is no text to read (BR-LES-05).
+        if (/scan|скен/i.test(name)) throw invalid("no_text");
+        record = { id: nextId(c.overlay, "src-n"), kind: "upload" as const, file_name: file.name, text: file.name };
+      }
+      save(c, { ...c.overlay, counter: c.overlay.counter + 1, sources: [...c.overlay.sources, record].slice(-MAX_SOURCES) });
+      return { source_id: record.id };
+    },
 
-    generateLesson: async (request) => {
-      await delay(GENERATE_MS);
+    generateLesson: async (request, { signal }: CallOptions = {}) => {
+      if (isOffline()) throw new ApiError("network");
+      // The AI that never answers, so the longest wait, and the limit the screen gives up at, can be tried.
+      const asked = ctx().overlay.sources.find((s) => s.id === request.source_id);
+      if (/\[slow\]/i.test(`${asked?.text ?? ""} ${request.emphasis ?? ""}`)) await never(signal);
+      await delay(GENERATE_MS, signal);
+      if (isOffline()) throw new ApiError("network");
       const c = ctx();
       const found = c.overlay.sources.find((s) => s.id === request.source_id);
       if (!found) throw notFound();
       const subject = c.world.courses.map((course) => course.def.subject).find((s) => s.id === request.subject_id);
       if (!subject || !Number.isInteger(request.year) || request.year < 1 || request.year > 6) throw invalid();
       const emphasis = request.emphasis?.trim().slice(0, EMPHASIS_MAX_CHARS) || null;
-      if (/\[fail\]/i.test(`${found.text} ${emphasis ?? ""}`)) throw new ApiError("generation_failed", { status: 502 });
+      const words = `${found.text} ${emphasis ?? ""}`;
+      if (/\[fail\]/i.test(words)) throw new ApiError("generation_failed", { status: 502 });
+      if (/\[fail-once\]/i.test(words) && !failedOnce.has(found.id)) {
+        failedOnce.add(found.id);
+        throw new ApiError("generation_failed", { status: 502 });
+      }
 
       const bank = chooseBank(`${found.text} ${emphasis ?? ""} ${found.file_name ?? ""}`, request.year);
       const id = nextId(c.overlay, "d");

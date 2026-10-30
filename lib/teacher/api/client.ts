@@ -36,6 +36,9 @@ import type {
 
 export type Unsubscribe = () => void;
 
+/** What a slow call may be given: a way for the screen to stop waiting (Cancel, a connection that dropped, a limit that ran out). */
+export type CallOptions = { signal?: AbortSignal };
+
 /**
  * The teacher endpoints of spec 11.1 as the app sees them: the wire types in and out, failures
  * thrown as ApiError. Two adapters implement it, `mock` and `live`; screens never call it
@@ -71,10 +74,16 @@ export interface TeacherApi {
   updateCourse(courseId: Id, patch: CoursePatch): Promise<CourseSummary>;
 
   // ---- Making a lesson (F-03, F-04) ----
-  /** POST /lessons/sources: a PDF or .docx, or typed sentences. Rejects `validation_failed` with a reason (BR-LES-05, EC-LES-06). */
-  createSource(input: SourceInput): Promise<SourceCreated>;
-  /** POST /lessons/generate. Slow: the AI writes the lesson. Rejects `generation_failed` after the one retry (EC-LES-02). */
-  generateLesson(request: GenerateRequest): Promise<LessonDraft>;
+  /**
+   * POST /lessons/sources: a PDF or .docx, or typed sentences. Rejects `validation_failed` with a reason (BR-LES-05, EC-LES-06).
+   * A file is slow (BR-LES-09); the `signal` stops the wait, and the call then rejects `network`.
+   */
+  createSource(input: SourceInput, options?: CallOptions): Promise<SourceCreated>;
+  /**
+   * POST /lessons/generate. Slow: the AI writes the lesson (BR-LES-09). Rejects `generation_failed` after the one retry
+   * (EC-LES-02). The `signal` stops the wait, and the call then rejects `network`.
+   */
+  generateLesson(request: GenerateRequest, options?: CallOptions): Promise<LessonDraft>;
   /** PROPOSED, GET /lessons/drafts/{id}: a draft by id, so a reloaded review screen finds it again. */
   getDraft(draftId: Id): Promise<LessonDraft>;
   /** POST /lessons/drafts/{id}/refine: one of the four fixed refinements, no free text (FR-LES-08). Answers a new draft. */
