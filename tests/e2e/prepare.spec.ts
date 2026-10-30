@@ -413,6 +413,28 @@ test.describe("the wait", () => {
     expect(await sourcesMade(page)).toBe(1);
   });
 
+  test("no empty gap on the wait: the calm line comes under Cancel, and Cancel does not move when it comes", async ({ page }) => {
+    await yearTwo(page);
+    await typeSentences(page, `${TYPED} [slow]`);
+    await page.clock.install();
+    await go(page).click();
+    await expect(phase(page, "Ги пишуваме прашањата")).toBeVisible();
+    const sentence = (await page.getByText("Ова може да потрае до 3 минути.").boundingBox())!;
+    const before = (await cancel(page).boundingBox())!;
+    // The button is the next thing under the sentence, one gap apart (16px), not a line's room further.
+    expect(before.y - (sentence.y + sentence.height)).toBeLessThanOrEqual(20);
+    // The card ends one padding under the button while there is nothing more to say.
+    const card = (await page.locator(".waiting").boundingBox())!;
+    expect(card.y + card.height - (before.y + before.height)).toBeLessThanOrEqual(34);
+
+    await page.clock.runFor(21_000);
+    const line = page.getByText("Сè уште работиме на тоа.");
+    await expect(line).toBeVisible();
+    const after = (await cancel(page).boundingBox())!;
+    expect(after.y).toBe(before.y);
+    expect((await line.boundingBox())!.y).toBeGreaterThan(after.y + after.height);
+  });
+
   test("an AI that does not answer: a calm line at 20 seconds, and at 3 minutes it is a failure with the same retry", async ({ page }) => {
     await yearTwo(page);
     await typeSentences(page, `${TYPED} [slow]`);

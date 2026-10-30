@@ -110,7 +110,9 @@ button {
   box-shadow: 0 0 0 2px var(--shadow);
 }
 
-.sr {
+/* Hidden to the eye, still read out. The calm line's region on the wait is the same until it has a line to show. */
+.sr,
+.waiting__still:empty {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -1755,15 +1757,7 @@ button {
     opacity: 1;
   }
 }
-/* Room for the calm line before it comes, so the button under it does not move away from a hand that is going to it. A narrow window may wrap it onto a second line. */
-.waiting__still {
-  min-height: 1.75rem;
-}
-@media (max-width: 40rem) {
-  .waiting__still {
-    min-height: 3.5rem;
-  }
-}
+/* The calm line comes under Cancel, so nothing is held back for it: the card simply grows by a line when it comes. */
 .card .waiting__still p {
   color: var(--text);
   font-weight: 600;

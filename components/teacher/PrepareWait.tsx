@@ -12,7 +12,8 @@ export type Phase = "reading" | "writing";
  * The wait for the questions, on the page of the form so that nothing typed is lost. It names the part of the work that is
  * going on, as the calls come back (reading the document, then writing the questions; typed sentences have only the second),
  * says it can take up to 3 minutes, and has no percentage: nobody knows one. The dots are the only thing that moves, softly,
- * and they stand still when the computer asks for less motion.
+ * as long as the work goes on (they are a loop only because they mean "working"), and they stand still when the computer asks
+ * for less motion.
  */
 export function Waiting({ phase, withDocument, onCancel }: { phase: Phase; withDocument: boolean; onCancel: () => void }) {
   const { t } = useT();
@@ -30,13 +31,14 @@ export function Waiting({ phase, withDocument, onCancel }: { phase: Phase; withD
         <span />
       </div>
       <p>{t("prepare.wait.time")}</p>
-      {/* The region is there before the line is, so the line is read out when it comes. */}
-      <div role="status" className="waiting__still">
-        <StillWorking key={phase} />
-      </div>
       <button type="button" className="btn btn--secondary btn--big" onClick={onCancel}>
         {t("prepare.wait.cancel")}
       </button>
+      {/* Under the button, so that when the line comes the button stays where a hand may be going to it, and nothing is held
+          back in the meantime. The region is there before the line is, so the line is read out when it comes. */}
+      <div role="status" className="waiting__still">
+        <StillWorking key={phase} />
+      </div>
     </section>
   );
 }
