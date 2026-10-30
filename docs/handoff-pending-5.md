@@ -105,12 +105,14 @@ not change either way.
 ## D. Decisions taken (step 5)
 
 - Back on the new page names where the teacher came from. Today's link is now `/teacher/lessons/new?from=today` (as a lesson's card is),
-  and Back reads "Назад кон Денес" and returns there; anywhere else it reads "Назад кон Лекции". One assertion in `today.spec.ts` that
+  and Back reads "Назад кон Денес" and returns there; anywhere else it reads "Назад кон Лекции". The draft page carries it on
+  (`/teacher/lessons/drafts/[id]?from=today`), so its Back names the same place. One assertion in `today.spec.ts` that
   pinned the old address was updated. A sign-in that sends the teacher to the page drops the query (handoff-pending-3 G.4), so then Back
   names Lessons.
 - The wait ends with `router.replace` to the draft, so Back from the draft goes to where the teacher started, never to the wait.
-- Nothing typed is kept when the teacher leaves the page (it is only in the page's memory); Cancel, Back after a failure and a refused
-  source keep everything. The browser's own Back button during the wait cannot be held by a page and is not (the request is abandoned);
+- Nothing typed is kept when the teacher leaves the page (it is only in the page's memory), so the page asks first when the form holds
+  something the teacher typed or chose as a document (the design review, E below); Cancel, "Промени го внесеното" after a failure and
+  a refused source keep everything. The browser's own Back button during the wait cannot be held by a page and is not (the request is abandoned);
   the app's links ask first and closing the tab or reloading is the browser's own question.
 - Each of the two calls is given the whole 180 s (BR-LES-09) by the page, and a connection that drops ends the wait at once (the `offline`
   event), without waiting for the limit.
@@ -119,3 +121,24 @@ not change either way.
   generation of a source and works the second (a retry can be seen to help), and `[slow]` never answers (the 20-second line and the 3-minute
   failure can be seen). A computer that is offline cannot reach the mock either.
 - The first-run guide still ends on Today; its hand-off into this page is step 6's (`handoff-pending-3.md` G.1).
+
+## E. Design review of step 5 (what changed after the build; no change to what the API must provide)
+
+None of this adds a field, an endpoint or a rule to the API. It is here so the planner knows the screens are not as the build left them.
+
+- The draft page is questions first: a note of a line or two ("Ова е предлог за читање. ...") under the title replaces the "Наскоро" card, the
+  sentence the teacher asked to stress is one line, and the review summary closes the page, after the questions. Step 6 replaces the note
+  with the real controls and keeps the order.
+- One subject (and one year) is a plain line, "Предмет: Математика", never a chosen-looking row. Subjects offered to a teacher with several
+  stay rows.
+- The third part says it is optional once, in its badge ("По желба"); the words under it no longer say "Не мора".
+- The wait has no held-back gap: the calm line at 20 s comes under Cancel, so Cancel never moves. After a failure the second button reads
+  "Промени го внесеното" (it was "Назад", which sat beside the page's own Back that leaves the page).
+- Leaving a form that holds typed sentences, a chosen document or a sentence of emphasis, or the failure that says all of it is kept, asks
+  first ("Ако излезете, она што го внесовте се губи."); an empty form is left without a question. This is the "work saves itself" rule met by
+  asking until the page can keep a draft of the form itself (a list of drafts, A above, would not cover a form never sent).
+- Cancel and "Промени го внесеното" say, aloud only, that everything is kept; the failure's yellow button is read together with what went wrong.
+- Checked and left as built: the intro under the title and the line under the yellow button are 24px (large text, 7.3:1 and 4.4:1 against
+  the ground where they sit, 3:1 needed); "Чекор 2 од 2" is shown only for a document, where there are two steps; the skip link and the
+  sidebar seen out of place in the builder's full-page screenshots are an artifact of capturing a scrolled page (the skip link sits off screen,
+  and the sidebar is pinned to the full window), now pinned by a test.
