@@ -20,8 +20,9 @@ export type StartLesson = Pick<Lesson, "id" | "title" | "subject" | "year">;
 
 /**
  * "Започни час": which class is the lesson for, and go. It is shown when the teacher presses the button and is gone when it
- * closes, so every time it opens it is a fresh question. Cancel has the focus, so that Enter on a window just opened starts
- * nothing; Start is the yellow button. A teacher who already has a lesson running is told so instead, with the way back to it,
+ * closes, so every time it opens it is a fresh question. The focus is on the choices, where the keyboard has something to do
+ * at once (an arrow chooses) and where Enter starts nothing; Start is the yellow button. A teacher who already has a lesson
+ * running is told so instead, with the way back to it,
  * whether this screen knew or only the API did (`session_open`). Close it only with its own `close()`: the browser then gives
  * the focus back to the button that opened it.
  */
@@ -47,12 +48,16 @@ export function StartDialog({ lesson, onClose }: { lesson: StartLesson; onClose:
   const view = running ? startView(true, offered) : waiting ? "waiting" : failed ? "failed" : startView(false, offered);
   const chosen = chosenCourse(offered, picked);
 
-  // Open as a modal window the moment it is on screen, and put the focus on the safe button of whatever it shows.
+  // Open as a modal window the moment it is on screen, and put the focus where the first thing to do is: on the choices (on the
+  // one chosen already, else the first, which chooses nothing), else on the safe button of whatever it shows. The window then
+  // opens at its top, with the question and the first class in view, however much it is zoomed.
   useEffect(() => {
     const d = dialog.current;
     if (!d) return;
     if (!d.open) d.showModal();
-    d.querySelector<HTMLElement>("[data-first]")?.focus();
+    const choices =
+      view === "choose" ? (d.querySelector<HTMLElement>("input[type=radio]:checked") ?? d.querySelector<HTMLElement>("input[type=radio]")) : null;
+    (choices ?? d.querySelector<HTMLElement>("[data-first]"))?.focus();
   }, [view]);
 
   const close = () => dialog.current?.close();

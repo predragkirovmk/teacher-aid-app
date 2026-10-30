@@ -333,10 +333,35 @@ test.describe("starting a lesson", () => {
     const box = (await dialog.boundingBox())!;
     expect(box.y).toBeGreaterThanOrEqual(0);
     expect(box.y + box.height).toBeLessThanOrEqual(720);
-    // Start is the window's yellow button; Cancel is where the focus is, so Enter starts nothing.
+    // Start is the window's yellow button. The focus is on the choices, on the first one, which is not chosen by it, so Enter
+    // starts nothing.
     await expect(dialog.getByRole("button", { name: "Започни", exact: true })).toHaveClass(/btn--primary/);
-    await expect(dialog.getByRole("button", { name: "Откажи" })).toBeFocused();
+    await expect(rows.first()).toBeFocused();
     await expect(dialog.getByRole("button", { name: "Откажи" })).toHaveClass(/btn--secondary/);
+    await page.keyboard.press("Enter");
+    await expect(dialog).toBeVisible();
+    await expect(page).toHaveURL(/\/teacher$/);
+    for (const radio of await rows.all()) await expect(radio).not.toBeChecked();
+    expect(await savedSession(page)).toBeNull();
+  });
+
+  test("zoomed to 200% it opens at its top: the question and the first class are in view, and the buttons are a Tab away", async ({ page }) => {
+    // 200% on a 1280 x 720 window leaves 640 x 360 CSS pixels.
+    await page.setViewportSize({ width: 640, height: 360 });
+    await page.goto("/teacher");
+    await procenti(page).getByRole("button", { name: "Започни час" }).click();
+    const dialog = startDialog(page);
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "Со кој клас?" })).toBeInViewport();
+    await expect(dialog.getByText("Лекција: Проценти и пропорции")).toBeInViewport();
+    await expect(dialog.locator(".choice").first()).toBeInViewport();
+    await expect(dialog.getByRole("radio").first()).toBeFocused();
+    // The rest is reached by scrolling the window, and Tab takes the focus, and the view, to the buttons.
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Tab");
+    await expect(dialog.getByRole("button", { name: "Започни", exact: true })).toBeFocused();
+    await expect(dialog.getByRole("button", { name: "Започни", exact: true })).toBeInViewport();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
   });
 
   test("starting with nothing chosen says so and starts nothing", async ({ page }) => {
@@ -378,18 +403,15 @@ test.describe("starting a lesson", () => {
     await expect(procenti(page)).toHaveCount(0);
   });
 
-  test("works with the keyboard alone: Enter opens it on Cancel, arrows choose, Tab to Start, Enter starts", async ({ page }) => {
+  test("works with the keyboard alone: Enter opens it on the choices, arrows choose, Tab to Start, Enter starts", async ({ page }) => {
     await page.goto("/teacher");
     const opener = procenti(page).getByRole("button", { name: "Започни час" });
     await opener.focus();
     await page.keyboard.press("Enter");
     const dialog = startDialog(page);
-    await expect(dialog.getByRole("button", { name: "Откажи" })).toBeFocused();
-    // Shift+Tab twice reaches the choices, which are a group of radio buttons with none chosen: an arrow chooses.
-    await page.keyboard.press("Shift+Tab");
-    await expect(dialog.getByRole("button", { name: "Започни", exact: true })).toBeFocused();
-    await page.keyboard.press("Shift+Tab");
+    // The choices are a group of radio buttons with none chosen, and the focus is on the first: an arrow chooses.
     await expect(dialog.getByRole("radio", { name: /II-4/ })).toBeFocused();
+    for (const radio of await dialog.getByRole("radio").all()) await expect(radio).not.toBeChecked();
     await page.keyboard.press("ArrowDown");
     await expect(dialog.getByRole("radio", { name: /III-5/ })).toBeChecked();
     await page.keyboard.press("Tab");
