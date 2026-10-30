@@ -6,7 +6,7 @@ import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from "rea
 import { createSource, generateLesson, useCourses } from "@/lib/teacher/api/hooks";
 import type { Id } from "@/lib/teacher/api/types";
 import { EMPHASIS_MAX_CHARS } from "@/lib/teacher/lessons";
-import { useT } from "@/lib/teacher/i18n";
+import { useT, type Key } from "@/lib/teacher/i18n";
 import {
   checkFile,
   checkForm,
@@ -66,6 +66,9 @@ export function PrepareLesson() {
   const [refusal, setRefusal] = useState<unknown>(null);
   const [stage, setStage] = useState<Stage>({ name: "form" });
   const [focusOn, setFocusOn] = useState<{ key: FocusKey } | null>(null);
+  // Said aloud, and only aloud, when the form comes back by itself (Cancel, "Промени го внесеното"): the focus is on its button, which
+  // alone says nothing of what has happened.
+  const [said, setSaid] = useState<Key | null>(null);
 
   const subjects = useMemo(() => subjectsOf(courses.data ?? []), [courses.data]);
   const subject = chosenSubject(subjects, pickedSubject);
@@ -179,6 +182,7 @@ export function PrepareLesson() {
       return;
     }
     sourceId.current = null;
+    setSaid(null);
     setFocusOn({ key: "wait" });
     void start(null);
   };
@@ -187,15 +191,18 @@ export function PrepareLesson() {
     attempt.current++;
     stop.current?.abort("cancel" satisfies StopReason);
     setStage({ name: "form" });
+    setSaid("prepare.cancelled");
     setFocusOn({ key: "submit" });
   };
 
   const backToForm = () => {
     setStage({ name: "form" });
+    setSaid("prepare.kept");
     setFocusOn({ key: "submit" });
   };
 
   const retry = () => {
+    setSaid(null);
     setFocusOn({ key: "wait" });
     void start(sourceId.current);
   };
@@ -255,6 +262,10 @@ export function PrepareLesson() {
     <>
       {header}
       <div className="content">
+        {/* There before it has anything to say, so that what it says is read out. */}
+        <p role="status" className="sr">
+          {said ? t(said) : ""}
+        </p>
         {stage.name === "wait" && (
           <>
             <Waiting phase={stage.phase} withDocument={kind === "file"} onCancel={cancel} />
@@ -364,8 +375,11 @@ export function PrepareLesson() {
   );
 }
 
-/** A choice that is already made because there was only one: said plainly, looking like a chosen row. */
-function Stated({ text, detail }: { text: string; detail?: string }) {
+/**
+ * What there is no choice about because there is only one: said as a plain line, "Предмет: Математика", and not as a chosen
+ * row. A row with a tick and a white edge looks like something to press; this is only something to read.
+ */
+function Stated({ label, text, detail }: { label: string; text: string; detail?: string }) {
   return (
     <p className="prepare__stated">
       <span className="prepare__stated-label">{label}:</span> <span className="prepare__stated-value">{text}</span>

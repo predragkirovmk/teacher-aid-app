@@ -62,8 +62,8 @@ const WORDS: Record<Exclude<Failure, "other">, { title: Key; body: Key }> = {
 
 /**
  * The wait ended in a failure: what happened in plain words, that nothing is lost, and the way forward. The yellow button asks
- * again for the questions with the same material (a document already sent is not sent again); Back returns to the form with
- * everything as it was.
+ * again for the questions with the same material (a document already sent is not sent again); the other button returns to the
+ * form with everything as it was.
  */
 export function WaitFailure({ failure, error, onRetry, onBack }: { failure: Failure; error: unknown; onRetry: () => void; onBack: () => void }) {
   const { t, te } = useT();
@@ -71,14 +71,18 @@ export function WaitFailure({ failure, error, onRetry, onBack }: { failure: Fail
   const body = failure === "other" ? te(error) : t(WORDS[failure].body);
   return (
     <section className="card card--stack">
-      <Problem title={title}>{body}</Problem>
+      <Problem id="prepare-failure" title={title}>
+        {body}
+      </Problem>
       <div className="prepare__actions">
-        <button type="button" className="btn btn--primary btn--big" data-focus="failed" onClick={onRetry}>
+        {/* The focus goes to the way forward, which is read together with what went wrong. */}
+        <button type="button" className="btn btn--primary btn--big" data-focus="failed" aria-describedby="prepare-failure" onClick={onRetry}>
           <ArrowClockwiseIcon size={24} weight="bold" aria-hidden="true" />
           {t("error.retry")}
         </button>
+        {/* Not "Назад": the page has a Back of its own, which leaves it. */}
         <button type="button" className="btn btn--secondary btn--big" onClick={onBack}>
-          {t("back")}
+          {t("prepare.fail.change")}
         </button>
       </div>
     </section>

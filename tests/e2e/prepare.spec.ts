@@ -19,7 +19,7 @@ const yellow = (page: Page) => page.locator(".btn--primary:visible");
 const go = (page: Page) => page.getByRole("button", { name: "Подготви прашања", exact: true });
 const cancel = (page: Page) => page.getByRole("button", { name: "Откажи", exact: true });
 const retry = (page: Page) => page.getByRole("button", { name: "Обиди се повторно", exact: true });
-const backToForm = (page: Page) => page.getByRole("button", { name: "Назад", exact: true });
+const backToForm = (page: Page) => page.getByRole("button", { name: "Промени го внесеното", exact: true });
 // Inside the page: Next keeps an empty alert of its own, to announce a new page.
 const alerts = (page: Page) => page.locator("main").getByRole("alert");
 const textbox = (page: Page) => page.getByRole("textbox", { name: "Напишете неколку реченици за темата" });
@@ -327,6 +327,8 @@ test.describe("the wait", () => {
     await expect(phase(page, "Ги пишуваме прашањата")).toBeVisible();
     await cancel(page).click();
     await expect(go(page)).toBeFocused();
+    // The focus lands on a button that says nothing of what happened, so the form says it, aloud only.
+    await expect(page.getByRole("status").filter({ hasText: "Откажано. Сè што внесовте е сочувано." })).toHaveCount(1);
     await expect(page.getByRole("radio", { name: /^II година/ })).toBeChecked();
     await expect(page.getByRole("radio", { name: /^Неколку реченици/ })).toBeChecked();
     await expect(textbox(page)).toHaveValue(TYPED);
@@ -359,11 +361,17 @@ test.describe("the wait", () => {
     await expect(retry(page)).toBeFocused();
     await expect(yellow(page)).toHaveCount(1);
     await expect(backToForm(page)).toHaveClass(/btn--secondary/);
+    // The focus is on the way forward, which is read together with what went wrong; and there is no second "Назад" beside the
+    // page's own Back, which leaves the page.
+    await expect(retry(page)).toHaveAccessibleDescription(/Не успеавме да ги напишеме прашањата.*Обидете се повторно\./);
+    await expect(page.getByRole("button", { name: "Назад", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Назад кон Лекции" })).toBeVisible();
 
     await backToForm(page).click();
     await expect(textbox(page)).toHaveValue(`${TYPED} [fail]`);
     await expect(page.getByRole("radio", { name: /^II година/ })).toBeChecked();
     await expect(go(page)).toBeFocused();
+    await expect(page.getByRole("status").filter({ hasText: "Сè што внесовте е сочувано." })).toHaveCount(1);
   });
 
   test("a retry after the questions failed asks again with the same document: no second upload, no second reading", async ({ page }) => {
