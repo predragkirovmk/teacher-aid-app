@@ -553,6 +553,16 @@ button {
   }
 }
 
+/* A card that is one or two lines of words, not a place of its own: less air, so it does not push the work down. */
+.card--compact {
+  padding: var(--sp-2) var(--sp-3);
+}
+.card__icon--small {
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+}
+
 /* ---- buttons ---- */
 .btn {
   display: inline-flex;
@@ -1221,6 +1231,33 @@ button {
 }
 
 /* A section of a page: a heading on the ground (28px, so white is fine there) and what it holds. */
+/* The draft's note and the sentence the teacher asked to stress: a line or two each, above the questions and not in front of them. */
+.draft__note {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.card .draft__note p {
+  max-width: 48rem;
+}
+.draft__note strong {
+  color: var(--text);
+}
+.draft__emphasis {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem var(--sp-2);
+}
+.card.draft__emphasis h2 {
+  font-size: var(--fs-h3);
+}
+/* What the teacher typed may be one long word or a link: it breaks, and the page does not grow sideways. */
+.card.draft__emphasis p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .section__title {
   margin: 0 0 var(--sp-2);
   font-family: var(--font-display);

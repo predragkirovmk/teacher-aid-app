@@ -17,8 +17,12 @@ export const lessonUrl = (lessonId: Id, from?: typeof FROM_TODAY): string =>
 /** The page that prepares a lesson; it too is told where the teacher came from, so its Back can go there. */
 export const newLessonUrl = (from?: typeof FROM_TODAY): string => `${NEW_LESSON}${from ? `?from=${from}` : ""}`;
 
-/** A lesson that has been made and not saved yet: where the questions of a generation are read, and found again after a reload. */
-export const draftUrl = (draftId: Id): string => `${LESSONS}/drafts/${encodeURIComponent(draftId)}`;
+/**
+ * A lesson that has been made and not saved yet: where the questions of a generation are read, and found again after a reload.
+ * It carries where the teacher started (`?from=today`) as a lesson's page does, so its Back can go there.
+ */
+export const draftUrl = (draftId: Id, from?: typeof FROM_TODAY): string =>
+  `${LESSONS}/drafts/${encodeURIComponent(draftId)}${from ? `?from=${from}` : ""}`;
 
 /** The live lesson of a session: the console. Step 7 builds it; until then it says it is coming. */
 export const liveUrl = (sessionId: Id): string => `/teacher/live/${encodeURIComponent(sessionId)}`;

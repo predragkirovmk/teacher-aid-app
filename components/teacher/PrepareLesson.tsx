@@ -29,7 +29,7 @@ import {
   type Problems,
   type StopReason,
 } from "@/lib/teacher/prepare";
-import { backFromLesson, draftUrl } from "@/lib/teacher/routes";
+import { backFromLesson, draftUrl, FROM_TODAY } from "@/lib/teacher/routes";
 import { romanYear } from "@/lib/teacher/format";
 import { Choices } from "./Choices";
 import { LeaveGuard } from "./LeaveGuard";
@@ -51,7 +51,8 @@ type Stage = { name: "form" } | { name: "wait"; phase: Phase } | { name: "failed
 export function PrepareLesson() {
   const { t } = useT();
   const router = useRouter();
-  const back = backFromLesson(useSearchParams().get("from"));
+  const from = useSearchParams().get("from");
+  const back = backFromLesson(from);
   const courses = useCourses();
 
   const [pickedSubject, setPickedSubject] = useState<Id | null>(null);
@@ -147,7 +148,7 @@ export function PrepareLesson() {
       const draft = await within(() => generateLesson({ source_id: have!, subject_id: subject, year, emphasis: emphasisOf(emphasis) }, { signal: ctl.signal }));
       if (mine !== attempt.current) return;
       // The wait is not a place to come back to: Back from the draft goes to where the teacher started.
-      router.replace(draftUrl(draft.id));
+      router.replace(draftUrl(draft.id, from === FROM_TODAY ? FROM_TODAY : undefined));
     } catch (e) {
       const why = stoppedFor();
       if (mine !== attempt.current || why === "cancel" || why === "leave") return;

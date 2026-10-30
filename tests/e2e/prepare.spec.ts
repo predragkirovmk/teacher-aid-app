@@ -292,7 +292,7 @@ test.describe("the wait", () => {
     await expect(page.locator("main").getByText(/\d\s*%/)).toHaveCount(0);
 
     await expect(title(page)).toHaveText("Квадратни равенки", { timeout: 20_000 });
-    await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d\d+$/);
+    await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d\d+\?from=today$/);
     // Back from the draft goes to where the teacher started, not to the wait.
     await page.goBack();
     await expect(page).toHaveURL(/\/teacher$/);
@@ -500,11 +500,11 @@ test.describe("the draft page", () => {
     await typeSentences(page);
     await emphasis(page).fill("Повеќе примери.");
     await go(page).click();
-    await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d\d+$/, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d\d+(\?from=today)?$/, { timeout: 20_000 });
     await expect(title(page)).toHaveText("Квадратни равенки");
   }
 
-  test("is read only: the title, subject and year, what was stressed, the review summary and 5 to 8 questions in order", async ({ page }) => {
+  test("is read only: the title, subject and year, what was stressed, 5 to 8 questions in order, and the review summary after them", async ({ page }) => {
     await makeDraft(page);
     await expect(page.locator(".head__sub")).toHaveText("Математика · II година");
     await expect(page.getByRole("heading", { level: 2, name: "Што сакавте да се нагласи" })).toBeVisible();
@@ -515,19 +515,47 @@ test.describe("the draft page", () => {
     expect(await questions.count()).toBeLessThanOrEqual(8);
     await expect(questions.first().getByRole("heading", { level: 3 })).toHaveText(/^Прашање 1 од \d$/);
     await expect(questions.first().getByText("Точен одговор")).toBeVisible();
+    // The questions are what is read and checked: they come first, and the summary closes the page.
+    const summary = await page.getByRole("heading", { level: 2, name: "Резиме за повторување" }).boundingBox();
+    const last = await questions.last().boundingBox();
+    expect(summary!.y).toBeGreaterThan(last!.y + last!.height);
     // Nothing to press: it can only be read.
     await expect(page.locator("main").getByRole("button")).toHaveCount(0);
     await expect(page.locator("main textarea, main input")).toHaveCount(0);
   });
 
-  test("says honestly that editing, the four refinements and saving come next, and that it is not on Today yet", async ({ page }) => {
+  test("the questions start in the first screen of a laptop: the note is a line or two, and nothing stands in front of them", async ({ page }) => {
     await makeDraft(page);
-    const soon = page.locator(".card", { has: page.getByRole("heading", { level: 2, name: "Наскоро" }) });
-    await expect(soon).toContainText("Следно ќе можете да ги менувате прашањата");
-    await expect(soon).toContainText("полесни прашања, потешки прашања, повеќе прашања или пократко време");
-    await expect(soon).toContainText("Додека не е зачувана, не се појавува на Денес.");
+    const note = page.locator(".draft__note");
+    await expect(note).toBeVisible();
+    // 1280 x 720: the note and the sentence that was stressed, then the first question begins within the window.
+    expect((await note.boundingBox())!.height).toBeLessThanOrEqual(120);
+    const first = (await page.locator(".questions > li").first().boundingBox())!;
+    expect(first.y).toBeGreaterThan(0);
+    expect(first.y + 200).toBeLessThanOrEqual(720);
+    await expect(page.getByRole("heading", { level: 2, name: "Прашања" })).toBeInViewport();
+  });
+
+  test("says honestly, in a line or two, that it is a suggestion, that editing and saving come next, and that it is not on Today yet", async ({ page }) => {
+    await makeDraft(page);
+    const note = page.locator(".draft__note");
+    await expect(note).toContainText("Ова е предлог за читање.");
+    await expect(note).toContainText("Следно ќе можете да ги менувате прашањата и да ја зачувате лекцијата.");
+    await expect(note).toContainText("Дотогаш таа не се појавува на Денес.");
+    await expect(page.getByRole("heading", { level: 2, name: "Наскоро" })).toHaveCount(0);
+    // It started on the page that prepares a lesson, opened from Lessons, so that is where Back goes.
+    await page.getByRole("link", { name: "Назад кон Лекции", exact: true }).click();
+    await expect(title(page)).toHaveText("Лекции");
+  });
+
+  test("Back from the draft goes to where the teacher started: Today when it began there", async ({ page }) => {
+    await page.goto("/teacher");
+    await page.getByRole("link", { name: "Подготви лекција" }).click();
+    await makeDraft(page);
+    await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d\d+\?from=today$/);
     await page.getByRole("link", { name: "Назад кон Денес", exact: true }).click();
     await expect(title(page)).toHaveText("Денес");
+    // The draft is not a lesson yet, so Today does not list it.
     await expect(page.locator(".lessons > li")).toHaveCount(2);
   });
 
@@ -674,7 +702,7 @@ test.describe("wording", () => {
     await expect(page.getByRole("button", { name: "Cancel", exact: true })).toHaveClass(/btn--secondary/);
     await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d\d+$/, { timeout: 20_000 });
     await expect(page.locator(".head__sub")).toContainText("Линеарна алгебра · Year 2");
-    await expect(page.getByRole("link", { name: "Back to Today", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Back to Lessons", exact: true })).toBeVisible();
   });
 });
 
@@ -707,6 +735,23 @@ test.describe("zoomed", () => {
       expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
     });
   }
+
+  test("at 200% and 400% the draft, with its note and its questions, does not run off the side", async ({ page }) => {
+    test.slow();
+    await yearTwo(page);
+    await typeSentences(page);
+    await emphasis(page).fill("Повеќе примери со многу долг збор: " + "дискриминантата".repeat(4));
+    await go(page).click();
+    await expect(title(page)).toHaveText("Квадратни равенки", { timeout: 20_000 });
+    for (const viewport of [
+      { width: 640, height: 360 },
+      { width: 320, height: 180 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await expect(page.locator(".draft__note")).toBeVisible();
+      expect(await overflow(page)).toBeLessThanOrEqual(0);
+    }
+  });
 
   test("at 200% the wait and a failure fit too, and Cancel is reachable", async ({ page }) => {
     test.slow();

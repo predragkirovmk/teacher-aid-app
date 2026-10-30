@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { backFromLesson, FROM_TODAY, lessonUrl, liveUrl, showsOpenLesson } from "@/lib/teacher/routes";
+import { backFromLesson, draftUrl, FROM_TODAY, lessonUrl, liveUrl, showsOpenLesson } from "@/lib/teacher/routes";
 
 describe("where a lesson that is running is said in the frame", () => {
   test("on every page but Today, which has its band, and the running lesson's own screen", () => {
@@ -21,5 +21,11 @@ describe("the addresses of lessons", () => {
     expect(backFromLesson("today")).toEqual({ href: "/teacher", label: "back.today" });
     expect(backFromLesson(null)).toEqual({ href: "/teacher/lessons", label: "back.lessons" });
     expect(backFromLesson("elsewhere")).toEqual({ href: "/teacher/lessons", label: "back.lessons" });
+  });
+
+  test("a draft says where the teacher started too, so its Back goes there", () => {
+    expect(draftUrl("d 1")).toBe("/teacher/lessons/drafts/d%201");
+    expect(draftUrl("d1", FROM_TODAY)).toBe("/teacher/lessons/drafts/d1?from=today");
+    expect(backFromLesson("today")).toEqual({ href: "/teacher", label: "back.today" });
   });
 });
