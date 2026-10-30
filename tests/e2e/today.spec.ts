@@ -110,7 +110,7 @@ test.describe("Today with lessons prepared", () => {
     await expect(yellow(page)).toHaveCount(1);
     const prepare = page.getByRole("link", { name: "Подготви лекција" });
     await expect(prepare).toHaveClass(/btn--primary/);
-    await expect(prepare).toHaveAttribute("href", "/teacher/lessons/new");
+    await expect(prepare).toHaveAttribute("href", "/teacher/lessons/new?from=today");
     const [button, list] = [(await prepare.boundingBox())!, (await cards(page).first().boundingBox())!];
     expect(button.y).toBeLessThan(list.y);
     // Where the eye starts: under the title, inside the first screen of a 1280 x 720 window.

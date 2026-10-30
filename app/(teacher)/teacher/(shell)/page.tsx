@@ -12,7 +12,7 @@ import { StartDialog, type StartLesson } from "@/components/teacher/StartDialog"
 import { useOpenSession, usePreparedLessons, useTeacherName } from "@/lib/teacher/api/hooks";
 import { useDayPart, useToday } from "@/lib/teacher/day";
 import { useT } from "@/lib/teacher/i18n";
-import { LESSONS, NEW_LESSON } from "@/lib/teacher/routes";
+import { FROM_TODAY, LESSONS, newLessonUrl } from "@/lib/teacher/routes";
 import { shownOnToday } from "@/lib/teacher/today";
 import { dateParts } from "@/lib/teacher/when";
 
@@ -38,7 +38,7 @@ export default function TodayPage() {
   const { shown, more } = shownOnToday(lessons.data ?? []);
 
   const prepare = (
-    <Link href={NEW_LESSON} className={prepareClass}>
+    <Link href={newLessonUrl(FROM_TODAY)} className={prepareClass}>
       <PlusIcon size={24} weight="bold" aria-hidden="true" />
       {t("today.prepare")}
     </Link>
