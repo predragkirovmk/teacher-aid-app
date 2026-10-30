@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { firstName, initials, personName, schoolTypeOf } from "../format";
 import { authStatusOf, type AuthStatus, type EndReason } from "../guard";
 import { preparedLessons } from "../today";
@@ -72,6 +72,29 @@ export const useLibrary = (): Query<LibraryItem[]> => useQuery("library", (a) =>
 
 /** The teacher's open lesson, if there is one, so it can be ended from anywhere (FR-END-04). */
 export const useOpenSession = (): Query<OpenSession> => useQuery("open-session", (a) => a.getOpenSession());
+
+/**
+ * The open lesson, for the frame that stays on screen on every page. It is the one reader that never lets go of the answer,
+ * so it asks again by itself: when the teacher moves to another page (`page`) and when they come back to this window, since
+ * a lesson may have been started or ended in another one.
+ */
+export function useOpenSessionAnywhere(page: string): Query<OpenSession> {
+  const open = useOpenSession();
+  const lastPage = useRef(page);
+  useEffect(() => {
+    if (lastPage.current === page) return;
+    lastPage.current = page;
+    invalidate("open-session");
+  }, [page]);
+  useEffect(() => {
+    const lookAgain = () => {
+      if (document.visibilityState === "visible") invalidate("open-session");
+    };
+    document.addEventListener("visibilitychange", lookAgain);
+    return () => document.removeEventListener("visibilitychange", lookAgain);
+  }, []);
+  return open;
+}
 
 // ---- Who is signed in -----------------------------------------------------------------------------
 

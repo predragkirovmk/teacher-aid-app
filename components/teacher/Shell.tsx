@@ -19,10 +19,12 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import "@/lib/app/install";
 import { Mark } from "@/components/app/Mark";
 import { ConfirmDialog } from "@/components/teacher/ConfirmDialog";
-import { signOut, useAuth, useSchoolWording } from "@/lib/teacher/api/hooks";
+import { signOut, useAuth, useOpenSessionAnywhere, useSchoolWording } from "@/lib/teacher/api/hooks";
 import { useT, type Key } from "@/lib/teacher/i18n";
 import { useNarrow } from "@/lib/teacher/media";
+import { showsOpenLesson } from "@/lib/teacher/routes";
 import { signInUrl } from "@/lib/teacher/signin";
+import { OpenLesson } from "./OpenLesson";
 import { PublicFrame } from "./PublicFrame";
 
 type Destination = { href: string; label: Key; Icon: Icon };
@@ -43,8 +45,9 @@ const MORE: Destination[] = [
 const FOCUSABLE = "a[href], button:not([disabled])";
 
 /**
- * The frame of every page of a signed-in teacher: the sidebar and the top bar. Help is open to anyone, and without a teacher
- * it has no sidebar, because every place the sidebar leads to needs one.
+ * The frame of every page of a signed-in teacher: the sidebar and the top bar, and, while a lesson is running, the way back
+ * to it on every page that does not already say so. Help is open to anyone, and without a teacher it has no sidebar, because
+ * every place the sidebar leads to needs one.
  */
 export function Shell({ children }: { children: ReactNode }) {
   const { status } = useAuth();
@@ -56,6 +59,8 @@ function Frame({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { t, te } = useT();
   useSchoolWording();
+  const running = useOpenSessionAnywhere(pathname).data?.session ?? null;
+  const reminder = running && showsOpenLesson(pathname, running.id) ? running : null;
   const narrow = useNarrow();
   // The path the drawer was opened on, so moving to another page closes it without an effect.
   const [openAt, setOpenAt] = useState<string | null>(null);
@@ -121,7 +126,7 @@ function Frame({ children }: { children: ReactNode }) {
         {t("skip")}
       </a>
 
-      <header className="topbar" inert={open}>
+      <header className={reminder ? "topbar topbar--running" : "topbar"} inert={open}>
         <button
           ref={menuButton}
           type="button"
@@ -137,6 +142,7 @@ function Frame({ children }: { children: ReactNode }) {
           <Mark size={36} />
           <span className="brand__word">TeacherAid</span>
         </Link>
+        {reminder && <OpenLesson session={reminder} where="top" />}
       </header>
 
       <div
@@ -161,6 +167,8 @@ function Frame({ children }: { children: ReactNode }) {
         <nav aria-label={t("nav.main")}>
           <ul className="nav">{MAIN.map(row)}</ul>
         </nav>
+        {/* Under the four places, not above them: when it appears or goes the menu does not move under the pointer. */}
+        {reminder && <OpenLesson session={reminder} where="side" />}
         <nav className="sidebar__foot" aria-label={t("nav.more")}>
           <ul className="nav">
             {MORE.map(row)}

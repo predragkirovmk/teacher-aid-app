@@ -36,9 +36,10 @@ Today ("Денес"), the window that starts a lesson, `/teacher/lessons/[id]` (
    course whose subject is the lesson's. Whether the API also refuses a lesson whose subject is not the course's is the
    backend's call (the mock does not): the app works either way. A lesson or a course that is not the teacher's is `not_found`
    (BR-SEC-06), checked before `session_open`, as the mock does.
-6. `GET /sessions/open` is read on every visit to Today and to a lesson, and again when a start is refused `session_open`,
-   because another window may have started the lesson. Its `session` carries `lesson.title`, `class_name`, `subject_name`,
-   `started_at` and `state`, and `server_now`; that is all the band and the placeholder need ("Математика, II-4", the
+6. `GET /sessions/open` is read on every visit to Today and to a lesson, on every change of page (the frame shows the open
+   lesson everywhere, see 9), and again when a start is refused `session_open`, because another window may have started the
+   lesson. Its `session` carries `lesson.title`, `class_name`, `subject_name`, `started_at` and `state`, and `server_now`; that
+   is all the band and the placeholder need ("Математика, II-4", the
    lesson's title, "Трае 12 минути"). The minutes are `server_now - started_at` carried on by the computer's own clock, so a
    laptop whose clock is wrong still counts right. A lesson nobody ended (EC-SES-01) reads "Започна вчера" or "Започна пред 3
    дена" from the same two fields.
@@ -52,8 +53,12 @@ Today ("Денес"), the window that starts a lesson, `/teacher/lessons/[id]` (
 8. Ending a lesson is step 9. Until then the demo closes its open lesson from Settings ("Затвори го демо часот", the mock's own
    control, `demo.closeRunning`), and the placeholder offers no "Заврши го часот". Nothing for the API: `POST /sessions/{id}/end`
    is already in 11.5.
-9. The open-lesson indicator on every other page (EC-SES-01, FR-END-04: "End works from anywhere") is not built; Today shows it
-   and the other pages do not yet. It needs only `GET /sessions/open`.
+9. The open-lesson indicator on every other page (EC-SES-01, FR-END-04: "End works from anywhere") is built, in the sidebar on a
+   laptop and in the top bar where the sidebar is a drawer, with the class and the way back to the live lesson; Today shows its
+   band instead. It needs only `GET /sessions/open`, which the app now asks for on every change of page and when the teacher
+   comes back to the window (a lesson may have been started or ended in another window), besides when Today and the start
+   window ask. That is one small read per page change; if it should be cheaper, say so and the app can lean on the realtime
+   channel of the teacher instead.
 10. Optional, for a later step: the 409 of `session_open` could carry the id of the open session, so the window can offer the
     way back without asking `GET /sessions/open` again. The app does not need it.
 

@@ -90,6 +90,8 @@ const en = {
 
   "running.tag": "Lesson running",
   "running.back": "Return to the lesson",
+  "running.here.back": "Return",
+  "running.here.name": "Return to the lesson, {class}",
   "running.now": "Just started",
   "running.min1": "Running for 1 minute",
   "running.min": "Running for {n} minutes",
@@ -380,6 +382,8 @@ const mk: Record<Key, Entry> = {
 
   "running.tag": "Час во тек",
   "running.back": "Врати се на часот",
+  "running.here.back": "Врати се",
+  "running.here.name": "Врати се на часот, {class}",
   "running.now": "Штотуку започна",
   "running.min1": "Трае 1 минута",
   "running.min": "Трае {n} минути",

@@ -261,8 +261,9 @@ button {
     top: 0;
     z-index: 30;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--sp-2);
+    gap: var(--sp-1) var(--sp-2);
     min-height: 4.5rem;
     padding: var(--sp-1) var(--sp-2);
     background: var(--deep);
@@ -319,6 +320,74 @@ button {
     display: none;
   }
 }
+/*
+ * A lesson is running: said on every page but Today, in the sidebar on a laptop and in the top bar where the sidebar is a
+ * drawer. A white edge, the icon and the words make it stand out from the menu; it is never yellow (the yellow of a screen is
+ * one button's) and it does not move. The top bar then has room for a second row, so tabbing back up keeps clear of it, and
+ * in a window too short to spare it (a zoomed one) it scrolls away with the page instead of covering half of it.
+ */
+.running {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 2px solid var(--text);
+  border-radius: var(--r-m);
+  background: var(--panel);
+}
+.running__tag {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  line-height: 1.25;
+}
+.running__tag svg {
+  flex: none;
+}
+.running__back {
+  width: 100%;
+}
+.nowrap {
+  white-space: nowrap;
+}
+@media (min-width: 64rem) {
+  .running--top {
+    display: none;
+  }
+}
+@media (max-width: 63.9375rem) {
+  .running--side {
+    display: none;
+  }
+  .running--top {
+    flex: 1 1 18rem;
+    grid-auto-flow: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.25rem 0.25rem 0.25rem 0.75rem;
+  }
+  .running--top .running__tag {
+    align-items: center;
+  }
+  .running--top .running__back {
+    width: auto;
+  }
+  html:has(.topbar--running) {
+    scroll-padding-top: 9.5rem;
+  }
+}
+@media (max-width: 63.9375rem) and (max-height: 40rem) {
+  .topbar--running {
+    position: static;
+  }
+  html:has(.topbar--running) {
+    scroll-padding-top: 0;
+  }
+}
+
 /* A short window: the rows stay 56px, the space between them gives way. About 480px is enough. */
 @media (max-height: 40rem) {
   .sidebar {
@@ -1424,6 +1493,7 @@ button {
   .note-box,
   .lesson,
   .question,
+  .running,
   .option {
     border: 2px solid CanvasText;
   }
