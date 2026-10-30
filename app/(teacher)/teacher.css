@@ -353,6 +353,11 @@ button {
 .nowrap {
   white-space: nowrap;
 }
+/* A phrase that goes to the next line whole when it does not fit, and breaks inside only if it is wider than the line. */
+.keep {
+  display: inline-block;
+  max-width: 100%;
+}
 @media (min-width: 64rem) {
   .running--top {
     display: none;

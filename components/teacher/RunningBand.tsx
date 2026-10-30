@@ -50,7 +50,8 @@ export function RunningBand({ session, serverNow }: { session: NonNullable<OpenS
           {session.lesson.title}
           <span aria-hidden="true"> · </span>
           <span className="sr">. </span>
-          {how}
+          {/* How long stays in one piece: "Трае" at the end of a line and "12 минути" on the next is hard to read. */}
+          <span className="keep">{how}</span>
         </p>
       </div>
       <Link href={liveUrl(session.id)} prefetch={false} className="btn btn--primary">
