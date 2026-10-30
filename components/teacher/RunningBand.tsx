@@ -8,7 +8,6 @@ import { useRunningNow } from "@/lib/teacher/day";
 import { isOne } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
 import { liveUrl } from "@/lib/teacher/routes";
-import { courseLabel } from "@/lib/teacher/start";
 import { runningFor, sayWhen, type Running } from "@/lib/teacher/when";
 
 /** How long the lesson has been going, said as a person would. */
@@ -44,7 +43,9 @@ export function RunningBand({ session, serverNow }: { session: NonNullable<OpenS
           <BroadcastIcon size={28} weight="fill" aria-hidden="true" />
           {t("running.tag")}
         </p>
-        <h2 className="band__course">{courseLabel(session.subject_name, session.class_name)}</h2>
+        <h2 className="band__course">
+          {session.subject_name}, <span className="nowrap">{session.class_name}</span>
+        </h2>
         <p className="band__line">
           {session.lesson.title}
           <span aria-hidden="true"> · </span>

@@ -240,6 +240,22 @@ test.describe("Today with a lesson running", () => {
     await expect(cards(page).first().getByRole("heading", { level: 3 })).toHaveText("Проценти и пропорции");
   });
 
+  test("zoomed to 400% the band keeps its button inside it, the class is not broken at its hyphen, and nothing scrolls sideways", async ({ page }) => {
+    // 400% on a 1280 x 720 window leaves 320 x 180 CSS pixels; a taller one leaves the room to see the whole band.
+    await page.setViewportSize({ width: 320, height: 900 });
+    await page.goto("/teacher/settings");
+    await demoButton(page, "Симулирај час во тек").click();
+    await page.goto("/teacher");
+    const band = page.getByRole("region", { name: "Час во тек" });
+    await expect(band).toBeVisible();
+    const [bandBox, buttonBox] = [(await band.boundingBox())!, (await band.getByRole("link", { name: "Врати се на часот" }).boundingBox())!];
+    expect(buttonBox.x).toBeGreaterThanOrEqual(bandBox.x);
+    expect(buttonBox.x + buttonBox.width).toBeLessThanOrEqual(bandBox.x + bandBox.width);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+    await expect(band.getByRole("heading", { level: 2 })).toHaveText("Математика, IV-1");
+    expect(await band.locator(".band__course .nowrap").evaluate((el) => el.getClientRects().length)).toBe(1);
+  });
+
   test("the way back leads to the live lesson, which says it is coming", async ({ page }) => {
     await simulate(page);
     await page.getByRole("link", { name: "Врати се на часот" }).click();

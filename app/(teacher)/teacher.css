@@ -1192,8 +1192,10 @@ button {
   font-size: var(--fs-button);
   text-wrap: pretty;
 }
+/* The button keeps its size while it can and gives way when the line is narrower than it (a zoomed window), so it stays inside the band. */
 .band .btn {
-  flex: none;
+  flex: 0 1 auto;
+  max-width: 100%;
 }
 
 /* A section of a page: a heading on the ground (28px, so white is fine there) and what it holds. */
