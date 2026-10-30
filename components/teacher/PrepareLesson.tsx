@@ -272,7 +272,7 @@ export function PrepareLesson() {
                 {subjects.length === 1 ? (
                   <Stated text={subjects[0].name} />
                 ) : (
-                  <div className="prepare__tiles" data-focus="subject">
+                  <div className="prepare__tiles prepare__tiles--rows" data-focus="subject">
                     <Choices
                       name="subject"
                       labelledBy="prepare-subject"

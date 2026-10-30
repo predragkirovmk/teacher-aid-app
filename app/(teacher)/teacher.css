@@ -1539,6 +1539,10 @@ button {
   flex: 1 0 100%;
   margin-left: calc(28px + var(--sp-2));
 }
+/* Subjects have long names and there may be many: one under the other, so they read as a list and not as a ragged grid. */
+.prepare__tiles--rows .choices {
+  grid-template-columns: minmax(0, 1fr);
+}
 /* A choice that was made for the teacher because there was only one: it looks like a chosen row, and is not a control. */
 .card .prepare__stated {
   display: flex;
@@ -1711,9 +1715,14 @@ button {
     opacity: 1;
   }
 }
-/* Room for the calm line before it comes, so the button under it does not move away from a hand that is going to it. */
+/* Room for the calm line before it comes, so the button under it does not move away from a hand that is going to it. A narrow window may wrap it onto a second line. */
 .waiting__still {
-  min-height: 3.5rem;
+  min-height: 1.75rem;
+}
+@media (max-width: 40rem) {
+  .waiting__still {
+    min-height: 3.5rem;
+  }
 }
 .card .waiting__still p {
   color: var(--text);
