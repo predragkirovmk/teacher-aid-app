@@ -683,6 +683,7 @@ button {
 .dialog__body {
   margin: 0 0 var(--sp-3);
   color: var(--text-2);
+  text-wrap: pretty;
 }
 .dialog__actions {
   display: grid;
@@ -1120,6 +1121,7 @@ button {
   margin: 0;
   color: var(--text-2);
   font-size: var(--fs-button);
+  text-wrap: pretty;
 }
 .band .btn {
   flex: none;
@@ -1165,10 +1167,13 @@ button {
   font-weight: 700;
   line-height: var(--lh-tight);
   overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 .lesson__text p {
   margin: 0;
   color: var(--text-2);
+  /* A line that has to wrap does not leave one word alone on the second. */
+  text-wrap: pretty;
 }
 .lesson__actions {
   display: flex;
