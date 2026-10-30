@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { ApiError, API_ERROR_CODES, VALIDATION_REASONS } from "@/lib/teacher/api/errors";
+import { isOne } from "@/lib/teacher/format";
 import { dictionaries, errorKey, translate, type Key } from "@/lib/teacher/i18n";
 
 const keys = Object.keys(dictionaries.en) as Key[];
@@ -65,7 +66,8 @@ describe("school type wording", () => {
     expect(translate("en", "university", "start.title")).toBe("Which group?");
     expect(translate("mk", "school", "start.count", { n: 26 })).toBe("26 ученици");
     expect(translate("mk", "university", "start.count", { n: 26 })).toBe("26 студенти");
-    expect(translate("mk", "school", "start.count.one")).toBe("1 ученик");
+    expect(translate("mk", "school", "start.count.one", { n: 1 })).toBe("1 ученик");
+    expect(translate("mk", "university", "start.count.one", { n: 21 })).toBe("21 студент");
     expect(translate("mk", "university", "start.noclass.body", { subject: "Физика" })).toContain("ни на една група");
   });
 
@@ -131,5 +133,24 @@ describe("error messages", () => {
         expect(text, key).not.toMatch(word("провери|обиди се|најави|избери|напиши|почекај")); // the informal imperative
       }
     }
+  });
+});
+
+describe("a count is in the singular when the language says so", () => {
+  const phrase = (locale: "mk" | "en", n: number, one: Key, many: Key) => translate(locale, "school", isOne(n, locale) ? one : many, { n });
+
+  test("in Macedonian every number that ends in 1 but 11 takes the singular, the others the plural", () => {
+    expect([1, 2, 5, 11, 12, 21, 26, 31, 101, 111].map((n) => phrase("mk", n, "start.count.one", "start.count"))).toEqual([
+      "1 ученик", "2 ученици", "5 ученици", "11 ученици", "12 ученици", "21 ученик", "26 ученици", "31 ученик", "101 ученик", "111 ученици",
+    ]);
+    expect([1, 7, 21].map((n) => phrase("mk", n, "lesson.questions.one", "lesson.questions.many"))).toEqual(["1 прашање", "7 прашања", "21 прашање"]);
+    expect([1, 12, 21, 61, 111].map((n) => phrase("mk", n, "running.min1", "running.min"))).toEqual(["Трае 1 минута", "Трае 12 минути", "Трае 21 минута", "Трае 61 минута", "Трае 111 минути"]);
+    expect([1, 15, 21].map((n) => phrase("mk", n, "question.timer.one", "question.timer"))).toEqual(["Време: 1 секунда", "Време: 15 секунди", "Време: 21 секунда"]);
+  });
+
+  test("in English only one is singular", () => {
+    expect([1, 2, 21].map((n) => phrase("en", n, "start.count.one", "start.count"))).toEqual(["1 student", "2 students", "21 students"]);
+    expect([1, 21].map((n) => phrase("en", n, "lesson.questions.one", "lesson.questions.many"))).toEqual(["1 question", "21 questions"]);
+    expect([1, 21].map((n) => phrase("en", n, "running.min1", "running.min"))).toEqual(["Running for 1 minute", "Running for 21 minutes"]);
   });
 });

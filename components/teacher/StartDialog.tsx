@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { startSession, useCourses, useOpenSession } from "@/lib/teacher/api/hooks";
 import type { Id, Lesson } from "@/lib/teacher/api/types";
+import { isOne } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
 import { liveUrl } from "@/lib/teacher/routes";
 import { chosenCourse, courseLabel, offeredCourses, onlyCourse, startView } from "@/lib/teacher/start";
@@ -25,7 +26,7 @@ export type StartLesson = Pick<Lesson, "id" | "title" | "subject" | "year">;
  * the focus back to the button that opened it.
  */
 export function StartDialog({ lesson, onClose }: { lesson: StartLesson; onClose: () => void }) {
-  const { t, te } = useT();
+  const { t, te, locale } = useT();
   const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
   const heading = useId();
@@ -126,7 +127,7 @@ export function StartDialog({ lesson, onClose }: { lesson: StartLesson; onClose:
             options={offered.map((c) => ({
               value: c.id,
               label: c.class.name,
-              detail: c.student_count === 1 ? t("start.count.one") : t("start.count", { n: c.student_count }),
+              detail: t(isOne(c.student_count, locale) ? "start.count.one" : "start.count", { n: c.student_count }),
             }))}
           />
           {asked && !chosen && <Problem id={pick}>{t("start.pick")}</Problem>}

@@ -4,7 +4,7 @@ import { CheckCircleIcon, TimerIcon } from "@phosphor-icons/react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useLesson } from "@/lib/teacher/api/hooks";
 import type { Question } from "@/lib/teacher/api/types";
-import { decimal } from "@/lib/teacher/format";
+import { decimal, isOne } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
 import { backFromLesson } from "@/lib/teacher/routes";
 import { LoadProblem } from "./LoadProblem";
@@ -76,7 +76,7 @@ export function LessonView() {
 }
 
 function QuestionCard({ question, n, total }: { question: Question; n: number; total: number }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   return (
     <li className="question">
       <div className="question__top">
@@ -85,7 +85,7 @@ function QuestionCard({ question, n, total }: { question: Question; n: number; t
           <span>{t(`question.kind.${question.kind}`)}</span>
           <span>
             <TimerIcon size={24} aria-hidden="true" />
-            {t("question.timer", { n: question.timer_seconds })}
+            {t(isOne(question.timer_seconds, locale) ? "question.timer.one" : "question.timer", { n: question.timer_seconds })}
           </span>
         </p>
       </div>

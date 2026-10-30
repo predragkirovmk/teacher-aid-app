@@ -43,3 +43,9 @@ export const romanYear = (year: number): string => ROMAN[year] || String(year);
 
 /** A number written with a point (the API's way, 3.2) as the interface writes it: Macedonian puts a comma ("3,5"). */
 export const decimal = (text: string, locale: Locale): string => (locale === "mk" ? text.replace(".", ",") : text);
+
+/**
+ * Whether a count is written in the singular. English: only 1. Macedonian: every number that ends in 1 but 11 ("21 ученик",
+ * "31 прашање", "41 минута"), where the plural belongs to the others ("26 ученици").
+ */
+export const isOne = (n: number, locale: Locale): boolean => (locale === "mk" ? n % 10 === 1 && n % 100 !== 11 : n === 1);

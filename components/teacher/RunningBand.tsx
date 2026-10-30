@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useId } from "react";
 import type { OpenSession } from "@/lib/teacher/api/types";
 import { useRunningNow } from "@/lib/teacher/day";
+import { isOne } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
 import { liveUrl } from "@/lib/teacher/routes";
 import { courseLabel } from "@/lib/teacher/start";
@@ -12,7 +13,7 @@ import { runningFor, sayWhen, type Running } from "@/lib/teacher/when";
 
 /** How long the lesson has been going, said as a person would. */
 export function useRunningWords(session: NonNullable<OpenSession["session"]>, serverNow: string): string {
-  const { t } = useT();
+  const { t, locale } = useT();
   const started = Date.parse(session.started_at);
   const now = useRunningNow(serverNow, session.started_at);
   const running: Running = runningFor(started, now ?? started);
@@ -20,7 +21,7 @@ export function useRunningWords(session: NonNullable<OpenSession["session"]>, se
     case "now":
       return t("running.now");
     case "minutes":
-      return running.n === 1 ? t("running.min1") : t("running.min", { n: running.n });
+      return t(isOne(running.n, locale) ? "running.min1" : "running.min", { n: running.n });
     case "time":
       return t("running.since.time", { time: running.time });
     case "when":

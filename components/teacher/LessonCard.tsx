@@ -4,7 +4,7 @@ import { FolderOpenIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useId } from "react";
 import type { LessonSummary } from "@/lib/teacher/api/types";
-import { romanYear } from "@/lib/teacher/format";
+import { isOne, romanYear } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
 import { FROM_TODAY, lessonUrl } from "@/lib/teacher/routes";
 import { relativeDay, sayWhen } from "@/lib/teacher/when";
@@ -19,9 +19,9 @@ export const kindLine = (t: ReturnType<typeof useT>["t"], lesson: Pick<LessonSum
  * each named. The title is what both buttons are about, for a screen reader that reads them one after another.
  */
 export function LessonCard({ lesson, today, onStart }: { lesson: LessonSummary; today: number | null; onStart: (lesson: LessonSummary) => void }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const title = useId();
-  const questions = lesson.question_count === 1 ? t("lesson.questions.one") : t("lesson.questions.many", { n: lesson.question_count });
+  const questions = t(isOne(lesson.question_count, locale) ? "lesson.questions.one" : "lesson.questions.many", { n: lesson.question_count });
   const changed = today === null ? null : t("lesson.changed", { when: sayWhen(t, relativeDay(Date.parse(lesson.updated_at), today)) });
   return (
     <li className="lesson">
