@@ -373,6 +373,50 @@ export function Motion() {
               tl.to({}, { duration: 1.2 });
             }
 
+            /* The director's report: page two fans out from behind page one as the pages come up the
+               screen (beside it on wide screens, below it on phones), then each page's figures
+               fill in once it is in view. Two layers move; their end places are the CSS layout. */
+            const report = document.querySelector<HTMLElement>("[data-report]");
+            const sheets = Array.from(report?.querySelectorAll<HTMLElement>("[data-sheet]") ?? []);
+            if (report && sheets.length === 2) {
+              const [one, two] = sheets;
+              const tuck = () => {
+                const a = box(one, report);
+                const b = box(two, report);
+                // Peeking out to the side on wide screens, below on phones (inside the screen's edge).
+                return { x: a.x - b.x + (narrow ? 0 : a.w * 0.06), y: a.y - b.y + a.h * 0.03 };
+              };
+              gsap
+                .timeline({
+                  defaults: { ease: "power2.out" },
+                  scrollTrigger: { trigger: report, start: "top 80%", end: "center center", scrub: fine ? 0.6 : 0.35, invalidateOnRefresh: true },
+                })
+                .fromTo(two, { x: () => tuck().x, y: () => tuck().y, rotation: 4 }, { x: 0, y: 0, rotation: 0 }, 0)
+                .fromTo(one, { rotation: -2 }, { rotation: 0 }, 0);
+
+              const S = (el: HTMLElement, sel: string) => Array.from(el.querySelectorAll<HTMLElement>(sel));
+              const share = (el: Element) => parseFloat((el as HTMLElement).style.getPropertyValue("--v"));
+              gsap.set(S(one, "[data-report-bar]"), { scaleY: 0 });
+              gsap.set(S(two, "[data-report-meter]"), { scaleX: 0 });
+              const first = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+              S(one, "[data-report-n]").forEach((b) => counter(first, [b], 0, Number(b.dataset.reportN), 1.1, 0));
+              first.to(S(one, "[data-report-bar]"), { scaleY: (_, el) => share(el), duration: 0.8, stagger: 0.05 }, 0.2);
+              const second = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+              second.to(S(two, "[data-report-meter]"), { scaleX: (_, el) => share(el), duration: 0.9, stagger: 0.08 });
+              ScrollTrigger.create({ trigger: one, start: "top 60%", once: true, onEnter: () => void first.play() });
+              ScrollTrigger.create({ trigger: two, start: "top 60%", once: true, onEnter: () => void second.play() });
+            }
+
+            /* What is never kept: once the list is in view, a line is drawn through each word in turn. */
+            const never = document.querySelector<HTMLElement>("[data-never]");
+            if (never) {
+              const strikes = Array.from(never.querySelectorAll<HTMLElement>("[data-strike]"));
+              gsap.set(strikes, { scaleX: 0 });
+              const tl = gsap.timeline({ paused: true });
+              tl.to(strikes, { scaleX: 1, duration: 0.5, ease: "power2.inOut", stagger: 0.22, delay: 0.6 });
+              ScrollTrigger.create({ trigger: never, start: "top 70%", once: true, onEnter: () => void tl.play() });
+            }
+
             // Reveals: each block rises into place as it enters, in reading order, once. Opacity only,
             // never visibility, so a link that has not been revealed yet can still take keyboard focus;
             // focusing it scrolls it into view, which reveals it.

@@ -1317,6 +1317,261 @@ body.v2 {
   }
 }
 
+/* ---------- The director's chapter (back on paper) ---------- */
+
+.chapter--director {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.chapter--director :focus-visible {
+  outline-color: var(--deep);
+}
+
+.chapter--director .chev {
+  color: var(--deep);
+}
+
+.chapter--director :is(.opener__body, .report__lead) {
+  color: var(--ink-2);
+}
+
+.kicker--deep {
+  color: var(--deep);
+}
+
+.report__lead {
+  max-width: 40ch;
+}
+
+/* Both pages side by side, as tall as the screen allows; on phones, one above the other. */
+.report__stage {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(16px, 2.6vw, 40px);
+  width: min(100%, calc((100svh - var(--nav-h) - 96px) / 1.414 * 2 + 40px));
+  margin: 0 auto;
+}
+
+@media (max-width: 767px) {
+  .report__stage {
+    grid-template-columns: minmax(0, 1fr);
+    width: min(100%, 460px);
+  }
+}
+
+/* Page two starts tucked behind page one. */
+.report__stage [data-sheet="1"] {
+  z-index: 1;
+}
+
+.motion .report__stage .sheet {
+  will-change: transform;
+}
+
+.notes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(24px, 3vw, 48px);
+  margin-top: clamp(3rem, 9vh, 6rem);
+}
+
+.notes li {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-2);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.notes__title {
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+/* Kept and never kept, in display type at the size of a scene's line. */
+.ledger {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: clamp(12px, 1.6vw, 24px);
+  row-gap: clamp(3rem, 8vh, 5rem);
+}
+
+.ledger__col {
+  grid-column: span 6;
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2.4vh, 1.5rem);
+}
+
+.ledger__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.ledger__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.14em;
+  font-family: var(--display);
+  /* Sized by its column, so the longest struck word stays on one line. */
+  font-size: clamp(1.75rem, 9.8cqi, 4.75rem);
+  font-weight: 800;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  color: var(--deep);
+}
+
+.ledger__col--never .ledger__list {
+  color: var(--ink-2);
+}
+
+.ledger__list span {
+  position: relative;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* Drawn across from the left by the motion layer: a transform, no layout. */
+.ledger__strike {
+  position: absolute;
+  left: -0.06em;
+  right: -0.06em;
+  top: 52%;
+  height: 0.085em;
+  border-radius: 999px;
+  background: var(--ink);
+  transform-origin: 0 50%;
+}
+
+@media (max-width: 767px) {
+  .ledger__col {
+    grid-column: 1 / -1;
+  }
+}
+
+.sees {
+  margin-top: clamp(4.5rem, 13vh, 8.5rem);
+}
+
+.sees__title {
+  margin-bottom: clamp(1.5rem, 4vh, 2.5rem);
+  font-family: var(--display);
+  font-size: clamp(1.75rem, 3vw, 2.75rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.sees dl {
+  margin: 0;
+}
+
+.sees dl > div {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: clamp(12px, 1.6vw, 24px);
+  padding-block: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.sees dl > div:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.sees dt {
+  grid-column: 1 / span 4;
+  font-family: var(--display);
+  font-size: clamp(1.125rem, 1.6vw, 1.5rem);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.sees dd {
+  grid-column: 5 / -1;
+  margin: 0;
+  color: var(--ink-2);
+}
+
+@media (max-width: 767px) {
+  .sees dt,
+  .sees dd {
+    grid-column: 1 / -1;
+  }
+
+  .sees dd {
+    margin-top: 4px;
+  }
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(12px, 1.6vw, 24px);
+  margin-top: clamp(4.5rem, 13vh, 8.5rem);
+}
+
+.facts li {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: clamp(24px, 2.4vw, 36px);
+  border-radius: 28px;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.facts svg {
+  margin-bottom: 8px;
+  color: var(--deep);
+}
+
+.facts h3 {
+  font-family: var(--display);
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+@media (max-width: 1099px) {
+  .notes,
+  .facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 599px) {
+  .notes,
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.data__foot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: clamp(3rem, 8vh, 5rem);
+}
+
+.data__foot .body {
+  color: var(--ink-2);
+}
+
 /* ---------- Results and booking ---------- */
 
 .book__copy {
@@ -2259,3 +2514,290 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
 
 
 
+
+/* The director's monthly report: two A4 sheets of white paper, type in cqw of the sheet. */
+.sheet {
+  position: relative;
+  aspect-ratio: 1 / 1.414;
+  overflow: hidden;
+  container-type: inline-size;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow:
+    0 0 0 1px oklch(23% 0.035 220 / 0.07),
+    0 2px 4px oklch(23% 0.035 220 / 0.05),
+    0 24px 56px -16px oklch(23% 0.035 220 / 0.24);
+}
+
+.sheet__in {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2.6cqw;
+  padding: 6.6cqw 7.5cqw 6cqw;
+  font-family: var(--text);
+  font-size: 3cqw;
+  line-height: 1.3;
+}
+
+.sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2cqw;
+  padding-bottom: 3cqw;
+  border-bottom: 0.25cqw solid var(--line);
+  font-size: 2.6cqw;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.sheet__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 1.4cqw;
+  font-family: var(--display);
+  font-size: 3.2cqw;
+  font-weight: 700;
+  color: var(--deep);
+}
+
+.sheet__brand svg {
+  width: 4.4cqw;
+  height: 4.4cqw;
+}
+
+.sheet__page {
+  padding: 0.8cqw 2.2cqw;
+  border-radius: 999px;
+  background: var(--paper-2);
+  white-space: nowrap;
+}
+
+/* Page two's tab is yellow: the page that stays with the director. */
+.sheet--private .sheet__page {
+  background: var(--yellow);
+  color: var(--shadow);
+}
+
+.sheet__title {
+  margin-top: 1.4cqw;
+  font-family: var(--display);
+  font-size: 7.4cqw;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.sheet__school {
+  margin-top: -1.8cqw;
+  color: var(--ink-2);
+}
+
+.sheet__summary {
+  padding: 2.6cqw 3.2cqw;
+  border-radius: 2cqw;
+  background: var(--paper-2);
+  font-size: 3.1cqw;
+  line-height: 1.4;
+}
+
+.sheet__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.8cqw 4cqw;
+}
+
+/* The label over the number, the change from last month beside it. */
+.sheet__stat {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 0.6cqw 2cqw;
+}
+
+.sheet__stat .sheet__label {
+  grid-column: 1 / -1;
+}
+
+.sheet__label {
+  font-size: 2.6cqw;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.sheet__n {
+  font-family: var(--display);
+  font-size: 7.6cqw;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--deep);
+}
+
+.sheet__n small {
+  font-family: var(--text);
+  font-size: 3cqw;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--ink-2);
+}
+
+.sheet__delta {
+  font-size: 2.6cqw;
+  font-weight: 700;
+  color: oklch(46% 0.1 170);
+}
+
+.sheet__trend {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6cqw;
+}
+
+.sheet__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.6cqw;
+  height: 9cqw;
+}
+
+.sheet__bars i {
+  flex: 1;
+  height: 100%;
+  border-radius: 0.8cqw 0.8cqw 0 0;
+  background: var(--line);
+  transform-origin: center bottom;
+  transform: scaleY(var(--v, 1));
+}
+
+.sheet__bars i.is-now {
+  background: var(--ground);
+}
+
+.sheet__cols {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 4cqw;
+}
+
+.sheet__cols ol {
+  display: flex;
+  flex-direction: column;
+  gap: 1cqw;
+  margin-top: 1.4cqw;
+  font-weight: 500;
+  counter-reset: rank;
+}
+
+.sheet__cols li {
+  display: flex;
+  gap: 1.6cqw;
+  counter-increment: rank;
+}
+
+.sheet__cols li::before {
+  content: counter(rank) ".";
+  min-width: 2.6cqw;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.sheet__foot {
+  margin-top: auto;
+  padding-top: 2.6cqw;
+  border-top: 0.25cqw solid var(--line);
+  font-size: 2.6cqw;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.sheet__foot--private {
+  color: var(--shadow);
+}
+
+.sheet__tag {
+  right: 7.5cqw;
+  bottom: 6.2cqw;
+  padding: 0.6cqw 2cqw;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-size: 2.4cqw;
+}
+
+.sheet__key {
+  display: flex;
+  gap: 4cqw;
+  font-size: 2.6cqw;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.sheet__key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 1.2cqw;
+}
+
+.sheet__key span::before {
+  content: "";
+  width: 2.4cqw;
+  height: 2.4cqw;
+  border-radius: 0.6cqw;
+  background: var(--line);
+}
+
+.sheet__key .is-you::before {
+  background: var(--deep);
+}
+
+.sheet__compare {
+  display: flex;
+  flex-direction: column;
+  gap: 5cqw;
+  margin-top: 2cqw;
+}
+
+.sheet__pair {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4cqw;
+}
+
+.sheet__meter {
+  display: grid;
+  grid-template-columns: 1fr 13cqw;
+  align-items: center;
+  gap: 2cqw;
+}
+
+.sheet__meter i {
+  height: 5cqw;
+  border-radius: 1cqw;
+  background: var(--line);
+  transform-origin: left center;
+  transform: scaleX(var(--v, 1));
+}
+
+.sheet__meter.is-you i {
+  background: var(--deep);
+}
+
+.sheet__meter b {
+  font-family: var(--display);
+  font-size: 3.6cqw;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.sheet__meter.is-you b {
+  color: var(--deep);
+}
+
+.sheet__note {
+  font-size: 2.6cqw;
+  color: var(--ink-2);
+}

@@ -102,7 +102,8 @@ the hero). Refresh them whenever an app changes:
   question, the locked-in answer, "Correct! +15" and the place in the quiz (Answer).
 - Still drawn, tagged "Example", because the teacher app has not built them yet: the live console
   and the projected class view (In class), the end of a lesson (After class), a class's page
-  (Results). Each becomes a capture once the teacher app has it.
+  (Results). Each becomes a capture once the teacher app has it. The director's monthly report
+  is drawn too, as two A4 sheets, because the backend that sends it is not built.
 
 ### Devices (drawn in HTML and CSS)
 - **Laptop**: aluminium-tinted lid and base, 16:10 screen. Holds the teacher console.
@@ -163,8 +164,10 @@ the hero). Refresh them whenever an app changes:
 | Build | Student opener: same phone, a different job (school Google or Microsoft sign-in) | Blue |
 | Build | Student, scan: plays once. The line sweeps the board's code, the check lands: present | Blue |
 | Climax | Student, answer: pinned for two and a half screens. The question lands with a timer, one tap answers, "Right +13" (10 and 3 for speed), then the class table, where "You" climbs from sixth to third | Blue |
-| Later | Trust: data, privacy, the director's monthly report | Paper |
-| Epilogue | Book a free lesson, footer | Paper |
+| Build | Director opener: nothing to learn (no account; the report arrives by email) | Paper |
+| Build | Director, report: page two (for the director only) fans out from behind page one as the pages come up, scrubbed; each page's figures fill once in view | Paper |
+| Build | Director, data: kept and never kept in display type, a line drawn through each never-kept word in turn; who sees what; four facts (EU, no names to the AI, no standing access, retention); a link to the students' privacy notice | Paper |
+| Epilogue | Book a free lesson, footer | Yellow, then paper |
 
 ## Final gate (step 5, 30 Oct 2026)
 

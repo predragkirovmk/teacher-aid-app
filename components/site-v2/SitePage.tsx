@@ -1,10 +1,13 @@
-import { ArrowRightIcon } from "@phosphor-icons/react/ssr";
+import { ArrowRightIcon, ClockCounterClockwiseIcon, GlobeHemisphereEastIcon, LockKeyIcon, SparkleIcon } from "@phosphor-icons/react/ssr";
 import type { SiteV2Dict } from "@/content/site-v2/types";
 import { ClassStack } from "./ClassStack";
 import { Board, Laptop, Phone } from "./Devices";
 import { Motion } from "./Motion";
 import { Nav } from "./Nav";
-import { BoardScreen, EndScreen, LiveConsoleScreen, PhoneShot, ResultsScreen, Shot } from "./Screens";
+import { BoardScreen, EndScreen, LiveConsoleScreen, PhoneShot, ReportSheets, ResultsScreen, Shot } from "./Screens";
+
+// One icon per data fact, in the order they are written: the EU, the AI, staff access, retention.
+const FACT_ICONS = [GlobeHemisphereEastIcon, SparkleIcon, LockKeyIcon, ClockCounterClockwiseIcon];
 
 /*
   The page, server-rendered and complete without JavaScript. Motion adds itself on top.
@@ -303,6 +306,133 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
                   ))}
                   <i className="answer__tap" data-ans-tap />
                 </Phone>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* The director's chapter, back on paper: the one who books reads what the school gets
+            each month and what happens to the students' data. */}
+        <div className="chapter chapter--director" id="director" data-theme="paper" tabIndex={-1}>
+          <section className="scene opener" aria-labelledby="director-title">
+            <div className="wrap">
+              <p className="kicker kicker--deep" data-reveal>
+                {t.director.label}
+              </p>
+              <h2 className="display" id="director-title" data-reveal>
+                {t.director.title}
+              </h2>
+              <p className="lead opener__body" data-reveal>
+                {t.director.body}
+              </p>
+            </div>
+          </section>
+
+          {/* The two pages of the report: page two fans out from behind page one as it comes up. */}
+          <section className="scene report" id={t.report.id} aria-labelledby="report-title">
+            <div className="wrap scene__head">
+              <p className="index index--ink" data-reveal>
+                <span>{t.report.index}</span> {t.report.label}
+              </p>
+              <h2 className="display" id="report-title" data-reveal>
+                {t.report.title}
+              </h2>
+              <p className="lead report__lead" data-reveal>
+                {t.report.body}
+              </p>
+            </div>
+            <div className="wrap">
+              <figure className="report__stage" role="img" aria-label={s.alt.report} data-report>
+                <ReportSheets s={s} lang={t.lang} />
+              </figure>
+              <ul className="notes">
+                {t.report.notes.map((n) => (
+                  <li key={n.title} data-reveal>
+                    <p className="notes__title">{n.title}</p>
+                    <p>{n.body}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+
+          {/* What is kept and what never is, in display type; the never list is struck through. */}
+          <section className="scene data" id={t.data.id} aria-labelledby="data-title">
+            <div className="wrap scene__head">
+              <p className="index index--ink" data-reveal>
+                <span>{t.data.index}</span> {t.data.label}
+              </p>
+              <h2 className="display" id="data-title" data-reveal>
+                {t.data.title}
+              </h2>
+              <p className="lead report__lead" data-reveal>
+                {t.data.body}
+              </p>
+            </div>
+            <div className="wrap ledger">
+              <div className="ledger__col">
+                <p className="ledger__title" data-reveal>
+                  {t.data.keptTitle}
+                </p>
+                <ul className="ledger__list" data-reveal>
+                  {t.data.kept.map((k) => (
+                    <li key={k}>{k}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="ledger__col ledger__col--never">
+                <p className="ledger__title" data-reveal>
+                  {t.data.neverTitle}
+                </p>
+                <ul className="ledger__list" data-reveal data-never>
+                  {t.data.never.map((k) => (
+                    <li key={k}>
+                      <span>
+                        {k}
+                        <i className="ledger__strike" data-strike />
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="note note--ink" data-reveal>
+                  {t.data.noAds}
+                </p>
+              </div>
+            </div>
+            <div className="wrap sees">
+              <h3 className="sees__title" data-reveal>
+                {t.data.seesTitle}
+              </h3>
+              <dl>
+                {t.data.sees.map((r) => (
+                  <div key={r.who} data-reveal>
+                    <dt>{r.who}</dt>
+                    <dd>{r.what}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+            <div className="wrap">
+              <ul className="facts">
+                {t.data.facts.map((f, i) => {
+                  const Icon = FACT_ICONS[i];
+                  return (
+                    <li key={f.title} data-reveal>
+                      <Icon size={32} weight="duotone" aria-hidden="true" />
+                      <h3>{f.title}</h3>
+                      <p>{f.body}</p>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="data__foot">
+                <p className="body" data-reveal>
+                  {t.data.requests}
+                </p>
+                <a className="chev" href={t.data.notice.href} data-reveal>
+                  {t.data.notice.label}
+                  <ArrowRightIcon size={18} weight="bold" aria-hidden="true" />
+                </a>
               </div>
             </div>
           </section>

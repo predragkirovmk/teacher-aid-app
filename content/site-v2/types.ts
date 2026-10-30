@@ -43,6 +43,22 @@ export type SiteV2Dict = {
   student: { label: string; title: string; body: string };
   scan: Scene & { note: string };
   answer: Scene & { steps: string[] };
+  /** The director's chapter: the monthly report, then what happens to the students' data. */
+  director: { label: string; title: string; body: string };
+  report: Scene & { notes: { title: string; body: string }[] };
+  data: Scene & {
+    keptTitle: string;
+    kept: string[];
+    neverTitle: string;
+    /** Struck through one after another by the motion layer. */
+    never: string[];
+    noAds: string;
+    seesTitle: string;
+    sees: { who: string; what: string }[];
+    facts: { title: string; body: string }[];
+    requests: string;
+    notice: { label: string; href: string };
+  };
   book: { title: string; body: string; cta: string; email: string; pilot: string };
   footer: { line: string; langLabel: string; langs: { href: string; label: string; lang: Lang }[] };
   screens: {
@@ -58,6 +74,7 @@ export type SiteV2Dict = {
       results: string;
       scan: string;
       answer: string;
+      report: string;
     };
     /** The teacher app's sidebar, for the screens that are still drawn. */
     console: { nav: string[] };
@@ -102,6 +119,29 @@ export type SiteV2Dict = {
       weakUnit: string;
       askedTitle: string;
       asked: string[];
+    };
+    /** The director's monthly PDF: page one to forward, page two for the director only. */
+    report: {
+      page1: string;
+      page2: string;
+      title: string;
+      school: string;
+      summary: string;
+      stats: { label: string; n: number; unit?: string; of?: string; delta: string }[];
+      trendLabel: string;
+      /** Lessons held per week, the last eight weeks. */
+      trend: number[];
+      topClassesTitle: string;
+      topClasses: string[];
+      topTeachersTitle: string;
+      topTeachers: string[];
+      noNames: string;
+      compareTitle: string;
+      compareNote: string;
+      compare: { label: string; you: number; avg: number; unit?: string }[];
+      you: string;
+      avg: string;
+      private: string;
     };
   };
 };

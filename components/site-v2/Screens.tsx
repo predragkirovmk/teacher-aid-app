@@ -4,8 +4,8 @@ import type { SiteV2Dict } from "@/content/site-v2/types";
 /*
   The devices' screens. Where an app has the screen, it is a capture of the real app (Shot, from
   scripts/site-v2-capture.mjs). Where the teacher app has not built it yet (the live console, the
-  class view, the end of a lesson, a class's page), it is drawn here, laid out like the app will be
-  and tagged "Example"; each is replaced by a capture once the app has it.
+  class view, the end of a lesson, a class's page, the director's report), it is drawn here, laid
+  out like the app will be and tagged "Example"; each is replaced by a capture once the app has it.
 
   The drawn screens are pictures, so their titles are styled text, not headings: they never enter
   the page's outline. Every screen renders in its final state; the motion layer sets the earlier states itself and
@@ -334,3 +334,108 @@ export function ResultsScreen({ s }: { s: S }) {
   );
 }
 
+/**
+ * The director's monthly PDF, drawn: page one is written to be forwarded as it is, page two is for
+ * the director only. Each sheet is A4 and a size container, so its type scales with it.
+ */
+export function ReportSheets({ s, lang }: { s: S; lang: "mk" | "en" }) {
+  const r = s.report;
+  const num = (n: number) => n.toLocaleString(lang === "mk" ? "mk-MK" : "en-GB");
+  const peak = Math.max(...r.trend);
+  const head = (page: string) => (
+    <div className="sheet__head">
+      <span className="sheet__brand">
+        <Mark size={16} />
+        TeacherAid
+      </span>
+      <span className="sheet__page">{page}</span>
+    </div>
+  );
+  return (
+    <>
+      <div className="sheet" data-sheet="1">
+        <div className="sheet__in">
+          {head(r.page1)}
+          <p className="sheet__title">{r.title}</p>
+          <p className="sheet__school">{r.school}</p>
+          <p className="sheet__summary">{r.summary}</p>
+          <div className="sheet__stats">
+            {r.stats.map((st) => (
+              <p key={st.label} className="sheet__stat">
+                <span className="sheet__label">{st.label}</span>
+                <span className="sheet__n">
+                  <b data-report-n={st.n}>{num(st.n)}</b>
+                  {st.unit}
+                  {st.of && <small> {st.of}</small>}
+                </span>
+                <span className="sheet__delta">{st.delta}</span>
+              </p>
+            ))}
+          </div>
+          <div className="sheet__trend">
+            <p className="sheet__label">{r.trendLabel}</p>
+            <span className="sheet__bars">
+              {r.trend.map((v, i) => (
+                // The last four weeks are this month.
+                <i key={i} className={i >= r.trend.length - 4 ? "is-now" : undefined} data-report-bar style={{ "--v": v / peak } as React.CSSProperties} />
+              ))}
+            </span>
+          </div>
+          <div className="sheet__cols">
+            <div>
+              <p className="sheet__label">{r.topClassesTitle}</p>
+              <ol>
+                {r.topClasses.map((c) => (
+                  <li key={c}>{c}</li>
+                ))}
+              </ol>
+            </div>
+            <div>
+              <p className="sheet__label">{r.topTeachersTitle}</p>
+              <ol>
+                {r.topTeachers.map((c) => (
+                  <li key={c}>{c}</li>
+                ))}
+              </ol>
+            </div>
+          </div>
+          <p className="sheet__foot">{r.noNames}</p>
+        </div>
+        <span className="scr-tag sheet__tag">{s.example}</span>
+      </div>
+
+      <div className="sheet sheet--private" data-sheet="2">
+        <div className="sheet__in">
+          {head(r.page2)}
+          <p className="sheet__title">{r.compareTitle}</p>
+          <p className="sheet__school">{r.school}</p>
+          <p className="sheet__key">
+            <span className="is-you">{r.you}</span>
+            <span>{r.avg}</span>
+          </p>
+          <div className="sheet__compare">
+            {r.compare.map((c) => {
+              const top = Math.max(c.you, c.avg);
+              return (
+                <div key={c.label} className="sheet__pair">
+                  <p className="sheet__label">{c.label}</p>
+                  {[c.you, c.avg].map((v, i) => (
+                    <span key={i} className={`sheet__meter${i === 0 ? " is-you" : ""}`}>
+                      <i data-report-meter style={{ "--v": v / top } as React.CSSProperties} />
+                      <b>
+                        {num(v)}
+                        {c.unit}
+                      </b>
+                    </span>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+          <p className="sheet__note">{r.compareNote}</p>
+          <p className="sheet__foot sheet__foot--private">{r.private}</p>
+        </div>
+      </div>
+    </>
+  );
+}
