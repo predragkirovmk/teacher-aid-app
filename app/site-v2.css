@@ -976,6 +976,13 @@ body.v2 {
   padding-block: var(--scene-y);
 }
 
+/* The nav's links land a chapter (and the booking) under the bar, which then takes its colour;
+   their tall top padding keeps the first line clear of it. */
+.chapter,
+.book {
+  scroll-margin-top: calc(var(--nav-h) * -1);
+}
+
 .opener {
   padding-top: calc(var(--scene-y) * 1.2);
 }

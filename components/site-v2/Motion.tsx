@@ -71,9 +71,10 @@ export function Motion() {
               if (!target) return;
               e.preventDefault();
               // Focus moves at once (keyboard users, the skip link); the page glides after it and lands
-              // the target just under the fixed bar, not behind it.
+              // the target just under the fixed bar: Lenis keeps the page's scroll-padding-top, the
+              // bar's height, so no offset is added here.
               target.focus({ preventScroll: true });
-              lenis.scrollTo(target, { offset: -(document.querySelector<HTMLElement>(".nav")?.offsetHeight ?? 0), duration: 1.3 });
+              lenis.scrollTo(target, { duration: 1.3 });
             };
             document.addEventListener("click", onAnchor);
 
