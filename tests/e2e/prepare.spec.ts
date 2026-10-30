@@ -90,8 +90,10 @@ test.describe("the form", () => {
     await expect(page.getByRole("radio", { name: /^Неколку реченици/ })).not.toBeChecked();
     await expect(fileInput(page)).toHaveCount(0);
     await expect(textbox(page)).toHaveCount(0);
-    // The third part says it is optional.
+    // The third part says it is optional once: in its badge, and not again in the words under it.
     await expect(page.getByText("По желба", { exact: true })).toBeVisible();
+    await expect(page.getByText("Не мора", { exact: false })).toHaveCount(0);
+    await expect(page.getByText(/^Една реченица, на пример:/)).toBeVisible();
 
     await expect(yellow(page)).toHaveCount(1);
     await expect(go(page)).toHaveClass(/btn--primary/);
