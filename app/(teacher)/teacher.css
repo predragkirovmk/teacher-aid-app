@@ -1212,6 +1212,10 @@ button {
 .skeleton--round {
   border-radius: 50%;
 }
+/* Sits where the heading of the list sits, so the cards come in at the height they will have. */
+.skeleton--heading {
+  margin-top: 0.5rem;
+}
 .lesson--skeleton .lesson__text {
   gap: 0.75rem;
 }

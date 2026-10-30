@@ -58,7 +58,7 @@ export default function TodayPage() {
         {loading ? (
           <Loading>
             <Bar width="14rem" height="3.5rem" className="skeleton--button" />
-            <Bar width="16rem" height="2.25rem" />
+            <Bar width="16rem" height="2rem" className="skeleton--heading" />
             {[0, 1].map((i) => (
               <div key={i} className="lesson lesson--skeleton" aria-hidden="true">
                 <div className="lesson__text">
