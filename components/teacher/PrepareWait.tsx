@@ -9,20 +9,20 @@ import { Problem } from "./Problem";
 export type Phase = "reading" | "writing";
 
 /**
- * The wait for the questions, on the page of the form so that nothing typed is lost. It names the part of the work that is
- * going on, as the calls come back (reading the document, then writing the questions; typed sentences have only the second),
- * says it can take up to 3 minutes, and has no percentage: nobody knows one. The dots are the only thing that moves, softly,
- * as long as the work goes on (they are a loop only because they mean "working"), and they stand still when the computer asks
- * for less motion.
+ * The wait for the questions. It names the part of the work that is going on (reading the document, which the form waits for,
+ * then writing the questions, which is a draft the page of the draft waits for; typed sentences have only the second), says it
+ * can take up to 3 minutes and that the page can be left, and has no percentage: nobody knows one. The dots are the only thing
+ * that moves, softly, as long as the work goes on (they are a loop only because they mean "working"), and they stand still when
+ * the computer asks for less motion. `title` is for a wait that is not the first: a refinement.
  */
-export function Waiting({ phase, withDocument, onCancel }: { phase: Phase; withDocument: boolean; onCancel: () => void }) {
+export function Waiting({ phase, withDocument, title, onCancel }: { phase: Phase; withDocument: boolean; title?: Key; onCancel: () => void }) {
   const { t } = useT();
   return (
     <section className="card card--stack waiting" aria-labelledby="waiting-title">
       {withDocument && <p className="waiting__step">{t("guide.step", { n: phase === "reading" ? 1 : 2, total: 2 })}</p>}
       <div aria-live="polite">
         <h2 id="waiting-title" tabIndex={-1} data-focus="wait">
-          {t(phase === "reading" ? "prepare.wait.reading" : "prepare.wait.writing")}
+          {t(title ?? (phase === "reading" ? "prepare.wait.reading" : "prepare.wait.writing"))}
         </h2>
       </div>
       <div className="waiting__dots" aria-hidden="true">
@@ -63,12 +63,24 @@ const WORDS: Record<Exclude<Failure, "other">, { title: Key; body: Key }> = {
 /**
  * The wait ended in a failure: what happened in plain words, that nothing is lost, and the way forward. The yellow button asks
  * again for the questions with the same material (a document already sent is not sent again); the other button returns to the
- * form with everything as it was.
+ * form with everything as it was, or, for a refinement that failed, to the questions as they were.
  */
-export function WaitFailure({ failure, error, onRetry, onBack }: { failure: Failure; error: unknown; onRetry: () => void; onBack: () => void }) {
+export function WaitFailure({
+  failure,
+  error,
+  onRetry,
+  onBack,
+  refining = false,
+}: {
+  failure: Failure;
+  error: unknown;
+  onRetry: () => void;
+  onBack: () => void;
+  refining?: boolean;
+}) {
   const { t, te } = useT();
-  const title = failure === "other" ? t("prepare.fail.other.title") : t(WORDS[failure].title);
-  const body = failure === "other" ? te(error) : t(WORDS[failure].body);
+  const title = refining ? t("refine.fail.title") : failure === "other" ? t("prepare.fail.other.title") : t(WORDS[failure].title);
+  const body = refining ? t("refine.fail.body") : failure === "other" ? te(error) : t(WORDS[failure].body);
   return (
     <section className="card card--stack">
       <Problem id="prepare-failure" title={title}>
@@ -82,7 +94,7 @@ export function WaitFailure({ failure, error, onRetry, onBack }: { failure: Fail
         </button>
         {/* Not "Назад": the page has a Back of its own, which leaves it. */}
         <button type="button" className="btn btn--secondary btn--big" onClick={onBack}>
-          {t("prepare.fail.change")}
+          {t(refining ? "refine.fail.keep" : "prepare.fail.change")}
         </button>
       </div>
     </section>

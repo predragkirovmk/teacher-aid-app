@@ -2,7 +2,7 @@
 
 import { FileTextIcon, PencilLineIcon } from "@phosphor-icons/react";
 import { useId, useState, type ChangeEvent, type DragEvent } from "react";
-import { LESSON_UPLOAD_EXTENSIONS } from "@/lib/teacher/lessons";
+import { LESSON_UPLOAD_EXTENSIONS, TYPED_TEXT_MAX_CHARS } from "@/lib/teacher/lessons";
 import { useT } from "@/lib/teacher/i18n";
 import { fileSize, type MaterialKind, type MaterialProblem } from "@/lib/teacher/prepare";
 import { Choices } from "./Choices";
@@ -12,8 +12,8 @@ import { Problem } from "./Problem";
 const ACCEPT = [...LESSON_UPLOAD_EXTENSIONS, "application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"].join(",");
 
 /** The problems about the document, and the ones about the typed sentences: each is said under the thing it is about. */
-const ABOUT_FILE: readonly MaterialProblem[] = ["no_file", "file_type", "file_too_large", "empty", "no_text"];
-const ABOUT_TEXT: readonly MaterialProblem[] = ["text_none", "text_too_short"];
+const ABOUT_FILE: readonly MaterialProblem[] = ["no_file", "file_type", "file_too_large", "empty", "no_text", "gone"];
+const ABOUT_TEXT: readonly MaterialProblem[] = ["text_none", "text_too_short", "text_too_long"];
 
 /**
  * Part 2, "Материјал": a document or a few typed sentences, as two large choices and, under the one chosen, what it needs.
@@ -34,7 +34,8 @@ export function MaterialPart({
 }: {
   kind: MaterialKind | null;
   onKind: (kind: MaterialKind) => void;
-  file: File | null;
+  /** A document chosen now, or one the form holds from before (a cancelled wait), whose size is then not always known. */
+  file: { name: string; size: number | null } | null;
   onFile: (file: File | null) => void;
   text: string;
   onText: (text: string) => void;
@@ -114,7 +115,7 @@ export function MaterialPart({
                 <div className="drop__text">
                   <p className="sr">{t("prepare.file.chosen")}</p>
                   <p className="drop__name">{file.name}</p>
-                  <p className="drop__size">{fileSize(file.size, locale)}</p>
+                  {file.size !== null && <p className="drop__size">{fileSize(file.size, locale)}</p>}
                 </div>
               </div>
             ) : (
@@ -161,10 +162,15 @@ export function MaterialPart({
             rows={6}
             data-focus="text"
             value={text}
+            maxLength={TYPED_TEXT_MAX_CHARS}
             aria-invalid={about(ABOUT_TEXT, "typed")}
             aria-describedby={about(ABOUT_TEXT, "typed") ? `${hintId} ${problemId}` : hintId}
             onChange={(e) => onText(e.target.value)}
           />
+          {/* The box takes no more than the API does, and says so when it has been reached. */}
+          <p role="status" className={text.length >= TYPED_TEXT_MAX_CHARS ? "prepare__count" : "sr"}>
+            {text.length >= TYPED_TEXT_MAX_CHARS ? t("prepare.typed.max") : ""}
+          </p>
           {about(ABOUT_TEXT, "typed") && <TextProblem problem={problem!} error={problemError} id={problemId} />}
         </div>
       )}
@@ -181,6 +187,7 @@ function FileProblem({ problem, error, id }: { problem: MaterialProblem; error: 
     case "file_too_large":
     case "empty":
     case "no_text":
+    case "gone":
       return (
         <Problem id={id} title={t(`prepare.problem.${problem}.title`)}>
           {t(`prepare.problem.${problem}.body`)}
@@ -198,10 +205,10 @@ function FileProblem({ problem, error, id }: { problem: MaterialProblem; error: 
 function TextProblem({ problem, error, id }: { problem: MaterialProblem; error: unknown; id: string }) {
   const { t, te } = useT();
   if (problem === "text_none") return <Problem id={id}>{t("prepare.problem.text_none")}</Problem>;
-  if (problem === "text_too_short")
+  if (problem === "text_too_short" || problem === "text_too_long")
     return (
-      <Problem id={id} title={t("prepare.problem.text_too_short.title")}>
-        {t("prepare.problem.text_too_short.body")}
+      <Problem id={id} title={t(`prepare.problem.${problem}.title`)}>
+        {t(`prepare.problem.${problem}.body`)}
       </Problem>
     );
   return (

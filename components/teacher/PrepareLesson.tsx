@@ -2,8 +2,9 @@
 
 import { SparkleIcon, UsersThreeIcon } from "@phosphor-icons/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
+import { startTransition, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import { createSource, generateLesson, useCourses } from "@/lib/teacher/api/hooks";
+import { isApiError } from "@/lib/teacher/api/errors";
 import type { Id } from "@/lib/teacher/api/types";
 import { EMPHASIS_MAX_CHARS } from "@/lib/teacher/lessons";
 import { useT, type Key } from "@/lib/teacher/i18n";
@@ -19,6 +20,7 @@ import {
   focusKeyOf,
   hasWork,
   materialProblemOf,
+  REQUEST_LIMIT_MS,
   showsEmphasisCount,
   sourceToKeep,
   subjectsOf,
@@ -30,7 +32,8 @@ import {
   type Problems,
   type StopReason,
 } from "@/lib/teacher/prepare";
-import { backFromLesson, draftUrl, FROM_TODAY } from "@/lib/teacher/routes";
+import { clearRefill, readRefill, rememberForm } from "@/lib/teacher/refill";
+import { backFromLesson, draftUrl, fromOf } from "@/lib/teacher/routes";
 import { romanYear } from "@/lib/teacher/format";
 import { Choices } from "./Choices";
 import { LeaveGuard } from "./LeaveGuard";
@@ -45,9 +48,10 @@ type Stage = { name: "form" } | { name: "wait"; phase: Phase } | { name: "failed
 
 /**
  * Prepare a lesson (F-03), on one page. The form has three numbered parts and one yellow button; pressing it checks what it
- * can on this side, then waits right here, in two honest phases that follow the real calls (a document is read, then the
- * questions are written), and ends on the draft page. Nothing is on another route, so nothing typed or chosen is ever lost:
- * Cancel, Back after a failure and a refusal of the material all return to the form as it was left.
+ * can on this side, reads the document if there is one (that is the wait here, with Cancel), asks for the questions, and goes on
+ * to the page of the draft, which is where the questions are waited for: writing them is a job that goes on without this page
+ * (BR-LES-08). Nothing typed or chosen is ever lost: Cancel, Back after a failure and a refusal of the material all return to the
+ * form as it was left, and cancelling the wait for the questions fills it in again (lib/teacher/refill.ts).
  */
 export function PrepareLesson() {
   const { t } = useT();
@@ -60,6 +64,8 @@ export function PrepareLesson() {
   const [pickedYear, setPickedYear] = useState<number | null>(null);
   const [kind, setKind] = useState<MaterialKind | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  // A document the API already holds, from a wait that was cancelled: shown by its name, and used again without being sent again.
+  const [held, setHeld] = useState<{ name: string; size: number | null; sourceId: Id } | null>(null);
   const [text, setText] = useState("");
   const [emphasis, setEmphasis] = useState("");
   const [problems, setProblems] = useState<Problems>({});
@@ -70,6 +76,26 @@ export function PrepareLesson() {
   // Said aloud, and only aloud, when the form comes back by itself (Cancel, "Промени го внесеното"): the focus is on its button, which
   // alone says nothing of what has happened.
   const [said, setSaid] = useState<Key | null>(null);
+
+  // The form as a cancelled wait left it, once the subjects are known (a subject that is not offered is not chosen).
+  const refilled = useRef(false);
+  useEffect(() => {
+    if (refilled.current || courses.status !== "ready") return;
+    refilled.current = true;
+    const refill = readRefill();
+    if (!refill) return;
+    clearRefill();
+    startTransition(() => {
+      setPickedSubject(refill.subject_id);
+      setPickedYear(refill.year);
+      setKind(refill.kind);
+      setText(refill.text);
+      setEmphasis(refill.emphasis);
+      if (refill.document) setHeld({ name: refill.document.name, size: refill.document.size, sourceId: refill.document.source_id });
+      setSaid(refill.note === "kept" ? "prepare.kept" : "prepare.cancelled");
+      setFocusOn({ key: "submit" });
+    });
+  }, [courses.status]);
 
   const subjects = useMemo(() => subjectsOf(courses.data ?? []), [courses.data]);
   const subject = chosenSubject(subjects, pickedSubject);
@@ -111,6 +137,7 @@ export function PrepareLesson() {
 
   const pickFile = (picked: File | null) => {
     setFile(picked);
+    setHeld(null);
     // A document that cannot be used is said so at once, where it was chosen; the page does not move the focus.
     const wrong = picked ? checkFile(picked) : null;
     setProblems((p) => ({ ...p, material: wrong ?? undefined }));
@@ -119,9 +146,10 @@ export function PrepareLesson() {
   };
 
   /**
-   * Ask for the questions. With a `source` (a retry) only the questions are asked for again. Everything the call needs is
-   * read here, from the form as it stands; a Cancel, a limit that runs out and a dropped connection all end it through the
-   * same signal, and the reason it carries says which.
+   * Ask for the questions. With a `source` (a retry, or a document held from before) only the questions are asked for. Everything
+   * the call needs is read here, from the form as it stands; a Cancel, a limit that runs out and a dropped connection all end it
+   * through the same signal, and the reason it carries says which. The questions come back as a draft, at once, and the page of the
+   * draft is where they are waited for.
    */
   const start = async (source: Id | null) => {
     if (subject === null || year === null) return;
@@ -129,9 +157,8 @@ export function PrepareLesson() {
     const ctl = new AbortController();
     stop.current = ctl;
     const stoppedFor = () => (ctl.signal.aborted ? (ctl.signal.reason as StopReason) : null);
-    // Each call gets the whole limit (BR-LES-09); the AI's wait is the long one.
-    const within = async <T,>(call: () => Promise<T>): Promise<T> => {
-      const timer = setTimeout(() => ctl.abort("timeout" satisfies StopReason), WAIT_LIMIT_MS);
+    const within = async <T,>(call: () => Promise<T>, limit: number): Promise<T> => {
+      const timer = setTimeout(() => ctl.abort("timeout" satisfies StopReason), limit);
       try {
         return await call();
       } finally {
@@ -142,20 +169,31 @@ export function PrepareLesson() {
     let have = source;
     try {
       if (have === null) {
-        // A document is read first; typed sentences are taken at once, so that part of the wait is skipped.
+        // A document is read first (it can take a while, BR-LES-09); typed sentences are taken at once, so that part is skipped.
         setStage({ name: "wait", phase: kind === "file" ? "reading" : "writing" });
         const input = kind === "file" && file ? ({ kind: "upload", file } as const) : ({ kind: "typed", text: text.trim() } as const);
-        have = (await within(() => createSource(input, { signal: ctl.signal }))).source_id;
+        have = (await within(() => createSource(input, { signal: ctl.signal }), WAIT_LIMIT_MS)).source_id;
         sourceId.current = have;
       }
       setStage({ name: "wait", phase: "writing" });
-      const draft = await within(() => generateLesson({ source_id: have!, subject_id: subject, year, emphasis: emphasisOf(emphasis) }, { signal: ctl.signal }));
+      const draft = await within(() => generateLesson({ source_id: have!, subject_id: subject, year, emphasis: emphasisOf(emphasis) }, { signal: ctl.signal }), REQUEST_LIMIT_MS);
       if (mine !== attempt.current) return;
+      // What was typed is not on the server: keep it for as long as the tab is open, in case the wait is cancelled.
+      rememberForm({ draft_id: draft.id, text, file_size: file?.size ?? held?.size ?? null });
       // The wait is not a place to come back to: Back from the draft goes to where the teacher started.
-      router.replace(draftUrl(draft.id, from === FROM_TODAY ? FROM_TODAY : undefined));
+      router.replace(draftUrl(draft.id, fromOf(from)));
     } catch (e) {
       const why = stoppedFor();
       if (mine !== attempt.current || why === "cancel" || why === "leave") return;
+      // A document kept from before that the API no longer holds: the form asks for it again, with the rest kept.
+      if (held && have === held.sourceId && isApiError(e) && e.code === "not_found") {
+        const next: Problems = { material: "gone" };
+        setHeld(null);
+        setProblems(next);
+        setStage({ name: "form" });
+        setFocusOn({ key: "file" });
+        return;
+      }
       const refused = have === null ? materialProblemOf(e) : null;
       if (refused) {
         // The material was refused: back to part 2, with the reason in words and everything kept.
@@ -174,7 +212,8 @@ export function PrepareLesson() {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    const found = checkForm({ subject, year, needsYear: subject !== null, kind, file, text });
+    const chosen = file ?? (held ? { name: held.name, size: held.size ?? 1 } : null);
+    const found = checkForm({ subject, year, needsYear: subject !== null, kind, file: chosen, text });
     setProblems(found);
     setRefusal(null);
     const first = firstProblem(found);
@@ -182,10 +221,11 @@ export function PrepareLesson() {
       setFocusOn({ key: focusKeyOf(first, found, kind) });
       return;
     }
-    sourceId.current = null;
+    // A document held from before is used again; anything else is read afresh.
+    sourceId.current = kind === "file" && !file && held ? held.sourceId : null;
     setSaid(null);
     setFocusOn({ key: "wait" });
-    void start(null);
+    void start(sourceId.current);
   };
 
   const cancel = () => {
@@ -267,12 +307,7 @@ export function PrepareLesson() {
         <p role="status" className="sr">
           {said ? t(said) : ""}
         </p>
-        {stage.name === "wait" && (
-          <>
-            <Waiting phase={stage.phase} withDocument={kind === "file"} onCancel={cancel} />
-            <LeaveGuard body="prepare.leave.body" />
-          </>
-        )}
+        {stage.name === "wait" && <Waiting phase={stage.phase} withDocument={kind === "file"} onCancel={cancel} />}
         {stage.name === "failed" && <WaitFailure failure={stage.failure} error={stage.error} onRetry={retry} onBack={backToForm} />}
         {stage.name === "form" && (
           <form className="prepare" noValidate onSubmit={submit}>
@@ -348,7 +383,7 @@ export function PrepareLesson() {
                 setKind(next);
                 forget("material");
               }}
-              file={file}
+              file={file ?? held}
               onFile={pickFile}
               text={text}
               onText={(next) => {
@@ -371,8 +406,8 @@ export function PrepareLesson() {
             </div>
           </form>
         )}
-        {/* Leaving the form, or the failure that keeps it, loses what was entered, so it asks first. */}
-        {stage.name !== "wait" && hasWork({ file, text, emphasis }) && <LeaveGuard body="prepare.leave.form.body" />}
+        {/* Leaving the form, the wait for a document or the failure that keeps it loses what was entered, so it asks first. */}
+        {hasWork({ file: file ?? held, text, emphasis }) && <LeaveGuard body="prepare.leave.form.body" />}
       </div>
     </>
   );

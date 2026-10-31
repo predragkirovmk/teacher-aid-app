@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { ApiError, VALIDATION_REASONS } from "@/lib/teacher/api/errors";
 import type { CourseSummary } from "@/lib/teacher/api/types";
 import { dictionaries, translate, type Key } from "@/lib/teacher/i18n";
-import { EMPHASIS_MAX_CHARS, LESSON_UPLOAD_MAX_BYTES, TYPED_TEXT_MIN_CHARS } from "@/lib/teacher/lessons";
+import { EMPHASIS_MAX_CHARS, LESSON_UPLOAD_MAX_BYTES, TYPED_TEXT_MAX_CHARS, TYPED_TEXT_MIN_CHARS } from "@/lib/teacher/lessons";
 import {
   checkFile,
   checkForm,
@@ -16,7 +16,11 @@ import {
   firstProblem,
   focusKeyOf,
   hasWork,
+  isFormMemory,
+  isRefill,
   materialProblemOf,
+  refillOf,
+  REQUEST_LIMIT_MS,
   showsEmphasisCount,
   sourceToKeep,
   STILL_WORKING_MS,
@@ -270,12 +274,12 @@ describe("the words of the page", () => {
     }
   });
 
-  test("the third part says it is optional once, the draft says it is a suggestion, and the failure's second button does not say Back", () => {
+  test("the third part says it is optional once, the wait says it may be left, and the failure's second button does not say Back", () => {
     for (const locale of ["mk", "en"] as const) {
       expect(translate(locale, "school", "prepare.emphasis.hint")).not.toMatch(/не мора|do not have to/i);
       expect(translate(locale, "school", "prepare.fail.change")).not.toBe(translate(locale, "school", "back"));
-      expect(translate(locale, "school", "draft.note.lead").length + translate(locale, "school", "draft.note.body").length).toBeLessThan(170);
-      expect(translate(locale, "school", "prepare.leave.form.body")).not.toBe(translate(locale, "school", "prepare.leave.body"));
+      // Leaving the wait loses nothing now, and the wait says so.
+      expect(translate(locale, "school", "prepare.wait.time")).not.toMatch(/Оставете ја оваа страница отворена|Please keep this page open/);
     }
     expect(translate("mk", "school", "prepare.optional")).toBe("По желба");
     // The year of a teacher with one year is said by its number alone, after "Година:".
@@ -289,5 +293,88 @@ describe("the words of the page", () => {
     expect(translate("mk", "school", "prepare.file.privacy")).toContain("ученици");
     expect(translate("mk", "university", "prepare.file.privacy")).toContain("студенти");
     expect(translate("en", "university", "prepare.go.note")).toContain("students");
+  });
+});
+
+describe("typed sentences have a most (BR-LES-14)", () => {
+  test("20 000 characters are taken after the spaces at both ends are cut, and one more is not", () => {
+    expect(TYPED_TEXT_MAX_CHARS).toBe(20_000);
+    expect(checkText("а".repeat(20_000))).toBeNull();
+    expect(checkText(`  ${"а".repeat(20_000)}  `)).toBeNull();
+    expect(checkText("а".repeat(20_001))).toBe("text_too_long");
+    expect(checkText("а".repeat(TYPED_TEXT_MIN_CHARS - 1))).toBe("text_too_short");
+  });
+
+  test("the API's reason is the form's own sentence at the box, and the words are in both languages", () => {
+    expect(materialProblemOf(new ApiError("validation_failed", { reason: "text_too_long" }))).toBe("text_too_long");
+    for (const locale of ["mk", "en"] as const) {
+      expect(translate(locale, "school", "prepare.problem.text_too_long.body")).toMatch(/20[ ,]000/);
+      expect(translate(locale, "school", "prepare.typed.max")).toMatch(/20[ ,]000/);
+    }
+    expect(checkForm({ subject: "m", year: 2, needsYear: true, kind: "typed", file: null, text: "а".repeat(20_001) })).toEqual({ material: "text_too_long" });
+  });
+
+  test("the call that asks for the questions answers at once, so it has the short limit, not the document's", () => {
+    expect(REQUEST_LIMIT_MS).toBe(15_000);
+    expect(REQUEST_LIMIT_MS).toBeLessThan(WAIT_LIMIT_MS);
+  });
+});
+
+describe("cancelling the wait gives the form back (F-03)", () => {
+  const draft = (patch: Record<string, unknown> = {}) => ({
+    id: "d3",
+    subject: { id: "math", name: "Математика" },
+    year: 2,
+    emphasis: "Повеќе примери." as string | null,
+    source_id: "src-n1" as string | null,
+    source: { kind: "typed" as "typed" | "upload", file_name: null as string | null },
+    ...patch,
+  });
+
+  test("typed sentences come back from what the form kept for this draft, with the subject, the year and the emphasis", () => {
+    const refill = refillOf(draft(), { draft_id: "d3", text: "Моите реченици.", file_size: null });
+    expect(refill).toEqual({ subject_id: "math", year: 2, emphasis: "Повеќе примери.", kind: "typed", text: "Моите реченици.", document: null, note: "cancelled" });
+    // Back from a failure says that what was entered is kept, not that anything was cancelled.
+    expect(refillOf(draft(), null, "kept").note).toBe("kept");
+  });
+
+  test("what the form kept for another draft is not given back", () => {
+    expect(refillOf(draft(), { draft_id: "d9", text: "Туѓи реченици.", file_size: null }).text).toBe("");
+    expect(refillOf(draft(), null)).toMatchObject({ kind: "typed", text: "", emphasis: "Повеќе примери." });
+  });
+
+  test("a document comes back by its name and its source, to be used again and not sent again; its size if the form kept it", () => {
+    const upload = draft({ source: { kind: "upload", file_name: "Логаритми.docx" }, emphasis: null });
+    expect(refillOf(upload, { draft_id: "d3", text: "", file_size: 2048 })).toEqual({
+      subject_id: "math",
+      year: 2,
+      emphasis: "",
+      kind: "file",
+      text: "",
+      document: { name: "Логаритми.docx", size: 2048, source_id: "src-n1" },
+      note: "cancelled",
+    });
+    expect(refillOf(upload, null).document).toEqual({ name: "Логаритми.docx", size: null, source_id: "src-n1" });
+  });
+
+  test("a draft with no source gives back no kind", () => {
+    expect(refillOf(draft({ source: null, source_id: null }), null)).toMatchObject({ kind: null, document: null });
+  });
+
+  test("what is read back from the tab is trusted only if it has the shape", () => {
+    const good = refillOf(draft(), null);
+    expect(isRefill(good)).toBe(true);
+    expect(isRefill({ ...good, year: "2" })).toBe(false);
+    expect(isRefill({ ...good, kind: "pdf" })).toBe(false);
+    expect(isRefill({ ...good, note: "other" })).toBe(false);
+    expect(isRefill({ ...good, document: { name: 4 } })).toBe(false);
+    expect(isRefill(null)).toBe(false);
+    expect(isFormMemory({ draft_id: "d3", text: "т", file_size: null })).toBe(true);
+    expect(isFormMemory({ draft_id: 3, text: "т", file_size: null })).toBe(false);
+    expect(isFormMemory("text")).toBe(false);
+  });
+
+  test("a document the form held from before is work too: leaving would lose it", () => {
+    expect(hasWork({ file: { name: "Логаритми.docx", size: null }, text: "", emphasis: "" })).toBe(true);
   });
 });
