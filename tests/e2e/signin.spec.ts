@@ -297,12 +297,14 @@ test.describe("signing in", () => {
     await page.getByRole("button", { name: "Следно" }).click();
     await expect(page.getByText("Чекор 3 од 3")).toBeVisible();
     await expect(page.getByRole("heading", { level: 2 })).toHaveText("Видете кој бил присутен и што да се повтори");
-    // The last step ends the guide, and there is nothing left to skip.
+    // The last step leads into the first lesson (the one yellow button), and "Не сега" is the way out; there is nothing to skip.
     await expect(page.getByRole("button", { name: "Следно" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Прескокни го водичот" })).toHaveCount(0);
+    await expect(page.locator(".btn--primary")).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "Подготви ја првата лекција" })).toHaveClass(/btn--primary/);
     expect((await mockState(page)).novice.school.first_run_done).toBe(false);
 
-    await page.getByRole("button", { name: "Оди на Денес" }).click();
+    await page.getByRole("button", { name: "Не сега, оди на Денес", exact: true }).click();
     await expect(page).toHaveURL(/\/teacher$/);
     await expect(title(page)).toHaveText("Денес");
     await expect(page.getByText(TODAY_GREETING)).toContainText("Игор");
@@ -360,7 +362,7 @@ test.describe("signing in", () => {
     await expect(page.getByRole("heading", { level: 2 })).toHaveText("Prepare a lesson");
     await page.getByRole("button", { name: "Next" }).click();
     await page.getByRole("button", { name: "Next" }).click();
-    await page.getByRole("button", { name: "Go to Today" }).click();
+    await page.getByRole("button", { name: "Not now, go to Today", exact: true }).click();
     await expect(title(page)).toHaveText("Today");
     await expect(page.getByText(/^Good (morning|afternoon|evening), Igor$/)).toBeVisible();
   });
@@ -671,7 +673,7 @@ test.describe("what is shown before the answer is known", () => {
     await expect(page.getByText("Чекор 1 од 3")).toBeVisible();
     await page.getByRole("button", { name: "Следно" }).click();
     await page.getByRole("button", { name: "Следно" }).click();
-    await page.getByRole("button", { name: "Оди на Денес" }).click();
+    await page.getByRole("button", { name: "Не сега, оди на Денес", exact: true }).click();
     await expect(title(page)).toHaveText("Денес");
     await page.waitForLoadState("networkidle");
     expect(problems).toEqual([]);
@@ -787,7 +789,7 @@ test.describe("when the first run cannot be saved", () => {
     await page.getByRole("button", { name: "Следно" }).click();
     await page.getByRole("button", { name: "Следно" }).click();
     await context.setOffline(true);
-    await page.getByRole("button", { name: "Оди на Денес" }).click();
+    await page.getByRole("button", { name: "Не сега, оди на Денес", exact: true }).click();
     await expect(problem(page)).toContainText("Не успеавме да продолжиме");
     await expect(page.getByRole("button", { name: "Продолжи сепак" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Прескокни го водичот" })).toHaveCount(0);

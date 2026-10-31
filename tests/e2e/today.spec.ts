@@ -729,14 +729,15 @@ test.describe("a lesson, to read", () => {
 test.describe("the guide of a first run", () => {
   test.use({ account: "novice" });
 
-  test("still lands on Today, with Today on its last button", async ({ page }) => {
+  test("still lands on Today when the first lesson is left for later: its last screen has \"Не сега, оди на Денес\" for the way out", async ({ page }) => {
     await page.goto("/teacher");
     await expect(page).toHaveURL(/\/teacher\/welcome$/);
     await expect(page.getByText("Водичот можете да го погледнете повторно во Поставки.")).toBeVisible();
     await page.getByRole("button", { name: "Следно" }).click();
     await page.getByRole("button", { name: "Следно" }).click();
     await expect(page.getByRole("button", { name: "Назад во Поставки" })).toHaveCount(0);
-    await page.getByRole("button", { name: "Оди на Денес" }).click();
+    await expect(page.getByRole("button", { name: "Подготви ја првата лекција" })).toHaveClass(/btn--primary/);
+    await page.getByRole("button", { name: "Не сега, оди на Денес", exact: true }).click();
     await expect(page).toHaveURL(/\/teacher$/);
     await expect(title(page)).toHaveText("Денес");
   });
