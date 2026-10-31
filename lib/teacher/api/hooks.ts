@@ -95,6 +95,9 @@ function usePolling(active: boolean, again: () => void) {
 export function useDraft(draftId: Id | undefined): Query<LessonDraft> {
   const q = useQuery(`drafts:${draftId}`, (a) => a.getDraft(draftId as Id), draftId !== undefined);
   usePolling(q.data?.status === "pending", q.refetch);
+  // A draft that has just been thrown away by the page that is showing it: the teacher is on the way elsewhere, so the page waits
+  // for that, and does not say, for the moment in between, that the draft is not there.
+  if (draftId !== undefined && thrownAway.has(draftId)) return { ...q, status: "loading", data: undefined, error: null };
   return q;
 }
 
@@ -250,9 +253,14 @@ export async function updateDraft(draftId: Id, patch: DraftPatch): Promise<Lesso
   return draft;
 }
 
+/** Drafts thrown away a moment ago, for `useDraft`; each is forgotten after a few seconds, when whoever threw it away has gone elsewhere. */
+const thrownAway = new Set<Id>();
+
 /** Throw a draft away, or cancel it while it is being written. Whoever has it open is going elsewhere, so it is forgotten rather than read again. */
 export async function deleteDraft(draftId: Id): Promise<void> {
   await change((a) => a.deleteDraft(draftId), ["draft-list"]);
+  thrownAway.add(draftId);
+  setTimeout(() => thrownAway.delete(draftId), 5000);
   forget(`drafts:${draftId}`);
 }
 

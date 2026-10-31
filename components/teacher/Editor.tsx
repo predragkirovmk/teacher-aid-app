@@ -460,7 +460,7 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
                 </div>
               </div>
             ) : room ? (
-              <button type="button" className="btn btn--secondary" data-field="add" aria-expanded={false} onClick={() => dispatch({ type: "choosing", on: true })}>
+              <button type="button" className="btn btn--secondary" data-field="add" onClick={() => dispatch({ type: "choosing", on: true })}>
                 <PlusIcon size={24} aria-hidden="true" />
                 {t("add.title")}
               </button>

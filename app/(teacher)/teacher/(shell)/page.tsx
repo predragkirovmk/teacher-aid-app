@@ -42,7 +42,7 @@ export default function TodayPage() {
 
   const date = today === null ? undefined : dateParts(today);
   const running = open.data?.session ?? null;
-  const loading = lessons.status === "loading" || open.status === "loading";
+  const loading = lessons.status === "loading" || open.status === "loading" || drafts.status === "loading";
   // Yellow belongs to one button: the way back to a running lesson, else the way to prepare a new one.
   const prepareClass = running ? "btn btn--secondary" : "btn btn--primary";
   const { shown, more } = shownOnToday(lessons.data ?? []);
@@ -94,7 +94,7 @@ export default function TodayPage() {
           </Loading>
         ) : lessons.status === "error" ? (
           <LoadProblem title={t("today.prepared.error")} error={lessons.error} onRetry={lessons.refetch} />
-        ) : shown.length === 0 && unfinished.length === 0 ? (
+        ) : shown.length === 0 && unfinished.length === 0 && drafts.status !== "error" ? (
           <div className="card card--stack">
             <span className="card__icon">
               <ChalkboardTeacherIcon size={32} aria-hidden="true" />
