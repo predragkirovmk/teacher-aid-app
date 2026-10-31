@@ -1,8 +1,9 @@
 import { describe, expect, test } from "vitest";
 import { sanitizeTeacherState } from "@/lib/teacher/store";
-import { emptyOverlay, freshState, isDraft, isLesson, MOCK_KEY, MOCK_VERSION, overlayOf, readState, sanitizeState, startOfDay, withOverlay, writeState } from "@/lib/teacher/api/mock-state";
+import { emptyOverlay, freshState, isDemoDraft, isLesson, MOCK_KEY, MOCK_VERSION, overlayOf, readState, sanitizeState, startOfDay, withOverlay, writeState } from "@/lib/teacher/api/mock-state";
 import { bankLesson, bankQuestions } from "@/lib/teacher/api/mock-bank";
-import type { Lesson, LessonDraft } from "@/lib/teacher/api/types";
+import type { Lesson } from "@/lib/teacher/api/types";
+import type { DemoDraft } from "@/lib/teacher/api/mock-state";
 
 const NOW = new Date(2026, 9, 29, 14, 30).getTime();
 const TODAY = startOfDay(NOW);
@@ -30,19 +31,23 @@ const lesson = (patch: Partial<Lesson> = {}): Lesson => {
   };
 };
 
-const draft = (patch: Partial<LessonDraft> = {}): LessonDraft => {
+const draft = (patch: Partial<DemoDraft> = {}): DemoDraft => {
   const bank = bankLesson("nizi");
   return {
     id: "d2",
     source_id: "src-n1",
+    source: { kind: "typed", file_name: null },
     subject: { id: "math", name: "Математика" },
     year: 3,
     emphasis: null,
     refinements: [],
+    previous_draft_id: null,
     created_at: new Date(NOW).toISOString(),
-    title: bank.title,
-    review_summary: bank.summary,
-    questions: bankQuestions(bank, "d2"),
+    updated_at: new Date(NOW).toISOString(),
+    consumed_at: null,
+    lesson_id: null,
+    job: { started_at: new Date(NOW).toISOString(), done_at: new Date(NOW + 8000).toISOString(), outcome: "ready" },
+    content: { title: bank.title, review_summary: bank.summary, questions: bankQuestions(bank, "d2") },
     ...patch,
   };
 };
@@ -83,7 +88,7 @@ describe("the mock's saved state", () => {
         lessons: [lesson(), { id: "x" }, lesson({ questions: [] }), lesson({ id: "l-n2", version: 0 }), null],
         deleted: ["l-nizi", 4, null],
         drafts: [draft(), draft({ refinements: ["sharper" as never] })],
-        sources: [{ id: "src-n1", kind: "typed", file_name: null, text: "текст" }, { id: 7 }],
+        sources: [{ id: "src-n1", kind: "typed", file_name: null, text: "текст", runs: 2 }, { id: "src-n0", kind: "typed", file_name: null, text: "стар" }, { id: 7 }],
         counter: -5,
       },
       university: "not an object",
@@ -94,7 +99,8 @@ describe("the mock's saved state", () => {
     expect(state.school.lessons.map((l) => l.id)).toEqual(["l-n1"]);
     expect(state.school.deleted).toEqual(["l-nizi"]);
     expect(state.school.drafts.map((d) => d.id)).toEqual(["d2"]);
-    expect(state.school.sources).toHaveLength(1);
+    // A source saved before jobs counted their runs has had none.
+    expect(state.school.sources).toEqual([{ id: "src-n1", kind: "typed", file_name: null, text: "текст", runs: 2 }, { id: "src-n0", kind: "typed", file_name: null, text: "стар", runs: 0 }]);
     expect(state.school.counter).toBe(0);
     expect(state.university).toEqual(emptyOverlay());
   });
@@ -102,9 +108,20 @@ describe("the mock's saved state", () => {
   test("a lesson or a draft with a broken question is not kept", () => {
     const broken = bankQuestions(bankLesson("nizi"), "l-n1").map((q, i) => (i === 0 ? { ...q, kind: "ordering" } : q));
     expect(isLesson(lesson({ questions: broken as Lesson["questions"] }))).toBe(false);
-    expect(isDraft(draft({ questions: broken as LessonDraft["questions"] }))).toBe(false);
+    expect(isDemoDraft(draft({ content: { ...draft().content, questions: broken as DemoDraft["content"]["questions"] } }))).toBe(false);
     expect(isLesson(lesson())).toBe(true);
-    expect(isDraft(draft())).toBe(true);
+    expect(isDemoDraft(draft())).toBe(true);
+  });
+
+  test("a draft is kept with its job and what the teacher has made of it, even unfinished; one from an older build is not", () => {
+    const unfinished = bankQuestions(bankLesson("nizi"), "d2").map((q, i) => (i === 0 ? { ...q, prompt: "", correct: q.kind === "true_false" ? "" : q.correct } : q));
+    expect(isDemoDraft(draft({ content: { ...draft().content, questions: unfinished as DemoDraft["content"]["questions"] } }))).toBe(true);
+    expect(isDemoDraft(draft({ job: null }))).toBe(true);
+    expect(isDemoDraft(draft({ job: { started_at: "yesterday", done_at: null, outcome: "ready" } }))).toBe(false);
+    expect(isDemoDraft(draft({ job: { started_at: new Date(NOW).toISOString(), done_at: null, outcome: "weird" as never } }))).toBe(false);
+    expect(isDemoDraft(draft({ source_id: undefined as never }))).toBe(false);
+    // The shape the first version of the mock saved had no status, no job and its questions at the top.
+    expect(isDemoDraft({ id: "d1", source_id: "src-n1", subject: { id: "math", name: "Математика" }, year: 2, emphasis: null, refinements: [], created_at: "2026-10-29T08:00:00.000Z", title: "Т", review_summary: "", questions: [] })).toBe(false);
   });
 
   test("a lesson that counts more or fewer questions than it holds is not kept, nor one with a nameless file", () => {

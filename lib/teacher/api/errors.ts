@@ -44,9 +44,9 @@ export const isApiErrorCode = (v: unknown): v is ApiErrorCode => API_ERROR_CODES
 /**
  * Why a `validation_failed` was refused, when the teacher can fix it. PROPOSED: the envelope of 11 has
  * only a code and a message, and an upload that fails (EC-LES-06, BR-LES-05) needs to say which of
- * four things was wrong.
+ * several things was wrong.
  */
-export const VALIDATION_REASONS = ["file_type", "file_too_large", "empty", "no_text", "text_too_short"] as const;
+export const VALIDATION_REASONS = ["file_type", "file_too_large", "empty", "no_text", "text_too_short", "text_too_long"] as const;
 export type ValidationReason = (typeof VALIDATION_REASONS)[number];
 
 const isReason = (v: unknown): v is ValidationReason => VALIDATION_REASONS.includes(v as ValidationReason);

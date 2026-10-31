@@ -9,6 +9,7 @@ import {
   type CourseSummary,
   type OpenSession,
   type ConsoleSnapshot,
+  type DraftSummary,
   type Lesson,
   type LessonDraft,
   type LessonSummary,
@@ -37,18 +38,20 @@ import {
 
 /** Spec 11.4: a request that takes longer than this counts as being offline. */
 const TIMEOUT_MS = 15_000;
-/** The AI writes a lesson in minutes (US-T02), and a 20 MB document takes a while on a school's connection: both wait longer. */
+/** A 20 MB document takes a while on a school's connection (BR-LES-09). The AI's work is not a request any more: it is a draft that is polled. */
 const SLOW_TIMEOUT_MS = 180_000;
 
 type Options = {
   /** A JSON body, or a FormData sent as it is (a file). */
   body?: unknown;
   timeout?: number;
+  /** The call may finish after the page is gone: the teacher's last edits, sent as the page closes. Only for small bodies. */
+  keepalive?: boolean;
   /** The screen stopped waiting (Cancel, or the connection dropped): the request is abandoned and counts as a network failure. */
   signal?: AbortSignal;
 };
 
-async function request<T>(method: string, path: string, { body, timeout = TIMEOUT_MS, signal }: Options = {}): Promise<T> {
+async function request<T>(method: string, path: string, { body, timeout = TIMEOUT_MS, keepalive, signal }: Options = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
   let payload: BodyInit | undefined;
   if (body instanceof FormData) {
@@ -65,7 +68,7 @@ async function request<T>(method: string, path: string, { body, timeout = TIMEOU
   else signal?.addEventListener("abort", stop, { once: true });
   let res: Response;
   try {
-    res = await fetch(`${apiBase}${path}`, { method, headers, body: payload, credentials: "include", signal: abort.signal });
+    res = await fetch(`${apiBase}${path}`, { method, headers, body: payload, credentials: "include", keepalive, signal: abort.signal });
   } catch (e) {
     // Offline, blocked, refused or timed out: the app treats them alike.
     throw new ApiError("network", { cause: e });
@@ -108,10 +111,15 @@ export function createLiveApi(): TeacherApi {
       form.append("file", input.file);
       return request<SourceCreated>("POST", "/lessons/sources", { body: form, timeout: SLOW_TIMEOUT_MS, signal });
     },
-    generateLesson: (req, { signal } = {}) => request<LessonDraft>("POST", "/lessons/generate", { body: req, timeout: SLOW_TIMEOUT_MS, signal }),
+    // The AI's work is a job: these answer at once with the draft, `pending` (BR-LES-09), and the screen asks for it again.
+    generateLesson: (req, { signal } = {}) => request<LessonDraft>("POST", "/lessons/generate", { body: req, signal }),
     getDraft: (draftId) => request<LessonDraft>("GET", `/lessons/drafts/${id(draftId)}`),
-    refineDraft: (draftId, refinement) =>
-      request<LessonDraft>("POST", `/lessons/drafts/${id(draftId)}/refine`, { body: { refinement }, timeout: SLOW_TIMEOUT_MS }),
+    listDrafts: () => request<DraftSummary[]>("GET", "/lessons/drafts"),
+    updateDraft: (draftId, patch) => request<LessonDraft>("PATCH", `/lessons/drafts/${id(draftId)}`, { body: patch, keepalive: true }),
+    deleteDraft: (draftId) => request<void>("DELETE", `/lessons/drafts/${id(draftId)}`),
+    retryDraft: (draftId) => request<LessonDraft>("POST", `/lessons/drafts/${id(draftId)}/retry`),
+    refineDraft: (draftId, refinement) => request<LessonDraft>("POST", `/lessons/drafts/${id(draftId)}/refine`, { body: { refinement } }),
+    startEditing: (lessonId) => request<LessonDraft>("POST", `/lessons/${id(lessonId)}/drafts`),
     saveLesson: (req) => request<Lesson>("POST", "/lessons", { body: req }),
     uploadMedia: (file) => {
       const form = new FormData();

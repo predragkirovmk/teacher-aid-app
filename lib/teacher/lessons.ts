@@ -1,4 +1,4 @@
-import type { LessonContent, Question } from "./api/types";
+import type { DraftQuestion, LessonContent, Question } from "./api/types";
 import { parseNumeric, QUESTIONS_MAX, QUESTIONS_MIN } from "./scoring";
 
 /** The range a timer may be set to (BR-TIME-02 lets the teacher change it; the limits themselves are PROPOSED). */
@@ -47,6 +47,31 @@ export function isValidQuestion(q: unknown): q is Question {
   }
 }
 
+/**
+ * Whether a value is a question a draft may hold: the shape of its kind and no more. A draft is a lesson in the making, so an empty
+ * prompt, a blank option, a right answer not yet chosen and a timer out of range are all fine here; they are refused when the
+ * draft is saved as a lesson (`isValidQuestion`). What the demo reads back from the browser and what the edit call takes.
+ */
+export function isDraftQuestion(q: unknown): q is DraftQuestion {
+  if (!isObject(q)) return false;
+  if (!isText(q.id) || !Number.isInteger(q.order) || !isText(q.prompt) || !isText(q.topic) || !isFiniteNumber(q.timer_seconds)) return false;
+  if (q.explanation !== null && !isText(q.explanation)) return false;
+  if (q.media !== null) {
+    const m = q.media;
+    if (!isObject(m) || !isText(m.id) || !isText(m.url) || (m.alt !== null && !isText(m.alt))) return false;
+  }
+  switch (q.kind) {
+    case "multiple_choice":
+      return Array.isArray(q.options) && q.options.length >= 1 && q.options.length <= OPTIONS_MAX && q.options.every(isText) && isText(q.correct);
+    case "true_false":
+      return q.correct === "true" || q.correct === "false" || q.correct === "";
+    case "numeric":
+      return isText(q.correct) && isFiniteNumber(q.tolerance) && (q.unit === null || isText(q.unit)) && typeof q.allow_negative === "boolean";
+    default:
+      return false;
+  }
+}
+
 /** A lesson's content: a title, a review summary and five to eight valid questions (BR-Q-02). */
 export function isValidContent(c: unknown): c is LessonContent {
   if (!isObject(c)) return false;
@@ -60,5 +85,13 @@ export const LESSON_UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
 export const LESSON_UPLOAD_EXTENSIONS = [".pdf", ".docx"] as const;
 /** A few typed sentences (FR-LES-06): the shortest text worth sending to the AI. PROPOSED. */
 export const TYPED_TEXT_MIN_CHARS = 40;
+/** And the most: a longer paste is a payload and a cost (BR-LES-14). PROPOSED; the box takes no more than this. */
+export const TYPED_TEXT_MAX_CHARS = 20_000;
 /** The sentence of emphasis is one sentence; this is the most the server keeps. PROPOSED. */
 export const EMPHASIS_MAX_CHARS = 200;
+/** BR-LES-09: a draft may stay `pending` this long, from when its generation or retry started, and then it has `failed`. PROPOSED. */
+export const DRAFT_PENDING_MAX_SECONDS = 180;
+/** BR-LES-12: an unsaved draft is kept this long, and the teacher is told so. PROPOSED. */
+export const DRAFT_RETENTION_DAYS = 30;
+/** 11.4: while it shows the wait for a draft the app reads it every 2 to 3 seconds. */
+export const DRAFT_POLL_MS = 2500;

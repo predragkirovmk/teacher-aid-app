@@ -183,6 +183,11 @@ export function resetQueries() {
   slots.forEach((slot) => slot.reset());
 }
 
+/** Forget what a slot holds, for a thing that has been deleted: the next reader asks again instead of showing what is gone. */
+export function forget(key: string) {
+  slots.get(key)?.reset();
+}
+
 /** Put an answer straight into a slot that has been read, for a call that returns the fresh data. */
 export function seed<T>(key: string, data: T) {
   (slots.get(key) as Slot<T> | undefined)?.put(data);

@@ -9,6 +9,8 @@ import type {
   CourseDashboard,
   CourseSummary,
   CreateSessionRequest,
+  DraftPatch,
+  DraftSummary,
   EndResult,
   GenerateRequest,
   Id,
@@ -80,15 +82,25 @@ export interface TeacherApi {
    */
   createSource(input: SourceInput, options?: CallOptions): Promise<SourceCreated>;
   /**
-   * POST /lessons/generate. Slow: the AI writes the lesson (BR-LES-09). Rejects `generation_failed` after the one retry
-   * (EC-LES-02). The `signal` stops the wait, and the call then rejects `network`.
+   * POST /lessons/generate: asks for the questions and answers at once with the draft in `pending` (`202`), a job that goes on without the
+   * screen (FR-LES-14, BR-LES-08). Rejects `not_found` for a source it no longer holds (BR-LES-13). The `signal` stops the wait for the answer.
    */
   generateLesson(request: GenerateRequest, options?: CallOptions): Promise<LessonDraft>;
-  /** PROPOSED, GET /lessons/drafts/{id}: a draft by id, so a reloaded review screen finds it again. */
+  /** GET /lessons/drafts/{id}: a draft by id, whatever it is doing. The wait asks again every few seconds while it is `pending` (EC-LES-09). */
   getDraft(draftId: Id): Promise<LessonDraft>;
-  /** POST /lessons/drafts/{id}/refine: one of the four fixed refinements, no free text (FR-LES-08). Answers a new draft. */
+  /** GET /lessons/drafts: the unsaved drafts, the latest of each chain, newest first (FR-LES-20). */
+  listDrafts(): Promise<DraftSummary[]>;
+  /** PROPOSED, PATCH /lessons/drafts/{id}: the teacher's edits, saved as they are made. Rejects `invalid_state` for a draft that is not ready. */
+  updateDraft(draftId: Id, patch: DraftPatch): Promise<LessonDraft>;
+  /** DELETE /lessons/drafts/{id}: throws a draft away, which is how a `pending` one is cancelled (FR-LES-21). */
+  deleteDraft(draftId: Id): Promise<void>;
+  /** POST /lessons/drafts/{id}/retry: runs a `failed` draft again, with the same source (FR-LES-22). Answers the same draft, `pending`. */
+  retryDraft(draftId: Id): Promise<LessonDraft>;
+  /** POST /lessons/drafts/{id}/refine: one of the four fixed refinements, no free text (FR-LES-08). A job: answers a new draft, `pending`. */
   refineDraft(draftId: Id, refinement: Refinement): Promise<LessonDraft>;
-  /** POST /lessons: the draft as edited, saved as version 1 (FR-LES-09). */
+  /** PROPOSED, POST /lessons/{id}/drafts: a draft of a saved lesson, to edit it. Answers the draft (ready), the unsaved one if there is one already. */
+  startEditing(lessonId: Id): Promise<LessonDraft>;
+  /** POST /lessons: the draft as edited, saved as version 1 (FR-LES-09). Consumes the draft. */
   saveLesson(request: SaveLessonRequest): Promise<Lesson>;
   /** PROPOSED, POST /lessons/media: an image for a question (FR-LES-10, FR-LES-11). */
   uploadMedia(file: Blob): Promise<QuestionMedia>;
@@ -98,7 +110,7 @@ export interface TeacherApi {
   listLessons(): Promise<LessonSummary[]>;
   /** GET /lessons/{id}. */
   getLesson(lessonId: Id): Promise<Lesson>;
-  /** PUT /lessons/{id}: a new version. Sessions that ran keep theirs (BR-LES-03). */
+  /** PUT /lessons/{id}: a new version. Sessions that ran keep theirs (BR-LES-03). With a `draft_id`, that draft is consumed. */
   updateLesson(lessonId: Id, request: UpdateLessonRequest): Promise<Lesson>;
   /** PROPOSED, DELETE /lessons/{id}. Copies and past sessions survive (EC-LES-04). */
   deleteLesson(lessonId: Id): Promise<void>;

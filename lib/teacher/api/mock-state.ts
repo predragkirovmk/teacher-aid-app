@@ -1,6 +1,6 @@
-import { isObject, isText, isValidContent } from "../lessons";
+import { isDraftQuestion, isObject, isText, isValidContent } from "../lessons";
 import type { SchoolType } from "../store";
-import type { Lesson, LessonDraft, Refinement, SessionState, SourceKind } from "./types";
+import type { DraftQuestion, Lesson, Refinement, SessionState, SourceKind, Subject } from "./types";
 
 /**
  * What the mock adapter keeps in the browser. The demo school and its history are worked out from a
@@ -18,8 +18,39 @@ import type { Lesson, LessonDraft, Refinement, SessionState, SourceKind } from "
 export const MOCK_KEY = "teacheraid-teacher-mock-v1";
 export const MOCK_VERSION = 1;
 
-/** A document or typed text the teacher gave, kept for the lesson that is made from it. */
-export type DemoSource = { id: string; kind: SourceKind; file_name: string | null; text: string };
+/**
+ * A document or typed text the teacher gave, kept for the lesson that is made from it. `runs` counts the jobs that have been
+ * started from it, which is how `[fail-once]` knows it has failed once (a retry then works).
+ */
+export type DemoSource = { id: string; kind: SourceKind; file_name: string | null; text: string; runs: number };
+
+/**
+ * The job that writes a draft, as the mock plays it. There is no worker in the browser, so a job is a promise about the clock: it
+ * is done at `done_at` with `outcome`, never if `done_at` is null (an AI that does not answer), and a draft still pending
+ * `DRAFT_PENDING_MAX_SECONDS` after `started_at` has failed (BR-LES-09). What a draft's status is, is worked out whenever it is read
+ * (mock-drafts.ts), so a reload, or a window that was closed, finds the job where the clock has put it.
+ */
+export type DemoJob = { started_at: string; done_at: string | null; outcome: "ready" | "failed" };
+
+/** A draft as the mock keeps it. The wire shape (`LessonDraft`) is made from it, with the status the clock gives. */
+export type DemoDraft = {
+  id: string;
+  source_id: string | null;
+  source: { kind: SourceKind; file_name: string | null } | null;
+  subject: Subject;
+  year: number;
+  emphasis: string | null;
+  refinements: Refinement[];
+  previous_draft_id: string | null;
+  created_at: string;
+  updated_at: string;
+  consumed_at: string | null;
+  lesson_id: string | null;
+  /** Null for a draft that needs no job: the draft of a saved lesson is ready at once. */
+  job: DemoJob | null;
+  /** What the worker wrote, and then what the teacher changed. Shown once the job is done. */
+  content: { title: string; review_summary: string; questions: DraftQuestion[] };
+};
 
 /**
  * The lesson the teacher is running in the demo. A teacher has one open lesson at a time. It stays in the lobby: running the
@@ -42,7 +73,7 @@ export type Overlay = {
   lessons: Lesson[];
   /** Seeded lessons the teacher deleted. */
   deleted: string[];
-  drafts: LessonDraft[];
+  drafts: DemoDraft[];
   sources: DemoSource[];
   /** The open lesson, if there is one. */
   session: DemoSession | null;
@@ -134,23 +165,40 @@ export function isLesson(v: unknown): v is Lesson {
   );
 }
 
-export function isDraft(v: unknown): v is LessonDraft {
-  if (!isObject(v) || !isValidContent(v)) return false;
-  const d: Record<string, unknown> = v;
+const isIso = (v: unknown): v is string => isText(v) && Number.isFinite(Date.parse(v));
+const isSourceRef = (v: unknown) => v === null || (isObject(v) && (v.kind === "upload" || v.kind === "typed") && (v.file_name === null || isText(v.file_name)));
+
+const isJob = (v: unknown): v is DemoJob =>
+  isObject(v) && isIso(v.started_at) && (v.done_at === null || isIso(v.done_at)) && (v.outcome === "ready" || v.outcome === "failed");
+
+export function isDemoDraft(v: unknown): v is DemoDraft {
+  if (!isObject(v)) return false;
+  const c = v.content;
   return (
-    isText(d.id) &&
-    isText(d.source_id) &&
-    isSubject(d.subject) &&
-    isCount(d.year) &&
-    (d.emphasis === null || isText(d.emphasis)) &&
-    Array.isArray(d.refinements) &&
-    d.refinements.every((r) => REFINEMENTS.includes(r as Refinement)) &&
-    isText(d.created_at)
+    isText(v.id) &&
+    (v.source_id === null || isText(v.source_id)) &&
+    isSourceRef(v.source) &&
+    isSubject(v.subject) &&
+    isCount(v.year) &&
+    (v.emphasis === null || isText(v.emphasis)) &&
+    Array.isArray(v.refinements) &&
+    v.refinements.every((r) => REFINEMENTS.includes(r as Refinement)) &&
+    (v.previous_draft_id === null || isText(v.previous_draft_id)) &&
+    isIso(v.created_at) &&
+    isIso(v.updated_at) &&
+    (v.consumed_at === null || isIso(v.consumed_at)) &&
+    (v.lesson_id === null || isText(v.lesson_id)) &&
+    (v.job === null || isJob(v.job)) &&
+    isObject(c) &&
+    isText(c.title) &&
+    isText(c.review_summary) &&
+    Array.isArray(c.questions) &&
+    c.questions.every(isDraftQuestion)
   );
 }
 
 const isSource = (v: unknown): v is DemoSource =>
-  isObject(v) && isText(v.id) && (v.kind === "upload" || v.kind === "typed") && (v.file_name === null || isText(v.file_name)) && isText(v.text);
+  isObject(v) && isText(v.id) && (v.kind === "upload" || v.kind === "typed") && (v.file_name === null || isText(v.file_name)) && isText(v.text) && isCount(v.runs);
 
 const SESSION_STATES: readonly SessionState[] = ["lobby", "teaching", "review", "ended"];
 
@@ -176,8 +224,9 @@ function sanitizeOverlay(saved: unknown, persona: Persona = "veteran"): Overlay 
       : base.speed_bonus,
     lessons: Array.isArray(s.lessons) ? s.lessons.filter(isLesson) : base.lessons,
     deleted: Array.isArray(s.deleted) ? s.deleted.filter(isText) : base.deleted,
-    drafts: Array.isArray(s.drafts) ? s.drafts.filter(isDraft) : base.drafts,
-    sources: Array.isArray(s.sources) ? s.sources.filter(isSource) : base.sources,
+    drafts: Array.isArray(s.drafts) ? s.drafts.filter(isDemoDraft) : base.drafts,
+    // A source saved before jobs had a count of runs has had none.
+    sources: Array.isArray(s.sources) ? s.sources.map((x) => (isObject(x) && x.runs === undefined ? { ...x, runs: 0 } : x)).filter(isSource) : base.sources,
     session: isDemoSession(s.session) && s.session.state !== "ended" ? s.session : base.session,
     counter: isCount(s.counter) ? s.counter : base.counter,
   };

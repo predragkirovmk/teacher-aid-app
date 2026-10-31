@@ -1,10 +1,14 @@
 import {
   EMPHASIS_MAX_CHARS,
+  isDraftQuestion,
+  isObject,
   isValidContent,
   LESSON_UPLOAD_EXTENSIONS,
   LESSON_UPLOAD_MAX_BYTES,
+  TYPED_TEXT_MAX_CHARS,
   TYPED_TEXT_MIN_CHARS,
 } from "../lessons";
+import { QUESTIONS_MAX } from "../scoring";
 import type { SchoolType } from "../store";
 import type { CallOptions, DemoControls, SettledPromise, TeacherApi, Unsubscribe } from "./client";
 import { isProvider } from "../signin";
@@ -20,8 +24,9 @@ import {
   type SeedSession,
   type World,
 } from "./mock-data";
+import { GENERATE_MS, latestUnsaved, REFINE_MS, startJob, statusOf, toSummary, toWire, trimDrafts } from "./mock-drafts";
 import { demoProviderUrl, isOffline } from "./mock-session";
-import { overlayOf, withOverlay, type DemoSession, type MockState, type Overlay, type Persona } from "./mock-state";
+import { overlayOf, withOverlay, type DemoDraft, type DemoSession, type MockState, type Overlay, type Persona } from "./mock-state";
 import type {
   AttendanceTally,
   ConsoleSnapshot,
@@ -30,10 +35,10 @@ import type {
   DashboardPractice,
   DashboardSession,
   DashboardTopic,
+  DraftPatch,
   Id,
   Lesson,
   LessonContent,
-  LessonDraft,
   LessonSummary,
   LibraryItem,
   Me,
@@ -57,8 +62,12 @@ import type {
  *
  * What a real teacher cannot trigger, the demo can, so the screens' failure states can be tried:
  * a typed text or emphasis containing `[fail]` makes the AI fail, `[fail-once]` makes it fail the first time and work the
- * second (so a retry can be seen to help), `[slow]` makes it never answer (the screen gives up at its limit), and a document named like a scan (`scan` or `скен`) has no text in it. A computer that is offline cannot reach it,
- * as the real API cannot be reached.
+ * second (so a retry can be seen to help), `[slow]` makes it never answer (the draft stays pending until the limit of
+ * `DRAFT_PENDING_MAX_SECONDS`, and then it has failed), and a document named like a scan (`scan` or `скен`) has no text in it.
+ * A computer that is offline cannot reach it, as the real API cannot be reached.
+ *
+ * Writing a lesson is a job, as it is in the API (BR-LES-08): `generateLesson` answers at once with the draft pending, and the draft is
+ * ready `GENERATE_MS` later by the clock (mock-drafts.ts), however the page was left or reloaded in the meantime.
  *
  * The live lesson (the console, the class view, realtime) is not built yet: those calls answer `not_implemented`. What
  * Today needs is: `createSession` opens a lesson in the lobby, `getOpenSession` reports it, and a teacher has one open
@@ -143,14 +152,8 @@ const iso = (ms: number) => new Date(ms).toISOString();
 const notFound = () => new ApiError("not_found", { status: 404 });
 const invalid = (reason?: ValidationReason) => new ApiError("validation_failed", { status: 422, reason });
 
-/**
- * How long the demo takes: long enough to see both parts of the wait on a preview (reading a document, then writing the
- * questions), short enough not to be a chore. Typed sentences are taken at once, as the real API would.
- */
+/** Reading a document takes a moment, as it does on the server; typed sentences are taken at once, as the real API would. */
 export const SOURCE_MS = 1500;
-export const GENERATE_MS = 8000;
-export const REFINE_MS = 900;
-const MAX_DRAFTS = 20;
 const MAX_SOURCES = 20;
 
 type Ctx = { type: SchoolType; persona: Persona; state: MockState; overlay: Overlay; world: World; now: number };
@@ -179,20 +182,27 @@ const wait: Delay = (ms, signal) =>
     signal?.addEventListener("abort", stop, { once: true });
   });
 
-/** An answer that never comes, until the screen stops waiting. */
-const never = (signal?: AbortSignal) =>
-  new Promise<never>((_, reject) => {
-    if (signal?.aborted) return reject(dropped(signal));
-    signal?.addEventListener("abort", () => reject(dropped(signal)), { once: true });
-  });
+/**
+ * What `PATCH /lessons/drafts/{id}` takes: the fields that changed, each of the shape it has. The API checks the shape and no more,
+ * since a draft may be unfinished; the rules of a finished lesson are checked when it is saved.
+ */
+function isDraftPatch(v: unknown): v is DraftPatch {
+  if (!isObject(v) || Object.keys(v).some((k) => k !== "title" && k !== "review_summary" && k !== "questions")) return false;
+  if (v.title !== undefined && typeof v.title !== "string") return false;
+  if (v.review_summary !== undefined && typeof v.review_summary !== "string") return false;
+  if (v.questions !== undefined) {
+    const q = v.questions;
+    if (!Array.isArray(q) || q.length > QUESTIONS_MAX || !q.every(isDraftQuestion)) return false;
+    if (new Set(q.map((x) => x.id)).size !== q.length) return false;
+  }
+  return true;
+}
 
 /** The adapter alone, for the tests and the server render. */
 export const createMockApi = (source: MockSource, options: { delay?: Delay } = {}): TeacherApi => createMock(source, options).api;
 
 export function createMock(source: MockSource, options: { delay?: Delay } = {}): { api: TeacherApi; demo: MockDemo } {
   const delay = options.delay ?? wait;
-  // The sources that have failed once already, for `[fail-once]`. Kept only for as long as the page is open.
-  const failedOnce = new Set<string>();
 
   const ctx = (): Ctx => {
     const type = source.schoolType();
@@ -554,6 +564,12 @@ export function createMock(source: MockSource, options: { delay?: Delay } = {}):
     nudge: false,
   });
 
+  const findDraft = (c: Ctx, draftId: Id): DemoDraft => {
+    const draft = c.overlay.drafts.find((d) => d.id === draftId);
+    if (!draft) throw notFound();
+    return draft;
+  };
+
   const api: TeacherApi = {
     // The redirect to the provider is, in the demo, the sign-in screen with a sheet that stands in for the provider's page.
     startSignIn: (request) =>
@@ -623,9 +639,11 @@ export function createMock(source: MockSource, options: { delay?: Delay } = {}):
       const c = ctx();
       let record;
       if (input.kind === "typed") {
+        // Counted in characters after the spaces at both ends are cut (BR-LES-06, BR-LES-14).
         const text = input.text.trim();
         if (text.length < TYPED_TEXT_MIN_CHARS) throw invalid("text_too_short");
-        record = { id: nextId(c.overlay, "src-n"), kind: "typed" as const, file_name: null, text: text.slice(0, 4000) };
+        if (text.length > TYPED_TEXT_MAX_CHARS) throw invalid("text_too_long");
+        record = { id: nextId(c.overlay, "src-n"), kind: "typed" as const, file_name: null, text: text.slice(0, 4000), runs: 0 };
       } else {
         const { file } = input;
         const name = file.name.toLowerCase();
@@ -634,76 +652,181 @@ export function createMock(source: MockSource, options: { delay?: Delay } = {}):
         if (file.size > LESSON_UPLOAD_MAX_BYTES) throw invalid("file_too_large");
         // A scan is a picture of a page: there is no text to read (BR-LES-05).
         if (/scan|скен/i.test(name)) throw invalid("no_text");
-        record = { id: nextId(c.overlay, "src-n"), kind: "upload" as const, file_name: file.name, text: file.name };
+        record = { id: nextId(c.overlay, "src-n"), kind: "upload" as const, file_name: file.name, text: file.name, runs: 0 };
       }
       save(c, { ...c.overlay, counter: c.overlay.counter + 1, sources: [...c.overlay.sources, record].slice(-MAX_SOURCES) });
       return { source_id: record.id };
     },
 
-    generateLesson: async (request, { signal }: CallOptions = {}) => {
-      if (isOffline()) throw new ApiError("network");
-      // The AI that never answers, so the longest wait, and the limit the screen gives up at, can be tried.
-      const asked = ctx().overlay.sources.find((s) => s.id === request.source_id);
-      if (/\[slow\]/i.test(`${asked?.text ?? ""} ${request.emphasis ?? ""}`)) await never(signal);
-      await delay(GENERATE_MS, signal);
-      if (isOffline()) throw new ApiError("network");
-      const c = ctx();
-      const found = c.overlay.sources.find((s) => s.id === request.source_id);
-      if (!found) throw notFound();
-      const subject = c.world.courses.map((course) => course.def.subject).find((s) => s.id === request.subject_id);
-      if (!subject || !Number.isInteger(request.year) || request.year < 1 || request.year > 6) throw invalid();
-      const emphasis = request.emphasis?.trim().slice(0, EMPHASIS_MAX_CHARS) || null;
-      const words = `${found.text} ${emphasis ?? ""}`;
-      if (/\[fail\]/i.test(words)) throw new ApiError("generation_failed", { status: 502 });
-      if (/\[fail-once\]/i.test(words) && !failedOnce.has(found.id)) {
-        failedOnce.add(found.id);
-        throw new ApiError("generation_failed", { status: 502 });
-      }
+    // ---- Writing a lesson is a job (BR-LES-08) ----
+    generateLesson: (request) =>
+      run(() => {
+        if (isOffline()) throw new ApiError("network");
+        const c = ctx();
+        const found = c.overlay.sources.find((s) => s.id === request.source_id);
+        if (!found) throw notFound();
+        const subject = c.world.courses.map((course) => course.def.subject).find((s) => s.id === request.subject_id);
+        if (!subject || !Number.isInteger(request.year) || request.year < 1 || request.year > 6) throw invalid();
+        // One generation of a source at a time: a double press is answered with the draft already being written (BR-LES-10).
+        const running = c.overlay.drafts.find((d) => d.source_id === found.id && d.consumed_at === null && statusOf(d, c.now) === "pending");
+        if (running) return toWire(running, c.now);
 
-      const bank = chooseBank(`${found.text} ${emphasis ?? ""} ${found.file_name ?? ""}`, request.year);
-      const id = nextId(c.overlay, "d");
-      const draft: LessonDraft = {
-        id,
-        source_id: found.id,
-        subject,
-        year: request.year,
-        emphasis,
-        refinements: [],
-        created_at: iso(c.now),
-        title: bank.title,
-        review_summary: bank.summary,
-        questions: bankQuestions(bank, id),
-      };
-      save(c, { ...c.overlay, counter: c.overlay.counter + 1, drafts: [...c.overlay.drafts, draft].slice(-MAX_DRAFTS) });
-      return draft;
-    },
+        const emphasis = request.emphasis?.trim().slice(0, EMPHASIS_MAX_CHARS) || null;
+        const words = `${found.text} ${emphasis ?? ""}`;
+        const bank = chooseBank(`${words} ${found.file_name ?? ""}`, request.year);
+        const id = nextId(c.overlay, "d");
+        const draft: DemoDraft = {
+          id,
+          source_id: found.id,
+          source: { kind: found.kind, file_name: found.file_name },
+          subject,
+          year: request.year,
+          emphasis,
+          refinements: [],
+          previous_draft_id: null,
+          created_at: iso(c.now),
+          updated_at: iso(c.now),
+          consumed_at: null,
+          lesson_id: null,
+          job: startJob(words, found.runs, c.now, GENERATE_MS),
+          content: { title: bank.title, review_summary: bank.summary, questions: bankQuestions(bank, id) },
+        };
+        save(c, {
+          ...c.overlay,
+          counter: c.overlay.counter + 1,
+          sources: c.overlay.sources.map((s) => (s.id === found.id ? { ...s, runs: s.runs + 1 } : s)),
+          drafts: trimDrafts([...c.overlay.drafts, draft]),
+        });
+        return toWire(draft, c.now);
+      }),
     getDraft: (draftId) =>
       run(() => {
-        const draft = ctx().overlay.drafts.find((d) => d.id === draftId);
-        if (!draft) throw notFound();
-        return draft;
+        // The page asks again and again for a draft that is being written, so a connection that is gone is a failure it can show.
+        if (isOffline()) throw new ApiError("network");
+        const c = ctx();
+        return toWire(findDraft(c, draftId), c.now);
       }),
-    refineDraft: async (draftId, refinement) => {
-      await delay(REFINE_MS);
-      const c = ctx();
-      const draft = c.overlay.drafts.find((d) => d.id === draftId);
-      if (!draft) throw notFound();
-      const id = nextId(c.overlay, "d");
-      const refined: LessonDraft = {
-        ...draft,
-        id,
-        created_at: iso(c.now),
-        refinements: [...draft.refinements, refinement],
-        questions: refineQuestions(draft.questions, refinement, id).map((q, i) => ({ ...q, id: q.id.startsWith(`${id}-`) ? q.id : `${id}-q${i + 1}` })),
-      };
-      save(c, { ...c.overlay, counter: c.overlay.counter + 1, drafts: [...c.overlay.drafts, refined].slice(-MAX_DRAFTS) });
-      return refined;
-    },
-    saveLesson: (request) =>
+    listDrafts: () =>
       run(() => {
         const c = ctx();
-        const draft = c.overlay.drafts.find((d) => d.id === request.draft_id);
-        if (!draft) throw notFound();
+        return latestUnsaved(c.overlay.drafts).map((d) => toSummary(d, c.now));
+      }),
+    updateDraft: (draftId, patch) =>
+      run(() => {
+        // A change needs the server: offline it is not kept, and the page says so and tries again.
+        if (isOffline()) throw new ApiError("network");
+        const c = ctx();
+        const draft = findDraft(c, draftId);
+        // Only a draft that is written and not saved can be edited (FR-LES-16: a saved one is the lesson's now).
+        if (draft.consumed_at !== null || statusOf(draft, c.now) !== "ready") throw new ApiError("invalid_state", { status: 409 });
+        if (!isDraftPatch(patch)) throw invalid();
+        const next: DemoDraft = {
+          ...draft,
+          updated_at: iso(c.now),
+          content: {
+            title: patch.title ?? draft.content.title,
+            review_summary: patch.review_summary ?? draft.content.review_summary,
+            questions: patch.questions ?? draft.content.questions,
+          },
+        };
+        save(c, { ...c.overlay, drafts: c.overlay.drafts.map((d) => (d.id === draftId ? next : d)) });
+        return toWire(next, c.now);
+      }),
+    deleteDraft: (draftId) =>
+      run(() => {
+        if (isOffline()) throw new ApiError("network");
+        const c = ctx();
+        const draft = findDraft(c, draftId);
+        // A saved draft is the lesson's history now (BR-LES-08), not something to throw away (FR-LES-21).
+        if (draft.consumed_at !== null) throw new ApiError("invalid_state", { status: 409 });
+        save(c, { ...c.overlay, drafts: c.overlay.drafts.filter((d) => d.id !== draftId) });
+      }),
+    retryDraft: (draftId) =>
+      run(() => {
+        if (isOffline()) throw new ApiError("network");
+        const c = ctx();
+        const draft = findDraft(c, draftId);
+        const status = statusOf(draft, c.now);
+        if (draft.consumed_at !== null || status === "ready") throw new ApiError("invalid_state", { status: 409 });
+        // A draft being written answers itself and starts nothing (BR-LES-10).
+        if (status === "pending") return toWire(draft, c.now);
+        const found = c.overlay.sources.find((s) => s.id === draft.source_id);
+        const words = `${found?.text ?? ""} ${draft.emphasis ?? ""}`;
+        const ms = draft.refinements.length > 0 ? REFINE_MS : GENERATE_MS;
+        const next: DemoDraft = { ...draft, updated_at: iso(c.now), job: startJob(words, found?.runs ?? 1, c.now, ms) };
+        save(c, {
+          ...c.overlay,
+          sources: c.overlay.sources.map((s) => (s.id === draft.source_id ? { ...s, runs: s.runs + 1 } : s)),
+          drafts: c.overlay.drafts.map((d) => (d.id === draftId ? next : d)),
+        });
+        return toWire(next, c.now);
+      }),
+    refineDraft: (draftId, refinement) =>
+      run(() => {
+        if (isOffline()) throw new ApiError("network");
+        const c = ctx();
+        const draft = findDraft(c, draftId);
+        const status = statusOf(draft, c.now);
+        if (draft.consumed_at !== null || status === "failed") throw new ApiError("invalid_state", { status: 409 });
+        // A draft of the source is being written already: that is the answer, and nothing starts (BR-LES-10).
+        const running = status === "pending" ? draft : c.overlay.drafts.find((d) => d.source_id !== null && d.source_id === draft.source_id && d.consumed_at === null && statusOf(d, c.now) === "pending");
+        if (running) return toWire(running, c.now);
+
+        const id = nextId(c.overlay, "d");
+        const found = c.overlay.sources.find((s) => s.id === draft.source_id);
+        // It refines the draft as it now is: the questions the teacher edited, not the ones that were written first.
+        const questions = refineQuestions(draft.content.questions as Question[], refinement, id).map((q, i) => ({ ...q, id: q.id.startsWith(`${id}-`) ? q.id : `${id}-q${i + 1}` }));
+        const refined: DemoDraft = {
+          ...draft,
+          id,
+          refinements: [...draft.refinements, refinement],
+          previous_draft_id: draft.id,
+          created_at: iso(c.now),
+          updated_at: iso(c.now),
+          consumed_at: null,
+          job: startJob(`${found?.text ?? ""} ${draft.emphasis ?? ""}`, found?.runs ?? 1, c.now, REFINE_MS),
+          content: { ...draft.content, questions },
+        };
+        save(c, { ...c.overlay, counter: c.overlay.counter + 1, drafts: trimDrafts([...c.overlay.drafts, refined]) });
+        return toWire(refined, c.now);
+      }),
+    startEditing: (lessonId) =>
+      run(() => {
+        if (isOffline()) throw new ApiError("network");
+        const c = ctx();
+        const lesson = lessonsOf(c).find((l) => l.id === lessonId);
+        if (!lesson) throw notFound();
+        // The teacher already has this lesson open for editing: that is the draft, so edits are never split between two.
+        const open = latestUnsaved(c.overlay.drafts).find((d) => d.lesson_id === lessonId);
+        if (open) return toWire(open, c.now);
+
+        const id = nextId(c.overlay, "d");
+        const draft: DemoDraft = {
+          id,
+          source_id: lesson.source?.id ?? null,
+          source: lesson.source ? { kind: lesson.source.kind, file_name: lesson.source.file_name } : null,
+          subject: lesson.subject,
+          year: lesson.year,
+          emphasis: lesson.emphasis,
+          refinements: [],
+          previous_draft_id: null,
+          created_at: iso(c.now),
+          updated_at: iso(c.now),
+          consumed_at: null,
+          lesson_id: lessonId,
+          job: null,
+          content: { title: lesson.title, review_summary: lesson.review_summary, questions: lesson.questions.map((q) => ({ ...q })) },
+        };
+        save(c, { ...c.overlay, counter: c.overlay.counter + 1, drafts: trimDrafts([...c.overlay.drafts, draft]) });
+        return toWire(draft, c.now);
+      }),
+    saveLesson: (request) =>
+      run(() => {
+        if (isOffline()) throw new ApiError("network");
+        const c = ctx();
+        const draft = findDraft(c, request.draft_id);
+        // Only a draft that is written, not saved before, and not a lesson's own edit (that is `PUT /lessons/{id}`).
+        if (draft.consumed_at !== null || draft.lesson_id !== null || statusOf(draft, c.now) !== "ready") throw new ApiError("invalid_state", { status: 409 });
         if (!isValidContent(request)) throw invalid();
         const id = nextId(c.overlay, "l-n");
         const sourceRecord = c.overlay.sources.find((s) => s.id === draft.source_id);
@@ -723,7 +846,8 @@ export function createMock(source: MockSource, options: { delay?: Delay } = {}):
           ...c.overlay,
           counter: c.overlay.counter + 1,
           lessons: [...c.overlay.lessons, lesson],
-          drafts: c.overlay.drafts.filter((d) => d.id !== draft.id),
+          // Saved, not thrown away: it stays readable and leads to its lesson (BR-LES-08).
+          drafts: c.overlay.drafts.map((d) => (d.id === draft.id ? { ...d, consumed_at: iso(c.now), lesson_id: id } : d)),
         });
         return lesson;
       }),
@@ -742,10 +866,14 @@ export function createMock(source: MockSource, options: { delay?: Delay } = {}):
       }),
     updateLesson: (lessonId, request) =>
       run(() => {
+        if (isOffline()) throw new ApiError("network");
         const c = ctx();
         const current = lessonsOf(c).find((l) => l.id === lessonId);
         if (!current) throw notFound();
         if (!isValidContent(request)) throw invalid();
+        // The draft the lesson was edited in is saved with it; it has to be this lesson's, written and not saved before.
+        const draft = request.draft_id === undefined ? null : findDraft(c, request.draft_id);
+        if (draft && (draft.consumed_at !== null || draft.lesson_id !== lessonId || statusOf(draft, c.now) !== "ready")) throw new ApiError("invalid_state", { status: 409 });
         const next = toLesson(lessonId, request, {
           subject: current.subject,
           year: current.year,
@@ -758,7 +886,11 @@ export function createMock(source: MockSource, options: { delay?: Delay } = {}):
           source: current.source,
           emphasis: current.emphasis,
         });
-        save(c, { ...c.overlay, lessons: [...c.overlay.lessons.filter((l) => l.id !== lessonId), next] });
+        save(c, {
+          ...c.overlay,
+          lessons: [...c.overlay.lessons.filter((l) => l.id !== lessonId), next],
+          drafts: draft ? c.overlay.drafts.map((d) => (d.id === draft.id ? { ...d, consumed_at: iso(c.now) } : d)) : c.overlay.drafts,
+        });
         return withRuns(c.world, next);
       }),
     deleteLesson: (lessonId) =>

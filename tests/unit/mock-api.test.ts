@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { ApiError } from "@/lib/teacher/api/errors";
-import { createMock, createMockApi, GENERATE_MS, memorySource, REFINE_MS, SOURCE_MS } from "@/lib/teacher/api/mock";
+import { createMock, createMockApi, memorySource, SOURCE_MS } from "@/lib/teacher/api/mock";
+import { GENERATE_MS, REFINE_MS } from "@/lib/teacher/api/mock-drafts";
 import { freshState } from "@/lib/teacher/api/mock-state";
 import type { TeacherApi } from "@/lib/teacher/api/client";
-import type { Lesson, LessonDraft, QuestionKind } from "@/lib/teacher/api/types";
+import type { Lesson, LessonDraft, QuestionKind, ReadyDraft } from "@/lib/teacher/api/types";
 import { isValidContent } from "@/lib/teacher/lessons";
 
 const NOW = new Date(2026, 9, 29, 9, 0).getTime();
@@ -11,10 +12,13 @@ const ANCHOR = new Date(2026, 9, 29).getTime();
 
 let source: ReturnType<typeof memorySource>;
 let api: TeacherApi;
+/** The mock's clock, which a test moves to let a draft be written. */
+let now = NOW;
 const build = () => createMockApi(source, { delay: () => Promise.resolve() });
 
 beforeEach(() => {
-  source = memorySource(freshState(ANCHOR), { now: () => NOW });
+  now = NOW;
+  source = memorySource(freshState(ANCHOR), { now: () => now });
   api = build();
 });
 
@@ -32,16 +36,29 @@ const rejection = async (promise: Promise<unknown>): Promise<ApiError> => {
 const typed = "Равенки од втор степен и дискриминантата. Учениците треба да знаат да ги решаваат.";
 const file = (name: string, size = 1000) => ({ name, size, type: "" }) as File;
 
-async function makeDraft(text = typed, emphasis?: string): Promise<LessonDraft> {
+/** Asks for a lesson: the draft, pending, as the API answers at once. */
+async function askDraft(text = typed, emphasis?: string): Promise<LessonDraft> {
   const { source_id } = await api.createSource({ kind: "typed", text });
   return api.generateLesson({ source_id, subject_id: "math", year: 2, emphasis });
 }
 
-const saveRequest = (draft: LessonDraft) => ({
+/** A draft that has been written: the clock is moved past the job, as a wait that is over. */
+const finished = async (draft: LessonDraft, ms = GENERATE_MS): Promise<ReadyDraft> => {
+  now += ms + 1;
+  const read = await api.getDraft(draft.id);
+  if (read.status !== "ready") throw new Error(`The draft is ${read.status}`);
+  return read;
+};
+
+async function makeDraft(text = typed, emphasis?: string): Promise<ReadyDraft> {
+  return finished(await askDraft(text, emphasis));
+}
+
+const saveRequest = (draft: ReadyDraft) => ({
   draft_id: draft.id,
   title: draft.title,
   review_summary: draft.review_summary,
-  questions: draft.questions,
+  questions: draft.questions as Lesson["questions"],
 });
 
 describe("who and what", () => {
@@ -179,11 +196,17 @@ describe("lessons", () => {
 });
 
 describe("making a lesson", () => {
-  test("typed sentences are taken, and a text that is too short is refused with a reason", async () => {
+  test("typed sentences are taken, and a text that is too short or too long is refused with a reason", async () => {
     expect((await api.createSource({ kind: "typed", text: typed })).source_id).toMatch(/^src-/);
     const error = await rejection(api.createSource({ kind: "typed", text: "Кратко." }));
     expect(error.code).toBe("validation_failed");
     expect(error.reason).toBe("text_too_short");
+    // Counted after the spaces at both ends are cut (BR-LES-06, BR-LES-14): 39 is short, 40 is enough, 20 000 is taken, 20 001 is not.
+    expect((await rejection(api.createSource({ kind: "typed", text: `  ${"а".repeat(39)}  ` }))).reason).toBe("text_too_short");
+    expect((await api.createSource({ kind: "typed", text: ` ${"а".repeat(40)} ` })).source_id).toBeTruthy();
+    expect((await api.createSource({ kind: "typed", text: "а".repeat(20_000) })).source_id).toBeTruthy();
+    expect((await rejection(api.createSource({ kind: "typed", text: "а".repeat(20_001) }))).reason).toBe("text_too_long");
+    expect((await api.createSource({ kind: "typed", text: ` ${"а".repeat(20_000)} ` })).source_id).toBeTruthy();
   });
 
   test("only a PDF or a Word document under 20 MB, with text in it, is taken (BR-LES-05)", async () => {
@@ -197,7 +220,7 @@ describe("making a lesson", () => {
     expect((await rejection(api.createSource({ kind: "upload", file: file("scan.pdf") }))).reason).toBe("no_text");
   });
 
-  test("a draft has 5 to 8 valid questions of all three kinds, a review summary and a timer for each", async () => {
+  test("a draft that is ready has 5 to 8 valid questions of all three kinds, a review summary and a timer for each", async () => {
     const draft = await makeDraft();
     expect(isValidContent(draft)).toBe(true);
     expect(draft.refinements).toEqual([]);
@@ -211,18 +234,12 @@ describe("making a lesson", () => {
     expect((await makeDraft("Логаритми и нивните својства, за третата година со задачи.")).title).toBe("Логаритми");
     expect((await makeDraft("Извод на функција и правилата за наоѓање извод на полином.")).title).toBe("Извод на функција");
     const { source_id } = await api.createSource({ kind: "upload", file: file("Веројатност - работен лист.pdf") });
-    expect((await api.generateLesson({ source_id, subject_id: "math", year: 4 })).title).toBe("Основи на веројатноста");
+    expect((await finished(await api.generateLesson({ source_id, subject_id: "math", year: 4 }))).title).toBe("Основи на веројатноста");
   });
 
   test("the sentence of emphasis is kept, trimmed", async () => {
     expect((await makeDraft(typed, "  Нагласете ги примерите.  ")).emphasis).toBe("Нагласете ги примерите.");
     expect((await makeDraft(typed, "   ")).emphasis).toBeNull();
-  });
-
-  test("the AI can be made to fail with [fail], so the failure screen can be tried", async () => {
-    const { source_id } = await api.createSource({ kind: "typed", text: `${typed} [fail]` });
-    expect((await rejection(api.generateLesson({ source_id, subject_id: "math", year: 2 }))).code).toBe("generation_failed");
-    expect((await rejection(makeDraft(typed, "[fail]"))).code).toBe("generation_failed");
   });
 
   test("a source, subject or year that does not exist is refused", async () => {
@@ -232,72 +249,35 @@ describe("making a lesson", () => {
     expect((await rejection(api.generateLesson({ source_id, subject_id: "math", year: 0 }))).code).toBe("validation_failed");
   });
 
-  test("the generation waits as the AI does, a document is read first, typed sentences are taken at once, and the wait can be set", async () => {
+  test("a document is read for a moment, typed sentences are taken at once, and the wait can be set", async () => {
     const waits: number[] = [];
     const slow = createMockApi(source, { delay: async (ms) => void waits.push(ms) });
-    const { source_id } = await slow.createSource({ kind: "typed", text: typed });
+    await slow.createSource({ kind: "typed", text: typed });
     expect(waits).toEqual([]);
-    const draft = await slow.generateLesson({ source_id, subject_id: "math", year: 2 });
-    await slow.refineDraft(draft.id, "easier");
-    expect(waits).toEqual([GENERATE_MS, REFINE_MS]);
     // Long enough to see both parts of the wait on a preview.
     expect(SOURCE_MS).toBeGreaterThanOrEqual(1000);
     expect(GENERATE_MS).toBeGreaterThanOrEqual(5000);
     await slow.createSource({ kind: "upload", file: file("план.pdf") });
-    expect(waits.at(-1)).toBe(SOURCE_MS);
+    expect(waits).toEqual([SOURCE_MS]);
   });
 
-  test("a screen that stops waiting ends the call as a dropped connection, and nothing is kept", async () => {
+  test("a screen that stops waiting for a document ends the call as a dropped connection, and nothing is kept", async () => {
     const real = createMockApi(source);
     const stop = new AbortController();
     const reading = rejection(real.createSource({ kind: "upload", file: file("план.pdf") }, { signal: stop.signal }));
     stop.abort("cancel");
     expect((await reading).code).toBe("network");
     expect(source.state().school.sources).toEqual([]);
-
-    const { source_id } = await api.createSource({ kind: "typed", text: typed });
-    const writing = new AbortController();
-    const asked = rejection(real.generateLesson({ source_id, subject_id: "math", year: 2 }, { signal: writing.signal }));
-    writing.abort("timeout");
-    expect((await asked).code).toBe("network");
-    expect(source.state().school.drafts).toEqual([]);
-    // Already stopped before it began.
-    expect((await rejection(real.generateLesson({ source_id, subject_id: "math", year: 2 }, { signal: writing.signal }))).code).toBe("network");
-  });
-
-  test("[fail-once] fails the first time for a source and works the second, so a retry can be seen to help", async () => {
-    const { source_id } = await api.createSource({ kind: "typed", text: `${typed} [fail-once]` });
-    const request = { source_id, subject_id: "math", year: 2 };
-    expect((await rejection(api.generateLesson(request))).code).toBe("generation_failed");
-    expect((await api.generateLesson(request)).source_id).toBe(source_id);
-    // Another source starts over; and a plain [fail] never gives in.
-    const other = await api.createSource({ kind: "typed", text: `${typed} [fail-once]` });
-    expect((await rejection(api.generateLesson({ ...request, source_id: other.source_id }))).code).toBe("generation_failed");
-  });
-
-  test("[slow] is an AI that never answers until the screen stops waiting", async () => {
-    const real = createMockApi(source);
-    const { source_id } = await api.createSource({ kind: "typed", text: `${typed} [slow]` });
-    const stop = new AbortController();
-    let settled = false;
-    const asked = rejection(real.generateLesson({ source_id, subject_id: "math", year: 2 }, { signal: stop.signal })).finally(() => (settled = true));
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(settled).toBe(false);
-    stop.abort("timeout");
-    expect((await asked).code).toBe("network");
-  });
-
-  test("a draft is found again by its id, as after a reload", async () => {
-    const draft = await makeDraft();
-    expect(await build().getDraft(draft.id)).toEqual(draft);
-    expect((await rejection(api.getDraft("d-none"))).code).toBe("not_found");
   });
 });
+
+/** A refinement of a draft, written: it is a job too. */
+const refine = async (draft: ReadyDraft, refinement: Parameters<TeacherApi["refineDraft"]>[1]) => finished(await api.refineDraft(draft.id, refinement), REFINE_MS);
 
 describe("refining a draft (FR-LES-08)", () => {
   test("Shorter timers shortens every timer, to no less than 10 seconds", async () => {
     const draft = await makeDraft();
-    const refined = await api.refineDraft(draft.id, "shorter_timers");
+    const refined = await refine(draft, "shorter_timers");
     expect(refined.id).not.toBe(draft.id);
     expect(refined.refinements).toEqual(["shorter_timers"]);
     refined.questions.forEach((q, i) => {
@@ -310,9 +290,9 @@ describe("refining a draft (FR-LES-08)", () => {
   test("More questions adds some, never past eight", async () => {
     let draft = await makeDraft();
     const before = draft.questions.length;
-    draft = await api.refineDraft(draft.id, "more_questions");
+    draft = await refine(draft, "more_questions");
     expect(draft.questions.length).toBeGreaterThan(before);
-    for (let i = 0; i < 3; i++) draft = await api.refineDraft(draft.id, "more_questions");
+    for (let i = 0; i < 3; i++) draft = await refine(draft, "more_questions");
     expect(draft.questions.length).toBeLessThanOrEqual(8);
     expect(isValidContent(draft)).toBe(true);
     expect(draft.refinements).toHaveLength(4);
@@ -322,8 +302,8 @@ describe("refining a draft (FR-LES-08)", () => {
 
   test("Easier and Harder change the questions or the timers, and keep the draft valid", async () => {
     const draft = await makeDraft();
-    const easier = await api.refineDraft(draft.id, "easier");
-    const harder = await api.refineDraft(draft.id, "harder");
+    const easier = await refine(draft, "easier");
+    const harder = await refine(draft, "harder");
     for (const refined of [easier, harder]) {
       expect(isValidContent(refined)).toBe(true);
       expect(refined.questions).toHaveLength(draft.questions.length);
@@ -360,7 +340,7 @@ describe("saving, editing and deleting", () => {
 
   test("what the teacher edited is what is saved", async () => {
     const draft = await makeDraft();
-    const edited = draft.questions.map((q, i) => (i === 0 ? { ...q, prompt: "Едно друго прашање?", timer_seconds: 40 } : q));
+    const edited = saveRequest(draft).questions.map((q, i) => (i === 0 ? { ...q, prompt: "Едно друго прашање?", timer_seconds: 40 } : q));
     const lesson = await api.saveLesson({ ...saveRequest(draft), title: "  Мој наслов ", questions: edited });
     expect(lesson.title).toBe("Мој наслов");
     expect(lesson.questions[0]).toMatchObject({ prompt: "Едно друго прашање?", timer_seconds: 40 });
@@ -368,11 +348,12 @@ describe("saving, editing and deleting", () => {
 
   test("a draft is saved once, and a lesson that is not valid is refused", async () => {
     const draft = await makeDraft();
-    expect((await rejection(api.saveLesson({ ...saveRequest(draft), questions: draft.questions.slice(0, 4) }))).code).toBe("validation_failed");
+    expect((await rejection(api.saveLesson({ ...saveRequest(draft), questions: saveRequest(draft).questions.slice(0, 4) }))).code).toBe("validation_failed");
     expect((await rejection(api.saveLesson({ ...saveRequest(draft), title: "  " }))).code).toBe("validation_failed");
     await api.saveLesson(saveRequest(draft));
-    expect((await rejection(api.saveLesson(saveRequest(draft)))).code).toBe("not_found");
-    expect((await rejection(api.getDraft(draft.id))).code).toBe("not_found");
+    // Saved once: the draft stays readable and leads to its lesson, and cannot be saved again (BR-LES-08).
+    expect((await rejection(api.saveLesson(saveRequest(draft)))).code).toBe("invalid_state");
+    expect(await api.getDraft(draft.id)).toMatchObject({ consumed_at: expect.any(String), lesson_id: expect.stringMatching(/^l-n/) });
   });
 
   test("editing a lesson makes the next version and leaves what was run alone (BR-LES-03)", async () => {
@@ -637,7 +618,7 @@ describe("starting a lesson", () => {
 
 describe("the new teacher: invited, signed in for the first time", () => {
   const novice = () => {
-    const s = memorySource(freshState(ANCHOR), { now: () => NOW, persona: "novice" });
+    const s = memorySource(freshState(ANCHOR), { now: () => now, persona: "novice" });
     return { source: s, api: createMockApi(s, { delay: () => Promise.resolve() }) };
   };
 
@@ -685,7 +666,7 @@ describe("the new teacher: invited, signed in for the first time", () => {
   test("makes lessons of their own, which the teacher with history does not see, and the other way round", async () => {
     const { api, source } = novice();
     const draft = await makeDraftWith(api);
-    const saved = await api.saveLesson({ draft_id: draft.id, title: draft.title, review_summary: draft.review_summary, questions: draft.questions });
+    const saved = await api.saveLesson({ draft_id: draft.id, title: draft.title, review_summary: draft.review_summary, questions: draft.questions as Lesson["questions"] });
     expect((await api.listLessons()).map((l) => l.id)).toEqual([saved.id]);
     source.setSession("veteran");
     expect((await api.listLessons()).some((l) => l.id === saved.id)).toBe(false);
@@ -702,7 +683,11 @@ describe("the new teacher: invited, signed in for the first time", () => {
 });
 
 /** A draft made through a new teacher's own adapter, for the tests above. */
-async function makeDraftWith(a: TeacherApi): Promise<LessonDraft> {
+async function makeDraftWith(a: TeacherApi): Promise<ReadyDraft> {
   const { source_id } = await a.createSource({ kind: "typed", text: typed });
-  return a.generateLesson({ source_id, subject_id: "math", year: 2 });
+  const asked = await a.generateLesson({ source_id, subject_id: "math", year: 2 });
+  now += GENERATE_MS + 1;
+  const read = await a.getDraft(asked.id);
+  if (read.status !== "ready") throw new Error("The draft is not ready");
+  return read;
 }

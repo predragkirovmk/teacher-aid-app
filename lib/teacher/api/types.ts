@@ -166,26 +166,88 @@ export type SourceCreated = { source_id: Id };
 /** POST /lessons/generate. */
 export type GenerateRequest = { source_id: Id; subject_id: Id; year: number; emphasis?: string | null };
 
+/** What a draft is doing (3.2 `draft.status`): being written, written, or the AI could not. */
+export type DraftStatus = "pending" | "ready" | "failed";
+
 /**
- * A generated lesson that is not saved yet (BR-LES-04: nothing reaches students before the teacher reviews it).
- * PROPOSED: the spec says the draft "returns" and can be refined by id, so it has one.
+ * A question while the teacher is still making it: what a finished one is, with the gaps a half-edited one has. The right answer
+ * of a true or false question may not be chosen yet (`""`); an option may be empty; a timer or a count may be out of range. A draft
+ * holds such a question without complaint (PROPOSED `PATCH /lessons/drafts/{id}` checks only the shape); `POST /lessons` and
+ * `PUT /lessons/{id}` refuse it (BR-Q-04, BR-TIME-05, BR-ANS-04).
  */
-export type LessonDraft = LessonContent & {
+export type DraftQuestion = MultipleChoiceQuestion | (Omit<TrueFalseQuestion, "correct"> & { correct: "true" | "false" | "" }) | NumericQuestion;
+
+type DraftBase = {
   id: Id;
-  source_id: Id;
+  /** The source it was made from; null for the draft of a lesson that has none (a copy from the library). */
+  source_id: Id | null;
+  /** PROPOSED: the item of `GET /lessons/drafts` has it, and the wait on the draft page needs to know a document from sentences. */
+  source: { kind: SourceKind; file_name: string | null } | null;
   subject: Subject;
   year: number;
   emphasis: string | null;
   /** The refinements applied so far, oldest first. */
   refinements: Refinement[];
+  /** The draft a refinement was made from, else null (BR-LES-08). */
+  previous_draft_id: Id | null;
   created_at: IsoTime;
+  /** PROPOSED: when the teacher last changed it. Equal to `created_at` for a draft nobody has edited. */
+  updated_at: IsoTime;
+  /** Set when the draft was saved as a lesson. A saved draft stays readable and leads to its lesson (BR-LES-08). */
+  consumed_at: IsoTime | null;
+  /**
+   * PROPOSED reading: the lesson this draft is about. Set when the draft was made from a saved lesson (PROPOSED
+   * `POST /lessons/{id}/drafts`), and so saved with `PUT /lessons/{id}`; for a draft of a new lesson it is null until it is saved
+   * and then the lesson it became.
+   */
+  lesson_id: Id | null;
 };
+
+/**
+ * A draft: the output of a generation or a refinement before the teacher saves it, and the job that makes it (BR-LES-08). Nothing
+ * reaches students before the teacher reviews it (BR-LES-04). `title`, `review_summary` and `questions` are null until it is ready
+ * (INTERPRETATION); `failure` is null unless it failed.
+ */
+export type LessonDraft = DraftBase &
+  (
+    | { status: "pending"; failure: null; title: null; review_summary: null; questions: null }
+    | { status: "failed"; failure: "generation_failed"; title: null; review_summary: null; questions: null }
+    | { status: "ready"; failure: null; title: string; review_summary: string; questions: DraftQuestion[] }
+  );
+
+export type ReadyDraft = Extract<LessonDraft, { status: "ready" }>;
+
+/** One item of GET /lessons/drafts: an unsaved draft, the latest of its chain (FR-LES-20). `title` and `question_count` are null until ready. */
+export type DraftSummary = {
+  id: Id;
+  status: DraftStatus;
+  failure: "generation_failed" | null;
+  title: string | null;
+  subject: Subject;
+  year: number;
+  question_count: number | null;
+  refinements: Refinement[];
+  emphasis: string | null;
+  source: { kind: SourceKind; file_name: string | null } | null;
+  previous_draft_id: Id | null;
+  /** PROPOSED: the lesson a draft edits, so Today can tell it from a new lesson. */
+  lesson_id: Id | null;
+  created_at: IsoTime;
+  updated_at: IsoTime;
+};
+
+/**
+ * PATCH /lessons/drafts/{id}. PROPOSED. Only what changed, each field replacing the draft's: `questions` is the whole list in order.
+ * A ready draft only (`invalid_state`, 409, for a pending, failed or saved one). The draft may hold unfinished content (DraftQuestion);
+ * the answer is the draft.
+ */
+export type DraftPatch = { title?: string; review_summary?: string; questions?: DraftQuestion[] };
 
 /** POST /lessons: the draft as the teacher edited it (FR-LES-07) becomes a lesson at version 1. PROPOSED body. */
 export type SaveLessonRequest = LessonContent & { draft_id: Id };
 
-/** PUT /lessons/{id}: a new version; sessions that already ran keep theirs (BR-LES-03). */
-export type UpdateLessonRequest = LessonContent;
+/** PUT /lessons/{id}: a new version; sessions that already ran keep theirs (BR-LES-03). `draft_id` (PROPOSED) is the draft it was edited in, which is consumed. */
+export type UpdateLessonRequest = LessonContent & { draft_id?: Id };
 
 // ---- School library (F-05) -----------------------------------------------------------------------
 

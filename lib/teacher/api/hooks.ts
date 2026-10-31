@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
+import { DRAFT_POLL_MS } from "../lessons";
 import { firstName, initials, personName, schoolTypeOf } from "../format";
 import { authStatusOf, type AuthStatus, type EndReason } from "../guard";
 import { preparedLessons } from "../today";
@@ -8,7 +9,7 @@ import { actions, useTeacher } from "../store";
 import { apiMode } from "./config";
 import { api, type CallOptions } from "./client";
 import { toApiError } from "./errors";
-import { change, invalidate, mapQuery, resetQueries, seed, slotFor, useQuery, type Query } from "./query";
+import { change, forget, invalidate, mapQuery, resetQueries, seed, slotFor, useQuery, type Query } from "./query";
 import { endSession, useSessionEnd } from "./session";
 import type {
   ConsoleSnapshot,
@@ -16,6 +17,8 @@ import type {
   CoursePatch,
   CourseSummary,
   CreateSessionRequest,
+  DraftPatch,
+  DraftSummary,
   GenerateRequest,
   Id,
   Lesson,
@@ -40,7 +43,7 @@ export type { Query } from "./query";
  * while a refresh runs, and renders the same on the server and on the first client render. Each change goes
  * through the adapter and then loads again what it touched, so a list is right the moment a change has been made.
  *
- * Query keys: `me`, `courses`, `dashboard:<course>`, `lessons`, `lessons:<id>`, `drafts:<id>`, `library`,
+ * Query keys: `me`, `courses`, `dashboard:<course>`, `lessons`, `lessons:<id>`, `draft-list`, `drafts:<id>`, `library`,
  * `open-session`. A change names the first part of the keys it touches.
  */
 
@@ -63,9 +66,44 @@ export const useLessons = (): Query<LessonSummary[]> => useQuery("lessons", (a) 
 export const useLesson = (lessonId: Id | undefined): Query<Lesson> =>
   useQuery(`lessons:${lessonId}`, (a) => a.getLesson(lessonId as Id), lessonId !== undefined);
 
-/** A draft that is not saved yet, by id, so a reload of the review screen finds it again. */
-export const useDraft = (draftId: Id | undefined): Query<LessonDraft> =>
-  useQuery(`drafts:${draftId}`, (a) => a.getDraft(draftId as Id), draftId !== undefined);
+/**
+ * Ask again every few seconds for as long as `active` (11.4: a pending draft is read every 2 to 3 seconds). Nothing is asked while
+ * the window is hidden, and the moment it is shown again it asks, so a teacher who comes back to the wait finds it as it now is.
+ */
+function usePolling(active: boolean, again: () => void) {
+  useEffect(() => {
+    if (!active) return;
+    const tick = () => {
+      if (document.visibilityState === "visible") again();
+    };
+    const timer = setInterval(tick, DRAFT_POLL_MS);
+    document.addEventListener("visibilitychange", tick);
+    // A connection that is back asks at once, rather than at the next tick.
+    window.addEventListener("online", tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+      window.removeEventListener("online", tick);
+    };
+  }, [active, again]);
+}
+
+/**
+ * A draft by id, whatever it is doing: a reload of the wait or of the editor finds it again (EC-LES-09). While it is `pending` it
+ * is asked for again every few seconds, until it is ready or has failed.
+ */
+export function useDraft(draftId: Id | undefined): Query<LessonDraft> {
+  const q = useQuery(`drafts:${draftId}`, (a) => a.getDraft(draftId as Id), draftId !== undefined);
+  usePolling(q.data?.status === "pending", q.refetch);
+  return q;
+}
+
+/** The teacher's unsaved drafts, the latest of each chain, newest first (FR-LES-20). One that is being written is asked for again until it is done. */
+export function useDrafts(): Query<DraftSummary[]> {
+  const q = useQuery("draft-list", (a) => a.listDrafts());
+  usePolling(q.data?.some((d) => d.status === "pending") ?? false, q.refetch);
+  return q;
+}
 
 /** The lessons colleagues saved in the school. */
 export const useLibrary = (): Query<LibraryItem[]> => useQuery("library", (a) => a.listLibrary());
@@ -195,31 +233,63 @@ export const createSource = (input: SourceInput, options?: CallOptions): Promise
   change((a) => a.createSource(input, options));
 
 /**
- * Ask for a lesson. Takes a while: the AI writes it. The draft is put straight into the cache, so the page it opens finds
- * it without asking again; a reload of that page asks the API (EC-LES-09).
+ * Ask for a lesson. It answers at once with the draft, `pending`: the AI's work is a job that goes on without this page (BR-LES-08).
+ * The draft is put straight into the cache, so the page it opens finds it without asking again.
  */
 export async function generateLesson(request: GenerateRequest, options?: CallOptions): Promise<LessonDraft> {
-  const draft = await change((a) => a.generateLesson(request, options));
+  const draft = await change((a) => a.generateLesson(request, options), ["draft-list"]);
   // Nobody has read this draft yet, so there is no slot to seed: make it, with the draft in it.
   slotFor(`drafts:${draft.id}`, (a) => a.getDraft(draft.id)).put(draft);
   return draft;
 }
 
-/** One of the four refinements of a draft: a new draft. */
-export const refineDraft = (draftId: Id, refinement: Refinement): Promise<LessonDraft> =>
-  change((a) => a.refineDraft(draftId, refinement));
+/** The teacher's edits to a draft, sent as they are made (PROPOSED PATCH). The answer is the draft, which the page that reads it finds in the cache. */
+export async function updateDraft(draftId: Id, patch: DraftPatch): Promise<LessonDraft> {
+  const draft = await change((a) => a.updateDraft(draftId, patch), ["draft-list"]);
+  seed(`drafts:${draftId}`, draft);
+  return draft;
+}
 
-/** Save a draft, as the teacher edited it, as a lesson. */
+/** Throw a draft away, or cancel it while it is being written. Whoever has it open is going elsewhere, so it is forgotten rather than read again. */
+export async function deleteDraft(draftId: Id): Promise<void> {
+  await change((a) => a.deleteDraft(draftId), ["draft-list"]);
+  forget(`drafts:${draftId}`);
+}
+
+/** Run a failed draft again, with the same source: the same draft, `pending` once more. */
+export async function retryDraft(draftId: Id): Promise<LessonDraft> {
+  const draft = await change((a) => a.retryDraft(draftId), ["draft-list"]);
+  slotFor(`drafts:${draftId}`, (a) => a.getDraft(draftId)).put(draft);
+  return draft;
+}
+
+/** One of the four refinements of a draft: a new draft, `pending`, made from this one as it now is. */
+export async function refineDraft(draftId: Id, refinement: Refinement): Promise<LessonDraft> {
+  const draft = await change((a) => a.refineDraft(draftId, refinement), ["draft-list"]);
+  slotFor(`drafts:${draft.id}`, (a) => a.getDraft(draft.id)).put(draft);
+  return draft;
+}
+
+/** A draft of a saved lesson, to edit it. The one that is open already, if there is one. */
+export async function startEditing(lessonId: Id): Promise<LessonDraft> {
+  const draft = await change((a) => a.startEditing(lessonId), ["draft-list"]);
+  slotFor(`drafts:${draft.id}`, (a) => a.getDraft(draft.id)).put(draft);
+  return draft;
+}
+
+/** Save a draft, as the teacher edited it, as a lesson. The draft is saved with it: it leaves the list and leads to the lesson. */
 export async function saveLesson(request: SaveLessonRequest): Promise<Lesson> {
-  const lesson = await change((a) => a.saveLesson(request), ["lessons", "library"]);
+  const lesson = await change((a) => a.saveLesson(request), ["lessons", "library", "draft-list"]);
   seed(`lessons:${lesson.id}`, lesson);
+  invalidate(`drafts:${request.draft_id}`);
   return lesson;
 }
 
-/** Save the edited lesson as its next version. */
+/** Save the edited lesson as its next version, with the draft it was edited in. */
 export async function updateLesson(lessonId: Id, request: UpdateLessonRequest): Promise<Lesson> {
-  const lesson = await change((a) => a.updateLesson(lessonId, request), ["lessons"]);
+  const lesson = await change((a) => a.updateLesson(lessonId, request), ["lessons", "draft-list"]);
   seed(`lessons:${lessonId}`, lesson);
+  if (request.draft_id) invalidate(`drafts:${request.draft_id}`);
   return lesson;
 }
 
