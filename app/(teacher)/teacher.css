@@ -1770,14 +1770,6 @@ button {
   flex-wrap: wrap;
   gap: var(--sp-2);
 }
-.editor__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem var(--sp-3);
-  width: 100%;
-}
 /* Where saving stands, calmly: a mark that is more than colour, and the words. A failed save is a warning, so it gets the red badge. */
 .card .savestate,
 .savestate {
@@ -1788,12 +1780,44 @@ button {
   color: var(--text-2);
   font-weight: 600;
 }
-.card .savestate[data-status="saved"],
-.card .savestate[data-status="failed"] {
+.savestate[data-status="saved"],
+.savestate[data-status="failed"] {
   color: var(--text);
 }
-.card .savestate[data-status="failed"] {
+.savestate[data-status="failed"] {
   font-weight: 700;
+}
+/*
+ * The one yellow button of the editor and where saving stands, in a bar. While the window is tall enough for the page to scroll under
+ * it without taking a fifth of it, the bar stays at the bottom, so the way to make this a lesson is never a scroll away; the page
+ * keeps its distance (`scroll-padding`) so that a field that takes the focus is never under it. In a short window (a zoomed one) the
+ * bar is a part of the page, at its end, like the top bar of a short window is.
+ */
+.savebar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-3);
+  padding: 0.75rem var(--sp-2);
+  border: 2px solid var(--line-strong);
+  border-radius: var(--r-l);
+  background: var(--deep);
+}
+@media (min-height: 30rem) {
+  .savebar {
+    position: sticky;
+    bottom: var(--sp-2);
+    z-index: 20;
+    box-shadow: 0 0.5rem 1.5rem rgba(10, 46, 55, 0.45);
+  }
+  html:has(.savebar) {
+    scroll-padding-bottom: 6.5rem;
+  }
+}
+@media (max-width: 40rem) {
+  .savebar .btn {
+    width: 100%;
+  }
 }
 .savestate svg {
   flex: none;

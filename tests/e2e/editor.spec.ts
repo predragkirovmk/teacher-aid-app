@@ -159,12 +159,65 @@ test.describe("at rest", () => {
     await expect(yellow(page)).toHaveCount(1);
     await expect(yellow(page)).toHaveText("Зачувај лекција");
 
-    // Questions first, then the ways to change them all, then the review summary, then the button.
-    const y = async (locator: ReturnType<typeof page.locator>) => (await locator.boundingBox())!.y;
-    const order = [await y(cards(page).last()), await y(refineHeading(page)), await y(summaryField(page)), await y(saveButton(page))];
-    expect([...order].sort((a, b) => a - b)).toEqual(order);
-    // What happens to an unfinished lesson is said where the button is.
-    await expect(page.getByText("Ако не ја зачувате сега, ја чуваме до 30 дена и ја наоѓате на Денес.")).toBeVisible();
+    // Questions first, then the ways to change them all, then the review summary, then the button (in the page's own order: the button
+    // is in a bar that stays in the window, so where it is on the screen says nothing about where it is in the page).
+    const order = await page.evaluate(() => {
+      const at = (el: Element | null) => el!;
+      const last = at(document.querySelector(".questions > li:last-child"));
+      const refine = at(document.getElementById("refine-title"));
+      const summary = at(document.getElementById("editor-summary"));
+      const save = at(document.querySelector(".savebar .btn--primary"));
+      const follows = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+      return [follows(last, refine), follows(refine, summary), follows(summary, save)];
+    });
+    expect(order).toEqual([true, true, true]);
+    // What happens to an unfinished lesson is said under the button.
+    await expect(page.getByText("Ако не ја зачувате сега, ја чуваме до 30 дена и ја наоѓате на Денес.")).toBeAttached();
+    await expect(saveButton(page)).toHaveAccessibleDescription(/Откако ќе ја зачувате, лекцијата е на Денес/);
+  });
+
+  test("the yellow button and where saving stands are one bar that stays in the window, and is the only place that says it", async ({ page }) => {
+    const bar = page.locator(".savebar");
+    await expect(bar).toHaveCount(1);
+    await expect(bar.locator(".btn--primary")).toHaveText("Зачувај лекција");
+    await expect(bar.locator(".savestate")).toHaveText("Промените се зачувуваат сами.");
+    // Said once on the page, not by the title and again by the open question.
+    await expect(page.locator(".savestate")).toHaveCount(1);
+    await edit(page, 1).click();
+    await expect(page.locator(".savestate")).toHaveCount(1);
+    expect(await bar.evaluate((el) => getComputedStyle(el).position)).toBe("sticky");
+    // In the window when the page opens, in the middle of the long page, and with a long question open.
+    const inWindow = async () => {
+      const box = (await saveButton(page).boundingBox())!;
+      const vh = page.viewportSize()!.height;
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height).toBeLessThanOrEqual(vh);
+    };
+    await inWindow();
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight / 2));
+    await inWindow();
+    await expect(yellow(page)).toHaveCount(1);
+    // At the end of the page it is where it belongs, above the two lines about what saving does.
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    const barBox = (await bar.boundingBox())!;
+    const note = (await page.locator("#save-note").boundingBox())!;
+    expect(barBox.y + barBox.height).toBeLessThanOrEqual(note.y);
+    // A box that takes the focus is not under it.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await timer(page).focus();
+    const field = (await timer(page).boundingBox())!;
+    expect(field.y + field.height).toBeLessThanOrEqual((await bar.boundingBox())!.y);
+  });
+
+  test("in a short window (200% zoom) the bar is part of the page, and does not take a third of it", async ({ page }) => {
+    await page.setViewportSize({ width: 640, height: 360 });
+    expect(await page.locator(".savebar").evaluate((el) => getComputedStyle(el).position)).toBe("static");
+    expect(await page.evaluate(() => getComputedStyle(document.documentElement).scrollPaddingBottom)).toBe("auto");
+    expect(await overflow(page)).toBeLessThanOrEqual(0);
+    await saveButton(page).scrollIntoViewIfNeeded();
+    const box = (await saveButton(page).boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(640);
   });
 
   test("everything that can be pressed is large, and the words are 18px or more", async ({ page }) => {
@@ -502,7 +555,22 @@ test.describe("adding, deleting and moving", () => {
     await expect(page.locator(".questions > li.question:not(.question--removed)")).toHaveCount(6);
   });
 
-  test("a question moves up and down, the order is kept, and the focus stays on the button that was pressed", async ({ page }) => {
+  test("a question that moves keeps the button that moved it where it was in the window, so it can be pressed again", async ({ page }) => {
+    await edit(page, 3).click();
+    const down = open(page).getByRole("button", { name: "Надолу" });
+    await down.scrollIntoViewIfNeeded();
+    const before = (await down.boundingBox())!.y;
+    await down.click();
+    await expect(open(page).getByRole("heading", { level: 3 })).toHaveText("Прашање 4 од 6");
+    await expect(down).toBeFocused();
+    // The question went down past a shorter one that was only read, and the page moved with it: the button is where it was.
+    await expect.poll(async () => Math.abs((await down.boundingBox())!.y - before)).toBeLessThanOrEqual(2);
+    const inWindow = (await down.boundingBox())!;
+    expect(inWindow.y).toBeGreaterThanOrEqual(0);
+    expect(inWindow.y + inWindow.height).toBeLessThanOrEqual(720);
+  });
+
+  test("a question is moved up and down, the order is kept, and the focus stays on the button that was pressed", async ({ page }) => {
     const first = await card(page, 1).locator(".question__prompt").innerText();
     const second = await card(page, 2).locator(".question__prompt").innerText();
     await edit(page, 1).click();
@@ -651,6 +719,8 @@ test.describe("changing all the questions", () => {
       await page.getByRole("button", { name: "Врати ги претходните прашања" }).click();
       await expect(page).toHaveURL(new RegExp(`/teacher/lessons/drafts/${SEED}$`));
       await expect(page.getByText("Ги вративме претходните прашања.", { exact: true }).first()).toBeVisible();
+      // The button that was pressed is gone with its page: the focus is on the first thing to change, as after the wait, and not lost.
+      await expect(titleField(page)).toBeFocused();
       await expect(page.getByRole("button", { name: "Врати ги претходните прашања" })).toHaveCount(0);
       expect(JSON.stringify((await draftOnDisk(page)).content.questions)).toBe(JSON.stringify(before));
       expect((await demo(page)).school.drafts.map((d) => d.id)).toEqual([SEED]);
@@ -871,6 +941,8 @@ test.describe("saving the lesson", () => {
     await context.setOffline(true);
     await saveButton(page).click();
     await expect(page.locator("main").getByRole("alert").filter({ hasText: "Не успеавме да ја зачуваме лекцијата" })).toContainText("Нема врска со интернет");
+    // The button is in a bar that is in the window wherever the teacher is on the page, so what it answers is brought to them.
+    await expect(page.locator("main").getByRole("alert").filter({ hasText: "Не успеавме да ја зачуваме лекцијата" })).toBeInViewport();
     await expect(page).toHaveURL(new RegExp(`${SEED}$`));
     await expect(titleField(page)).toHaveValue("Ќе се зачува подоцна");
     await context.setOffline(false);

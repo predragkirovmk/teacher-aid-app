@@ -5,6 +5,7 @@ import {
   CheckCircleIcon,
   CircleNotchIcon,
   FloppyDiskIcon,
+  InfoIcon,
   LightningIcon,
   PencilSimpleIcon,
   PlusIcon,
@@ -68,7 +69,7 @@ function SaveState({ status }: { status: SaveStatus }) {
       ) : status === "saved" ? (
         <CheckCircleIcon size={28} weight="fill" aria-hidden="true" />
       ) : status === "idle" ? (
-        <FloppyDiskIcon size={28} aria-hidden="true" />
+        <InfoIcon size={28} aria-hidden="true" />
       ) : (
         <CircleNotchIcon size={28} aria-hidden="true" />
       )}
@@ -108,7 +109,7 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
   const [undone, setUndone] = useState(false);
   const root = useRef<HTMLDivElement>(null);
 
-  const ask = (id: string, field: NonNullable<FocusRequest>["field"]) => setFocus({ id, field, nonce: ++nonce.current });
+  const ask = (id: string, field: NonNullable<FocusRequest>["field"], anchor?: number) => setFocus({ id, field, nonce: ++nonce.current, anchor });
   const tell = (text: string) => setSay(text);
 
   // ---- The draft keeps every change -------------------------------------------------------------------------
@@ -170,6 +171,8 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
       if (wasUndone) {
         setUndone(true);
         setSay(t("refined.undone"));
+        // The button that was pressed is gone with the page it was on: the focus goes where it goes after a wait.
+        ask("", "title");
       } else if (fresh) {
         setSay(refined && last ? t(`refined.${last}`) : t("draft.ready"));
         ask("", "title");
@@ -221,11 +224,11 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
     ask(id, "prompt");
   };
 
-  const move = (id: string, direction: "up" | "down") => {
+  const move = (id: string, direction: "up" | "down", anchor: number) => {
     const i = indexOf(id);
     dispatch({ type: "move", id, direction });
     tell(t("edit.moved", { n: direction === "up" ? i : i + 2, total: questions.length }));
-    ask(id, direction);
+    ask(id, direction, anchor);
   };
 
   const remove = (id: string) => {
@@ -278,6 +281,11 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
   // ---- Making it a lesson -----------------------------------------------------------------------------------
   const problems: Problem[] = showProblems ? contentProblems(content, raw) : [];
   const problemsHeading = useRef<HTMLHeadingElement>(null);
+  // The button is in a bar that stays in view, so what it answers with can be far from where the teacher is: it is brought into view.
+  const failure = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (unsent || saveError !== null) failure.current?.scrollIntoView({ block: "center" });
+  }, [unsent, saveError]);
 
   const goTo = (p: Problem) => {
     if (p.question) {
@@ -343,12 +351,9 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
         </p>
 
         <section className="card card--stack editor__title" aria-labelledby="editor-title-label">
-          <div className="editor__row">
-            <label id="editor-title-label" htmlFor="editor-title" className="prepare__label">
-              {t("editor.title.label")}
-            </label>
-            <SaveState status={status} />
-          </div>
+          <label id="editor-title-label" htmlFor="editor-title" className="prepare__label">
+            {t("editor.title.label")}
+          </label>
           <input
             id="editor-title"
             type="text"
@@ -420,9 +425,8 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
                     canMoveDown={i < questions.length - 1}
                     canDelete={canDelete(questions.length)}
                     focus={focus}
-                    status={<SaveState status={status} />}
                     onDone={() => finish(q.id)}
-                    onMove={(direction) => move(q.id, direction)}
+                    onMove={(direction, anchor) => move(q.id, direction, anchor)}
                     onDelete={() => remove(q.id)}
                   />
                 ) : (
@@ -541,18 +545,29 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
             </div>
           </section>
         )}
-        {unsent && <ProblemBox>{t("save.unsent")}</ProblemBox>}
-        {saveError !== null && (
-          <ProblemBox title={t("save.failed.title")}>
-            <ErrorWords error={saveError} />
-          </ProblemBox>
+        {(unsent || saveError !== null) && (
+          <div ref={failure}>
+            {unsent && <ProblemBox>{t("save.unsent")}</ProblemBox>}
+            {saveError !== null && (
+              <ProblemBox title={t("save.failed.title")}>
+                <ErrorWords error={saveError} />
+              </ProblemBox>
+            )}
+          </div>
         )}
 
-        <div className="prepare__go">
-          <button type="button" className="btn btn--primary btn--big" aria-busy={saving} onClick={() => void save()}>
+        {/*
+          The one yellow button and where saving stands are one bar that stays at the bottom of the window while the page is longer than
+          it, so the way to make this a lesson is never a scroll away; on a short window (a zoomed one) it is part of the page instead.
+        */}
+        <div className="savebar">
+          <button type="button" className="btn btn--primary" aria-busy={saving} aria-describedby="save-note" onClick={() => void save()}>
             <FloppyDiskIcon size={24} weight="fill" aria-hidden="true" />
             {t(draft.lesson_id ? "save.changes" : "save.new")}
           </button>
+          <SaveState status={status} />
+        </div>
+        <div className="prepare__go" id="save-note">
           <p>{t(draft.lesson_id ? "save.changes.note" : "save.new.note")}</p>
           <p>{t("editor.kept", { days: DRAFT_RETENTION_DAYS })}</p>
         </div>

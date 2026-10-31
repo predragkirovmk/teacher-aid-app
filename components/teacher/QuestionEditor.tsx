@@ -11,20 +11,29 @@ import { QUESTIONS_MIN } from "@/lib/teacher/scoring";
 import { Choices } from "./Choices";
 import { problemWords } from "./problemWords";
 
-/** Where the focus is sent: a field of a question, or the button that opens it. `nonce` makes the same request twice a request twice. */
-export type FocusRequest = { id: string; field: Field | "edit" | "undo" | "up" | "down" | "done"; nonce: number } | null;
+/**
+ * Where the focus is sent: a field of a question, or the button that opens it. `nonce` makes the same request twice a request twice.
+ * `anchor` is where a button was on the screen (its distance from the top of the window) when it moved the question: the page is then
+ * scrolled so that the button is there again, since the question has moved and the teacher's eyes are on the button.
+ */
+export type FocusRequest = { id: string; field: Field | "edit" | "undo" | "up" | "down" | "done"; nonce: number; anchor?: number } | null;
 
 /**
  * Put the focus on the field the request names, inside `root`; a button that is not there any more (the question moved to the end of
  * the list, and "Надолу" went) sends it to "Готово". A group of choices takes the focus on its chosen one.
  */
-export function focusField(root: ParentNode, field: string): boolean {
+export function focusField(root: ParentNode, field: string, anchor?: number): boolean {
   const el = root.querySelector<HTMLElement>(`[data-field="${field}"]`) ?? (field === "up" || field === "down" ? root.querySelector<HTMLElement>('[data-field="done"]') : null);
   // A group takes the focus on its chosen choice, else on its first choice; a box that holds other things, on the first of them.
   const target = el?.matches("input, textarea, button, [tabindex]")
     ? el
     : (el?.querySelector<HTMLElement>("input:checked") ?? el?.querySelector<HTMLElement>('input[type="radio"]') ?? el?.querySelector<HTMLElement>("input, textarea, button"));
   target?.focus();
+  // A button that was pressed to move the question is where it was in the window, whichever way the page has shifted under it.
+  if (target && anchor !== undefined) {
+    const shift = target.getBoundingClientRect().top - anchor;
+    if (Math.abs(shift) > 1) window.scrollBy({ top: shift, behavior: "instant" });
+  }
   return !!target;
 }
 
@@ -82,7 +91,6 @@ export function QuestionEditor({
   canMoveDown,
   canDelete,
   focus,
-  status,
   onDone,
   onMove,
   onDelete,
@@ -98,9 +106,9 @@ export function QuestionEditor({
   canMoveDown: boolean;
   canDelete: boolean;
   focus: FocusRequest;
-  status: ReactNode;
   onDone: () => void;
-  onMove: (direction: "up" | "down") => void;
+  /** `anchor`: where the button that was pressed is in the window, so that the page can keep it there. */
+  onMove: (direction: "up" | "down", anchor: number) => void;
   onDelete: () => void;
 }) {
   const { t, locale } = useT();
@@ -110,7 +118,7 @@ export function QuestionEditor({
   const set = (change: Record<string, unknown>) => dispatch({ type: "question", question: { ...q, ...change } as DraftQuestion });
 
   useEffect(() => {
-    if (focus && focus.id === q.id && focus.field !== "edit" && root.current) focusField(root.current, focus.field);
+    if (focus && focus.id === q.id && focus.field !== "edit" && root.current) focusField(root.current, focus.field, focus.anchor);
   }, [focus, q.id]);
 
   const invalid = (field: Field) => problems?.some((p) => p.field === field) ?? false;
@@ -319,13 +327,13 @@ export function QuestionEditor({
           {t("question.done")}
         </button>
         {canMoveUp && (
-          <button type="button" className="btn btn--secondary" data-field="up" onClick={() => onMove("up")}>
+          <button type="button" className="btn btn--secondary" data-field="up" onClick={(e) => onMove("up", e.currentTarget.getBoundingClientRect().top)}>
             <ArrowUpIcon size={24} aria-hidden="true" />
             {t("question.up")}
           </button>
         )}
         {canMoveDown && (
-          <button type="button" className="btn btn--secondary" data-field="down" onClick={() => onMove("down")}>
+          <button type="button" className="btn btn--secondary" data-field="down" onClick={(e) => onMove("down", e.currentTarget.getBoundingClientRect().top)}>
             <ArrowDownIcon size={24} aria-hidden="true" />
             {t("question.down")}
           </button>
@@ -336,7 +344,6 @@ export function QuestionEditor({
             {t("question.delete")}
           </button>
         )}
-        {status}
       </div>
       {!canDelete && <p className="editor__hint">{t("edit.min", { min: QUESTIONS_MIN })}</p>}
     </li>
