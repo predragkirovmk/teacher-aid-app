@@ -20,7 +20,10 @@ export type FocusRequest = { id: string; field: Field | "edit" | "undo" | "up" |
  */
 export function focusField(root: ParentNode, field: string): boolean {
   const el = root.querySelector<HTMLElement>(`[data-field="${field}"]`) ?? (field === "up" || field === "down" ? root.querySelector<HTMLElement>('[data-field="done"]') : null);
-  const target = el?.matches("input, textarea, button, [tabindex]") ? el : el?.querySelector<HTMLElement>("input:checked, input, textarea, button");
+  // A group takes the focus on its chosen choice, else on its first choice; a box that holds other things, on the first of them.
+  const target = el?.matches("input, textarea, button, [tabindex]")
+    ? el
+    : (el?.querySelector<HTMLElement>("input:checked") ?? el?.querySelector<HTMLElement>('input[type="radio"]') ?? el?.querySelector<HTMLElement>("input, textarea, button"));
   target?.focus();
   return !!target;
 }
@@ -156,22 +159,29 @@ export function QuestionEditor({
               const right = q.correct === String(i);
               return (
                 <li key={i} className="opt" data-right={right}>
-                  <label className="choice opt__right" data-checked={right}>
-                    <input type="radio" name={`right-${q.id}`} checked={right} aria-label={t("edit.option.right.label", { n: i + 1 })} onChange={() => set({ correct: String(i) })} />
-                    {right ? <CheckCircleIcon size={28} weight="fill" aria-hidden="true" /> : <CircleIcon size={28} aria-hidden="true" />}
-                    <span>{t("edit.option.right")}</span>
-                  </label>
                   <input
                     type="text"
-                    className="field"
+                    className="field opt__text"
                     data-field={`option-${i}`}
                     aria-label={t("edit.option", { n: i + 1 })}
                     aria-invalid={invalid(`option-${i}`)}
                     value={text}
                     onChange={(e) => set(setOption(q, i, e.target.value))}
                   />
+                  {/* Only the right answer says it is right ("Точен одговор", a tick); the others say what pressing them does, so no row reads as right by default. */}
+                  <label className="choice opt__right" data-checked={right}>
+                    <input
+                      type="radio"
+                      name={`right-${q.id}`}
+                      checked={right}
+                      aria-label={t(right ? "edit.option.right.label" : "edit.option.mark.label", { n: i + 1 })}
+                      onChange={() => set({ correct: String(i) })}
+                    />
+                    {right ? <CheckCircleIcon size={28} weight="fill" aria-hidden="true" /> : <CircleIcon size={28} aria-hidden="true" />}
+                    <span>{t(right ? "edit.option.right" : "edit.option.mark")}</span>
+                  </label>
                   {canRemoveOption(q) && (
-                    <button type="button" className="btn btn--secondary btn--small" aria-label={t("edit.option.remove.label", { n: i + 1 })} onClick={() => set(removeOption(q, i))}>
+                    <button type="button" className="btn btn--secondary btn--small opt__remove" aria-label={t("edit.option.remove.label", { n: i + 1 })} onClick={() => set(removeOption(q, i))}>
                       <XIcon size={24} aria-hidden="true" />
                       {t("edit.option.remove")}
                     </button>

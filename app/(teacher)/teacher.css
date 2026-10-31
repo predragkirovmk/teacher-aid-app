@@ -1892,17 +1892,68 @@ button {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.75rem;
+  gap: 0.25rem;
+}
+/*
+ * One answer: its words, what pressing its choice does ("Означи како точен", or "Точен одговор" on the one that is), and Remove. The
+ * right one has a white edge, as the right answer has when it is read, and a tick with the words; the others say what pressing them
+ * does and carry no tick, so no row reads as right by default. Every row has the same room for that edge, so nothing moves when the
+ * choice does.
+ */
+.question--open {
+  container: question / inline-size;
 }
 .opt {
   display: grid;
-  grid-template-columns: minmax(9rem, auto) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 16rem auto;
   gap: 0.75rem;
   align-items: center;
+  margin-inline: calc(-0.5rem - 2px);
+  padding: 0.5rem;
+  border: 2px solid transparent;
+  border-radius: var(--r-m);
+}
+.opt[data-right="true"] {
+  border-color: var(--text);
+  background: var(--shadow);
 }
 .opt__right {
   min-height: var(--tap);
   padding: 0.5rem var(--sp-2);
+}
+/* The row already has the edge: the choice inside it is only the tick and the words. */
+.opt[data-right="true"] .opt__right {
+  border-color: transparent;
+  background: transparent;
+}
+/* Where the open question is too narrow for all three side by side (the sidebar is there, or the window is zoomed), the words get the row and the other two share the next. */
+@container question (max-width: 46rem) {
+  .opt {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .opt__right {
+    justify-self: start;
+  }
+  .opt__text {
+    grid-column: 1 / -1;
+  }
+}
+/* A phone's width, or a laptop's zoomed to 400%: one under the other, each as wide as the row. */
+@container question (max-width: 30rem) {
+  .opt {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* The three kinds side by side where there is room, each as wide as its words, and wrapping where there is not. */
+.editor__field .prepare__tiles .choices {
+  display: flex;
+  flex-wrap: wrap;
+}
+.editor__field .prepare__tiles .choice {
+  flex: 1 1 auto;
+}
+.editor__field .prepare__tiles .choice__text {
+  flex: 0 1 auto;
 }
 .editor__short {
   max-width: 20rem;
@@ -1982,9 +2033,6 @@ button {
   font-weight: 600;
 }
 @media (max-width: 40rem) {
-  .opt {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .question--open {
     padding: calc(var(--sp-3) - 2px);
   }

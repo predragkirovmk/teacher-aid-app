@@ -44,7 +44,7 @@ const QUESTIONS = [
   tf(1, "Равенката x² + 4 = 0 нема реални решенија.", "true"),
   num(2, "Колку е дискриминантата на равенката x² − 5x + 6 = 0?", "1"),
   mc(3, "Колку решенија има равенката x² − 6x + 9 = 0?", ["Две различни", "Едно двојно решение", "Нема реални решенија"], "1"),
-  num(4, "Колку е поголемото решение на равенката x² − 5x + 6 = 0?", "3", { unit: "единици" }),
+  num(4, "Колку е поголемото решение на равенката x² − 5x + 6 = 0?", "3"),
   tf(5, "Збирот на решенијата е −b/a.", "true"),
 ];
 
@@ -126,7 +126,8 @@ const overflow = (page: Page) => page.evaluate(() => document.documentElement.sc
 /** The fields of the question that is open. */
 const prompt = (page: Page) => open(page).getByRole("textbox", { name: "Текст на прашањето" });
 const option = (page: Page, n: number) => open(page).getByRole("textbox", { name: `Одговор ${n}`, exact: true });
-const isRight = (page: Page, n: number) => open(page).getByRole("radio", { name: `Одговор ${n} е точен` });
+/** The choice of an answer, whether it is the right one now ("Одговор 2, точен одговор") or not ("Одговор 2, означи како точен"). */
+const isRight = (page: Page, n: number) => open(page).getByRole("radio", { name: new RegExp(`^Одговор ${n}, `) });
 const timer = (page: Page) => open(page).getByRole("textbox", { name: "Време за одговор, во секунди" });
 const kind = (page: Page, name: string) => open(page).getByRole("radio", { name });
 const answer = (page: Page) => open(page).getByRole("textbox", { name: "Точен одговор", exact: true });
@@ -289,6 +290,47 @@ test.describe("editing a question of each kind", () => {
     await expect(card(page, 1)).toContainText("Време: 90 секунди");
   });
 
+  test("multiple choice: only the right answer says it is right; the others say what pressing them does", async ({ page }) => {
+    await edit(page, 1).click();
+    const rows = open(page).locator(".opt");
+    await expect(rows).toHaveCount(4);
+    // One row says "Точен одговор", with a tick; the three others say "Означи како точен", and none of them says it is right.
+    await expect(open(page).locator(".opt__right").filter({ hasText: "Точен одговор" })).toHaveCount(1);
+    await expect(open(page).locator(".opt__right").filter({ hasText: "Означи како точен" })).toHaveCount(3);
+    await expect(rows.nth(1)).toHaveAttribute("data-right", "true");
+    await expect(rows.nth(1)).toContainText("Точен одговор");
+    for (const i of [0, 2, 3]) {
+      await expect(rows.nth(i)).toHaveAttribute("data-right", "false");
+      await expect(rows.nth(i)).not.toContainText("Точен одговор");
+    }
+    // The tick is a drawing next to the words, never alone: the one with the words is the one with the white edge.
+    expect(await rows.nth(1).evaluate((el) => getComputedStyle(el).borderTopColor)).toBe("rgb(255, 255, 255)");
+    expect(await rows.nth(0).evaluate((el) => getComputedStyle(el).borderTopColor)).toBe("rgba(0, 0, 0, 0)");
+    // What a screen reader says of each, with the words that are on the screen in it.
+    await expect(isRight(page, 2)).toHaveAccessibleName("Одговор 2, точен одговор");
+    await expect(isRight(page, 3)).toHaveAccessibleName("Одговор 3, означи како точен");
+    // Pressing another moves it: the first is not right any more and says so by saying what it does again.
+    await isRight(page, 4).check();
+    await expect(rows.nth(3)).toContainText("Точен одговор");
+    await expect(rows.nth(1)).toContainText("Означи како точен");
+    await expect(open(page).locator(".opt__right").filter({ hasText: "Точен одговор" })).toHaveCount(1);
+    await saved(page);
+    expect((await draftOnDisk(page)).content.questions[0]).toMatchObject({ correct: "3" });
+  });
+
+  test("the kinds are three tiles on one line each, with the same words as the card that is read", async ({ page }) => {
+    await edit(page, 1).click();
+    for (const name of ["Понудени одговори", "Точно или неточно", "Одговор со број"]) {
+      const tile = open(page).locator(".prepare__tiles .choice").filter({ hasText: name });
+      await expect(tile).toBeVisible();
+      // One line: a tile of 64px, not one of three lines.
+      expect((await tile.boundingBox())!.height).toBeLessThanOrEqual(64);
+    }
+    await done(page).click();
+    await expect(card(page, 1).locator(".question__meta")).toContainText("Понудени одговори");
+    await expect(card(page, 1).locator(".question__meta")).not.toContainText("Избор од");
+  });
+
   test("true or false: the other answer is chosen, and it is the one that is marked", async ({ page }) => {
     await edit(page, 2).click();
     await expect(open(page).getByRole("radio", { name: "Точно", exact: true })).toBeChecked();
@@ -303,7 +345,13 @@ test.describe("editing a question of each kind", () => {
     await edit(page, 5).click();
     await expect(answer(page)).toHaveValue("3");
     await answer(page).fill("-2,5");
-    await open(page).getByRole("textbox", { name: "Единица" }).fill("cm²");
+    // The unit is empty until the teacher writes one: nothing in the box that reads as an entry (no placeholder, no example in it);
+    // the example, "cm²", is in the words under its label.
+    const unit = open(page).getByRole("textbox", { name: "Единица" });
+    await expect(unit).toHaveValue("");
+    expect(await unit.getAttribute("placeholder")).toBeNull();
+    await expect(open(page).getByText("По желба, на пример cm². Се прикажува покрај одговорот.")).toBeVisible();
+    await unit.fill("cm²");
     await tolerance(page).fill("0,5");
     await expect(page.getByText("На пример 0,5 значи дека 11,5 и 12,5 се точни кога одговорот е 12.")).toBeVisible();
     // A minus answer without the minus key is a problem of the question, in plain words.
@@ -376,7 +424,7 @@ test.describe("adding, deleting and moving", () => {
   test("a question is added by choosing its kind, opens at the end for its words, and up to eight", async ({ page }) => {
     await page.getByRole("button", { name: "Додај прашање" }).click();
     await expect(page.getByRole("heading", { level: 3, name: "Какво прашање сакате да додадете?" })).toBeVisible();
-    for (const name of ["Избор од понудени одговори", "Точно или неточно", "Одговор со број"]) await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
+    for (const name of ["Понудени одговори", "Точно или неточно", "Одговор со број"]) await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Не додавај" }).click();
     await expect(cards(page)).toHaveCount(6);
 
@@ -412,7 +460,7 @@ test.describe("adding, deleting and moving", () => {
 
   test("a new multiple-choice question starts with two empty answers, to be written", async ({ page }) => {
     await page.getByRole("button", { name: "Додај прашање" }).click();
-    await page.getByRole("button", { name: "Избор од понудени одговори", exact: true }).click();
+    await page.getByRole("button", { name: "Понудени одговори", exact: true }).click();
     await expect(option(page, 1)).toHaveValue("");
     await expect(option(page, 2)).toHaveValue("");
     await expect(option(page, 3)).toHaveCount(0);
@@ -1162,15 +1210,17 @@ test.describe("keyboard only", () => {
     await page.keyboard.type("Која од равенките е квадратна? Да?");
     // The kind: one stop for the group, the arrows choose.
     await page.keyboard.press("Tab");
-    await expect(kind(page, "Избор од понудени одговори")).toBeFocused();
+    await expect(kind(page, "Понудени одговори")).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(option(page, 1)).toBeFocused();
     await page.keyboard.press("Tab"); // Отстрани, the first answer's
+    await page.keyboard.press("Tab"); // the second answer's words
     await page.keyboard.press("Tab"); // the right answer: the radios are one stop, on the one that is chosen
     await expect(isRight(page, 2)).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(isRight(page, 3)).toBeChecked();
-    await page.keyboard.press("Tab");
+    await expect(isRight(page, 3)).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
     await expect(option(page, 3)).toBeFocused();
     // A box that is tabbed into is selected, so what is typed takes its place.
     await page.keyboard.type("x³ − 1 = 0!");

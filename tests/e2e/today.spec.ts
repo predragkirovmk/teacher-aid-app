@@ -612,7 +612,7 @@ test.describe("a lesson, to read", () => {
     await expect(questions.nth(0)).toContainText("Одговор со број");
     await expect(questions.nth(0)).toContainText("Колку е 15% од 240?");
     await expect(questions.nth(0)).toContainText("Време: 30 секунди");
-    await expect(questions.nth(1)).toContainText("Избор од понудени одговори");
+    await expect(questions.nth(1)).toContainText("Понудени одговори");
     await expect(questions.nth(1).locator(".options > li")).toHaveCount(4);
     await expect(questions.nth(2)).toContainText("Точно или неточно");
     await expect(questions.nth(2).locator(".options > li")).toHaveText([/^Точно/, /^Неточно/]);
