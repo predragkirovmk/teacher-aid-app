@@ -127,7 +127,9 @@ export function QuestionEditor({
   return (
     <li className="question question--open" id={`q-${q.id}`} ref={root}>
       <div className="question__top">
-        <h3 className="question__n">{t("question.n", { n, total })}</h3>
+        <h3 className="question__n" id={id("n")}>
+          {t("question.n", { n, total })}
+        </h3>
       </div>
 
       {/* Under the question's number, so that it is in view with the box the focus goes to: the first thing that is wrong is at the top of the card more often than not. */}
@@ -139,6 +141,7 @@ export function QuestionEditor({
           className="field field--area"
           rows={3}
           data-field="prompt"
+          aria-describedby={id("n")}
           value={q.prompt}
           aria-invalid={invalid("prompt")}
           onChange={(e) => set({ prompt: e.target.value })}

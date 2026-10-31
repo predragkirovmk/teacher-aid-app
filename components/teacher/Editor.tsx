@@ -570,7 +570,7 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
         </div>
         <div className="prepare__go" id="save-note">
           <p>{t(draft.lesson_id ? "save.changes.note" : "save.new.note")}</p>
-          <p>{t("editor.kept", { days: DRAFT_RETENTION_DAYS })}</p>
+          <p>{t(draft.lesson_id ? "editor.kept.edit" : "editor.kept", { days: DRAFT_RETENTION_DAYS })}</p>
         </div>
 
         {/* A change that is only waiting for its moment is sent as the page goes; one that could not be sent, or a number that is not one yet, would be lost. */}

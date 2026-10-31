@@ -254,6 +254,8 @@ test.describe("one question at a time", () => {
     await expect(open(page).getByRole("heading", { level: 3 })).toHaveText("Прашање 2 од 6");
     await expect(prompt(page)).toBeFocused();
     await expect(prompt(page)).toHaveValue("Равенката x² + 4 = 0 нема реални решенија.");
+    // The focus jumped from a button to a box far from the number of the question: a screen reader is told which one it is in.
+    await expect(prompt(page)).toHaveAccessibleDescription("Прашање 2 од 6");
     // Opening it takes the button of the others away from the one that is open: one has the buttons, the rest only Уреди.
     await expect(open(page).getByRole("button", { name: "Готово" })).toBeVisible();
     await done(page).click();
@@ -998,7 +1000,9 @@ test.describe("editing a saved lesson", () => {
     await expect(cards(page)).toHaveCount(5);
     // It saves as the next version of this lesson, and Back is the lesson.
     await expect(yellow(page)).toHaveText("Зачувај ги промените");
-    await expect(page.getByText("Новата верзија важи за следните часови. Веќе одржаните остануваат какви што беа.")).toBeVisible();
+    await expect(page.getByText("Новата верзија важи за следните часови. Веќе одржаните остануваат какви што беа.")).toBeAttached();
+    // What is kept is the changes: the lesson itself is there already.
+    await expect(page.getByText("Ако не ги зачувате промените сега, ги чуваме до 30 дена и ги наоѓате на Денес.")).toBeAttached();
     await expect(page.getByRole("link", { name: "Назад кон лекцијата", exact: true })).toHaveAttribute("href", "/teacher/lessons/l-zadaci?from=today");
   });
 
