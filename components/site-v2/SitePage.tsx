@@ -1,6 +1,9 @@
 import { ArrowRightIcon, ClockCounterClockwiseIcon, GlobeHemisphereEastIcon, LockKeyIcon, SparkleIcon } from "@phosphor-icons/react/ssr";
+import { homePaths, pageUpdated } from "@/content/site-v2/pages";
 import type { SiteV2Dict } from "@/content/site-v2/types";
 import { ClassStack } from "./ClassStack";
+import { SiteFooter } from "./Footer";
+import { JsonLd } from "./JsonLd";
 import { Board, Laptop, Phone } from "./Devices";
 import { Motion } from "./Motion";
 import { Nav } from "./Nav";
@@ -20,6 +23,7 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
 
   return (
     <>
+      <JsonLd lang={t.lang} path={homePaths[t.lang]} name={t.meta.title} description={t.meta.description} updated={pageUpdated.home} />
       <Nav t={t.nav} ctaHref="#book" />
 
       <main id="main" tabIndex={-1}>
@@ -464,22 +468,7 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
         </section>
       </main>
 
-      <footer className="foot" data-theme="paper">
-        <div className="wrap foot__row">
-          <p>{t.footer.line}</p>
-          <nav aria-label={t.footer.langLabel}>
-            <ul>
-              {t.footer.langs.map((l) => (
-                <li key={l.href}>
-                  <a href={l.href} hrefLang={l.lang} lang={l.lang} aria-current={l.lang === t.lang ? "page" : undefined}>
-                    {l.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        </div>
-      </footer>
+      <SiteFooter t={t} current="home" />
 
       <Motion />
     </>

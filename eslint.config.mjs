@@ -35,6 +35,8 @@ const eslintConfig = defineConfig([
     "test-results/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored third-party Claude Code skills and their Python venvs (.claude/skills/README.md).
+    ".claude/**",
   ]),
 ]);
 
