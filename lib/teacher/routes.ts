@@ -45,6 +45,15 @@ export function backFromLesson(from: string | null): { href: string; label: Key 
   return { href: LESSONS, label: "back.lessons" };
 }
 
+/**
+ * Where Back goes from the page of a draft. A draft of a saved lesson (`lessonId`) goes back to that lesson, in every state it is
+ * in (being refined, failed, ready, saved); one of a new lesson goes where the teacher started, as the page that prepares it does.
+ */
+export function backFromDraft(from: string | null, lessonId: Id | null | undefined): { href: string; label: Key } {
+  if (lessonId) return { href: lessonUrl(lessonId, from === FROM_TODAY ? FROM_TODAY : undefined), label: "back.lesson" };
+  return backFromLesson(from);
+}
+
 /** The `from` a page passes on to the next one it opens, so the chain of Backs stays the same: only the two it knows. */
 export const fromOf = (from: string | null): From | undefined => (from === FROM_TODAY || from === FROM_GUIDE ? from : undefined);
 

@@ -10,7 +10,7 @@ import type { LessonDraft } from "@/lib/teacher/api/types";
 import { useT } from "@/lib/teacher/i18n";
 import { recallForm, leaveRefill } from "@/lib/teacher/refill";
 import { refillOf } from "@/lib/teacher/prepare";
-import { backFromLesson, draftUrl, fromOf, lessonUrl, newLessonUrl, NEW_LESSON } from "@/lib/teacher/routes";
+import { backFromDraft, draftUrl, fromOf, lessonUrl, newLessonUrl, NEW_LESSON } from "@/lib/teacher/routes";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Editor } from "./Editor";
 import { LoadProblem } from "./LoadProblem";
@@ -35,12 +35,15 @@ export function DraftPage() {
   // A draft that was waited for here and is ready now: the editor says so, and the focus goes to its first field.
   const [waited, setWaited] = useState(false);
   if (draft?.status === "pending" && !waited) setWaited(true);
-  const back = backFromLesson(from);
+  // A draft of a saved lesson goes back to the lesson in every state, as the editor does, and is about changing it, not about preparing one.
+  const back = backFromDraft(from, draft?.lesson_id);
 
-  const plain = (
-    <PageHeader title={t("draft.title")} back={back.href} backLabel={t(back.label)} />
+  const plain = <PageHeader title={t("draft.title")} back={back.href} backLabel={t(back.label)} />;
+  const preparing = draft?.lesson_id ? (
+    <PageHeader title={t("lesson.edit")} back={back.href} backLabel={t(back.label)} />
+  ) : (
+    <PageHeader title={t("lessonsNew.title")} subtitle={t("prepare.sub")} back={back.href} backLabel={t(back.label)} />
   );
-  const preparing = <PageHeader title={t("lessonsNew.title")} subtitle={t("prepare.sub")} back={back.href} backLabel={t(back.label)} />;
 
   if (q.status === "loading") {
     return (

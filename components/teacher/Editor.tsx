@@ -38,7 +38,7 @@ import { hasUnfinishedNumber, initialState, isEmptyPatch, patchOf, reduce } from
 import { leaveGuideUnsaved } from "@/lib/teacher/first-run";
 import { useT } from "@/lib/teacher/i18n";
 import { DRAFT_RETENTION_DAYS } from "@/lib/teacher/lessons";
-import { backFromLesson, draftUrl, FROM_TODAY, fromOf, lessonUrl, savedLessonUrl } from "@/lib/teacher/routes";
+import { backFromDraft, draftUrl, FROM_TODAY, fromOf, savedLessonUrl } from "@/lib/teacher/routes";
 import { QUESTIONS_MAX } from "@/lib/teacher/scoring";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { kindLine } from "./LessonCard";
@@ -337,7 +337,7 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
     }
   };
 
-  const back = draft.lesson_id ? { href: lessonUrl(draft.lesson_id, fromOf(from) === FROM_TODAY ? FROM_TODAY : undefined), label: "back.lesson" as const } : backFromLesson(from);
+  const back = backFromDraft(from, draft.lesson_id);
   const unfinishedNumber = hasUnfinishedNumber(raw);
   const room = canAdd(questions.length);
 

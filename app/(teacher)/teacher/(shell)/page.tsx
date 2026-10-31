@@ -22,8 +22,9 @@ import { dateParts } from "@/lib/teacher/when";
 const GREETING = { morning: "today.greet.morning", day: "today.greet.day", evening: "today.greet.evening" } as const;
 
 /**
- * Today, top to bottom: the date, a lesson that is running, the one button to prepare a lesson, the lessons that are not finished
- * (being written, failed, or being changed), the lessons prepared and not run.
+ * Today, top to bottom: the date, a lesson that is running, the one button to prepare a lesson, the lessons prepared and not run (what
+ * Today is for: the one a teacher comes to hold), then the lessons that are not finished (being written, failed, or being changed).
+ * Not the other way round: a few forgotten drafts would push the lesson for the day below the fold of a laptop.
  */
 export default function TodayPage() {
   const { t, te } = useT();
@@ -106,19 +107,6 @@ export default function TodayPage() {
         ) : (
           <>
             <div>{prepare}</div>
-            {unfinished.length > 0 && (
-              <section aria-labelledby="unfinished">
-                <h2 className="section__title" id="unfinished">
-                  {t("today.drafts.title")}
-                </h2>
-                <ul className="lessons">
-                  {unfinished.map((draft) => (
-                    <DraftCard key={draft.id} draft={draft} today={today} onDiscard={setDiscarding} />
-                  ))}
-                </ul>
-              </section>
-            )}
-            {drafts.status === "error" && <LoadProblem title={t("today.drafts.error")} error={drafts.error} onRetry={drafts.refetch} />}
             {shown.length > 0 && (
               <section aria-labelledby="prepared">
                 <h2 className="section__title" id="prepared">
@@ -137,6 +125,19 @@ export default function TodayPage() {
                 )}
               </section>
             )}
+            {unfinished.length > 0 && (
+              <section aria-labelledby="unfinished">
+                <h2 className="section__title" id="unfinished">
+                  {t("today.drafts.title")}
+                </h2>
+                <ul className="lessons">
+                  {unfinished.map((draft) => (
+                    <DraftCard key={draft.id} draft={draft} today={today} onDiscard={setDiscarding} />
+                  ))}
+                </ul>
+              </section>
+            )}
+            {drafts.status === "error" && <LoadProblem title={t("today.drafts.error")} error={drafts.error} onRetry={drafts.refetch} />}
           </>
         )}
       </div>

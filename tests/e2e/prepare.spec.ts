@@ -365,7 +365,9 @@ test.describe("the wait", () => {
     await expect(title(page)).toHaveText("Денес");
     const card = page.locator(".lessons > li", { hasText: "Се подготвува" });
     await expect(card).toHaveCount(1);
-    await expect(card.getByRole("link", { name: "Продолжи" })).toBeVisible();
+    // A lesson that is being written has nothing to carry on, so it is opened to be looked at (it is "Продолжи" once it is ready).
+    await expect(card.getByRole("link", { name: "Отвори" })).toBeVisible();
+    await expect(card.getByRole("link", { name: "Продолжи" })).toHaveCount(0);
     // When it is ready, Today says so without being asked.
     await expect(page.locator(".lessons > li", { hasText: "Квадратни равенки" })).toBeVisible({ timeout: 20_000 });
     await expect(card).toHaveCount(0);
@@ -625,7 +627,7 @@ test.describe("leaving the form", () => {
     }
     // The wait is not a form that holds work: closing the tab asks nothing either.
     await page.goto(page.url());
-    await page.getByRole("link", { name: "Продолжи" }).click();
+    await page.locator("section[aria-labelledby=unfinished]").getByRole("link", { name: "Отвори" }).click();
     await expect(phase(page, "Ги пишуваме прашањата")).toBeVisible();
     const closing = page.close({ runBeforeUnload: true });
     await closing;
@@ -1006,7 +1008,7 @@ test.describe("the drawer layout and a laptop's small window", () => {
     await menu(page).getByRole("link", { name: "Денес" }).click();
     await expect(leaveDialog(page)).toHaveCount(0);
     await expect(title(page)).toHaveText("Денес");
-    await page.getByRole("link", { name: "Продолжи" }).click();
+    await page.locator("section[aria-labelledby=unfinished]").getByRole("link", { name: "Отвори" }).click();
 
     await expect(retry(page)).toBeVisible({ timeout: 20_000 });
     expect(await overflow(page)).toBeLessThanOrEqual(0);

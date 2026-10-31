@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { backFromLesson, draftUrl, FROM_GUIDE, FROM_TODAY, fromOf, isSaved, lessonUrl, liveUrl, newLessonUrl, savedLessonUrl, showsOpenLesson } from "@/lib/teacher/routes";
+import { backFromDraft, backFromLesson, draftUrl, FROM_GUIDE, FROM_TODAY, fromOf, isSaved, lessonUrl, liveUrl, newLessonUrl, savedLessonUrl, showsOpenLesson } from "@/lib/teacher/routes";
 
 describe("where a lesson that is running is said in the frame", () => {
   test("on every page but Today, which has its band, and the running lesson's own screen", () => {
@@ -33,6 +33,15 @@ describe("the addresses of lessons", () => {
     expect(draftUrl("d1", undefined, true)).toBe("/teacher/lessons/drafts/d1?undone=1");
     expect(draftUrl("d1", FROM_TODAY, true)).toBe("/teacher/lessons/drafts/d1?from=today&undone=1");
     expect(draftUrl("d1", FROM_TODAY, false)).toBe("/teacher/lessons/drafts/d1?from=today");
+  });
+
+  test("a draft of a saved lesson goes back to that lesson, whichever state it is in; a draft of a new one goes where the teacher started", () => {
+    expect(backFromDraft("today", "l-1")).toEqual({ href: "/teacher/lessons/l-1?from=today", label: "back.lesson" });
+    expect(backFromDraft(null, "l-1")).toEqual({ href: "/teacher/lessons/l-1", label: "back.lesson" });
+    // Only Today is passed on to a lesson: the guide has nothing to do with a lesson that was already saved.
+    expect(backFromDraft("guide", "l-1")).toEqual({ href: "/teacher/lessons/l-1", label: "back.lesson" });
+    expect(backFromDraft("today", null)).toEqual({ href: "/teacher", label: "back.today" });
+    expect(backFromDraft(null, undefined)).toEqual({ href: "/teacher/lessons", label: "back.lessons" });
   });
 
   test("the first lesson is prepared from the guide, and Back goes back to it", () => {
