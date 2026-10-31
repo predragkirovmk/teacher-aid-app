@@ -1,12 +1,13 @@
 "use client";
 
-import { CheckCircleIcon, TimerIcon } from "@phosphor-icons/react";
-import { useParams, useSearchParams } from "next/navigation";
-import { useLesson } from "@/lib/teacher/api/hooks";
-import type { Question } from "@/lib/teacher/api/types";
+import { CheckCircleIcon, PencilSimpleIcon, TimerIcon } from "@phosphor-icons/react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { startTransition, useEffect, useState, type ReactNode } from "react";
+import { startEditing, useLesson } from "@/lib/teacher/api/hooks";
+import type { DraftQuestion } from "@/lib/teacher/api/types";
 import { decimal, isOne } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
-import { backFromLesson } from "@/lib/teacher/routes";
+import { backFromLesson, draftUrl, fromOf, isSaved, type Saved } from "@/lib/teacher/routes";
 import { LoadProblem } from "./LoadProblem";
 import { PageHeader } from "./PageHeader";
 import { Bar, Loading } from "./Skeleton";
@@ -16,16 +17,45 @@ import { kindLine } from "./LessonCard";
 /**
  * A lesson, to read: its title, subject and year, what the teacher asked to stress, and the questions in order, each with
  * its kind in words, its answers, which one is right (an icon and the words "Точен одговор", never colour alone), its timer
- * and why. Nothing can be changed here yet (step 6 adds editing); the one thing to do is start a class with it. Back goes to
- * the screen the teacher came from, and names it.
+ * and why. Two things to do with it: start a class (the yellow one), and edit it, which opens a draft of it to change (a lesson
+ * is read here, and changed on a draft's page, where every change saves itself). Coming from saving, a line says so once.
+ * Back goes to the screen the teacher came from, and names it.
  */
 export function LessonView() {
   const { t } = useT();
+  const router = useRouter();
   const { id } = useParams<{ id: string }>();
   const from = useSearchParams().get("from");
   const back = backFromLesson(from);
   const q = useLesson(id);
   const lesson = q.data;
+  // What the address said when the page opened: that a save has just been made. Told once, then taken off the address.
+  const [saved, setSaved] = useState<Saved | null>(null);
+  const [opening, setOpening] = useState(false);
+  const [openProblem, setOpenProblem] = useState<unknown>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const value = params.get("saved");
+    if (value === null) return;
+    if (isSaved(value)) startTransition(() => setSaved(value));
+    params.delete("saved");
+    const rest = params.toString();
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${rest ? `?${rest}` : ""}`);
+  }, []);
+
+  const edit = async () => {
+    if (opening) return;
+    setOpening(true);
+    setOpenProblem(null);
+    try {
+      const draft = await startEditing(id);
+      router.push(draftUrl(draft.id, fromOf(from)));
+    } catch (e) {
+      setOpenProblem(e);
+      setOpening(false);
+    }
+  };
 
   return (
     <>
@@ -47,9 +77,24 @@ export function LessonView() {
         {q.status === "error" && <LoadProblem title={t("lesson.error.title")} error={q.error} onRetry={q.refetch} />}
         {lesson && (
           <>
-            <div>
+            {saved && (
+              <div className="card card--compact draft__note" role="status">
+                <span className="card__icon card__icon--small">
+                  <CheckCircleIcon size={24} weight="fill" aria-hidden="true" />
+                </span>
+                <p>
+                  <strong>{t(saved === "new" ? "lesson.saved.new" : "lesson.saved.changes")}</strong>
+                </p>
+              </div>
+            )}
+            <div className="lesson__buttons">
               <StartLessonButton lesson={lesson} primary />
+              <button type="button" className="btn btn--secondary" aria-busy={opening} onClick={() => void edit()}>
+                <PencilSimpleIcon size={24} aria-hidden="true" />
+                {t("lesson.edit")}
+              </button>
             </div>
+            {openProblem !== null && <LoadProblem title={t("lesson.edit.failed")} error={openProblem} onRetry={() => void edit()} />}
             {lesson.emphasis && (
               <div className="card card--stack">
                 <h2>{t("lesson.emphasis")}</h2>
@@ -64,8 +109,8 @@ export function LessonView() {
   );
 }
 
-/** The questions of a lesson or a draft, in order, each to read. Step 6 makes the cards editable here. */
-export function QuestionList({ questions }: { questions: readonly Question[] }) {
+/** The questions of a lesson, in order, each to read. A draft's page lists its own, each with the means to edit it. */
+export function QuestionList({ questions }: { questions: readonly DraftQuestion[] }) {
   const { t } = useT();
   return (
     <section aria-labelledby="questions">
@@ -83,12 +128,18 @@ export function QuestionList({ questions }: { questions: readonly Question[] }) 
   );
 }
 
-function QuestionCard({ question, n, total }: { question: Question; n: number; total: number }) {
+/**
+ * One question to read: its number, kind and timer, its prompt, its answers with the right one marked, and why. A question that is
+ * not finished (a draft's) says what is missing in grey words instead of showing nothing. `actions` are the buttons under it.
+ */
+export function QuestionCard({ question, n, total, actions, headingId }: { question: DraftQuestion; n: number; total: number; actions?: ReactNode; headingId?: string }) {
   const { t, locale } = useT();
   return (
-    <li className="question">
+    <li className="question" id={`q-${question.id}`}>
       <div className="question__top">
-        <h3 className="question__n">{t("question.n", { n, total })}</h3>
+        <h3 className="question__n" id={headingId}>
+          {t("question.n", { n, total })}
+        </h3>
         <p className="question__meta">
           <span>{t(`question.kind.${question.kind}`)}</span>
           <span>
@@ -99,7 +150,7 @@ function QuestionCard({ question, n, total }: { question: Question; n: number; t
       </div>
       {/* eslint-disable-next-line @next/next/no-img-element -- the picture comes from the API, already made phone-sized (FR-LES-11) */}
       {question.media && <img className="question__image" src={question.media.url} alt={question.media.alt ?? t("question.image")} />}
-      <p className="question__prompt">{question.prompt}</p>
+      {question.prompt.trim() ? <p className="question__prompt">{question.prompt}</p> : <p className="question__prompt question__blank">{t("question.blank")}</p>}
       <Answers question={question} />
       {question.explanation && (
         <div className="question__why">
@@ -107,12 +158,13 @@ function QuestionCard({ question, n, total }: { question: Question; n: number; t
           <p>{question.explanation}</p>
         </div>
       )}
+      {actions && <div className="question__actions">{actions}</div>}
     </li>
   );
 }
 
 /** The answers of a question, the right one marked with a tick and the words. */
-function Answers({ question }: { question: Question }) {
+function Answers({ question }: { question: DraftQuestion }) {
   const { t, locale } = useT();
   const right = (
     <span className="option__correct">
@@ -127,7 +179,7 @@ function Answers({ question }: { question: Question }) {
           const correct = String(i) === question.correct;
           return (
             <li key={i} className="option" data-correct={correct}>
-              <span className="option__text">{text}</span>
+              <span className={text.trim() ? "option__text" : "option__text question__blank"}>{text.trim() ? text : t("question.option.blank")}</span>
               {correct && right}
             </li>
           );
@@ -147,13 +199,14 @@ function Answers({ question }: { question: Question }) {
       </ul>
     );
   }
-  const value = `${decimal(question.correct, locale)}${question.unit ? ` ${question.unit}` : ""}`;
+  const answer = question.correct.trim();
+  const value = `${decimal(answer, locale)}${question.unit ? ` ${question.unit}` : ""}`;
   return (
     <>
       <ul className="options options--plain">
-        <li className="option" data-correct="true">
-          <span className="option__text">{value}</span>
-          {right}
+        <li className="option" data-correct={answer !== ""}>
+          <span className={answer ? "option__text" : "option__text question__blank"}>{answer ? value : t("question.answer.blank")}</span>
+          {answer && right}
         </li>
       </ul>
       {question.tolerance > 0 && <p className="question__note">{t("question.tolerance", { tolerance: decimal(String(question.tolerance), locale) })}</p>}
