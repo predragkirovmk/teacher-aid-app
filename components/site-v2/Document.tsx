@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geologica, Golos_Text } from "next/font/google";
+import { pagePaths, type ArticleDict } from "@/content/site-v2/pages";
 import type { SiteV2Dict } from "@/content/site-v2/types";
+import { siteUrl } from "@/lib/site-v2/url";
 import "@/app/site-v2.css";
 
 // Geologica sets the display lines, Golos Text (the apps' font) everything else. Both are
@@ -17,13 +19,7 @@ const golos = Golos_Text({
   display: "swap",
 });
 
-// The main domain; previews and local builds point at themselves.
-export const siteUrl =
-  process.env.VERCEL_ENV === "production"
-    ? "https://teacheraid.education"
-    : process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000";
+export { siteUrl };
 
 export function siteV2Metadata(t: SiteV2Dict): Metadata {
   const path = t.lang === "mk" ? "/" : "/en";
@@ -66,4 +62,39 @@ export function SiteV2Document({ lang, children }: { lang: "mk" | "en"; children
       <body className="v2">{children}</body>
     </html>
   );
+}
+
+/*
+  The share image for the reading pages. A page that sets its own openGraph replaces the layout's
+  whole openGraph, image included, so the reading pages name theirs: the same picture as the
+  home page of their language (app/(mk)/opengraph-image.jpg, app/(en)/en/opengraph-image.jpg).
+*/
+const shareImage: Record<ArticleDict["lang"], { url: string; alt: string }> = {
+  mk: { url: "/og/teacheraid-mk.jpg", alt: "TeacherAid: „Целиот клас одговара.“ над лаптоп со апликацијата за наставникот." },
+  en: { url: "/og/teacheraid-en.jpg", alt: 'TeacherAid: "The whole class answers." over a laptop with the teacher app.' },
+};
+
+/** A reading page's metadata: its own title, description, canonical and language pair. */
+export function articleMetadata(page: ArticleDict): Metadata {
+  const path = pagePaths[page.key][page.lang];
+  const title = page.meta.title;
+  const image = { ...shareImage[page.lang], width: 1200, height: 630, type: "image/jpeg" };
+  return {
+    title,
+    description: page.meta.description,
+    alternates: {
+      canonical: path,
+      languages: { mk: pagePaths[page.key].mk, en: pagePaths[page.key].en, "x-default": pagePaths[page.key].mk },
+    },
+    openGraph: {
+      type: "website",
+      url: path,
+      siteName: "TeacherAid",
+      title,
+      description: page.meta.description,
+      locale: page.lang === "mk" ? "mk_MK" : "en_US",
+      images: [image],
+    },
+    twitter: { card: "summary_large_image", title, description: page.meta.description, images: [image] },
+  };
 }

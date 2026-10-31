@@ -1635,6 +1635,38 @@ body.v2 {
   }
 }
 
+/* Above the language row: what TeacherAid is, in one plain paragraph, and every page. */
+.foot__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 24px clamp(32px, 6vw, 96px);
+  padding-block: 8px 24px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.foot__about {
+  max-width: 60ch;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.foot .foot__pages ul {
+  flex-direction: column;
+  gap: 0;
+}
+
+.foot__pages a[aria-current="page"] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+@media (max-width: 767px) {
+  .foot__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .foot {
   padding-block: 32px calc(32px + env(safe-area-inset-bottom));
   background: var(--paper-2);
@@ -2822,4 +2854,182 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
 
 .lost__en {
   color: var(--ink-2);
+}
+
+/* ---------- Reading pages (FAQ, comparison, about) ----------
+   The home page's type and colours around plain text: one column at a readable measure, question
+   headings, no motion. */
+
+.article__head {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2.4vh, 1.5rem);
+  padding-top: calc(var(--nav-h) + clamp(2.5rem, 8vh, 6rem));
+  padding-bottom: clamp(2.5rem, 7vh, 5rem);
+  border-bottom: 1px solid var(--line);
+}
+
+.article__title {
+  max-width: 14em;
+}
+
+.article__lead {
+  max-width: 44ch;
+  color: var(--ink-2);
+}
+
+.crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 0;
+  font-size: 1rem;
+  color: var(--ink-2);
+}
+
+.crumbs li + li::before {
+  content: "/";
+  margin-inline: 0.6em;
+  color: var(--line);
+}
+
+.crumbs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-block: -12px;
+  text-underline-offset: 0.2em;
+}
+
+.article__body {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(3rem, 8vh, 5rem);
+  padding-block: clamp(3rem, 8vh, 5.5rem) clamp(4rem, 12vh, 8rem);
+  max-width: calc(46rem + 2 * var(--gutter));
+  margin-inline: 0;
+}
+
+.article__section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  scroll-margin-top: calc(var(--nav-h) + 16px);
+}
+
+.article__section h2 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(1.9rem, 3.6vw, 3rem);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.article__section p,
+.article__list li {
+  max-width: 62ch;
+  text-wrap: pretty;
+}
+
+.article__section a {
+  color: var(--deep);
+  text-underline-offset: 0.2em;
+}
+
+.article__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.article__list li {
+  position: relative;
+  padding-left: 1.5em;
+}
+
+.article__list li::before {
+  content: "";
+  position: absolute;
+  left: 0.15em;
+  top: 0.68em;
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 50%;
+  background: var(--yellow-deep);
+}
+
+.qa {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.qa h3 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(1.25rem, 1.8vw, 1.5rem);
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+.article__table {
+  overflow-x: auto;
+  margin-inline: calc(-1 * var(--gutter));
+  padding-inline: var(--gutter);
+}
+
+.article__table table {
+  width: 100%;
+  min-width: 40rem;
+  border-collapse: collapse;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.article__table caption {
+  text-align: left;
+  font-weight: 600;
+  color: var(--ink-2);
+  padding-bottom: 0.75rem;
+}
+
+.article__table th,
+.article__table td {
+  padding: 0.85rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line);
+}
+
+.article__table thead th {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.article__table thead th:first-of-type,
+.article__table tbody td:first-of-type {
+  background: var(--paper-2);
+}
+
+.article__table tbody th {
+  font-weight: 600;
+  color: var(--ink-2);
+  width: 22%;
+}
+
+.article__table .note {
+  padding-top: 0.75rem;
+}
+
+.article__sources ol {
+  list-style: decimal;
+  padding-left: 1.25em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 1rem;
 }

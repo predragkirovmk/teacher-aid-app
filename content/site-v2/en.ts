@@ -3,7 +3,7 @@ import type { SiteV2Dict } from "./types";
 export const en: SiteV2Dict = {
   lang: "en",
   meta: {
-    title: "TeacherAid: the whole class answers",
+    title: "TeacherAid: class questions from your lesson, attendance by QR code",
     description:
       "TeacherAid turns your lesson into questions for class. You send them from your laptop, students answer on their phones, and one scan takes attendance. For secondary schools and universities in North Macedonia.",
   },

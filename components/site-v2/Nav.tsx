@@ -10,7 +10,19 @@ import { getLenis } from "@/lib/site-v2/lenis";
  * hairline once the page has moved, and opens a full-screen menu on narrow screens. Solid
  * colours only: a blurred bar re-blurs the page on every scrolled frame.
  */
-export function Nav({ t, ctaHref }: { t: SiteV2Dict["nav"]; ctaHref: string }) {
+export function Nav({
+  t,
+  ctaHref,
+  home,
+  switchHref = t.switchHref,
+}: {
+  t: SiteV2Dict["nav"];
+  ctaHref: string;
+  /** On any page but the home page: the home page's path, which the logo and section links lead to. */
+  home?: string;
+  /** The same page in the other language; the other home page by default. */
+  switchHref?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<"paper" | "teal" | "blue" | "yellow">("paper");
   const [moved, setMoved] = useState(false);
@@ -19,6 +31,7 @@ export function Nav({ t, ctaHref }: { t: SiteV2Dict["nav"]; ctaHref: string }) {
   const toggle = useRef<HTMLButtonElement>(null);
   const sheet = useRef<HTMLDivElement>(null);
   const otherLang = t.switchHref === "/" ? "mk" : "en";
+  const sectionHref = (hash: string) => (home ? `${home === "/" ? "" : home}/${hash}` : hash);
 
   // The theme under the bar: a one-pixel line through its middle decides which section it is on.
   useEffect(() => {
@@ -81,7 +94,7 @@ export function Nav({ t, ctaHref }: { t: SiteV2Dict["nav"]; ctaHref: string }) {
       </a>
       <header ref={bar} className="nav" data-nav-theme={open ? "paper" : theme} data-moved={moved || undefined}>
         <div className="wrap nav__bar">
-          <a className="nav__mark" href="#top" aria-label={t.home}>
+          <a className="nav__mark" href={home ?? "#top"} aria-label={t.home}>
             <Mark size={26} />
             <span>TeacherAid</span>
           </a>
@@ -89,13 +102,13 @@ export function Nav({ t, ctaHref }: { t: SiteV2Dict["nav"]; ctaHref: string }) {
             <ul>
               {t.links.map((l) => (
                 <li key={l.href}>
-                  <a href={l.href}>{l.label}</a>
+                  <a href={sectionHref(l.href)}>{l.label}</a>
                 </li>
               ))}
             </ul>
           </nav>
           <div className="nav__end">
-            <a className="nav__lang" href={t.switchHref} hrefLang={otherLang} lang={otherLang} aria-label={t.switchLabel}>
+            <a className="nav__lang" href={switchHref} hrefLang={otherLang} lang={otherLang} aria-label={`${t.switchShort}, ${t.switchLabel}`}>
               {t.switchShort}
             </a>
             <a className="btn btn--primary btn--sm nav__cta" href={ctaHref}>
@@ -121,7 +134,7 @@ export function Nav({ t, ctaHref }: { t: SiteV2Dict["nav"]; ctaHref: string }) {
           <ul>
             {t.links.map((l, i) => (
               <li key={l.href} style={{ "--n": i } as React.CSSProperties}>
-                <a href={l.href} onClick={() => setOpen(false)}>
+                <a href={sectionHref(l.href)} onClick={() => setOpen(false)}>
                   {l.label}
                 </a>
               </li>
@@ -131,7 +144,7 @@ export function Nav({ t, ctaHref }: { t: SiteV2Dict["nav"]; ctaHref: string }) {
             <a className="btn btn--primary" href={ctaHref} onClick={() => setOpen(false)}>
               {t.cta}
             </a>
-            <a className="chev" href={t.switchHref} hrefLang={otherLang} lang={otherLang}>
+            <a className="chev" href={switchHref} hrefLang={otherLang} lang={otherLang}>
               {t.switchLabel}
             </a>
           </div>
