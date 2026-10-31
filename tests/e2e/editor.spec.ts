@@ -805,7 +805,9 @@ test.describe("changing all the questions", () => {
     const eight = [...QUESTIONS, tf(6, "Седмо прашање.", "true"), tf(7, "Осмо прашање.", "false")].map((q, i) => ({ ...q, id: `${SEED}-q${i + 1}`, order: i }));
     await seed(page, { drafts: [draftOf({}, eight)] }, SEED_URL);
     await expect(cards(page)).toHaveCount(8);
-    // Not a button that can be pressed, and the page says why; pressing it anyway starts nothing.
+    // Not a button that can be pressed, and the page says why: it looks so too, dimmer than the others; pressing it anyway starts nothing.
+    expect(await refine(page, "Повеќе прашања").evaluate((el) => getComputedStyle(el).opacity)).toBe("0.6");
+    expect(await refine(page, "Потешки").evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
     await refine(page, "Повеќе прашања").click({ force: true });
     await expect(waitHeading(page)).toHaveCount(0);
     await expect(page).toHaveURL(new RegExp(`${SEED}$`));
@@ -1233,6 +1235,8 @@ test.describe("the first run", () => {
     await toLastScreen(page);
     await expect(yellow(page)).toHaveCount(1);
     await expect(yellow(page)).toHaveText("Подготви ја првата лекција");
+    // The longest label of the guide is read on one line (a button of 56px, not two lines of words in one of 80), beside Back.
+    expect((await yellow(page).boundingBox())!.height).toBeLessThanOrEqual(60);
     await expect(page.getByRole("button", { name: "Не сега, оди на Денес" })).toHaveClass(/btn--quiet/);
     await expect(page.getByText("Да почнеме со вистинска лекција")).toBeVisible();
     // Nothing is marked done by arriving here.

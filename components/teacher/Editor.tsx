@@ -563,7 +563,8 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
         <div className="savebar">
           <button type="button" className="btn btn--primary" aria-busy={saving} aria-describedby="save-note" onClick={() => void save()}>
             <FloppyDiskIcon size={24} weight="fill" aria-hidden="true" />
-            {t(draft.lesson_id ? "save.changes" : "save.new")}
+            {/* Said on the button itself while the lesson is being made, since that is where the teacher is looking. */}
+            {t(saving ? "editor.status.saving" : draft.lesson_id ? "save.changes" : "save.new")}
           </button>
           <SaveState status={status} />
         </div>

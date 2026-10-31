@@ -602,6 +602,14 @@ button {
   border-color: var(--line-strong);
   color: var(--text);
 }
+/* A button that cannot be pressed now (the refinements while one is being made, "Повеќе прашања" at the most): dimmer, and it says so. */
+.btn[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn[aria-busy="true"] {
+  cursor: progress;
+}
 .btn--small {
   min-height: var(--tap-small);
   padding: var(--sp-1) var(--sp-3);
@@ -1065,6 +1073,10 @@ button {
   font-size: var(--fs-button);
   /* Keeps a word such as е-Дневник from being left alone at the start of a line. */
   text-wrap: pretty;
+}
+/* The last step's yellow button, "Подготви ја првата лекција", is the longest label of the guide and is read on one line. */
+.guide.entry__card {
+  width: min(100%, 40rem);
 }
 .guide__actions {
   display: flex;
