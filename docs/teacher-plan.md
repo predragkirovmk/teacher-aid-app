@@ -92,8 +92,6 @@ The app is dark teal only (no light mode).
   `running.here.back`).
 - Step 6: for a teacher whose first run is not done, the guide's last screen leads into
   `/teacher/lessons/new` (the hands-on first lesson of F-01).
-- Step 6: once a lesson can be edited, rename the card's "Отвори" if the page it opens is no
-  longer read-only (for example "Уреди"), and keep one word for it everywhere.
 - Step 6 (from the design review of step 5): the draft page keeps the questions first and the review summary after them; replace its
   note (`draft.note.*`) with the real controls. Its Back follows `?from=` as a lesson's does. Edits not yet saved must be asked about
   before the page is left (`LeaveGuard`, with the rule `hasWork` of `lib/teacher/prepare.ts` as the model), until they save themselves.
@@ -105,21 +103,53 @@ The app is dark teal only (no light mode).
   drafts (`GET /lessons/drafts`, latest of each chain) on Today, a pending one shown as
   "Се подготвува", so leaving the page loses nothing. Typed text gets a maximum
   (`TYPED_TEXT_MAX_CHARS` = 20 000, reason `text_too_long`). Brain spec 2.7 has the shapes.
-- Step 7: the start button in "Со кој клас?" names the chosen class ("Започни со IV-1") so a
+- Step 6, the editor (planner, 2026-10-31). One model everywhere: the teacher always edits a
+  draft, every change saves itself to the draft (PROPOSED `PATCH /lessons/drafts/{id}`), and the
+  page's one yellow button makes it the lesson: "Зачувај лекција" for a new one (`POST /lessons`),
+  "Зачувај ги промените" for a saved one. "Уреди лекција" on a lesson starts a draft from its
+  current version (PROPOSED `POST /lessons/{id}/drafts`, the draft carries `lesson_id`); saving it
+  is `PUT /lessons/{id}`, a new version, and consumes the draft. Unsaved drafts, new or edits,
+  are listed on Today, so nothing is ever lost and nothing asks before leaving except a question
+  open mid-edit.
+  - The wait moves to the draft page: after `POST /lessons/generate` answers `202`, the form
+    replaces itself with `/teacher/lessons/drafts/[id]`, which shows the wait while `pending`
+    (polling every 2-3 s), the failure with "Обиди се повторно" when `failed`, the editor when
+    `ready`. A reload carries on waiting. Cancel asks, deletes the draft and returns to the form
+    filled in again (subject, year, emphasis, typed text; a document already read is reused by its
+    `source_id` and shown by name, if the source is still held).
+  - Questions read as they do now; each card has "Уреди", which opens that one question for
+    editing (one at a time) and "Готово" closes it after checking it. Fields per kind
+    (multiple choice: 2-4 options and which is right; true/false: which is right; numeric: the
+    answer, the tolerance in words, an optional unit, "may be negative"), plus the explanation, the
+    timer (whole seconds 5-300, a number with -5/+5 buttons) and the topic. The kind can be changed
+    in edit mode, keeping the prompt. "Додај прашање" (choose the kind; up to 8), "Избриши" (down to
+    5, with undo), "Нагоре"/"Надолу" buttons, never drag. Title and review summary are editable.
+  - Refinements: one row, "Промени ги сите прашања", with the four (Полесни, Потешки, Повеќе
+    прашања, Пократко време). Each is a job with the same wait inline; afterwards one line says what
+    changed with "Врати ги претходните прашања" (the earlier draft stays readable, BR-LES-08).
+  - Saving: problems are listed in plain words above the yellow button, each a link that opens its
+    question. A save lands on the lesson page with a line that it is saved and will be on Today.
+    The lesson page gets "Уреди лекција" (outlined); the card keeps "Отвори".
+  - Today lists unfinished drafts above the prepared lessons: title (or "Се подготвува" while
+    pending, "Не успеа" when failed), subject and year, "Продолжи", and "Фрли" with a question.
+- Step 8: the start button in "Со кој клас?" names the chosen class ("Започни со IV-1") so a
   wrong pick is visible before it is made; update the tests that rely on the label. The
   `/teacher/live/[sessionId]` placeholder is replaced by the console.
-- Step 9: End replaces the demo's "Затвори го демо часот" in Settings as the way a lesson closes;
+- Step 10: End replaces the demo's "Затвори го демо часот" in Settings as the way a lesson closes;
   keep the Settings control for the demo only.
-- Step 7: the class view is a protected page too; a deep link drops its query. Class-view-only
+- Step 8: the class view is a protected page too; a deep link drops its query. Class-view-only
   data (the live join token, the class-view snapshot) must not travel on a channel or endpoint
   students can read; propose a class-view-only channel if the spec's `session.{id}.public` is
   shared with students.
-- Step 8 and 9: anonymous question text never goes on a channel students subscribe to
+- Steps 9 and 10: anonymous question text never goes on a channel students subscribe to
   (BR-ANON-06, AC-ANON-07, OPEN-36); the class view gets it from its own channel or snapshot.
-- Step 9: OPEN-08 is read as leaving a late joiner out of both sides of the share for a question
+- Step 10: OPEN-08 is read as leaving a late joiner out of both sides of the share for a question
   fired before they joined (BR-PRA-07, INTERPRETATION); the mock follows that.
 
 ## Steps (one preview link per step, the owner checks each before the next starts)
+
+Step 6 of the first plan was split in two on 2026-10-31 (the editor, then lessons and library);
+the live lesson, End, class results and the final gate moved down one number.
 
 1. Foundation: route group, teal tokens, logo, sidebar and top bar shell, MK/EN switch, school-type
    wording, installable manifest and icons, placeholder pages with honest empty states.
@@ -132,18 +162,23 @@ The app is dark teal only (no light mode).
    button to prepare a lesson.
 5. Prepare a lesson 1: class and subject, upload PDF or Word or type sentences, emphasis line,
    the wait while the AI writes, failure states (F-03, BR-LES-05).
-6. Prepare a lesson 2: review and edit questions (all three kinds), four refinements, save as a
-   version; lessons list; school library and copy (F-04, F-05).
-7. Live lesson 1: start, console plus the class view in a second window, lobby with rotating QR
+6. Prepare a lesson 2, the editor: generation as a job, the draft page made editable (all three
+   question kinds, title and review summary), the four refinements with undo, edits that save
+   themselves, save as a lesson and edit a saved one; unfinished drafts on Today; the first-run
+   guide leads into a first lesson (F-01, F-03, F-04, FR-LES-07 to -09, -14 to -22).
+7. Lessons and library: the lessons list (prepared, run, unfinished), delete with confirmation, an
+   image on a question (FR-LES-10, -11, -19), the school library, read and copy (F-05, FR-LIB-01
+   to -04).
+8. Live lesson 1: start, console plus the class view in a second window, lobby with rotating QR
    and short code, joined list, present without a phone, restore after a window closes (F-06,
    F-11).
-8. Live lesson 2: fire, progress, reveal, skip, ad-hoc question, anonymous inbox, focus flags,
+9. Live lesson 2: fire, progress, reveal, skip, ad-hoc question, anonymous inbox, focus flags,
    nudge; the class view's question, bars, reveal and leaderboard.
-9. End: End with confirmation, attendance list for e-Дневник, most-missed questions, review on the
-   class view, practice set (F-10, F-12).
-10. Class results: one page per class (FR-DASH-01): attendance, points over time, weak topics,
+10. End: End with confirmation, attendance list for e-Дневник, most-missed questions, review on the
+    class view, practice set (F-10, F-12).
+11. Class results: one page per class (FR-DASH-01): attendance, points over time, weak topics,
     anonymous questions, practice completion, lesson history.
-11. Final gate: accessibility, design and motion review of everything, 200% zoom, projector check,
+12. Final gate: accessibility, design and motion review of everything, 200% zoom, projector check,
     text hygiene, code review, backend handoff.
 
 ## Rules every step follows
