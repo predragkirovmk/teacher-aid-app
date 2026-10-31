@@ -113,7 +113,7 @@ const status = (page: Page) => page.locator(".savestate").first();
 /** The draft has every change: past the quiet moment (0.8 s) the last change has been sent, and the status says so. */
 const saved = async (page: Page) => {
   await page.waitForTimeout(1000);
-  await expect(status(page)).toHaveText("Зачувано", { timeout: 10_000 });
+  await expect(status(page)).toHaveText("Промените се зачувани.", { timeout: 10_000 });
 };
 const refineHeading = (page: Page) => page.getByRole("heading", { level: 2, name: "Промени ги сите прашања" });
 const refine = (page: Page, name: string) => page.getByRole("button", { name, exact: true });
@@ -275,6 +275,10 @@ test.describe("one question at a time", () => {
     await expect(open(page).getByRole("alert")).toContainText("Ова прашање уште не е готово");
     await expect(open(page).getByRole("alert")).toContainText("Прашање 3: напишете го прашањето.");
     await expect(prompt(page)).toBeFocused();
+    // What is wrong is said at the top of the card, so it is in the window together with the box the focus went to.
+    await expect(open(page).getByRole("alert")).toBeInViewport();
+    await expect(prompt(page)).toBeInViewport();
+    expect((await open(page).getByRole("alert").boundingBox())!.y).toBeLessThan((await prompt(page).boundingBox())!.y);
     await prompt(page).fill("Нешто.");
     await expect(open(page).getByRole("alert")).toHaveCount(0);
     await edit(page, 5).click();
@@ -600,7 +604,7 @@ test.describe("adding, deleting and moving", () => {
 // ---- Every change saves itself --------------------------------------------------------------------------------------------
 
 test.describe("saving as it goes", () => {
-  test("says calmly that changes save themselves, then saved, and a screen reader hears 'Зачувано' once, not for every key", async ({ page }) => {
+  test("says calmly that changes save themselves, then saved, and a screen reader hears 'Промените се зачувани.' once, not for every key", async ({ page }) => {
     // What the page tells a screen reader, in order, from here on.
     await page.evaluate(() => {
       const heard: string[] = [];
@@ -618,7 +622,7 @@ test.describe("saving as it goes", () => {
       await saved(page);
     }
     const heard = await page.evaluate(() => (window as unknown as { heard: string[] }).heard.filter(Boolean));
-    expect(heard).toEqual(["Зачувано"]);
+    expect(heard).toEqual(["Промените се зачувани."]);
     // The saved line is a mark with the words; the same words are not on the screen as a second alert.
     await expect(page.locator("main").getByRole("alert")).toHaveCount(0);
   });
@@ -639,8 +643,8 @@ test.describe("saving as it goes", () => {
   test("with no connection a change is not lost: the page says it is not saved, asks before it is left, and saves it when the connection is back", async ({ page, context }) => {
     await context.setOffline(true);
     await titleField(page).fill("Без врска");
-    await expect(status(page)).toHaveText("Не се зачува. Ќе се обидеме повторно.");
-    await expect(page.getByRole("status").filter({ hasText: "Не се зачува." })).toHaveCount(1);
+    await expect(status(page)).toHaveText("Промените не се зачувани. Ќе се обидеме повторно.");
+    await expect(page.getByRole("status").filter({ hasText: "Промените не се зачувани." })).toHaveCount(1);
     expect((await draftOnDisk(page)).content.title).toBe("Квадратни равенки");
     // Leaving would lose it, so the page asks, with the safe answer in hand.
     await menu(page).getByRole("link", { name: "Денес" }).click();

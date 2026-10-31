@@ -155,3 +155,40 @@ describe("a count is in the singular when the language says so", () => {
     expect([1, 21].map((n) => phrase("en", n, "running.min1", "running.min"))).toEqual(["Running for 1 minute", "Running for 21 minutes"]);
   });
 });
+
+describe("the editor's choice of the right answer", () => {
+  const words = (locale: "mk" | "en", key: Key) => translate(locale, "school", key, { n: 2 });
+
+  test("the row that is right says so, and no other row says anything but what pressing it does", () => {
+    expect(words("mk", "edit.option.right")).toBe("Точен одговор");
+    expect(words("mk", "edit.option.mark")).toBe("Означи како точен");
+    expect(words("en", "edit.option.right")).toBe("Correct answer");
+    expect(words("en", "edit.option.mark")).toBe("Mark as correct");
+    // The words of a row that is not the right one never say it is (so no row reads as right by default).
+    expect(words("mk", "edit.option.mark")).not.toMatch(word("Точен одговор"));
+    expect(words("en", "edit.option.mark").toLowerCase()).not.toContain("correct answer");
+  });
+
+  test("what a screen reader says holds the words that are on the screen (WCAG 2.5.3), whichever language", () => {
+    for (const locale of ["mk", "en"] as const) {
+      for (const [visible, label] of [["edit.option.right", "edit.option.right.label"], ["edit.option.mark", "edit.option.mark.label"]] as const) {
+        expect(words(locale, label).toLowerCase(), `${locale} ${label}`).toContain(words(locale, visible).toLowerCase());
+        expect(words(locale, label), `${locale} ${label} says which answer`).toContain("2");
+      }
+    }
+  });
+
+  test("the kind that is a choice of answers is one short phrase in both places it is said", () => {
+    expect(words("mk", "question.kind.multiple_choice")).toBe("Понудени одговори");
+    expect(words("mk", "edit.options")).not.toBe(words("mk", "question.kind.multiple_choice"));
+    expect(words("en", "edit.options")).not.toBe(words("en", "question.kind.multiple_choice"));
+    for (const locale of ["mk", "en"] as const) expect(words(locale, "question.kind.multiple_choice").length).toBeLessThanOrEqual(20);
+  });
+
+  test("the words about saving say changes, so that they are never read as the lesson being saved", () => {
+    expect(words("mk", "editor.status.saved")).toBe("Промените се зачувани.");
+    expect(words("mk", "editor.status.failed")).toContain("Промените не се зачувани");
+    expect(words("en", "editor.status.saved")).toContain("changes");
+    expect(words("en", "editor.status.failed")).toContain("changes");
+  });
+});

@@ -130,6 +130,9 @@ export function QuestionEditor({
         <h3 className="question__n">{t("question.n", { n, total })}</h3>
       </div>
 
+      {/* Under the question's number, so that it is in view with the box the focus goes to: the first thing that is wrong is at the top of the card more often than not. */}
+      {problems && problems.length > 0 && <QuestionProblems problems={problems} />}
+
       <Field id={id("prompt")} label={t("edit.prompt")}>
         <textarea
           id={id("prompt")}
@@ -318,8 +321,6 @@ export function QuestionEditor({
       <Field id={id("topic")} label={t("edit.topic")} hint={t("edit.topic.hint")}>
         <input id={id("topic")} type="text" className="field" aria-describedby={`${id("topic")}-hint`} value={q.topic} onChange={(e) => set({ topic: e.target.value })} />
       </Field>
-
-      {problems && problems.length > 0 && <QuestionProblems problems={problems} />}
 
       <div className="question__actions question__actions--open">
         <button type="button" className="btn btn--secondary" data-field="done" onClick={onDone}>
