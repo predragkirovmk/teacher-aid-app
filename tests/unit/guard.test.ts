@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { accessOf, authStatusOf, destinationOf, viewOf, type AuthStatus, type EndReason } from "@/lib/teacher/guard";
+import { accessOf, authStatusOf, destinationOf, isFirstLessonPath, viewOf, type AuthStatus, type EndReason } from "@/lib/teacher/guard";
 
 const input = (pathname: string, status: AuthStatus, extra: { reason?: EndReason | null; firstRunDone?: boolean } = {}) => ({ pathname, status, ...extra });
 
@@ -55,6 +55,21 @@ describe("what is drawn", () => {
     expect(viewOf(input("/teacher", "signedIn", { firstRunDone: false }))).toBe("wait");
     expect(viewOf(input("/teacher/welcome", "signedIn", { firstRunDone: false }))).toBe("page");
     expect(viewOf(input("/teacher/welcome", "signedIn", { firstRunDone: true }))).toBe("page");
+  });
+
+  test("the first lesson is made before the first run is done: the form and the page of its draft are drawn, nothing else is", () => {
+    for (const path of ["/teacher/lessons/new", "/teacher/lessons/drafts/d4"]) {
+      expect(isFirstLessonPath(path), path).toBe(true);
+      expect(viewOf(input(path, "signedIn", { firstRunDone: false })), path).toBe("page");
+      expect(destinationOf(input(path, "signedIn", { firstRunDone: false }), path, null), path).toBeNull();
+    }
+    for (const path of ["/teacher", "/teacher/lessons", "/teacher/lessons/l-1", "/teacher/lessons/newer", "/teacher/lessons/drafts", "/teacher/library", "/teacher/settings"]) {
+      expect(isFirstLessonPath(path), path).toBe(false);
+      expect(viewOf(input(path, "signedIn", { firstRunDone: false })), path).toBe("wait");
+    }
+    // Not signed in is still not signed in: the first lesson is no way round it.
+    expect(viewOf(input("/teacher/lessons/new", "signedOut"))).toBe("wait");
+    expect(destinationOf(input("/teacher/lessons/new", "signedOut"), "/teacher/lessons/new", null)).toBe("/teacher/sign-in?next=%2Fteacher%2Flessons%2Fnew");
   });
 
   test("the sign-in screen is drawn at once for anyone not signed in, and not at all for a teacher who is (they are on their way)", () => {

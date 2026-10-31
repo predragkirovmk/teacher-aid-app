@@ -9,6 +9,13 @@ import { GUIDE, guideUrl, HELP, safeNext, SIGN_IN, signInUrl, TODAY, type Notice
 
 export type Access = "sign-in" | "either" | "private";
 
+/**
+ * The pages of the first lesson (F-01 step 3): the guide's last screen leads into the form that prepares a lesson, and that lesson
+ * is made on the page of its draft. Until the first lesson is saved the first run is not done, and every other page sends the
+ * teacher back to the guide; these two do not, or the teacher could not make the lesson the guide asked for.
+ */
+export const isFirstLessonPath = (pathname: string): boolean => pathname === "/teacher/lessons/new" || pathname.startsWith("/teacher/lessons/drafts/");
+
 /** Sign-in is open to everyone, Help to everyone (signed out it has no sidebar), and every other page needs a teacher. */
 export function accessOf(pathname: string): Access {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
@@ -56,7 +63,7 @@ export function viewOf({ pathname, status, firstRunDone }: Input): View {
   if (access === "either") return status === "loading" ? "wait" : "page";
   if (status === "error") return "retry";
   if (status !== "signedIn") return "wait";
-  return firstRunDone === false && pathname !== GUIDE ? "wait" : "page";
+  return firstRunDone === false && pathname !== GUIDE && !isFirstLessonPath(pathname) ? "wait" : "page";
 }
 
 /**
@@ -81,6 +88,6 @@ export function destinationOf(input: Input, here: string | null, next: string | 
     const notice: Notice | null = reason === "expired" ? "expired" : null;
     return signInUrl({ next: here, notice });
   }
-  if (status === "signedIn" && firstRunDone === false && pathname !== GUIDE) return guideUrl(here);
+  if (status === "signedIn" && firstRunDone === false && pathname !== GUIDE && !isFirstLessonPath(pathname)) return guideUrl(here);
   return null;
 }

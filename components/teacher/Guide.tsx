@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftIcon, ArrowRightIcon, CalendarCheckIcon, FileTextIcon, GearSixIcon, ListChecksIcon, QrCodeIcon, type Icon } from "@phosphor-icons/react";
+import { ArrowLeftIcon, ArrowRightIcon, CalendarCheckIcon, FileTextIcon, GearSixIcon, ListChecksIcon, QrCodeIcon, SparkleIcon, type Icon } from "@phosphor-icons/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Mark } from "@/components/app/Mark";
@@ -8,7 +8,7 @@ import { setFirstRunDone, useMe } from "@/lib/teacher/api/hooks";
 import { leaveGuideUnsaved } from "@/lib/teacher/first-run";
 import { GUIDE_STEPS, isLastStep, stepAfter, type GuideIcon } from "@/lib/teacher/guide";
 import { useT } from "@/lib/teacher/i18n";
-import { SETTINGS } from "@/lib/teacher/routes";
+import { FROM_GUIDE, newLessonUrl, SETTINGS } from "@/lib/teacher/routes";
 import { safeNext, TODAY } from "@/lib/teacher/signin";
 import { PageTitle } from "./PageTitle";
 import { Problem } from "./Problem";
@@ -17,9 +17,11 @@ const ICONS: Record<GuideIcon, Icon> = { prepare: FileTextIcon, hold: QrCodeIcon
 
 /**
  * The welcome guide of a first run: three short steps, one thing each, with Next, a labelled Back and "Skip the guide" always
- * in view. Finishing or skipping marks the first run done (FR-SUP-03) and lands on Today, where the one yellow button is
- * "Prepare a lesson", or on the screen the first sign-in was heading for. It is also reached again from Settings, where
- * finishing or skipping changes nothing on the server and goes back to Settings, and says so.
+ * in view. Skipping marks the first run done (FR-SUP-03) and lands on Today, where the one yellow button is "Prepare a lesson",
+ * or on the screen the first sign-in was heading for. The last step of a first run leads into the first lesson (F-01 step 3): the
+ * yellow button opens the form that prepares one, and the first run is done when that lesson is saved; "Not now" is the way
+ * out to Today. It is also reached again from Settings, where finishing or skipping changes nothing on the server and goes back
+ * to Settings, and says so.
  */
 export function Guide() {
   const { t, te } = useT();
@@ -64,6 +66,8 @@ export function Guide() {
   const current = GUIDE_STEPS[step];
   const Glyph = ICONS[current.icon];
   const last = isLastStep(step);
+  // A teacher who has not done the first run is taken on to make a lesson; one who sees the guide again is not.
+  const firstLesson = last && done === false && next !== SETTINGS;
 
   return (
     <main className="entry">
@@ -104,7 +108,12 @@ export function Guide() {
                 {t("back")}
               </button>
             )}
-            {last ? (
+            {firstLesson ? (
+              <button type="button" className="btn btn--primary" disabled={busy} onClick={() => router.push(newLessonUrl(FROM_GUIDE))}>
+                <SparkleIcon size={24} weight="fill" aria-hidden="true" />
+                {t("guide.first")}
+              </button>
+            ) : last ? (
               <button type="button" className="btn btn--primary" aria-busy={busy} disabled={busy} onClick={() => void leave()}>
                 {next === SETTINGS ? <GearSixIcon size={24} weight="bold" aria-hidden="true" /> : <CalendarCheckIcon size={24} weight="bold" aria-hidden="true" />}
                 {next === SETTINGS ? t("guide.done.settings") : t("guide.done")}
@@ -116,11 +125,11 @@ export function Guide() {
               </button>
             )}
           </div>
-          {(!last || error !== null) && (
+          {(!last || firstLesson || error !== null) && (
             <div className="guide__quiet">
-              {!last && (
+              {(!last || firstLesson) && (
                 <button type="button" className="btn btn--quiet" disabled={busy} aria-busy={busy} onClick={() => void leave()}>
-                  {t("guide.skip")}
+                  {t(firstLesson ? "guide.later" : "guide.skip")}
                 </button>
               )}
               {error !== null && (
@@ -132,6 +141,7 @@ export function Guide() {
           )}
           {/* Told to a teacher who has not seen the guide before; one who is looking at it from Settings knows. */}
           {!last && error === null && done === false && <p className="guide__note">{t("guide.note")}</p>}
+          {firstLesson && error === null && <p className="guide__note">{t("guide.first.note")}</p>}
         </div>
       </div>
     </main>
