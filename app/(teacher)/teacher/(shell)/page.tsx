@@ -3,20 +3,20 @@
 import { ArrowRightIcon, ChalkboardTeacherIcon, PlusIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useState } from "react";
-import { ConfirmDialog } from "@/components/teacher/ConfirmDialog";
 import { DraftCard } from "@/components/teacher/DraftCard";
+import { useDiscardDraft } from "@/components/teacher/DiscardDraft";
 import { LessonCard } from "@/components/teacher/LessonCard";
 import { LoadProblem } from "@/components/teacher/LoadProblem";
 import { PageHeader } from "@/components/teacher/PageHeader";
 import { RunningBand } from "@/components/teacher/RunningBand";
 import { Bar, Loading } from "@/components/teacher/Skeleton";
 import { StartDialog, type StartLesson } from "@/components/teacher/StartDialog";
-import { deleteDraft, useDrafts, useOpenSession, usePreparedLessons, useTeacherName } from "@/lib/teacher/api/hooks";
-import type { DraftSummary } from "@/lib/teacher/api/types";
+import { useDrafts, useOpenSession, usePreparedLessons, useTeacherName } from "@/lib/teacher/api/hooks";
 import { useDayPart, useToday } from "@/lib/teacher/day";
 import { useT } from "@/lib/teacher/i18n";
-import { FROM_TODAY, LESSONS, newLessonUrl } from "@/lib/teacher/routes";
-import { shownOnToday } from "@/lib/teacher/today";
+import { newestChangeFirst } from "@/lib/teacher/lessons-list";
+import { FROM_TODAY, LESSONS, newLessonUrl, UNFINISHED } from "@/lib/teacher/routes";
+import { shownOnToday, TODAY_DRAFTS_MAX } from "@/lib/teacher/today";
 import { dateParts } from "@/lib/teacher/when";
 
 const GREETING = { morning: "today.greet.morning", day: "today.greet.day", evening: "today.greet.evening" } as const;
@@ -27,7 +27,7 @@ const GREETING = { morning: "today.greet.morning", day: "today.greet.day", eveni
  * Not the other way round: a few forgotten drafts would push the lesson for the day below the fold of a laptop.
  */
 export default function TodayPage() {
-  const { t, te } = useT();
+  const { t } = useT();
   const part = useDayPart();
   const teacher = useTeacherName();
   const today = useToday();
@@ -38,8 +38,7 @@ export default function TodayPage() {
   // the list, and the window must stay until it has said what happened.
   const [starting, setStarting] = useState<StartLesson | null>(null);
   // Throwing a draft away is asked about by the page too, for the same reason: the list changes under its buttons.
-  const [discarding, setDiscarding] = useState<DraftSummary | null>(null);
-  const [discardProblem, setDiscardProblem] = useState<unknown>(null);
+  const discarding = useDiscardDraft();
 
   const date = today === null ? undefined : dateParts(today);
   const running = open.data?.session ?? null;
@@ -47,18 +46,9 @@ export default function TodayPage() {
   // Yellow belongs to one button: the way back to a running lesson, else the way to prepare a new one.
   const prepareClass = running ? "btn btn--secondary" : "btn btn--primary";
   const { shown, more } = shownOnToday(lessons.data ?? []);
-  const unfinished = drafts.data ?? [];
-
-  const discard = async () => {
-    if (!discarding) return;
-    try {
-      await deleteDraft(discarding.id);
-      setDiscarding(null);
-      setDiscardProblem(null);
-    } catch (e) {
-      setDiscardProblem(e);
-    }
-  };
+  // The same order as on the Lessons page, so that the few shown here are the first few there.
+  const unfinished = newestChangeFirst(drafts.data ?? []);
+  const { shown: shownDrafts, more: moreDrafts } = shownOnToday(unfinished, TODAY_DRAFTS_MAX);
 
   const prepare = (
     <Link href={newLessonUrl(FROM_TODAY)} className={prepareClass}>
@@ -131,10 +121,16 @@ export default function TodayPage() {
                   {t("today.drafts.title")}
                 </h2>
                 <ul className="lessons">
-                  {unfinished.map((draft) => (
-                    <DraftCard key={draft.id} draft={draft} today={today} onDiscard={setDiscarding} />
+                  {shownDrafts.map((draft) => (
+                    <DraftCard key={draft.id} draft={draft} today={today} onDiscard={discarding.ask} />
                   ))}
                 </ul>
+                {moreDrafts && (
+                  <Link href={UNFINISHED} className="btn btn--secondary lessons__all">
+                    {t("today.drafts.all", { n: unfinished.length })}
+                    <ArrowRightIcon size={24} weight="bold" aria-hidden="true" />
+                  </Link>
+                )}
               </section>
             )}
             {drafts.status === "error" && <LoadProblem title={t("today.drafts.error")} error={drafts.error} onRetry={drafts.refetch} />}
@@ -142,19 +138,7 @@ export default function TodayPage() {
         )}
       </div>
       {starting && <StartDialog lesson={starting} onClose={() => setStarting(null)} />}
-      <ConfirmDialog
-        open={discarding !== null}
-        title={t("draft.discard.title")}
-        body={discarding ? t(discarding.status === "pending" ? "draft.discard.body.pending" : discarding.lesson_id ? "draft.discard.body.edit" : "draft.discard.body.new") : undefined}
-        problem={discardProblem === null ? undefined : te(discardProblem)}
-        stay={t("draft.discard.stay")}
-        confirm={t("draft.discard.confirm")}
-        onStay={() => {
-          setDiscarding(null);
-          setDiscardProblem(null);
-        }}
-        onConfirm={discard}
-      />
+      {discarding.dialog}
     </>
   );
 }
