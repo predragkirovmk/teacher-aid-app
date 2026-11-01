@@ -2120,6 +2120,10 @@ button {
 .lesson__delete > .btn {
   justify-self: start;
 }
+/* "Прво завршете го часот" on a line of its own, and the reason under it. */
+.card .draft__note strong.lesson__refused {
+  display: block;
+}
 
 /* ---- The picture of a question ---- */
 .question__figure {
@@ -2146,7 +2150,11 @@ button {
 .imagefield__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-1) var(--sp-2);
+  align-items: center;
+  gap: var(--sp-1) var(--sp-3);
+}
+.imagefield__rules {
+  flex: 1 1 14rem;
 }
 .imagefield__pick {
   cursor: pointer;

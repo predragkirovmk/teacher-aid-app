@@ -137,14 +137,17 @@ export function QuestionImage({ questionId, media, dispatch }: { questionId: str
               </button>
             </>
           ) : (
-            <label htmlFor={fileId} className="btn btn--secondary imagefield__pick">
-              <ImageIcon size={24} aria-hidden="true" />
-              {t("image.add")}
-            </label>
+            <>
+              <label htmlFor={fileId} className="btn btn--secondary imagefield__pick">
+                <ImageIcon size={24} aria-hidden="true" />
+                {t("image.add")}
+              </label>
+              {/* Beside the button where there is room, so that the question does not grow by a line for it. */}
+              <p className="editor__hint imagefield__rules">{t("image.rules", { size: fileSize(IMAGE_MAX_BYTES, locale) })}</p>
+            </>
           )}
         </div>
       )}
-      {!media && !busy && <p className="editor__hint">{t("image.rules", { size: fileSize(IMAGE_MAX_BYTES, locale) })}</p>}
 
       {problem !== null && (
         <div id={`${fileId}-problem`} className="imagefield__problem">

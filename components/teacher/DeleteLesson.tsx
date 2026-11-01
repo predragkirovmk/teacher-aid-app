@@ -60,7 +60,8 @@ export function DeleteLesson({ lesson }: { lesson: Lesson }) {
             <InfoIcon size={24} aria-hidden="true" />
           </span>
           <p>
-            <strong>{t("lesson.delete.running")}</strong> {t("lesson.delete.running.body")}
+            <strong className="lesson__refused">{t("lesson.delete.running")}</strong>
+            {t("lesson.delete.running.body")}
           </p>
         </div>
       ) : (
