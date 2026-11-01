@@ -2121,7 +2121,7 @@ button {
   justify-self: start;
 }
 /* "Прво завршете го часот" on a line of its own, and the reason under it. */
-.card .draft__note strong.lesson__refused {
+.draft__note strong.lesson__refused {
   display: block;
 }
 

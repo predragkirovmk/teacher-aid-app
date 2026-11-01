@@ -500,6 +500,11 @@ test.describe("deleting a lesson", () => {
     await expect(title(page)).toHaveText("Основи на веројатноста");
     await expect(page.getByText("Прво завршете го часот", { exact: true })).toBeVisible();
     await expect(page.getByText("Со оваа лекција сега има час во тек, па таа не може да се избрише.")).toBeVisible();
+    // The words to end the lesson first are on a line of their own, with the reason under them.
+    const first = page.getByText("Прво завршете го часот", { exact: true });
+    const reason = page.getByText("Со оваа лекција сега има час во тек");
+    expect(await first.evaluate((el) => getComputedStyle(el).display)).toBe("block");
+    expect((await reason.boundingBox())!.height).toBeGreaterThan((await first.boundingBox())!.height * 1.8);
     await expect(deleteButton(page)).toHaveCount(0);
     // Another lesson can go while one is running.
     await page.goto(PROCENTI);
