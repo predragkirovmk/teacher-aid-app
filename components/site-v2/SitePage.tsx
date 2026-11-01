@@ -44,7 +44,8 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
                 ))}
               </h1>
               <div className="hero__deck" data-hero-out>
-                <p className="lead">{t.hero.deck}</p>
+                <p className="lead hero__lead">{t.hero.deck}</p>
+                <p className="lead hero__lead-short">{t.hero.deckShort}</p>
                 <div className="actions">
                   <a className="btn btn--primary" href="#book">
                     {t.hero.cta}
@@ -67,7 +68,7 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
                 <Shot name="t-today" lang={t.lang} sizes="(max-width: 899px) 92vw, 1000px" eager />
               </Laptop>
               <Phone label={s.alt.phone} className="hero__phone">
-                <PhoneShot name="s-question" lang={t.lang} sizes="(max-width: 767px) 30vw, 230px" eager />
+                <PhoneShot name="s-question" lang={t.lang} sizes="(max-width: 767px) 48vw, 230px" eager />
               </Phone>
             </div>
 

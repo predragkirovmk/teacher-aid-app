@@ -687,10 +687,9 @@ body.v2 {
   }
 }
 
-@media (max-width: 767px) {
-  .hero__meta {
-    flex-direction: column;
-  }
+/* The short deck is for phones only. */
+.hero__lead-short {
+  display: none;
 }
 
 @media (max-width: 1023px) {
@@ -699,25 +698,44 @@ body.v2 {
   }
 }
 
+/* Phones: the headline across the width, one line of deck, and the devices already in the first
+   screen, side by side, the phone over the laptop's right edge only. */
 @media (max-width: 767px) {
   .hero__title .line:nth-child(2) {
     padding-left: 0;
   }
 
+  /* Macedonian's longest line is shorter than English's, so it fills the width at a larger size. */
+  .hero__title:lang(mk) {
+    font-size: clamp(2.5rem, min(14.4vw, 19svh), 12.5rem);
+  }
+
+  .hero__lead,
+  .hero__meta {
+    display: none;
+  }
+
+  .hero__lead-short {
+    display: block;
+  }
+
   .hero__stage {
-    justify-items: stretch;
+    justify-items: start;
   }
 
   .hero__laptop {
-    width: 100%;
+    width: 82%;
   }
 
+  /* Hung from the laptop's top edge, not stood on its base: the phone is the taller of the two,
+     and from the base it would reach up into the links above. */
   .hero__phone {
-    left: var(--gutter);
-    width: 30%;
-    bottom: -10%;
+    left: auto;
+    right: var(--gutter);
+    top: -6%;
+    bottom: auto;
+    width: 31%;
   }
-
 }
 
 /* The entrance runs in CSS so it starts at first paint, without waiting for any script. The
@@ -971,6 +989,31 @@ body.v2 {
     grid-area: 2 / 2;
   }
 }
+
+/* Phones: the laptop has left by the last frame, so the class takes it: the caption and the count
+   on top, the stack centred under them. Every third phone of the class is shown, so each edge is
+   wide enough to read as a phone; the count still goes to 29. */
+@media (max-width: 767px) {
+  .motion .hero__end {
+    /* The front phone (2.09 widths tall) plus 9 edges of 0.065 widths: 2.675 widths. */
+    --card-w: min(46vw, calc((93svh - var(--nav-h) - 104px) / 2.675));
+  }
+
+  .hero__desk {
+    display: none;
+  }
+
+  .stack {
+    grid-area: 2 / 1 / 3 / 3;
+    justify-self: center;
+    height: calc(var(--card-w) * (2.09 + 9 * 0.065));
+  }
+
+  .stack__card:not(:nth-child(3n)) {
+    display: none;
+  }
+}
+
 /* Revealed by the motion layer; the guard in the document head adds .motion. Each block rises
    into place as it enters (the motion layer adds .is-in and the stagger, --d). The rise is the
    translate property, so a block's own transform is left alone; opacity only, never visibility,
