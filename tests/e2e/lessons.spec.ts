@@ -482,6 +482,16 @@ test.describe("deleting a lesson", () => {
     await expect(page.getByRole("heading", { level: 2, name: /Не успеавме|Не го најдовме/ }).or(page.getByText("Не го најдовме тоа што го барате."))).toBeVisible();
   });
 
+  test("after the lesson is deleted the focus is on the line that says so, and Tab goes on to the yellow button", async ({ page }) => {
+    await page.goto(PROCENTI);
+    await deleteButton(page).click();
+    await deleteQuestion(page).getByRole("button", { name: "Да, избриши ја" }).click();
+    const line = page.getByRole("status").filter({ hasText: "Лекцијата е избришана." });
+    await expect(line).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("link", { name: "Подготви лекција" })).toBeFocused();
+  });
+
   test("a lesson that was held can be deleted too", async ({ page }) => {
     await page.goto("/teacher/lessons");
     const lesson = held(page).filter({ hasText: "Квадратна функција" });
@@ -1038,6 +1048,35 @@ test.describe("the library", () => {
     await page.goto("/teacher/lessons");
     await expect(prepared(page).filter({ hasText: "Статистика: средна вредност и медијана" })).toHaveCount(1);
     expect((await demo(page)).school.lessons.find((l) => l.title.startsWith("Статистика"))?.copied_from?.lesson_id).toBe("lib-statistika");
+  });
+
+  test("after a copy the focus is on the line that says so, and Tab goes on to the buttons of the new lesson", async ({ page }) => {
+    await page.goto("/teacher/library/lib-statistika");
+    await page.getByRole("button", { name: "Копирај во моите лекции" }).click();
+    await expect(page).toHaveURL(/\/teacher\/lessons\/l-n\d+$/);
+    await expect(page.getByRole("status").filter({ hasText: "Лекцијата е копирана" })).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("button", { name: "Започни час" })).toBeFocused();
+  });
+
+  test("the wait of a copy has its line on the page before it is needed, empty, so that its words are read out when they come", async ({ page }) => {
+    await page.goto("/teacher/library/lib-statistika");
+    const line = page.locator(".card [role=status].sr");
+    await expect(line).toHaveCount(1);
+    await expect(line).toHaveText("");
+    await page.getByRole("button", { name: "Копирај во моите лекции" }).click();
+    await expect(page).toHaveURL(/\/teacher\/lessons\/l-n\d+$/);
+  });
+
+  test("a choice of subject is said to a screen reader, as on the Lessons page", async ({ page }) => {
+    await page.goto("/teacher/library");
+    const line = page.locator(".subjects [role=status]");
+    await expect(line).toHaveText("");
+    await page.getByRole("radio", { name: "Физика" }).check();
+    const n = await items(page).count();
+    await expect(line).toHaveText(n === 1 ? "Прикажана е 1 лекција: Физика." : `Прикажани се ${n} лекции: Физика.`);
+    await page.getByRole("radio", { name: "Сите предмети" }).check();
+    await expect(line).toHaveText("Прикажани се 5 лекции: Сите предмети.");
   });
 
   test("a lesson that was copied says so in the library and in its preview, and can be copied again", async ({ page }) => {

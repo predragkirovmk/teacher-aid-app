@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircleIcon, ChalkboardTeacherIcon, PlusIcon } from "@phosphor-icons/react";
+import { ChalkboardTeacherIcon, PlusIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useDrafts, useLessons } from "@/lib/teacher/api/hooks";
@@ -13,6 +13,7 @@ import { DraftCard } from "./DraftCard";
 import { useDiscardDraft } from "./DiscardDraft";
 import { LessonCard } from "./LessonCard";
 import { LoadProblem } from "./LoadProblem";
+import { OnceLine } from "./OnceLine";
 import { PageHeader } from "./PageHeader";
 import { Bar, Loading } from "./Skeleton";
 import { StartDialog, type StartLesson } from "./StartDialog";
@@ -77,16 +78,7 @@ export function LessonsPage() {
     <>
       <PageHeader title={t("lessons.title")} />
       <div className="content">
-        {deleted && (
-          <div className="card card--compact draft__note" role="status">
-            <span className="card__icon card__icon--small">
-              <CheckCircleIcon size={24} weight="fill" aria-hidden="true" />
-            </span>
-            <p>
-              <strong>{t("lessons.deleted")}</strong>
-            </p>
-          </div>
-        )}
+        {deleted && <OnceLine>{t("lessons.deleted")}</OnceLine>}
 
         {loading ? (
           <Loading>

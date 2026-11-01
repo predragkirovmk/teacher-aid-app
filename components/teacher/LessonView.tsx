@@ -9,6 +9,7 @@ import { decimal, isOne } from "@/lib/teacher/format";
 import { useT, type Key } from "@/lib/teacher/i18n";
 import { backFromLesson, draftUrl, fromOf, isSaved, type Saved } from "@/lib/teacher/routes";
 import { DeleteLesson } from "./DeleteLesson";
+import { OnceLine } from "./OnceLine";
 import { LoadProblem } from "./LoadProblem";
 import { PageHeader } from "./PageHeader";
 import { Bar, Loading } from "./Skeleton";
@@ -81,16 +82,7 @@ export function LessonView() {
         {q.status === "error" && <LoadProblem title={t("lesson.error.title")} error={q.error} onRetry={q.refetch} />}
         {lesson && (
           <>
-            {saved && (
-              <div className="card card--compact draft__note" role="status">
-                <span className="card__icon card__icon--small">
-                  <CheckCircleIcon size={24} weight="fill" aria-hidden="true" />
-                </span>
-                <p>
-                  <strong>{t(SAVED_WORDS[saved])}</strong>
-                </p>
-              </div>
-            )}
+            {saved && <OnceLine>{t(SAVED_WORDS[saved])}</OnceLine>}
             <div className="lesson__buttons">
               <StartLessonButton lesson={lesson} primary />
               <button type="button" className="btn btn--secondary" aria-busy={opening} onClick={() => void edit()}>
