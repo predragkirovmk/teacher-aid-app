@@ -114,19 +114,35 @@ the hero). Refresh them whenever an app changes:
 
 ## Motion
 
-- Engine: GSAP + ScrollTrigger, loaded after first paint. Lenis on desktop pointers only;
-  touch keeps native scrolling (smoothing touch adds latency, it does not add smoothness).
+- Engine: GSAP + ScrollTrigger, loaded once the page has loaded and the main thread is idle (or
+  at the first touch, wheel or key, if that is sooner). Lenis on desktop pointers only; touch
+  keeps native scrolling (smoothing touch adds latency, it does not add smoothness).
+- The motion layer is built one scene per task, so no task is long; its ScrollTriggers are made
+  together at the end and measured by one `ScrollTrigger.refresh()`.
 - Hero entrance runs in CSS so it starts at first paint without waiting for JavaScript; it is
-  cancelled once played (or at the first scroll), so its fill never overrides the scene.
-- Pinned scenes keep both layouts in CSS (start in the flow, end in an absolutely placed layer)
-  and the motion layer only measures between them, so a resize just re-measures.
-- Scroll scenes: pinned, scrubbed timelines with `scrub: 0.6` on desktop and `scrub: 0.35` on
-  touch. Two pins only: the hero and In class. A pinned element inside a flex container needs
-  `pinSpacing: true` set by hand.
+  cancelled once played (or at the first scroll), so its fill never overrides the scene. The
+  kicker and the deck only settle (a transform): they are on the page from the first frame, so
+  the lead, the phone's largest paint, is painted at once. Only the headline's lines rise into
+  their masks.
+- Held scenes keep both layouts in CSS (start in the flow, end in an absolutely placed layer)
+  and the motion layer only measures between them, so a resize just re-measures. Their layout
+  values are read once per refresh, not once per tween.
+- Scroll scenes: held, scrubbed timelines with `scrub: 0.6` on desktop and `scrub: 0.35` on
+  touch. Three hold still: the hero (two screens), In class (three) and the answer (2.2). They
+  hold with `position: sticky` in the stylesheet, not ScrollTrigger's `pin`: the compositor holds
+  them, so they never lag a flick, their room is laid out from the first paint, and a refresh
+  only measures (a ScrollTrigger pin plays its whole timeline to the end and back on every
+  refresh). The hero's frame (`.hero__frame`) sticks to the top; In class and the answer stick in
+  the middle of the screen inside their runs (`.live__run`, `.answer__run`), whose sticky top the
+  motion layer sets from their height.
 - Play-once scenes set their start states with `gsap.set` and tween only to the end: a paused
-  timeline does not apply `from()` or `fromTo()` starts reliably.
+  timeline does not apply `from()` or `fromTo()` starts reliably. They start from an
+  intersection observer, not a ScrollTrigger.
+- Reveals (`data-reveal`) are CSS: under `.motion` a block waits 44px low (28px on phones) and
+  transparent, on the `translate` property so its own `transform` is untouched; the motion layer
+  adds `.is-in` and the stagger as an intersection observer sees it enter.
 - Easing: `power3.out` / `expo.out` for entrances, `none` inside scrubs. No bounce.
-- Reduced Motion: no movement, no pinning; scenes show their end state; fades stay.
+- Reduced Motion: no movement, nothing held; scenes show their end state; fades stay.
 
 ## Performance rules (every step, phones included)
 
@@ -138,6 +154,9 @@ the hero). Refresh them whenever an app changes:
 - No WebGL, no canvas, no video on the page until the real screens arrive.
 - Fonts: two families, Latin and Cyrillic subsets, self-hosted by `next/font`.
 - `will-change` only on layers that are moving right now; ScrollTrigger handles it.
+- With the motion layer, the device screens are `content-visibility: auto`: their interfaces are
+  most of the page's text, in some seventy font sizes, and laying them all out held up the first
+  paint. They are sized by their aspect ratio alone, so nothing moves when one is drawn.
 - Budget: the page's own first-load code under 20 KB gzip on top of Next and React (about
   160 KB together in Next 16; the first site shipped 226 KB); GSAP, ScrollTrigger and Lenis
   arrive after first paint. Under a 4x CPU throttle on a 390px viewport, a full touch scroll keeps
@@ -150,6 +169,16 @@ the hero). Refresh them whenever an app changes:
   - Slow 4G load: first paint 0.9 s, main content 1.5 s, layout shift 0.
   - Weight: first-load JS 174 KB gzip (Next and React are about 160 of it), motion 45 KB after
     first paint, CSS 8 KB, fonts 99 KB (two families, Latin and Cyrillic).
+- Load pass (1 Nov 2026, Lighthouse 13.6 mobile, local production build, one machine, `main`
+  against this pass, three runs each):
+  - `/`: performance 60-62 against 89-95, LCP 4.8-4.9 s against 1.06 s, TBT 935-994 ms against
+    267-426 ms. `/en`: 60-66 against 94-96, LCP 4.6-4.9 s against 1.06 s. CLS 0 throughout.
+  - The LCP was the hero's lead, kept transparent by its entrance until about 0.9 s and painted
+    after the motion layer's 316 ms setup task. It now paints with the first frame.
+  - The motion layer's longest task: 316 ms (142 forced reflows from one ScrollTrigger per
+    reveal, three pins each playing its scene to the end and back) against 23 ms.
+  - What is left of TBT is mostly Next and React's own start-up and the page's first layout;
+    with no motion layer at all the page scores 94-95 on the same machine.
 
 ## Chapters
 

@@ -50,8 +50,9 @@ export const siteV2Viewport: Viewport = {
 };
 
 // Adds `motion` before first paint so scroll-revealed content starts hidden only when the motion
-// layer is coming; if it has not arrived after a few seconds, everything shows as it is.
-const motionGuard = `(function(){try{var d=document.documentElement;if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){d.classList.add('motion');setTimeout(function(){if(!window.__taMotion)d.classList.remove('motion')},3500)}}catch(e){}})();`;
+// layer is coming; if the page has not even hydrated after a few seconds, everything shows as it
+// is. Once it has (__taMotionSoon), the motion layer itself gives up if it cannot load.
+const motionGuard = `(function(){try{var d=document.documentElement;if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){d.classList.add('motion');setTimeout(function(){if(!window.__taMotion&&!window.__taMotionSoon)d.classList.remove('motion')},3500)}}catch(e){}})();`;
 
 export function SiteV2Document({ lang, children }: { lang: "mk" | "en"; children: React.ReactNode }) {
   return (
