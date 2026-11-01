@@ -31,6 +31,18 @@ export function ConfirmDialog({
   const dialog = useRef<HTMLDialogElement>(null);
   const heading = useId();
   const description = useId();
+  // A second press of "yes" while the first is still being answered would do the thing twice (the second delete finds nothing to delete
+  // and says so over the first's success), so it is ignored until the first has finished.
+  const answering = useRef(false);
+  const yes = async () => {
+    if (answering.current) return;
+    answering.current = true;
+    try {
+      await onConfirm();
+    } finally {
+      answering.current = false;
+    }
+  };
 
   useEffect(() => {
     const d = dialog.current;
@@ -61,7 +73,7 @@ export function ConfirmDialog({
         <button type="button" className="btn btn--primary" onClick={onStay}>
           {stay}
         </button>
-        <button type="button" className="btn btn--secondary" onClick={onConfirm}>
+        <button type="button" className="btn btn--secondary" onClick={() => void yes()}>
           {confirm}
         </button>
       </div>

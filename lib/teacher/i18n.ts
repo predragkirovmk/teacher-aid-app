@@ -501,8 +501,8 @@ const en = {
   "lesson.delete.title": "Delete the lesson “{title}”?",
   "lesson.delete.body": "The lesson will leave your lessons. The lessons you have already held and their results stay. Copies your colleagues made stay too. This cannot be undone.",
   "lesson.delete.draft": "The changes you started on this lesson and did not save are deleted with it.",
-  "lesson.delete.stay": "Cancel",
-  "lesson.delete.confirm": "Delete the lesson",
+  "lesson.delete.stay": "No, keep it",
+  "lesson.delete.confirm": "Yes, delete it",
   "lesson.delete.running": "End the lesson first",
   "lesson.delete.running.body": "A lesson is running with this one, so it cannot be deleted.",
 
@@ -1071,8 +1071,8 @@ const mk: Record<Key, Entry> = {
   "lesson.delete.title": "Дали сакате да ја избришете лекцијата „{title}“?",
   "lesson.delete.body": "Лекцијата ќе исчезне од Вашите лекции. Часовите што веќе сте ги одржале и нивните резултати остануваат. Копиите што ги направиле Вашите колеги остануваат. Ова не може да се врати.",
   "lesson.delete.draft": "Промените што сте ги започнале на оваа лекција, а не сте ги зачувале, се бришат со неа.",
-  "lesson.delete.stay": "Откажи",
-  "lesson.delete.confirm": "Избриши ја лекцијата",
+  "lesson.delete.stay": "Не, задржи ја",
+  "lesson.delete.confirm": "Да, избриши ја",
   "lesson.delete.running": "Прво завршете го часот",
   "lesson.delete.running.body": "Со оваа лекција сега има час во тек, па таа не може да се избрише.",
 

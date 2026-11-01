@@ -204,7 +204,11 @@ describe("the library and the lessons that were deleted", () => {
     expect(body).toContain("исчезне од Вашите лекции");
     expect(body).toContain("одржале и нивните резултати остануваат");
     expect(body).toContain("колеги остануваат");
-    expect(translate("mk", "school", "lesson.delete.stay")).toBe("Откажи");
+    // The same two answers as every other question of the app ("Не, остани" / "Да, одјави ме"): the safe one says "No", the other "Yes".
+    expect(translate("mk", "school", "lesson.delete.stay")).toBe("Не, задржи ја");
+    expect(translate("mk", "school", "lesson.delete.confirm")).toBe("Да, избриши ја");
+    expect(translate("en", "school", "lesson.delete.stay")).toBe("No, keep it");
+    expect(translate("en", "school", "lesson.delete.confirm")).toBe("Yes, delete it");
     expect(translate("mk", "school", "lesson.delete.running")).toBe("Прво завршете го часот");
     expect(translate("mk", "school", "lesson.delete.title", { title: "Низи" })).toBe("Дали сакате да ја избришете лекцијата „Низи“?");
   });

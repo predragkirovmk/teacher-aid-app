@@ -439,7 +439,7 @@ test.describe("deleting a lesson", () => {
     expect((await deleteButton(page).boundingBox())!.height).toBeGreaterThanOrEqual(56);
   });
 
-  test("asks first, in plain words, and 'Откажи' is the yellow button that has the focus", async ({ page }) => {
+  test("asks first, in plain words, and 'Не, задржи ја' is the yellow button that has the focus, as in every other question of the app", async ({ page }) => {
     await page.goto(PROCENTI);
     await deleteButton(page).click();
     const question = deleteQuestion(page);
@@ -448,11 +448,11 @@ test.describe("deleting a lesson", () => {
     await expect(question).toContainText("Часовите што веќе сте ги одржале и нивните резултати остануваат.");
     await expect(question).toContainText("Копиите што ги направиле Вашите колеги остануваат.");
     await expect(question).toContainText("Ова не може да се врати.");
-    await expect(question.getByRole("button", { name: "Откажи" })).toHaveClass(/btn--primary/);
-    await expect(question.getByRole("button", { name: "Откажи" })).toBeFocused();
-    await expect(question.getByRole("button", { name: "Избриши ја лекцијата" })).toHaveClass(/btn--secondary/);
-    // "Откажи" and Escape both keep the lesson.
-    await question.getByRole("button", { name: "Откажи" }).click();
+    await expect(question.getByRole("button", { name: "Не, задржи ја" })).toHaveClass(/btn--primary/);
+    await expect(question.getByRole("button", { name: "Не, задржи ја" })).toBeFocused();
+    await expect(question.getByRole("button", { name: "Да, избриши ја" })).toHaveClass(/btn--secondary/);
+    // "No" and Escape both keep the lesson.
+    await question.getByRole("button", { name: "Не, задржи ја" }).click();
     await expect(question).toBeHidden();
     await expect(deleteButton(page)).toBeFocused();
     await deleteButton(page).click();
@@ -465,7 +465,7 @@ test.describe("deleting a lesson", () => {
   test("goes to the Lessons page with a line that says so once; the lesson is gone, and what was held stays", async ({ page }) => {
     await page.goto(PROCENTI);
     await deleteButton(page).click();
-    await deleteQuestion(page).getByRole("button", { name: "Избриши ја лекцијата" }).click();
+    await deleteQuestion(page).getByRole("button", { name: "Да, избриши ја" }).click();
     await expect(page).toHaveURL(/\/teacher\/lessons$/);
     await expect(title(page)).toHaveText("Лекции");
     await expect(page.getByRole("status").filter({ hasText: "Лекцијата е избришана." })).toHaveText("Лекцијата е избришана. Одржаните часови и нивните резултати остануваат.");
@@ -488,7 +488,7 @@ test.describe("deleting a lesson", () => {
     await lesson.getByRole("link", { name: "Отвори" }).click();
     await expect(title(page)).toHaveText("Квадратна функција");
     await deleteButton(page).click();
-    await deleteQuestion(page, "Квадратна функција").getByRole("button", { name: "Избриши ја лекцијата" }).click();
+    await deleteQuestion(page, "Квадратна функција").getByRole("button", { name: "Да, избриши ја" }).click();
     await expect(page.getByText("Лекцијата е избришана.")).toBeVisible();
     await expect(held(page).filter({ hasText: "Квадратна функција" })).toHaveCount(0);
   });
@@ -525,7 +525,7 @@ test.describe("deleting a lesson", () => {
     await page.goto(PROCENTI);
     await deleteButton(page).click();
     await expect(deleteQuestion(page)).toContainText("Промените што сте ги започнале на оваа лекција, а не сте ги зачувале, се бришат со неа.");
-    await deleteQuestion(page).getByRole("button", { name: "Избриши ја лекцијата" }).click();
+    await deleteQuestion(page).getByRole("button", { name: "Да, избриши ја" }).click();
     await expect(page.getByText("Лекцијата е избришана.")).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Недовршени" })).toHaveCount(0);
     expect((await demo(page)).school.drafts).toHaveLength(0);
@@ -544,8 +544,8 @@ test.describe("deleting a lesson", () => {
     await page.getByRole("button", { name: "Delete lesson" }).click();
     const question = page.getByRole("alertdialog", { name: /^Delete the lesson “.+”\?$/ });
     await expect(question).toContainText("The lesson will leave your lessons. The lessons you have already held and their results stay.");
-    await expect(question.getByRole("button", { name: "Cancel" })).toBeFocused();
-    await question.getByRole("button", { name: "Delete the lesson" }).click();
+    await expect(question.getByRole("button", { name: "No, keep it" })).toBeFocused();
+    await question.getByRole("button", { name: "Yes, delete it" }).click();
     await expect(page.getByText("The lesson is deleted. The lessons you have held and their results stay.")).toBeVisible();
   });
 });
@@ -1132,13 +1132,13 @@ test.describe("keyboard only", () => {
     // To the end of the page by keys, the delete button is the last stop of the lesson.
     await deleteButton(page).focus();
     await page.keyboard.press("Enter");
-    await expect(deleteQuestion(page).getByRole("button", { name: "Откажи" })).toBeFocused();
+    await expect(deleteQuestion(page).getByRole("button", { name: "Не, задржи ја" })).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(deleteQuestion(page)).toBeHidden();
     await expect(deleteButton(page)).toBeFocused();
     await page.keyboard.press("Enter");
     await page.keyboard.press("Tab");
-    await expect(deleteQuestion(page).getByRole("button", { name: "Избриши ја лекцијата" })).toBeFocused();
+    await expect(deleteQuestion(page).getByRole("button", { name: "Да, избриши ја" })).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/teacher\/lessons$/);
     await expect(page.getByText("Лекцијата е избришана.")).toBeVisible();
@@ -1203,7 +1203,7 @@ test.describe("zoomed and small windows", () => {
       expect(await overflow(page)).toBeLessThanOrEqual(0);
       await deleteButton(page).click();
       await expect(page.getByRole("alertdialog")).toBeVisible();
-      await expect(page.getByRole("alertdialog").getByRole("button", { name: "Откажи" })).toBeVisible();
+      await expect(page.getByRole("alertdialog").getByRole("button", { name: "Не, задржи ја" })).toBeVisible();
       expect(await overflow(page)).toBeLessThanOrEqual(0);
     });
 
