@@ -132,6 +132,8 @@ const timer = (page: Page) => open(page).getByRole("textbox", { name: "Врем�
 const kind = (page: Page, name: string) => open(page).getByRole("radio", { name });
 const answer = (page: Page) => open(page).getByRole("textbox", { name: "Точен одговор", exact: true });
 const tolerance = (page: Page) => open(page).getByRole("textbox", { name: "Колку може да отстапува одговорот?" });
+/** "Повеќе опции" hides how far off an answer may be and the minus key until one of them is set; pressing it shows them. */
+const moreOptions = (page: Page) => open(page).getByRole("button", { name: /^(Повеќе|Помалку) опции$/ });
 
 test.beforeEach(async ({ page }, testInfo) => {
   // A teacher in their first run has their own demo state, and makes their lesson from the start.
@@ -422,6 +424,9 @@ test.describe("editing a question of each kind", () => {
     expect(await unit.getAttribute("placeholder")).toBeNull();
     await expect(open(page).getByText("По желба, на пример cm². Се прикажува покрај одговорот.")).toBeVisible();
     await unit.fill("cm²");
+    // How far off an answer may be, and the minus key, are behind "Повеќе опции" until one of them is set.
+    await expect(tolerance(page)).toHaveCount(0);
+    await moreOptions(page).click();
     await tolerance(page).fill("0,5");
     await expect(page.getByText("На пример 0,5 значи дека 11,5 и 12,5 се точни кога одговорот е 12.")).toBeVisible();
     // A minus answer without the minus key is a problem of the question, in plain words.
@@ -440,6 +445,7 @@ test.describe("editing a question of each kind", () => {
 
   test("a number that is not a number yet stays in its box, is not in the draft, and is a problem of the question until it is one", async ({ page }) => {
     await edit(page, 3).click();
+    await moreOptions(page).click();
     await tolerance(page).fill("0,");
     await timer(page).fill("4x");
     await expect(open(page).getByRole("button", { name: "Готово" })).toBeVisible();
@@ -715,6 +721,7 @@ test.describe("saving as it goes", () => {
 
   test("a number typed that is not a number yet would be lost, so the page asks before it is left", async ({ page }) => {
     await edit(page, 3).click();
+    await moreOptions(page).click();
     await tolerance(page).fill("0,");
     await menu(page).getByRole("link", { name: "Денес" }).click();
     await expect(leaveDialog(page)).toBeVisible();
@@ -1171,7 +1178,9 @@ test.describe("Today lists what is not finished", () => {
     await page.setViewportSize({ width: 1024, height: 768 });
     const many = Array.from({ length: 6 }, (_, i) => draftOf({ id: `d-many-${i}`, created_at: iso(Date.now() - (i + 1) * 3_600_000), updated_at: iso(Date.now() - (i + 1) * 3_600_000) }));
     await seed(page, { drafts: many }, "/teacher");
-    await expect(page.locator("section[aria-labelledby=unfinished] .lessons > li")).toHaveCount(6);
+    // Three of them, and a way to the rest.
+    await expect(page.locator("section[aria-labelledby=unfinished] .lessons > li")).toHaveCount(3);
+    await expect(page.getByRole("link", { name: "Сите недовршени (6)" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Подготвени лекции" })).toBeInViewport();
     await expect(page.locator("section[aria-labelledby=prepared] .lessons > li").first().getByRole("button", { name: /^Започни час/ })).toBeInViewport();
     expect(await overflow(page)).toBeLessThanOrEqual(0);
@@ -1370,6 +1379,9 @@ test.describe("keyboard only", () => {
     await expect(prompt(page)).toBeFocused();
     await page.keyboard.press("ControlOrMeta+a");
     await page.keyboard.type("Која од равенките е квадратна? Да?");
+    // The picture is optional and is the next stop: the button to add one is the label of a real file field, which has the focus.
+    await page.keyboard.press("Tab");
+    await expect(open(page).locator('input[type="file"]')).toBeFocused();
     // The kind: one stop for the group, the arrows choose.
     await page.keyboard.press("Tab");
     await expect(kind(page, "Понудени одговори")).toBeFocused();
@@ -1443,6 +1455,8 @@ test.describe("wording", () => {
     await card(page, 5).getByRole("button", { name: "Edit" }).click();
     await expect(page.getByRole("textbox", { name: "The question" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 4, name: "What kind of answer?" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "How far off may an answer be?" })).toHaveCount(0);
+    await page.getByRole("button", { name: "More options" }).click();
     await expect(page.getByRole("textbox", { name: "How far off may an answer be?" })).toBeVisible();
     await expect(page.getByRole("checkbox", { name: "The answer may be a negative number" })).toBeVisible();
     await expect(page.getByText("Then your students get a minus key.")).toBeVisible();
@@ -1460,6 +1474,7 @@ test.describe("wording", () => {
     await seed(page, { drafts: [draftOf({ year: 2, subject: { id: "linalg", name: "Линеарна алгебра" } })] }, SEED_URL, "university");
     await expect(page.locator(".head__sub")).toHaveText("Линеарна алгебра · 2. година");
     await edit(page, 5).click();
+    await moreOptions(page).click();
     await expect(page.getByText("Тогаш Вашите студенти ќе имаат копче за минус.")).toBeVisible();
     await expect(page.getByText("Тогаш Вашите ученици")).toHaveCount(0);
   });
