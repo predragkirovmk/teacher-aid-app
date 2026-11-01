@@ -19,15 +19,19 @@ What follows is what the screens need of them, in the order the owner's brief as
 3. **The answer and the words.** `{ id, url, alt }` as 11.5 has it, with `alt` null: the teacher writes what the picture shows afterwards, in a
    box ("Што има на сликата?", for students who cannot see it well), recommended and **never required**. Those words travel with the question,
    in its `media` (`{ id, url, alt }`), in `PATCH /lessons/drafts/{id}`, `POST /lessons` and `PUT /lessons/{id}`; an empty box is `alt: null`. The
-   box takes at most `IMAGE_ALT_MAX_CHARS` = 200 characters (PROPOSED, the same as the emphasis); the server cuts a longer one. The words are
-   cleared when a picture is replaced by another (they would be about something else).
+   box (a three-line text area) takes at most `IMAGE_ALT_MAX_CHARS` = 200 characters (PROPOSED, the same as the emphasis); the app turns a line
+   break into a space, and the server cuts a longer one. The words are cleared when a picture is replaced by another (they would be about
+   something else).
 4. **Do not trust `url` from the client.** The app sends back the `url` it was given, but a teacher's browser can send any string, and a
    `url` is what students' phones will load (a tracking address, or a picture that is not the teacher's). PROPOSED: the server reads only
    `media.id` and `media.alt` from a saved question, checks that the id is a picture of that teacher (and school), and fills `url` itself.
    A `media.id` that is not the teacher's is `validation_failed`, or `not_found`.
 5. **Replacing and removing.** A replacement is a new upload and a new `media` on the question; removing is `media: null`. Pictures that no
    saved question and no draft holds any more are not deleted at once (an undone edit, a refinement undone, a draft thrown away may bring one
-   back): PROPOSED `MEDIA_ORPHAN_HOURS` = 24, deleted with the same retention job as sources (BR-LES-13).
+   back): PROPOSED `MEDIA_ORPHAN_HOURS` = 24, deleted with the same retention job as sources (BR-LES-13). The app relies on it: removing a
+   picture is one press, and the line that says so has "Врати ја сликата", which sends the same `media` (`{ id, url, alt }`) back in the next
+   `PATCH /lessons/drafts/{id}`. So a `media.id` that no question holds any more, and is within `MEDIA_ORPHAN_HOURS`, must be accepted again
+   (not `not_found`), and the server fills its `url` as in 4.
 6. **Copies and edit drafts carry the picture.** A library copy (`POST /library/{id}/copy`) and a draft of a saved lesson
    (`POST /lessons/{id}/drafts`) hold `media` as the lesson does. Copying must keep the copy's picture whatever happens to the original
    (copy the file, or count references), since deleting a lesson must not break a copy (EC-LES-04).
@@ -77,14 +81,17 @@ What follows is what the screens need of them, in the order the owner's brief as
    `times_run > 0` is "Одржани", and a held lesson says "Одржана {when of last_run_at} · {times_run} пати" in Macedonian's own forms
    ("пред 3 дена · 2 пати", "1 пат", "21 пат"). A lesson in a session that is in `lobby`, `teaching` or `review` is still `times_run == 0`, so it is
    listed as prepared; its "Започни час" answers that a lesson is running, with the way back to it.
-2. **`updated_at`** is when the lesson's current version was made. Within each section the page sorts by it, newest change first, since the
-   API fixes no order (OPEN-37). The lessons that are not finished are `GET /lessons/drafts`, sorted the same way by the draft's `updated_at`,
-   on the Lessons page and on Today. The whole list is needed: the page filters and sorts on the client.
+2. **`updated_at`** is when the lesson's current version was made. The prepared lessons are sorted by it, newest change first, since the
+   API fixes no order (OPEN-37). The held lessons are sorted by `last_run_at`, the lesson held last first (design review: the card says "Одржана
+   пред 3 дена", and a list in the order of another date reads as shuffled; a held lesson's card no longer says when it was last changed).
+   The lessons that are not finished are `GET /lessons/drafts`, sorted by the draft's `updated_at`, on the Lessons page and on Today. The
+   whole list is needed: the page filters and sorts on the client.
 3. **Subject row:** a teacher whose lessons and unfinished lessons together hold more than one `subject.id` gets "Сите предмети" and one choice per
    subject. A subject that has gone from both lists (the last lesson of it was deleted) is not a choice any more and everything is shown.
-4. **If paging comes** (OPEN-37), the Lessons page needs: lessons by `times_run == 0` and `times_run > 0` separately, newest `updated_at`
-   first, a page at a time, the subjects the teacher has (to draw the row), and a count of unfinished drafts; Today needs three drafts and their
-   number (`GET /lessons/drafts?limit=4`, say). Not decided here.
+4. **If paging comes** (OPEN-37), the Lessons page needs: lessons by `times_run == 0` (newest `updated_at` first) and `times_run > 0`
+   (newest `last_run_at` first) separately, a page at a time, the subjects the teacher has (to draw the row), and a count of unfinished drafts;
+   each section's name carries its count ("Одржани (12)"), so the counts of both lesson lists are needed as well as the pages; Today needs
+   three drafts and their number (`GET /lessons/drafts?limit=4`, say). Not decided here.
 
 ## D. Deleting a lesson (FR-LES-18, EC-LES-04, EC-LES-10, AC-LES-11)
 
@@ -123,13 +130,17 @@ What follows is what the screens need of them, in the order the owner's brief as
 
 ## F. Decisions taken (step 7)
 
-- **The Lessons page** is one page, no tabs: the yellow "Подготви лекција", the subject row (only for several subjects), then "Недовршени",
-  "Подготвени", "Одржани", each only when it has something; with nothing at all, one card with the yellow button. A card keeps "Отвори" and an
-  outlined "Започни час"; a held card has the same lines as a prepared one and a third, bold, with when and how often. Delete is not on a card.
+- **The Lessons page** is one page, no tabs: the yellow "Подготви лекција", the subject row (only for several subjects), then "Подготвени",
+  "Недовршени", "Одржани" (the order of Today; changed in the design review, which first had the unfinished ones on top), each only when it
+  has something and each with its count; with nothing at all, one card with the yellow button. Every card has one outlined button, the way on,
+  and one quiet underlined link beside it: a prepared lesson "Започни час" and "Отвори", a held one "Отвори" and "Започни час" (three lines: the
+  subject, year and questions, then, bold, when it was held and how often), a draft "Продолжи" (or "Отвори" while it is being written or has
+  failed) and "Фрли". Delete is not on a card. A lesson opened from the Lessons page goes Back to the Lessons (the cards used to say `from=today`).
 - **Today** shows three unfinished lessons (`TODAY_DRAFTS_MAX` = 3) in the same order as the Lessons page and, when there are more, "Сите
   недовршени (N)" to `/teacher/lessons#nedovrseni`, where the heading takes the focus.
-- **Deleting** is an outlined "Избриши лекција" at the very end of a lesson's page, a question with "Откажи" as the yellow default, and, for a
-  lesson of a running class, the words "Прво завршете го часот" in its place.
+- **Deleting** is an outlined "Избриши лекција" at the very end of a lesson's page, a question whose answers are "Не, задржи ја" (the yellow
+  default) and "Да, избриши ја", the same shape as every other question of the app, and, for a lesson of a running class, the words "Прво
+  завршете го часот" in its place. After a delete or a copy the focus is on the line that says so.
 - **The picture** sits under the question's words: "Додај слика" is the label of a real file input, with the rules beside it; after a picture
   arrives the focus is on its words; a picture that fails leaves the old one; a failure of the connection or of the server offers "Обиди се
   повторно" with the same file, a refused file does not. In the read views the picture's name for a screen reader is its words (else "Слика кон
@@ -137,3 +148,10 @@ What follows is what the screens need of them, in the order the owner's brief as
 - **The library** has no yellow button on its list (copying is on the preview); an item's one button is "Прегледај". `LIBRARY_LONG` = 12.
 - **Tests changed in `editor.spec.ts`:** the tolerance and minus tests press "Повеќе опции" first, the keyboard test has the picture field as a
   stop after the question's words, and the Today test with six drafts expects three and the link.
+
+## G. Added in the design review of step 7 (nothing new for the API beyond A.5 and C.2 above)
+
+- The held lessons' order is by `last_run_at` (C.2). Sections carry counts (C.4).
+- The picture's removal can be taken back, which needs a removed `media.id` to be accepted again for `MEDIA_ORPHAN_HOURS` (A.5).
+- The words of a picture are a text area of up to 200 characters (A.3).
+- The app now says to a screen reader how many lessons a choice of subject shows ("Прикажани се 5 лекции: Математика."); nothing for the API.

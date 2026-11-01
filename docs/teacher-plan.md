@@ -143,6 +143,11 @@ The app is dark teal only (no light mode).
   "Сите недовршени (N)" leading to that list. In the numeric question, keep the answer and the
   unit in view and put the tolerance and "may be negative" behind "Повеќе опции" (open when either
   is already set), so the common case stays short for an older teacher.
+- Step 7 review (the reviewer's calls, 2026-11-01, reversible): every card has one outlined button, the way on from it, and one quiet
+  underlined link, the lesser thing, the same on Today, Lessons and the Library; on a held lesson "Отвори" is the button and "Започни час" the
+  link. The Lessons page is in the order of Today (prepared, not finished, held), each section with its count, the held ones in the order of when
+  they were held. Every question of the app is answered with "Не, ..." (the safe one, yellow, with the focus) and "Да, ...". A line said once
+  after a change (a lesson deleted, saved or copied) takes the focus. Removing a picture can be taken back.
 - Step 8: the start button in "Со кој клас?" names the chosen class ("Започни со IV-1") so a
   wrong pick is visible before it is made; update the tests that rely on the label. The
   `/teacher/live/[sessionId]` placeholder is replaced by the console.
