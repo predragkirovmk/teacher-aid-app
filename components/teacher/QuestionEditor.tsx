@@ -16,7 +16,7 @@ import { problemWords } from "./problemWords";
  * `anchor` is where a button was on the screen (its distance from the top of the window) when it moved the question: the page is then
  * scrolled so that the button is there again, since the question has moved and the teacher's eyes are on the button.
  */
-export type FocusRequest = { id: string; field: Field | "edit" | "undo" | "up" | "down" | "done"; nonce: number; anchor?: number } | null;
+export type FocusRequest = { id: string; field: Field | "edit" | "undo" | "up" | "down" | "done" | "kinds"; nonce: number; anchor?: number } | null;
 
 /**
  * Put the focus on the field the request names, inside `root`; a button that is not there any more (the question moved to the end of
@@ -91,6 +91,7 @@ export function QuestionEditor({
   canMoveDown,
   canDelete,
   focus,
+  onAsk,
   onDone,
   onMove,
   onDelete,
@@ -106,6 +107,8 @@ export function QuestionEditor({
   canMoveDown: boolean;
   canDelete: boolean;
   focus: FocusRequest;
+  /** Where the focus is to go next, in this question: after an answer is added or taken away, the button that was pressed is not there. */
+  onAsk: (field: Field) => void;
   onDone: () => void;
   /** `anchor`: where the button that was pressed is in the window, so that the page can keep it there. */
   onMove: (direction: "up" | "down", anchor: number) => void;
@@ -195,7 +198,16 @@ export function QuestionEditor({
                     <span>{t(right ? "edit.option.right" : "edit.option.mark")}</span>
                   </label>
                   {canRemoveOption(q) && (
-                    <button type="button" className="btn btn--secondary btn--small opt__remove" aria-label={t("edit.option.remove.label", { n: i + 1 })} onClick={() => set(removeOption(q, i))}>
+                    <button
+                      type="button"
+                      className="btn btn--secondary btn--small opt__remove"
+                      aria-label={t("edit.option.remove.label", { n: i + 1 })}
+                      onClick={() => {
+                        set(removeOption(q, i));
+                        // The words of the answer that took its place (or of the one before it, when it was the last).
+                        onAsk(`option-${Math.min(i, q.options.length - 2)}`);
+                      }}
+                    >
                       <XIcon size={24} aria-hidden="true" />
                       {t("edit.option.remove")}
                     </button>
@@ -206,7 +218,15 @@ export function QuestionEditor({
           </ul>
           {canAddOption(q) && (
             <div>
-              <button type="button" className="btn btn--secondary btn--small" onClick={() => set(addOption(q))}>
+              <button
+                type="button"
+                className="btn btn--secondary btn--small"
+                onClick={() => {
+                  set(addOption(q));
+                  // The new answer is empty, and is written next.
+                  onAsk(`option-${q.options.length}`);
+                }}
+              >
                 <PlusIcon size={24} aria-hidden="true" />
                 {t("edit.option.add")}
               </button>

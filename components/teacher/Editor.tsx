@@ -185,7 +185,7 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
   // The focus requests the page itself answers: the title, the buttons that open a question and bring one back.
   useEffect(() => {
     if (!focus || !root.current) return;
-    if (focus.field === "title" || focus.field === "add" || focus.field === "undo") focusField(root.current, focus.field);
+    if (focus.field === "title" || focus.field === "add" || focus.field === "undo" || focus.field === "kinds") focusField(root.current, focus.field);
     else if (focus.field === "edit") {
       const card = document.getElementById(`q-${focus.id}`);
       if (card) focusField(card, "edit");
@@ -425,6 +425,7 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
                     canMoveDown={i < questions.length - 1}
                     canDelete={canDelete(questions.length)}
                     focus={focus}
+                    onAsk={(field) => ask(q.id, field)}
                     onDone={() => finish(q.id)}
                     onMove={(direction, anchor) => move(q.id, direction, anchor)}
                     onDelete={() => remove(q.id)}
@@ -450,21 +451,39 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
 
           <div className="editor__add">
             {adding ? (
-              <div className="card card--stack">
-                <h3 className="editor__label">{t("add.which")}</h3>
+              <div className="card card--stack" role="group" aria-labelledby="add-which" data-field="kinds">
+                <h3 className="editor__label" id="add-which">
+                  {t("add.which")}
+                </h3>
                 <div className="editor__kinds">
                   {KINDS.map((kind) => (
                     <button key={kind} type="button" className="btn btn--secondary" onClick={() => add(kind)}>
                       {t(`question.kind.${kind}`)}
                     </button>
                   ))}
-                  <button type="button" className="btn btn--quiet" onClick={() => dispatch({ type: "choosing", on: false })}>
+                  <button
+                    type="button"
+                    className="btn btn--quiet"
+                    onClick={() => {
+                      dispatch({ type: "choosing", on: false });
+                      ask("", "add");
+                    }}
+                  >
                     {t("add.cancel")}
                   </button>
                 </div>
               </div>
             ) : room ? (
-              <button type="button" className="btn btn--secondary" data-field="add" onClick={() => dispatch({ type: "choosing", on: true })}>
+              <button
+                type="button"
+                className="btn btn--secondary"
+                data-field="add"
+                onClick={() => {
+                  dispatch({ type: "choosing", on: true });
+                  // The button that was pressed goes with the choice that takes its place: the focus is on the first kind, which is what is read.
+                  ask("", "kinds");
+                }}
+              >
                 <PlusIcon size={24} aria-hidden="true" />
                 {t("add.title")}
               </button>

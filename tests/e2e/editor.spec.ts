@@ -576,6 +576,35 @@ test.describe("adding, deleting and moving", () => {
     expect(inWindow.y + inWindow.height).toBeLessThanOrEqual(720);
   });
 
+  test("the focus is never lost: the choice of a kind is where it goes when a question is to be added, and back on the button when it is not", async ({ page }) => {
+    await page.getByRole("button", { name: "Додај прашање" }).click();
+    // The button that was pressed is gone with the choice that takes its place: the focus is on the first kind, in a group with its question.
+    await expect(page.getByRole("group", { name: "Какво прашање сакате да додадете?" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Понудени одговори", exact: true })).toBeFocused();
+    await page.getByRole("button", { name: "Не додавај" }).click();
+    await expect(page.getByRole("button", { name: "Додај прашање" })).toBeFocused();
+    await page.getByRole("button", { name: "Додај прашање" }).click();
+    await page.getByRole("button", { name: "Точно или неточно", exact: true }).click();
+    await expect(prompt(page)).toBeFocused();
+  });
+
+  test("an answer that is added is written next, and when one is taken away the focus is on the one that took its place", async ({ page }) => {
+    await edit(page, 4).click();
+    // Three answers: one can be added, and the new one is the box the focus is in.
+    await open(page).getByRole("button", { name: "Додај одговор" }).click();
+    await expect(option(page, 4)).toBeFocused();
+    await expect(option(page, 4)).toHaveValue("");
+    // The second is taken away: the third is the second now, and has the focus.
+    await option(page, 3).fill("Трето");
+    await open(page).getByRole("button", { name: "Отстрани го одговорот 2" }).click();
+    await expect(option(page, 2)).toHaveValue("Трето");
+    await expect(option(page, 2)).toBeFocused();
+    // The last is taken away: the one before it has the focus.
+    await open(page).getByRole("button", { name: "Отстрани го одговорот 3" }).click();
+    await expect(option(page, 2)).toBeFocused();
+    await expect(option(page, 3)).toHaveCount(0);
+  });
+
   test("a question is moved up and down, the order is kept, and the focus stays on the button that was pressed", async ({ page }) => {
     const first = await card(page, 1).locator(".question__prompt").innerText();
     const second = await card(page, 2).locator(".question__prompt").innerText();
@@ -1364,7 +1393,10 @@ test.describe("keyboard only", () => {
   test("a question is added, moved, deleted and brought back with the keyboard, and the focus is always on something that can be pressed", async ({ page }) => {
     await page.getByRole("button", { name: "Додај прашање" }).focus();
     await page.keyboard.press("Enter");
-    await page.getByRole("button", { name: "Точно или неточно", exact: true }).focus();
+    // From the button that was pressed on, by keys only: the first kind has the focus, and Tab goes to the next.
+    await expect(page.getByRole("button", { name: "Понудени одговори", exact: true })).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("button", { name: "Точно или неточно", exact: true })).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(prompt(page)).toBeFocused();
     await page.keyboard.type("Нула е парен број.");
