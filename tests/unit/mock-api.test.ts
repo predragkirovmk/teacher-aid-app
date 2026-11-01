@@ -496,6 +496,17 @@ describe("the library of the demo school and of the demo faculty", () => {
     expect((await rejection(api.copyFromLibrary(item.lesson_id))).code).toBe("not_found");
   });
 
+  test("a computer that is offline cannot copy, and nothing is copied", async () => {
+    const [item] = await api.listLibrary();
+    vi.stubGlobal("navigator", { onLine: false });
+    try {
+      expect((await rejection(api.copyFromLibrary(item.lesson_id))).code).toBe("network");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect((await api.listLibrary()).some((i) => i.already_copied)).toBe(false);
+  });
+
   test("a copy that the teacher deleted is not a copy any more: the lesson can be copied again, and says so", async () => {
     const [item] = await api.listLibrary();
     const first = await api.copyFromLibrary(item.lesson_id);

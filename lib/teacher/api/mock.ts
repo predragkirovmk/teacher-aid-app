@@ -941,6 +941,7 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
     listLibrary: () => run(() => libraryOf(ctx())),
     copyFromLibrary: (lessonId) =>
       run(() => {
+        if (isOffline()) throw new ApiError("network");
         const c = ctx();
         const entry = libraryEntries(c).find((l) => libraryIdOf(l.key) === lessonId);
         if (!entry) throw notFound();
