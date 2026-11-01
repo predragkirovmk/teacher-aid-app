@@ -47,9 +47,11 @@ export const isApiErrorCode = (v: unknown): v is ApiErrorCode => API_ERROR_CODES
  * several things was wrong.
  */
 export const VALIDATION_REASONS = ["file_type", "file_too_large", "empty", "no_text", "text_too_short", "text_too_long"] as const;
-export type ValidationReason = (typeof VALIDATION_REASONS)[number];
+/** The same for `POST /lessons/media`, the picture on a question (FR-LES-19), PROPOSED: not JPEG, PNG or WebP; over `IMAGE_MAX_BYTES`; not a picture at all. */
+export const IMAGE_REASONS = ["image_type", "image_too_large", "image_unreadable"] as const;
+export type ValidationReason = (typeof VALIDATION_REASONS)[number] | (typeof IMAGE_REASONS)[number];
 
-const isReason = (v: unknown): v is ValidationReason => VALIDATION_REASONS.includes(v as ValidationReason);
+const isReason = (v: unknown): v is ValidationReason => [...VALIDATION_REASONS, ...IMAGE_REASONS].includes(v as ValidationReason);
 
 export class ApiError extends Error {
   readonly code: ApiErrorCode;

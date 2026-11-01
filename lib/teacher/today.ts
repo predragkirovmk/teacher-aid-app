@@ -2,6 +2,8 @@ import type { Id, LessonSummary } from "./api/types";
 
 /** Today shows this many prepared lessons; "Сите лекции" leads to the rest. */
 export const TODAY_LESSONS_MAX = 5;
+/** And this many lessons that are not finished; "Сите недовршени" leads to all of them, on the Lessons page. */
+export const TODAY_DRAFTS_MAX = 3;
 
 const changedAt = (l: LessonSummary): number => {
   const ms = Date.parse(l.updated_at);

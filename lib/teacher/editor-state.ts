@@ -1,4 +1,4 @@
-import type { DraftPatch, DraftQuestion, QuestionKind, ReadyDraft } from "./api/types";
+import type { DraftPatch, DraftQuestion, QuestionKind, QuestionMedia, ReadyDraft } from "./api/types";
 import {
   addQuestion,
   changeKind,
@@ -38,6 +38,13 @@ export type EditorAction =
   /** A question changed in any way but its timer and its tolerance, which are typed (below). */
   | { type: "question"; question: DraftQuestion }
   | { type: "kind"; id: string; kind: QuestionKind }
+  /**
+   * The picture of a question: put on, taken off (null) or replaced. It names the question and not the question as it was, because a
+   * picture takes a moment to arrive and the teacher goes on writing meanwhile; what they wrote is not undone by it.
+   */
+  | { type: "media"; id: string; media: QuestionMedia | null }
+  /** What the picture shows, in the teacher's words, for students who cannot see it well. Empty is none. */
+  | { type: "alt"; id: string; alt: string }
   | { type: "timer"; id: string; text: string }
   | { type: "tolerance"; id: string; text: string }
   | { type: "move"; id: string; direction: "up" | "down" }
@@ -83,6 +90,17 @@ export function reduce(state: EditorState, action: EditorAction): EditorState {
       if (!q || q.kind === action.kind) return state;
       // The numbers typed for the old kind mean nothing to the new one.
       return setQuestions(replaceQuestion(content.questions, changeKind(q, action.kind)), { raw: omit(state.raw, action.id) });
+    }
+    case "media": {
+      const q = content.questions.find((x) => x.id === action.id);
+      if (!q || q.media === action.media) return state;
+      return setQuestions(replaceQuestion(content.questions, { ...q, media: action.media }));
+    }
+    case "alt": {
+      const q = content.questions.find((x) => x.id === action.id);
+      if (!q?.media) return state;
+      const alt = action.alt === "" ? null : action.alt;
+      return alt === q.media.alt ? state : setQuestions(replaceQuestion(content.questions, { ...q, media: { ...q.media, alt } }));
     }
     case "timer": {
       const q = content.questions.find((x) => x.id === action.id);

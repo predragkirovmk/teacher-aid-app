@@ -192,3 +192,58 @@ describe("what is sent to the draft", () => {
     expect(contentOf(draft()).questions).toEqual(s.content.questions);
   });
 });
+
+describe("the picture of a question", () => {
+  const media = { id: "m-1", url: "data:image/jpeg;base64,AAAA", alt: null };
+
+  test("is put on the question it names, and the rest of the lesson is not touched", () => {
+    const s = start();
+    const next = reduce(s, { type: "media", id: first(s).id, media });
+    expect(first(next).media).toEqual(media);
+    expect(next.content.questions[1]).toBe(s.content.questions[1]);
+    expect(first(s).media).toBeNull();
+  });
+
+  test("lands on the question as it is now: what was written while the picture was on its way is kept", () => {
+    const s = start();
+    const id = first(s).id;
+    const written = run(s, { type: "question", question: { ...first(s), prompt: "Ново пишување" } }, { type: "media", id, media });
+    expect(first(written)).toMatchObject({ prompt: "Ново пишување", media });
+  });
+
+  test("a picture for a question that is gone changes nothing, and neither does the same picture again", () => {
+    const s = start();
+    expect(reduce(s, { type: "media", id: "nope", media })).toBe(s);
+    const once = reduce(s, { type: "media", id: first(s).id, media });
+    expect(reduce(once, { type: "media", id: first(once).id, media: first(once).media })).toBe(once);
+    expect(reduce(s, { type: "media", id: first(s).id, media: null })).toBe(s);
+  });
+
+  test("is taken off with null, with its words", () => {
+    const s = run(start(), { type: "media", id: first(start()).id, media: { ...media, alt: "Графикон" } });
+    const off = reduce(s, { type: "media", id: first(s).id, media: null });
+    expect(first(off).media).toBeNull();
+  });
+
+  test("its words are the question's picture's words; empty is none, and a question with no picture has none to change", () => {
+    const s = run(start(), { type: "media", id: first(start()).id, media });
+    const said = reduce(s, { type: "alt", id: first(s).id, alt: "Парабола што се отвора нагоре" });
+    expect(first(said).media).toEqual({ ...media, alt: "Парабола што се отвора нагоре" });
+    expect(first(reduce(said, { type: "alt", id: first(said).id, alt: "" })).media?.alt).toBeNull();
+    const bare = start();
+    expect(reduce(bare, { type: "alt", id: first(bare).id, alt: "Нешто" })).toBe(bare);
+    expect(reduce(s, { type: "alt", id: first(s).id, alt: "" })).toBe(s);
+  });
+
+  test("stays on the question when its kind is changed", () => {
+    const s = run(start(), { type: "media", id: first(start()).id, media: { ...media, alt: "Графикон" } });
+    const other = first(s).kind === "true_false" ? "numeric" : "true_false";
+    expect(first(reduce(s, { type: "kind", id: first(s).id, kind: other })).media).toEqual({ ...media, alt: "Графикон" });
+  });
+
+  test("is part of what is saved to the draft", () => {
+    const s = start();
+    const next = reduce(s, { type: "media", id: first(s).id, media });
+    expect(patchOf(s.content, next.content)).toEqual({ questions: next.content.questions });
+  });
+});
