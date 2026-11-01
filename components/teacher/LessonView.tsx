@@ -6,13 +6,17 @@ import { startTransition, useEffect, useState, type ReactNode } from "react";
 import { startEditing, useLesson } from "@/lib/teacher/api/hooks";
 import type { DraftQuestion } from "@/lib/teacher/api/types";
 import { decimal, isOne } from "@/lib/teacher/format";
-import { useT } from "@/lib/teacher/i18n";
+import { useT, type Key } from "@/lib/teacher/i18n";
 import { backFromLesson, draftUrl, fromOf, isSaved, type Saved } from "@/lib/teacher/routes";
+import { DeleteLesson } from "./DeleteLesson";
 import { LoadProblem } from "./LoadProblem";
 import { PageHeader } from "./PageHeader";
 import { Bar, Loading } from "./Skeleton";
 import { StartLessonButton } from "./StartLessonButton";
 import { kindLine } from "./LessonCard";
+
+/** What the lesson page says once on arriving: from a save of a new lesson, from a save of changes, or from a copy of a colleague's lesson. */
+const SAVED_WORDS = { new: "lesson.saved.new", changes: "lesson.saved.changes", copied: "lesson.saved.copied" } as const satisfies Record<Saved, Key>;
 
 /**
  * A lesson, to read: its title, subject and year, what the teacher asked to stress, and the questions in order, each with
@@ -83,7 +87,7 @@ export function LessonView() {
                   <CheckCircleIcon size={24} weight="fill" aria-hidden="true" />
                 </span>
                 <p>
-                  <strong>{t(saved === "new" ? "lesson.saved.new" : "lesson.saved.changes")}</strong>
+                  <strong>{t(SAVED_WORDS[saved])}</strong>
                 </p>
               </div>
             )}
@@ -102,6 +106,7 @@ export function LessonView() {
               </div>
             )}
             <QuestionList questions={lesson.questions} />
+            <DeleteLesson lesson={lesson} />
           </>
         )}
       </div>
@@ -148,8 +153,14 @@ export function QuestionCard({ question, n, total, actions, headingId }: { quest
           </span>
         </p>
       </div>
-      {/* eslint-disable-next-line @next/next/no-img-element -- the picture comes from the API, already made phone-sized (FR-LES-11) */}
-      {question.media && <img className="question__image" src={question.media.url} alt={question.media.alt ?? t("question.image")} />}
+      {question.media && (
+        <figure className="question__figure">
+          {/* eslint-disable-next-line @next/next/no-img-element -- the picture comes from the API, already made phone-sized (FR-LES-11) */}
+          <img className="question__image" src={question.media.url} alt={question.media.alt || t("question.image")} />
+          {/* The words are the picture's name for a screen reader; seen here for the teacher, who reads them with the picture and does not hear them twice. */}
+          {question.media.alt && <figcaption aria-hidden="true">{t("image.caption", { alt: question.media.alt })}</figcaption>}
+        </figure>
+      )}
       {question.prompt.trim() ? <p className="question__prompt">{question.prompt}</p> : <p className="question__prompt question__blank">{t("question.blank")}</p>}
       <Answers question={question} />
       {question.explanation && (
