@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest";
-import { ApiError, API_ERROR_CODES, VALIDATION_REASONS } from "@/lib/teacher/api/errors";
+import { ApiError, API_ERROR_CODES, IMAGE_REASONS, VALIDATION_REASONS } from "@/lib/teacher/api/errors";
+import { fileSize } from "@/lib/teacher/prepare";
+import { IMAGE_MAX_BYTES } from "@/lib/teacher/images";
 import { isOne } from "@/lib/teacher/format";
 import { dictionaries, errorKey, translate, type Key } from "@/lib/teacher/i18n";
 
@@ -20,7 +22,7 @@ describe("the dictionaries", () => {
     const known = new Set([
       "students", "classes", "teacher", "name", "seconds", "provider", "n", "total",
       "weekday", "day", "month", "when", "time", "roman", "title", "course", "subject", "tolerance", "class",
-      "days", "min", "max", "count", "option",
+      "days", "min", "max", "count", "option", "size", "alt",
     ]);
     for (const locale of ["mk", "en"] as const) {
       for (const key of keys) {
@@ -153,6 +155,62 @@ describe("a count is in the singular when the language says so", () => {
     expect([1, 2, 21].map((n) => phrase("en", n, "start.count.one", "start.count"))).toEqual(["1 student", "2 students", "21 students"]);
     expect([1, 21].map((n) => phrase("en", n, "lesson.questions.one", "lesson.questions.many"))).toEqual(["1 question", "21 questions"]);
     expect([1, 21].map((n) => phrase("en", n, "running.min1", "running.min"))).toEqual(["Running for 1 minute", "Running for 21 minutes"]);
+  });
+});
+
+describe("the words about the picture of a question", () => {
+  test("a refused picture says what was wrong in both languages, and the size is the one the app holds", () => {
+    for (const locale of ["mk", "en"] as const) {
+      for (const reason of IMAGE_REASONS) {
+        const { key } = errorKey(new ApiError("validation_failed", { reason }));
+        expect(translate(locale, "school", key).length, `${locale} ${reason}`).toBeGreaterThan(20);
+      }
+      expect(translate(locale, "school", "err.validation_failed.image_too_large")).toContain(fileSize(IMAGE_MAX_BYTES, locale));
+      expect(translate(locale, "school", "image.rules", { size: fileSize(IMAGE_MAX_BYTES, locale) })).toContain("10 MB");
+    }
+  });
+
+  test("the picture's button names say what they do, and the one that is a label says more than it shows (WCAG 2.5.3)", () => {
+    expect(translate("mk", "school", "image.add")).toBe("Додај слика");
+    expect(translate("mk", "school", "image.replace")).toBe("Замени");
+    expect(translate("mk", "school", "image.remove")).toBe("Отстрани");
+    for (const locale of ["mk", "en"] as const) {
+      const visible = translate(locale, "school", "image.replace");
+      expect(`${visible}${translate(locale, "school", "image.replace.label")}`.toLowerCase()).toContain(visible.toLowerCase());
+      expect(translate(locale, "school", "image.remove.label").toLowerCase()).toContain(translate(locale, "school", "image.remove").toLowerCase());
+    }
+  });
+
+  test("the words about what is in the picture are asked as a question, explained in a line, and not demanded", () => {
+    expect(translate("mk", "school", "image.alt")).toBe("Што има на сликата?");
+    expect(translate("mk", "school", "image.alt.hint")).toContain("ученици");
+    expect(translate("mk", "university", "image.alt.hint")).toContain("студенти");
+    expect(translate("mk", "school", "image.alt.hint")).toContain("Не е задолжително");
+  });
+});
+
+describe("the library and the lessons that were deleted", () => {
+  test("the library is worded for the school and for the faculty", () => {
+    expect(translate("mk", "school", "library.sub")).toContain("училиште");
+    expect(translate("mk", "university", "library.sub")).toContain("факултет");
+    expect(translate("mk", "school", "library.empty.body")).toContain("училиште");
+    expect(translate("mk", "university", "library.empty.body")).toContain("факултет");
+    expect(translate("en", "school", "library.empty.body")).toContain("school");
+    expect(translate("en", "university", "library.empty.body")).toContain("faculty");
+  });
+
+  test("deleting says what goes and what stays, in plain words", () => {
+    const body = translate("mk", "school", "lesson.delete.body");
+    expect(body).toContain("исчезне од Вашите лекции");
+    expect(body).toContain("одржале и нивните резултати остануваат");
+    expect(body).toContain("колеги остануваат");
+    expect(translate("mk", "school", "lesson.delete.stay")).toBe("Откажи");
+    expect(translate("mk", "school", "lesson.delete.running")).toBe("Прво завршете го часот");
+    expect(translate("mk", "school", "lesson.delete.title", { title: "Низи" })).toBe("Дали сакате да ја избришете лекцијата „Низи“?");
+  });
+
+  test("Today's link counts what is not finished", () => {
+    expect(translate("mk", "school", "today.drafts.all", { n: 5 })).toBe("Сите недовршени (5)");
   });
 });
 
