@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { DraftSummary, LessonSummary, Subject } from "@/lib/teacher/api/types";
-import { heldLine, heldText, lessonSections, newestChangeFirst, unfinishedDrafts } from "@/lib/teacher/lessons-list";
+import { heldLine, heldText, lastHeldFirst, lessonSections, newestChangeFirst, unfinishedDrafts } from "@/lib/teacher/lessons-list";
 import { translate, type Key } from "@/lib/teacher/i18n";
 import { ALL, choiceOf, effectiveChoice, needsSubjectRow, subjectOfChoice, subjectsOf } from "@/lib/teacher/subjects";
 import { TODAY_DRAFTS_MAX, shownOnToday } from "@/lib/teacher/today";
@@ -51,16 +51,25 @@ describe("the two sections of lessons", () => {
     lesson("e", "2026-10-15T08:00:00.000Z"),
   ];
 
-  test("a lesson never run is prepared, one run once or more is held, each section the lesson changed last first", () => {
+  test("a lesson never run is prepared, one run once or more is held; the prepared one changed last first, the held one held last first", () => {
     const { prepared, held } = lessonSections(all, ALL);
     expect(prepared.map((l) => l.id)).toEqual(["c", "e", "a"]);
     expect(held.map((l) => l.id)).toEqual(["b", "d"]);
   });
 
-  test("the order is by when it was changed, not by when it was held", () => {
-    // d was held after it was changed, b was changed last: b is first however the held dates fall.
+  test("the held lessons are in the order of the date their card says, not of when they were changed", () => {
+    // b was changed last, but d was held last: the card of d says "held 2 days ago", the card of b "four weeks ago", so d is first.
     const swapped = [lesson("b", "2026-10-20T08:00:00.000Z", { times_run: 1, last_run_at: "2026-10-01T08:00:00.000Z" }), lesson("d", "2026-10-10T08:00:00.000Z", { times_run: 1, last_run_at: "2026-10-27T08:00:00.000Z" })];
-    expect(lessonSections(swapped, ALL).held.map((l) => l.id)).toEqual(["b", "d"]);
+    expect(lessonSections(swapped, ALL).held.map((l) => l.id)).toEqual(["d", "b"]);
+  });
+
+  test("a held lesson with no date is placed by when it was changed, and two held at the same moment keep a fixed order", () => {
+    const dated = lesson("x", "2026-10-02T08:00:00.000Z", { times_run: 1, last_run_at: "2026-10-05T08:00:00.000Z" });
+    const undated = lesson("y", "2026-10-09T08:00:00.000Z", { times_run: 1, last_run_at: null });
+    expect(lastHeldFirst([dated, undated]).map((l) => l.id)).toEqual(["y", "x"]);
+    const same = [lesson("l-10", "2026-10-05T08:00:00.000Z", { last_run_at: "2026-10-05T08:00:00.000Z" }), lesson("l-2", "2026-10-05T08:00:00.000Z", { last_run_at: "2026-10-05T08:00:00.000Z" })];
+    expect(lastHeldFirst(same).map((l) => l.id)).toEqual(["l-2", "l-10"]);
+    expect(lastHeldFirst([...same].reverse()).map((l) => l.id)).toEqual(["l-2", "l-10"]);
   });
 
   test("two changed at the same moment keep a fixed order, so the page does not shuffle", () => {

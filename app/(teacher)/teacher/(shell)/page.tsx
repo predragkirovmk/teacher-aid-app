@@ -104,7 +104,7 @@ export default function TodayPage() {
                 </h2>
                 <ul className="lessons">
                   {shown.map((lesson) => (
-                    <LessonCard key={lesson.id} lesson={lesson} today={today} onStart={setStarting} />
+                    <LessonCard key={lesson.id} lesson={lesson} today={today} from={FROM_TODAY} onStart={setStarting} />
                   ))}
                 </ul>
                 {more && (
@@ -122,7 +122,7 @@ export default function TodayPage() {
                 </h2>
                 <ul className="lessons">
                   {shownDrafts.map((draft) => (
-                    <DraftCard key={draft.id} draft={draft} today={today} onDiscard={discarding.ask} />
+                    <DraftCard key={draft.id} draft={draft} today={today} from={FROM_TODAY} onDiscard={discarding.ask} />
                   ))}
                 </ul>
                 {moreDrafts && (

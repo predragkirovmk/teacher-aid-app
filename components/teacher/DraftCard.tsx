@@ -6,7 +6,7 @@ import { useId } from "react";
 import type { DraftSummary } from "@/lib/teacher/api/types";
 import { isOne } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
-import { draftUrl, FROM_TODAY } from "@/lib/teacher/routes";
+import { draftUrl, type From } from "@/lib/teacher/routes";
 import { relativeDay, sayWhen } from "@/lib/teacher/when";
 import { kindLine } from "./LessonCard";
 
@@ -17,7 +17,18 @@ import { kindLine } from "./LessonCard";
  * question that the page asks. A draft of a lesson that was already saved says so, since it carries the
  * saved lesson's own title and would otherwise look like a second copy of it.
  */
-export function DraftCard({ draft, today, onDiscard }: { draft: DraftSummary; today: number | null; onDiscard: (draft: DraftSummary) => void }) {
+export function DraftCard({
+  draft,
+  today,
+  from,
+  onDiscard,
+}: {
+  draft: DraftSummary;
+  today: number | null;
+  /** Where the list is, so that the Back of the draft goes there: Today says so, the Lessons page leaves it out (Back goes to Lessons). */
+  from?: From;
+  onDiscard: (draft: DraftSummary) => void;
+}) {
   const { t, locale } = useT();
   const title = useId();
   // A title the teacher has emptied is still a lesson to find; it is called what the page of a draft calls it until it has a name.
@@ -42,7 +53,7 @@ export function DraftCard({ draft, today, onDiscard }: { draft: DraftSummary; to
         {draft.lesson_id && <p className="lesson__edit">{t("draft.card.edit")}</p>}
       </div>
       <div className="lesson__actions">
-        <Link href={draftUrl(draft.id, FROM_TODAY)} prefetch={false} className="btn btn--secondary" aria-describedby={title}>
+        <Link href={draftUrl(draft.id, from)} prefetch={false} className="btn btn--secondary" aria-describedby={title}>
           {/* Only a lesson that is ready can be carried on: one that is being written, or that failed, is opened to be looked at. */}
           {draft.status === "ready" ? <ArrowRightIcon size={24} weight="bold" aria-hidden="true" /> : <FolderOpenIcon size={24} aria-hidden="true" />}
           {t(draft.status === "ready" ? "draft.card.continue" : "lesson.open")}

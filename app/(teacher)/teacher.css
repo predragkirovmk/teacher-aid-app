@@ -2098,6 +2098,19 @@ button {
   color: var(--text);
   font-weight: 600;
 }
+/* Every card's two actions take the same room, whatever their words, so the buttons of a list stand in one column and the eye goes straight down it. */
+.lesson__actions > .btn:not(.btn--quiet) {
+  min-width: 14.5rem;
+}
+.lesson__actions > .btn--quiet {
+  min-width: 12rem;
+  justify-content: flex-start;
+}
+/* A lesson that was held has three lines, not four, and less air above and below them: a teacher with a year of them scrolls a list of them. */
+.lesson--held {
+  min-height: 0;
+  padding-block: var(--sp-2);
+}
 /* "Веќе ја копиравте": a tick and the words, so it is not told by colour or position alone. */
 .lesson__text .lesson__copied,
 .card .lesson__copied {

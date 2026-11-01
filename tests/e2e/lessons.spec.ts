@@ -151,7 +151,7 @@ async function picture(page: Page, width: number, height: number, color = "#3b82
 // ---------------------------------------------------------------------------------------------------------------------------
 
 test.describe("Lessons", () => {
-  test("is one page with no tabs: one yellow button, then the prepared lessons and the ones that were held", async ({ page }) => {
+  test("is one page with no tabs: one yellow button, then the prepared lessons and the ones that were held, each section saying how many", async ({ page }) => {
     await page.goto("/teacher/lessons");
     await expect(title(page)).toHaveText("Лекции");
     await expect(page.getByRole("tab")).toHaveCount(0);
@@ -160,7 +160,7 @@ test.describe("Lessons", () => {
     await expect(prepare).toHaveClass(/btn--primary/);
     await expect(prepare).toHaveAttribute("href", "/teacher/lessons/new");
     // Nothing is unfinished, so that section is not there at all.
-    await expect(sections(page)).toHaveText(["Подготвени", "Одржани"]);
+    await expect(sections(page)).toHaveText(["Подготвени (2)", /^Одржани \(\d+\)$/]);
     await expect(page.getByRole("heading", { level: 2, name: "Недовршени" })).toHaveCount(0);
     // A teacher with one subject has no row of subjects.
     await expect(subjectRow(page)).toHaveCount(0);
@@ -172,7 +172,32 @@ test.describe("Lessons", () => {
     await expect(prepared(page).nth(0)).toContainText("7 прашања · Последна промена: вчера");
     // A prepared lesson was never held, so it has no line about it.
     await expect(prepared(page).nth(0)).not.toContainText("Одржана");
-    expect(await held(page).count()).toBeGreaterThanOrEqual(6);
+    const n = await held(page).count();
+    expect(n).toBeGreaterThanOrEqual(6);
+    await expect(page.locator("#held")).toHaveText(`Одржани (${n})`);
+  });
+
+  test("the held lessons are in the order of the dates their cards say: the one held last first", async ({ page }) => {
+    await page.goto("/teacher/lessons");
+    await expect(held(page).first()).toBeVisible();
+    const days = (line: string) => {
+      const m = /Одржана (денес|вчера|пред (\d+|една|еден) (дена|недела|недели|месец|месеци|година|години))/.exec(line)!;
+      const n = m[2] === undefined ? (m[1] === "денес" ? 0 : 1) : /^\d+$/.test(m[2]) ? Number(m[2]) : 1;
+      const unit = m[3] ?? "дена";
+      return n * (unit.startsWith("дена") ? 1 : unit.startsWith("недел") ? 7 : unit.startsWith("месец") ? 30 : 365);
+    };
+    const ages = (await held(page).locator(".lesson__held").allTextContents()).map(days);
+    expect(ages.length).toBeGreaterThanOrEqual(6);
+    expect(ages).toEqual([...ages].sort((a, b) => a - b));
+  });
+
+  test("a held lesson is three lines, without the date of its last change, which is not the date the list is in the order of", async ({ page }) => {
+    await page.goto("/teacher/lessons");
+    const lesson = held(page).filter({ hasText: "Тригонометрија на правоаголен триаголник" });
+    await expect(lesson).toContainText("Математика · III година · 5 прашања");
+    await expect(lesson).toContainText("Одржана пред 6 дена · 3 пати");
+    await expect(lesson).not.toContainText("Последна промена");
+    await expect(lesson.locator(".lesson__text p")).toHaveCount(2);
   });
 
   test("a lesson that was held says when it was last held and how many times, in words and in Macedonian's own forms", async ({ page }) => {
@@ -187,24 +212,69 @@ test.describe("Lessons", () => {
     await expect(held(page).filter({ hasText: "Квадратна функција" })).toContainText("2 пати");
   });
 
-  test("each card keeps 'Отвори' and an outlined 'Започни час', and has no way to delete", async ({ page }) => {
-    await page.goto("/teacher/lessons");
-    const lessons = page.locator(".lessons > li");
-    await expect(lessons.first()).toBeVisible();
-    for (const lesson of await lessons.all()) {
-      await expect(lesson.getByRole("button", { name: "Започни час" })).toHaveClass(/btn--secondary/);
+  test("each card has one outlined button, the way on, and one quiet link beside it, whichever section it is in", async ({ page }) => {
+    await seed(page, { drafts: [draftOf()] }, "/teacher/lessons");
+    await expect(held(page).first()).toBeVisible();
+    for (const lesson of await prepared(page).all()) {
+      // A prepared lesson is for starting a class; to look at it first is the quiet one.
+      await expect(lesson.locator(".btn--secondary")).toHaveText("Започни час");
+      await expect(lesson.locator(".btn--quiet")).toHaveText("Отвори");
       await expect(lesson.getByRole("link", { name: "Отвори" })).toHaveAttribute("href", /\/teacher\/lessons\/l-/);
       await expect(lesson.getByRole("button", { name: /Избриши|Фрли/ })).toHaveCount(0);
     }
+    for (const lesson of await held(page).all()) {
+      // A held lesson is mostly looked up, so opening it is the button and starting it again the link.
+      await expect(lesson.locator(".btn--secondary")).toHaveText("Отвори");
+      await expect(lesson.locator(".btn--quiet")).toHaveText("Започни час");
+      await expect(lesson.getByRole("link", { name: "Отвори" })).toHaveAttribute("href", /\/teacher\/lessons\/l-/);
+      await expect(lesson.getByRole("button", { name: /Избриши|Фрли/ })).toHaveCount(0);
+    }
+    for (const lesson of await unfinished(page).all()) {
+      // A draft: carrying on (or looking at one that is not ready) is the button, throwing away the link.
+      await expect(lesson.locator(".btn--secondary")).toHaveText("Продолжи");
+      await expect(lesson.locator(".btn--quiet")).toHaveText("Фрли");
+    }
     await expect(page.getByRole("button", { name: "Избриши лекција" })).toHaveCount(0);
+    await expect(yellow(page)).toHaveCount(1);
+  });
+
+  test("the outlined buttons of a list are as wide as each other, so they stand in one column", async ({ page }) => {
+    await page.goto("/teacher/lessons");
+    await expect(held(page).first()).toBeVisible();
+    const lefts = await page.locator(".lesson__actions > .btn--secondary").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)));
+    expect(lefts.length).toBeGreaterThanOrEqual(8);
+    expect(Math.max(...lefts) - Math.min(...lefts)).toBeLessThanOrEqual(1);
+    const widths = await page.locator(".lesson__actions > .btn--secondary").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().width)));
+    expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(6);
+  });
+
+  test("a lesson opened from the Lessons page goes Back to the Lessons, one opened from Today goes Back to Today", async ({ page }) => {
+    await seed(page, { drafts: [draftOf()] }, "/teacher/lessons");
+    await prepared(page).first().getByRole("link", { name: "Отвори" }).click();
+    await expect(page.getByRole("link", { name: "Назад кон Лекции" })).toHaveAttribute("href", "/teacher/lessons");
+    await expect(page.getByRole("link", { name: "Назад кон Денес" })).toHaveCount(0);
+    await page.goto("/teacher/lessons");
+    await held(page).first().getByRole("link", { name: "Отвори" }).click();
+    await expect(page.getByRole("link", { name: "Назад кон Лекции" })).toBeVisible();
+    // A lesson that is not finished: its page too goes Back to where the list was.
+    await page.goto("/teacher/lessons");
+    await unfinished(page).first().getByRole("link", { name: "Продолжи" }).click();
+    await expect(page.getByRole("link", { name: "Назад кон Лекции" })).toBeVisible();
+    await page.goto("/teacher");
+    await page.locator("section[aria-labelledby=prepared] .lessons > li").first().getByRole("link", { name: "Отвори" }).click();
+    await expect(page.getByRole("link", { name: "Назад кон Денес" })).toBeVisible();
+    await page.goto("/teacher");
+    await page.locator("section[aria-labelledby=unfinished] .lessons > li").first().getByRole("link", { name: "Продолжи" }).click();
+    await expect(page.getByRole("link", { name: "Назад кон Денес" })).toBeVisible();
   });
 
   test("the buttons are big enough, the words 16px or more, and nothing runs off the side at 1024 wide", async ({ page }) => {
     await page.setViewportSize({ width: 1024, height: 768 });
     await page.goto("/teacher/lessons");
     await expect(held(page).first()).toBeVisible();
-    for (const b of await page.getByRole("button", { name: "Започни час" }).all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(56);
-    for (const l of await page.getByRole("link", { name: "Отвори" }).all()) expect((await l.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+    // The outlined button of a card is 56 or more, the quiet link beside it 48 or more.
+    for (const b of await page.locator(".lesson__actions > .btn--secondary").all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(56);
+    for (const l of await page.locator(".lesson__actions > .btn--quiet").all()) expect((await l.boundingBox())!.height).toBeGreaterThanOrEqual(48);
     expect((await page.getByRole("link", { name: "Подготви лекција" }).boundingBox())!.height).toBeGreaterThanOrEqual(56);
     const small = await page.locator("main").evaluate((main) => [...main.querySelectorAll("*")].filter((e) => e.childNodes.length && parseFloat(getComputedStyle(e).fontSize) < 16 && !e.closest(".sr")).length);
     expect(small).toBe(0);
@@ -249,7 +319,7 @@ test.describe("Lessons", () => {
     ]);
   });
 
-  test("the lessons that are not finished come first, with an anchor, and the same cards as on Today", async ({ page }) => {
+  test("the lessons that are not finished come after the prepared ones, as on Today, before the long list of held ones, with an anchor, and the same cards as on Today", async ({ page }) => {
     const pendingJob = { started_at: ago(1), done_at: iso(NOW.getTime() + 600_000), outcome: "ready" };
     await seed(
       page,
@@ -261,14 +331,14 @@ test.describe("Lessons", () => {
       },
       "/teacher/lessons",
     );
-    await expect(sections(page)).toHaveText(["Недовршени", "Подготвени", "Одржани"]);
+    await expect(sections(page)).toHaveText(["Подготвени (2)", "Недовршени (2)", /^Одржани \(\d+\)$/]);
     await expect(unfinished(page)).toHaveCount(2);
     await expect(unfinished(page).nth(0).getByRole("heading", { level: 3 })).toHaveText("Се подготвува");
     await expect(unfinished(page).nth(1).getByRole("heading", { level: 3 })).toHaveText("Квадратни равенки");
     await expect(unfinished(page).nth(0).getByRole("link", { name: "Отвори" })).toBeVisible();
     await expect(unfinished(page).nth(1).getByRole("link", { name: "Продолжи" })).toBeVisible();
     await expect(unfinished(page).nth(1).getByRole("button", { name: "Фрли" })).toBeVisible();
-    await expect(page.locator("#nedovrseni")).toHaveText("Недовршени");
+    await expect(page.locator("#nedovrseni")).toHaveText("Недовршени (2)");
     await expect(yellow(page)).toHaveCount(1);
   });
 
@@ -315,14 +385,14 @@ test.describe("the subjects of a teacher who has several", () => {
 
   test("a subject shows only its own lessons, and a section with none of them goes", async ({ page }) => {
     await page.goto("/teacher/lessons");
-    await expect(sections(page)).toHaveText(["Подготвени", "Одржани"]);
+    await expect(sections(page)).toHaveText([/^Подготвени \(\d+\)$/, /^Одржани \(\d+\)$/]);
     await subjectRow(page).getByRole("radio", { name: "Линеарна алгебра" }).check();
     await expect(held(page).first()).toBeVisible();
     // The prepared lessons of this faculty are in analysis, so nothing is prepared in linear algebra.
-    await expect(sections(page)).toHaveText(["Одржани"]);
+    await expect(sections(page)).toHaveText([/^Одржани \(\d+\)$/]);
     for (const lesson of await held(page).all()) await expect(lesson).toContainText("Линеарна алгебра ·");
     await subjectRow(page).getByRole("radio", { name: "Математичка анализа 1" }).check();
-    await expect(sections(page)).toHaveText(["Подготвени", "Одржани"]);
+    await expect(sections(page)).toHaveText([/^Подготвени \(\d+\)$/, /^Одржани \(\d+\)$/]);
     for (const lesson of await page.locator(".lessons > li").all()) await expect(lesson).toContainText("Математичка анализа 1 ·");
     await subjectRow(page).getByRole("radio", { name: "Сите предмети" }).check();
     expect(await page.locator(".lessons > li").count()).toBeGreaterThan(6);

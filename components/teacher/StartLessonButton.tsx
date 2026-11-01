@@ -9,14 +9,17 @@ import { StartDialog, type StartLesson } from "./StartDialog";
 /**
  * "Започни час", the same on Today and on a lesson's own screen. It is the main action of its screen (`primary`) only while
  * no lesson is running, and the yellow of a screen is never shared: with a lesson running the yellow button is the one that
- * goes back to it.
+ * goes back to it. On the card of a lesson that has been held it is the quiet link (`quiet`) and "Отвори" the outlined button.
  */
 export function StartButton({
   primary = false,
+  quiet = false,
   describedBy,
   onPress,
 }: {
   primary?: boolean;
+  /** The underlined link beside a card's outlined button, for a lesson that is more often looked up than started (see `LessonCard`). */
+  quiet?: boolean;
   describedBy?: string;
   onPress: () => void;
 }) {
@@ -25,7 +28,7 @@ export function StartButton({
   return (
     <button
       type="button"
-      className={primary && !running ? "btn btn--primary" : "btn btn--secondary"}
+      className={quiet ? "btn btn--quiet" : primary && !running ? "btn btn--primary" : "btn btn--secondary"}
       aria-haspopup="dialog"
       aria-describedby={describedBy}
       onClick={onPress}

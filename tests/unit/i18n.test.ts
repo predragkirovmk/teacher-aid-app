@@ -22,7 +22,7 @@ describe("the dictionaries", () => {
     const known = new Set([
       "students", "classes", "teacher", "name", "seconds", "provider", "n", "total",
       "weekday", "day", "month", "when", "time", "roman", "title", "course", "subject", "tolerance", "class",
-      "days", "min", "max", "count", "option", "size", "alt",
+      "days", "min", "max", "count", "option", "size", "alt", "label", "what",
     ]);
     for (const locale of ["mk", "en"] as const) {
       for (const key of keys) {
@@ -211,6 +211,14 @@ describe("the library and the lessons that were deleted", () => {
     expect(translate("en", "school", "lesson.delete.confirm")).toBe("Yes, delete it");
     expect(translate("mk", "school", "lesson.delete.running")).toBe("Прво завршете го часот");
     expect(translate("mk", "school", "lesson.delete.title", { title: "Низи" })).toBe("Дали сакате да ја избришете лекцијата „Низи“?");
+  });
+
+  test("a section says how many it holds, and a choice of subject says how many lessons it shows, in Macedonian's own forms", () => {
+    expect(translate("mk", "school", "list.count", { label: "Одржани", n: 12 })).toBe("Одржани (12)");
+    expect(translate("mk", "school", "list.shown.one", { n: 1, what: "Физика" })).toBe("Прикажана е 1 лекција: Физика.");
+    expect(translate("mk", "school", "list.shown.many", { n: 5, what: "Математика" })).toBe("Прикажани се 5 лекции: Математика.");
+    expect(translate("en", "school", "list.shown.one", { n: 1, what: "Physics" })).toBe("Showing 1 lesson: Physics.");
+    expect(translate("en", "school", "list.shown.many", { n: 5, what: "All subjects" })).toBe("Showing 5 lessons: All subjects.");
   });
 
   test("Today's link counts what is not finished", () => {

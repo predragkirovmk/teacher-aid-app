@@ -6,7 +6,7 @@ import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useDrafts, useLessons } from "@/lib/teacher/api/hooks";
 import { useToday } from "@/lib/teacher/day";
 import { useT } from "@/lib/teacher/i18n";
-import { lessonSections, unfinishedDrafts, UNFINISHED_ANCHOR } from "@/lib/teacher/lessons-list";
+import { lessonSections, unfinishedDrafts, UNFINISHED_ANCHOR, withCount } from "@/lib/teacher/lessons-list";
 import { newLessonUrl } from "@/lib/teacher/routes";
 import { ALL, choiceOf, effectiveChoice, needsSubjectRow, subjectsOf, type SubjectChoice } from "@/lib/teacher/subjects";
 import { DraftCard } from "./DraftCard";
@@ -21,9 +21,10 @@ import { SubjectRow } from "./SubjectRow";
 
 /**
  * All the teacher's lessons on one page, with nothing hidden behind a tab: the one yellow button prepares a lesson, and under it, in this
- * order, the lessons that are not finished, the ones that are prepared and the ones that were held. A section with nothing in it is not
- * shown. A teacher with more than one subject chooses between them in a row at the top; with one there is no row. The lessons are
- * only read here: deleting one is on its own page.
+ * order (the order of Today), the lessons that are prepared, the ones that are not finished and the ones that were held, which are the
+ * long list of a teacher with a year of lessons and so come last. Each section's name says how many it holds. A section with nothing in
+ * it is not shown. A teacher with more than one subject chooses between them in a row at the top; with one there is no row. The
+ * lessons are only read here: deleting one is on its own page.
  */
 export function LessonsPage() {
   const { t } = useT();
@@ -116,10 +117,22 @@ export function LessonsPage() {
                 onChange={setChosen}
               />
             )}
+            {sections.prepared.length > 0 && (
+              <section aria-labelledby="prepared">
+                <h2 className="section__title" id="prepared">
+                  {withCount(t, t("lessons.prepared"), sections.prepared.length)}
+                </h2>
+                <ul className="lessons">
+                  {sections.prepared.map((lesson) => (
+                    <LessonCard key={lesson.id} lesson={lesson} today={today} onStart={setStarting} />
+                  ))}
+                </ul>
+              </section>
+            )}
             {shownDrafts.length > 0 && (
               <section aria-labelledby={UNFINISHED_ANCHOR}>
                 <h2 className="section__title" id={UNFINISHED_ANCHOR} tabIndex={-1} ref={section}>
-                  {t("lessons.unfinished")}
+                  {withCount(t, t("lessons.unfinished"), shownDrafts.length)}
                 </h2>
                 <ul className="lessons">
                   {shownDrafts.map((draft) => (
@@ -129,22 +142,10 @@ export function LessonsPage() {
               </section>
             )}
             {drafts.status === "error" && <LoadProblem title={t("today.drafts.error")} error={drafts.error} onRetry={drafts.refetch} />}
-            {sections.prepared.length > 0 && (
-              <section aria-labelledby="prepared">
-                <h2 className="section__title" id="prepared">
-                  {t("lessons.prepared")}
-                </h2>
-                <ul className="lessons">
-                  {sections.prepared.map((lesson) => (
-                    <LessonCard key={lesson.id} lesson={lesson} today={today} onStart={setStarting} />
-                  ))}
-                </ul>
-              </section>
-            )}
             {sections.held.length > 0 && (
               <section aria-labelledby="held">
                 <h2 className="section__title" id="held">
-                  {t("lessons.held")}
+                  {withCount(t, t("lessons.held"), sections.held.length)}
                 </h2>
                 <ul className="lessons">
                   {sections.held.map((lesson) => (
