@@ -7,23 +7,36 @@ const isDev = process.env.NODE_ENV === "development";
 // directive for such a build; a Vercel production deploy ignores the flag.
 const e2e = process.env.NEXT_PUBLIC_E2E === "1" && process.env.VERCEL_ENV !== "production";
 
+const policy = ({ img, connect }: { img: string; connect: string }) =>
+  [
+    "default-src 'self'",
+    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+    "style-src 'self' 'unsafe-inline'",
+    `img-src ${img}`,
+    "font-src 'self'",
+    `connect-src ${connect}`,
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    ...(isDev || e2e ? [] : ["upgrade-insecure-requests"]),
+  ].join("; ");
+
 // No third-party origins anywhere: fonts are self-hosted by next/font, the demo's QR codes are
 // inline SVG, and Redis is only called from the server.
-const csp = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' blob: data:",
-  "font-src 'self'",
-  "connect-src 'self'",
-  "worker-src 'self'",
-  "manifest-src 'self'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-  ...(isDev || e2e ? [] : ["upgrade-insecure-requests"]),
-].join("; ");
+const csp = policy({ img: "'self' blob: data:", connect: "'self'" });
+
+// The teacher app's own policy, stricter than the rest. Its pictures (FR-LES-19) are served by the API in live mode, whose origin is the
+// only one added, to `img-src` for the pictures and to `connect-src` for the calls (spec 11.4). In mock mode the demo keeps a picture in the
+// browser and serves it as a `data:` address, so that alone is allowed, and nothing else: no `blob:`, and none of it in a live build.
+const live = process.env.NEXT_PUBLIC_API_MODE === "live";
+const apiOrigin = live && process.env.NEXT_PUBLIC_API_URL ? new URL(process.env.NEXT_PUBLIC_API_URL).origin : null;
+const teacherCsp = policy({
+  img: ["'self'", live ? apiOrigin : "data:"].filter(Boolean).join(" "),
+  connect: ["'self'", apiOrigin].filter(Boolean).join(" "),
+});
 
 const nextConfig: NextConfig = {
   env: {
@@ -67,6 +80,11 @@ const nextConfig: NextConfig = {
           { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
         ],
+      },
+      {
+        // The teacher app: pictures from the API's origin (live) or from the demo (mock), and no others.
+        source: "/teacher/:path*",
+        headers: [{ key: "Content-Security-Policy", value: teacherCsp }],
       },
       {
         // The student app scans class QR codes, so it alone may use the camera.
