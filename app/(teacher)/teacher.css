@@ -2200,6 +2200,18 @@ button {
 .imagefield__alt {
   width: 100%;
 }
+/* "Сликата е отстранета." and the way to take it back, in one row, while it is the last thing that was done. */
+.imagefield__removed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-3);
+}
+.imagefield__removed p {
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+}
 /* How far off an answer may be and whether it may be negative: behind "Повеќе опции" until one of them is set. */
 .editor__more {
   display: grid;
@@ -2208,6 +2220,7 @@ button {
 }
 @media (max-width: 40rem) {
   .imagefield__actions .btn,
+  .imagefield__removed .btn,
   .lesson__delete > .btn {
     width: 100%;
   }

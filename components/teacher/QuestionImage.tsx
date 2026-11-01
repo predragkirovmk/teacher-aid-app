@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowClockwiseIcon, ArrowsClockwiseIcon, CircleNotchIcon, ImageIcon, TrashIcon } from "@phosphor-icons/react";
+import { ArrowClockwiseIcon, ArrowsClockwiseIcon, ArrowUUpLeftIcon, CircleNotchIcon, ImageIcon, TrashIcon } from "@phosphor-icons/react";
 import { useEffect, useId, useRef, useState, type ChangeEvent, type Dispatch } from "react";
 import { uploadMedia } from "@/lib/teacher/api/hooks";
 import { ApiError } from "@/lib/teacher/api/errors";
@@ -17,6 +17,9 @@ import { Problem } from "./Problem";
  * shows, for students who cannot see it well (recommended, never required). The picture is added with a calm wait; what is wrong with it (not a
  * JPEG, PNG or WebP, too large, unreadable, no connection) is said in words, right here, and the old picture stays until a new one has arrived.
  *
+ * Removing the picture is one press, so it can be taken back: the line that says it is removed has "Врати ја сликата", which puts the same picture
+ * and its words back (the API keeps a picture nothing holds any more for a day, so the address is still good).
+ *
  * The picture and its words go into the lesson through the editor's own actions, which name the question: a picture takes a moment, and what
  * the teacher wrote meanwhile is not undone by it, nor is it lost if the question is closed meanwhile.
  */
@@ -29,8 +32,10 @@ export function QuestionImage({ questionId, media, dispatch }: { questionId: str
   // The file that could not be sent for want of a connection, so that trying again does not ask for it again.
   const [again, setAgain] = useState<File | null>(null);
   const [said, setSaid] = useState("");
+  // The picture that was just removed, to be put back; gone as soon as another is added or the question is closed.
+  const [removed, setRemoved] = useState<QuestionMedia | null>(null);
   const alive = useRef(true);
-  const altBox = useRef<HTMLInputElement>(null);
+  const altBox = useRef<HTMLTextAreaElement>(null);
   const toAlt = useRef(false);
 
   useEffect(() => {
@@ -64,6 +69,7 @@ export function QuestionImage({ questionId, media, dispatch }: { questionId: str
       const uploaded = await uploadMedia(file);
       // A new picture is not described yet: the words of the one it replaces would be about something else.
       toAlt.current = true;
+      setRemoved(null);
       dispatch({ type: "media", id: questionId, media: { id: uploaded.id, url: uploaded.url, alt: null } });
       if (alive.current) setSaid(t("image.added"));
     } catch (e) {
@@ -86,11 +92,21 @@ export function QuestionImage({ questionId, media, dispatch }: { questionId: str
   };
 
   const remove = () => {
+    setRemoved(media);
     dispatch({ type: "media", id: questionId, media: null });
     setProblem(null);
     setAgain(null);
     setSaid(t("image.removed"));
     // The button that was pressed goes with the picture: the way to add another is where it was.
+    requestAnimationFrame(() => document.getElementById(fileId)?.focus());
+  };
+
+  const restore = () => {
+    if (!removed) return;
+    dispatch({ type: "media", id: questionId, media: removed });
+    setRemoved(null);
+    setSaid(t("image.restored"));
+    // The button that was pressed goes with the line; the picture's own buttons are where it was.
     requestAnimationFrame(() => document.getElementById(fileId)?.focus());
   };
 
@@ -151,6 +167,16 @@ export function QuestionImage({ questionId, media, dispatch }: { questionId: str
         </div>
       )}
 
+      {removed && !media && !busy && (
+        <div className="imagefield__removed">
+          <p>{t("image.removed")}</p>
+          <button type="button" className="btn btn--secondary" onClick={restore}>
+            <ArrowUUpLeftIcon size={24} weight="bold" aria-hidden="true" />
+            {t("image.restore")}
+          </button>
+        </div>
+      )}
+
       {problem !== null && (
         <div id={`${fileId}-problem`} className="imagefield__problem">
           <Problem title={t("image.problem.title")}>{te(problem)}</Problem>
@@ -171,15 +197,16 @@ export function QuestionImage({ questionId, media, dispatch }: { questionId: str
           <p id={`${altId}-hint`} className="editor__hint">
             {t("image.alt.hint")}
           </p>
-          <input
+          {/* Up to 200 characters: three lines are all in view, where a single line would hide most of what was written. A line break is a space. */}
+          <textarea
             ref={altBox}
             id={altId}
-            type="text"
-            className="field"
+            className="field field--area field--short"
+            rows={3}
             maxLength={IMAGE_ALT_MAX_CHARS}
             aria-describedby={`${altId}-hint`}
             value={media.alt ?? ""}
-            onChange={(e) => dispatch({ type: "alt", id: questionId, alt: e.target.value })}
+            onChange={(e) => dispatch({ type: "alt", id: questionId, alt: e.target.value.replace(/\s*\n\s*/g, " ") })}
           />
         </div>
       )}

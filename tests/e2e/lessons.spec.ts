@@ -729,6 +729,22 @@ test.describe("the picture of a question", () => {
     await expect(page.locator(".problem")).toHaveCount(0);
   });
 
+  test("the words of a picture have room: three lines, up to 200 characters, a line break is a space", async ({ page }) => {
+    await fileField(page).setInputFiles({ name: "grafik.png", mimeType: "image/png", buffer: await picture(page, 1200, 600) });
+    await expect(alt(page)).toBeVisible();
+    await expect(alt(page)).toHaveJSProperty("tagName", "TEXTAREA");
+    expect((await alt(page).boundingBox())!.height).toBeGreaterThan(90);
+    await alt(page).fill(`Првиот ред\nвториот ред ${"и уште збор ".repeat(30)}`);
+    const value = await alt(page).inputValue();
+    expect(value.length).toBe(200);
+    expect(value).not.toContain("\n");
+    expect(value.startsWith("Првиот ред вториот ред")).toBe(true);
+    await saved(page);
+    expect((await demo(page)).school.drafts[0].content.questions[0].media!.alt).toBe(value);
+    // What was written is all in view.
+    expect(await alt(page).evaluate((el: HTMLTextAreaElement) => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+  });
+
   test("a picture is replaced by another, its old words go, and it is removed with one press", async ({ page }) => {
     await fileField(page).setInputFiles({ name: "prva.png", mimeType: "image/png", buffer: await picture(page, 800, 600, "#ef4444") });
     await alt(page).fill("Првата слика");
@@ -748,11 +764,44 @@ test.describe("the picture of a question", () => {
     await expect(alt(page)).toHaveCount(0);
     await expect(open(page).locator("label.btn", { hasText: "Додај слика" })).toBeVisible();
     await expect(fileField(page)).toBeFocused();
+    await expect(open(page).locator(".imagefield > [role=status]")).toHaveText("Сликата е отстранета.");
     await saved(page);
     expect((await demo(page)).school.drafts[0].content.questions[0].media).toBeNull();
     // The same file can be chosen again after it was removed.
     await fileField(page).setInputFiles({ name: "prva.png", mimeType: "image/png", buffer: await picture(page, 800, 600, "#ef4444") });
     await expect(preview).toBeVisible();
+  });
+
+  test("removing a picture can be taken back: the same picture and its words come back, and the line goes", async ({ page }) => {
+    await fileField(page).setInputFiles({ name: "grafik.png", mimeType: "image/png", buffer: await picture(page, 800, 600) });
+    await alt(page).fill(ALT);
+    const preview = open(page).locator(".imagefield__preview");
+    const src = await preview.getAttribute("src");
+    await saved(page);
+    // Before anything is removed there is no way back to offer.
+    await expect(open(page).getByRole("button", { name: "Врати ја сликата" })).toHaveCount(0);
+    await open(page).getByRole("button", { name: "Отстрани ја сликата" }).click();
+    const back = open(page).getByRole("button", { name: "Врати ја сликата" });
+    await expect(back).toBeVisible();
+    await expect(back).toHaveClass(/btn--secondary/);
+    expect((await back.boundingBox())!.height).toBeGreaterThanOrEqual(56);
+    await expect(open(page).locator(".imagefield__removed")).toContainText("Сликата е отстранета.");
+    await back.click();
+    await expect(preview).toBeVisible();
+    expect(await preview.getAttribute("src")).toBe(src);
+    await expect(alt(page)).toHaveValue(ALT);
+    await expect(back).toHaveCount(0);
+    await expect(fileField(page)).toBeFocused();
+    await expect(open(page).locator(".imagefield > [role=status]")).toHaveText("Сликата е вратена.");
+    await saved(page);
+    const media = (await demo(page)).school.drafts[0].content.questions[0].media!;
+    expect(media.alt).toBe(ALT);
+    // Adding another picture instead takes the way back away: it would put the old one over the new.
+    await open(page).getByRole("button", { name: "Отстрани ја сликата" }).click();
+    await expect(back).toBeVisible();
+    await fileField(page).setInputFiles({ name: "druga.png", mimeType: "image/png", buffer: await picture(page, 400, 400, "#22c55e") });
+    await expect(preview).toBeVisible();
+    await expect(back).toHaveCount(0);
   });
 
   test("a picture stays on its question when the kind of answer is changed, and what was written while it came is not lost", async ({ page }) => {
