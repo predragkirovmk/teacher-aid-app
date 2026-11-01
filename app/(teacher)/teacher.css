@@ -2116,6 +2116,16 @@ button {
   .band {
     border-color: Highlight;
   }
+  /* Each answer of an open question keeps the room for an edge that only the right one has; the tick and the words tell it apart too. */
+  .opt {
+    border-color: Canvas;
+  }
+  .opt[data-right="true"] {
+    border-color: Highlight;
+  }
+  .savebar {
+    border: 2px solid CanvasText;
+  }
   .nav__item[aria-current="page"] {
     border: 2px solid Highlight;
   }

@@ -377,6 +377,17 @@ test.describe("editing a question of each kind", () => {
     expect((await draftOnDisk(page)).content.questions[0]).toMatchObject({ correct: "3" });
   });
 
+  test("in Windows high contrast the right answer still has its own edge and its words, and the others have none", async ({ page }) => {
+    await page.emulateMedia({ forcedColors: "active" });
+    await edit(page, 1).click();
+    const rows = open(page).locator(".opt");
+    const edge = (n: number) => rows.nth(n).evaluate((el) => getComputedStyle(el).borderTopColor);
+    expect(await edge(1)).not.toBe(await edge(0));
+    expect(await edge(0)).toBe(await edge(2));
+    await expect(rows.nth(1)).toContainText("Точен одговор");
+    await expect(rows.nth(0)).not.toContainText("Точен одговор");
+  });
+
   test("the kinds are three tiles on one line each, with the same words as the card that is read", async ({ page }) => {
     await edit(page, 1).click();
     for (const name of ["Понудени одговори", "Точно или неточно", "Одговор со број"]) {
