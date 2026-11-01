@@ -134,6 +134,15 @@ The app is dark teal only (no light mode).
     them the lesson of the day was off the first screen of a laptop): title (or "Се подготвува" while pending, "Не успеа" when failed),
     subject and year, "Продолжи" (a ready draft) or "Отвори" (one being written, or failed), and "Фрли" with a question.
   - The page's one yellow button and the save status are a bar that stays at the bottom of the window (design review of step 6).
+- Step 6 review, decided by the planner (2026-11-01): Today shows prepared lessons first and
+  unfinished drafts after them; a draft being written or failed says "Отвори", a ready one
+  "Продолжи". Deleting a question is one press with "Врати го прашањето"; a refinement starts at
+  once with its undo as the safety; the editor's save bar stays. After Cancel the focus stays on
+  "Подготви прашања".
+- Step 7: once the Lessons page lists unfinished drafts, Today shows at most three of them with
+  "Сите недовршени (N)" leading to that list. In the numeric question, keep the answer and the
+  unit in view and put the tolerance and "may be negative" behind "Повеќе опции" (open when either
+  is already set), so the common case stays short for an older teacher.
 - Step 8: the start button in "Со кој клас?" names the chosen class ("Започни со IV-1") so a
   wrong pick is visible before it is made; update the tests that rely on the label. The
   `/teacher/live/[sessionId]` placeholder is replaced by the console.
