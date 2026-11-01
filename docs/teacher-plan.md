@@ -130,8 +130,10 @@ The app is dark teal only (no light mode).
   - Saving: problems are listed in plain words above the yellow button, each a link that opens its
     question. A save lands on the lesson page with a line that it is saved and will be on Today.
     The lesson page gets "Уреди лекција" (outlined); the card keeps "Отвори".
-  - Today lists unfinished drafts above the prepared lessons: title (or "Се подготвува" while
-    pending, "Не успеа" when failed), subject and year, "Продолжи", and "Фрли" with a question.
+  - Today lists unfinished drafts below the prepared lessons (changed in the design review of step 6: with a few forgotten drafts above
+    them the lesson of the day was off the first screen of a laptop): title (or "Се подготвува" while pending, "Не успеа" when failed),
+    subject and year, "Продолжи" (a ready draft) or "Отвори" (one being written, or failed), and "Фрли" with a question.
+  - The page's one yellow button and the save status are a bar that stays at the bottom of the window (design review of step 6).
 - Step 8: the start button in "Со кој клас?" names the chosen class ("Започни со IV-1") so a
   wrong pick is visible before it is made; update the tests that rely on the label. The
   `/teacher/live/[sessionId]` placeholder is replaced by the console.

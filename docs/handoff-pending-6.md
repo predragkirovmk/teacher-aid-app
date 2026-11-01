@@ -183,3 +183,34 @@ server (`PATCH`, `DELETE`, retry, refine, save, edit) fails as `network` when th
   then the form and the page of a draft are the only pages besides the guide that a teacher in a first run may open (`isFirstLessonPath`);
   every other page still sends them back to the guide.
 - The 30 days an unsaved draft is kept is told under the yellow button (BR-LES-12), from `DRAFT_RETENTION_DAYS`.
+
+## K. Design review of step 6 (what changed after the build; no change to what the API must provide)
+
+None of this adds a field, an endpoint or a rule to the API. It is here so the planner knows the screens are not as the build left them.
+
+- **The yellow button is in a bar that stays in the window.** "Зачувај лекција" / "Зачувај ги промените" and where saving stands are one bar
+  (`.savebar`) stuck to the bottom of the window while the window is 480px tall or more, and part of the page, at its end, in a shorter one
+  (a zoomed one), as the top bar of a short window is. The page keeps clear of it for the focus (`scroll-padding-bottom`). The save status is
+  now said in the bar only (it was also on the title and on the open question). While the lesson is being made the button says "Се зачувува…",
+  and what a failed save answers with is scrolled into view, since the teacher may be far from the button.
+- **Multiple choice.** Only the right answer says "Точен одговор" (a tick and a white edge); each other answer's choice says "Означи како точен"
+  and its accessible name "Одговор N, означи како точен". The words of an answer come first in a row, its choice second, Remove last.
+  The kind is "Понудени одговори" in the editor and on the card that is read; the group of answers is "Одговори".
+- **The unit.** "единици" was a value in the builder's screenshot fixture (and in the e2e fixture, now removed), not mock data of the app and
+  not a placeholder: the mock bank's units are "%", "ден." and "cm²" or none, and the unit box has no placeholder (a test pins that).
+- **Saving words.** "Промените се зачувани." / "Промените не се зачувани. Ќе се обидеме повторно." (it was "Зачувано", which stood beside "Зачувај
+  лекција" and could be read as the lesson having been made). A saved lesson's edit says the *changes* are kept for 30 days.
+- **Today.** Prepared lessons first, then "Недовршени лекции" (with six drafts the lesson of the day was below the fold of 1024 x 768). A
+  lesson being written, or that failed, has nothing to carry on: its button is "Отвори" and only a ready draft says "Продолжи". The failed
+  card says "Отворете ја лекцијата за да се обидете повторно". A draft whose title was emptied is "Предложена лекција" on Today.
+- **Focus.** After "Додај прашање" the focus is on the first kind (the group is named by its question), after "Не додавај" back on "Додај
+  прашање", after adding an answer in the new one, after taking one away on the one that took its place, after undoing a refinement on the
+  title (it was nowhere). A question that moves keeps the button that moved it where it was in the window. What is wrong with a question is
+  listed at the top of its card, in view with the box the focus goes to. The prompt says which question it is to a screen reader.
+- **Edit draft.** While the questions of a saved lesson's edit are being changed, or failed, the page is headed "Уреди лекција" and Back is
+  the lesson (`backFromDraft`), as it is once they are ready.
+- Buttons: one that cannot be pressed (a refinement while another is being made, "Повеќе прашања" at eight) is dimmer; one that is busy has
+  the progress cursor. The guide's card is 40rem so that "Подготви ја првата лекција" is one line.
+- **Left as built, and why.** Drag is not offered (as planned). Delete is one press with a way back, not a question (the plan's "undo").
+  The 30-day line stays under the button, 24px on the ground. The wait of a refinement keeps its own words ("Ги менуваме прашањата").
+
