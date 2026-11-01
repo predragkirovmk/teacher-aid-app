@@ -2080,6 +2080,118 @@ button {
   }
 }
 
+/* ---- Lessons and the Library ---- */
+/* The row of subjects: its label is large, because it sits on the ground, and the choices are the same large rows as everywhere. */
+.subjects {
+  display: grid;
+  gap: var(--sp-2);
+}
+.subjects__label {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-lead);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+/* What differs between a lesson that was held and one that was not: when, and how many times. */
+.lesson__text .lesson__held {
+  color: var(--text);
+  font-weight: 600;
+}
+/* "Веќе ја копиравте": a tick and the words, so it is not told by colour or position alone. */
+.lesson__text .lesson__copied,
+.card .lesson__copied {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+  font-weight: 600;
+}
+.lesson__copied svg {
+  flex: none;
+}
+/* The end of a lesson's page: the one thing that cannot be undone, apart from the buttons that are pressed every day. */
+.lesson__delete {
+  display: grid;
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line);
+}
+.lesson__delete > .btn {
+  justify-self: start;
+}
+
+/* ---- The picture of a question ---- */
+.question__figure {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+  margin: 0;
+}
+.question__figure figcaption {
+  max-width: var(--measure);
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+.imagefield {
+  gap: 0.75rem;
+}
+.imagefield__preview {
+  max-width: 100%;
+  max-height: 14rem;
+  border-radius: var(--r-m);
+  background: var(--deep);
+  object-fit: contain;
+}
+.imagefield__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-2);
+}
+.imagefield__pick {
+  cursor: pointer;
+}
+/* The input is the real one but not seen; its button is the label, which shows the ring when the input has the focus. */
+.imagefield:has(input.sr:focus-visible) .imagefield__pick {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--shadow);
+}
+/* The wait is a mark and a line of words, still: nothing moves that does not have to. */
+.imagefield__busy {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  min-height: var(--tap);
+  color: var(--text);
+  font-weight: 600;
+}
+.imagefield__busy svg {
+  flex: none;
+}
+.imagefield__problem {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-2);
+  width: 100%;
+}
+.imagefield__alt {
+  width: 100%;
+}
+/* How far off an answer may be and whether it may be negative: behind "Повеќе опции" until one of them is set. */
+.editor__more {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-2);
+}
+@media (max-width: 40rem) {
+  .imagefield__actions .btn,
+  .lesson__delete > .btn {
+    width: 100%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .waiting__dots span {
     animation: none;
