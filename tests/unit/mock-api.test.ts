@@ -1,11 +1,12 @@
-import { beforeEach, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ApiError } from "@/lib/teacher/api/errors";
-import { createMock, createMockApi, memorySource, SOURCE_MS } from "@/lib/teacher/api/mock";
+import { createMock, createMockApi, MEDIA_MS, memorySource, SOURCE_MS } from "@/lib/teacher/api/mock";
 import { GENERATE_MS, REFINE_MS } from "@/lib/teacher/api/mock-drafts";
 import { freshState } from "@/lib/teacher/api/mock-state";
 import type { TeacherApi } from "@/lib/teacher/api/client";
 import type { Lesson, LessonDraft, QuestionKind, ReadyDraft } from "@/lib/teacher/api/types";
 import { isValidContent } from "@/lib/teacher/lessons";
+import type { ImageEnv } from "@/lib/teacher/images";
 
 const NOW = new Date(2026, 9, 29, 9, 0).getTime();
 const ANCHOR = new Date(2026, 9, 29).getTime();
@@ -401,7 +402,7 @@ describe("saving, editing and deleting", () => {
 describe("the school library", () => {
   test("holds what colleagues saved, none of it the teacher's own, none copied yet", async () => {
     const library = await api.listLibrary();
-    expect(library).toHaveLength(3);
+    expect(library).toHaveLength(5);
     expect(library.every((i) => i.owner.name !== "Марија Петровска" && !i.already_copied && i.question_count >= 5)).toBe(true);
     const own = new Set((await api.listLessons()).map((l) => l.id));
     expect(library.every((i) => !own.has(i.lesson_id))).toBe(true);
@@ -439,6 +440,212 @@ describe("the school library", () => {
   });
 });
 
+describe("the library of the demo school and of the demo faculty", () => {
+  test("holds the lessons of several colleagues, in more than one subject, each lesson a valid one", async () => {
+    const library = await api.listLibrary();
+    expect(new Set(library.map((i) => i.owner.id)).size).toBeGreaterThanOrEqual(3);
+    expect(new Set(library.map((i) => i.subject.id)).size).toBeGreaterThanOrEqual(2);
+    for (const item of library) {
+      const lesson = await api.getLesson(item.lesson_id);
+      expect(isValidContent(lesson)).toBe(true);
+      expect(lesson.subject).toEqual(item.subject);
+      expect(lesson.question_count).toBe(item.question_count);
+    }
+  });
+
+  test("the faculty has its own colleagues and subjects, and none of the school's", async () => {
+    const school = await api.listLibrary();
+    source.setSchoolType("university");
+    const faculty = await api.listLibrary();
+    expect(faculty.length).toBeGreaterThanOrEqual(3);
+    expect(new Set(faculty.map((i) => i.subject.id)).size).toBeGreaterThanOrEqual(3);
+    expect(faculty.some((i) => i.subject.name === "Дискретна математика")).toBe(true);
+    expect(faculty.every((i) => !school.some((s) => s.owner.id === "t-avramovska" && i.owner.id === s.owner.id))).toBe(true);
+    expect(new Set(faculty.map((i) => i.owner.name))).toContain("Драган Ристевски");
+  });
+
+  test("the teacher's courses cover some of the library's subjects, and not all", async () => {
+    const courses = await api.listCourses();
+    const mine = new Set(courses.map((c) => c.subject.id));
+    const library = await api.listLibrary();
+    expect(library.some((i) => mine.has(i.subject.id))).toBe(true);
+    expect(library.some((i) => !mine.has(i.subject.id))).toBe(true);
+  });
+
+  test("one of the library's lessons has a drawing on a question, with what it shows, and a copy keeps it", async () => {
+    const library = await api.listLibrary();
+    const withPicture = [];
+    for (const item of library) {
+      const lesson = await api.getLesson(item.lesson_id);
+      if (lesson.questions.some((q) => q.media)) withPicture.push(lesson);
+    }
+    expect(withPicture).toHaveLength(1);
+    const media = withPicture[0].questions.find((q) => q.media)!.media!;
+    expect(media.url).toMatch(/^data:image\/svg\+xml/);
+    expect(media.alt).toBe("Правоаголен триаголник со катети 6 и 8");
+    const copy = await api.copyFromLibrary(withPicture[0].id);
+    expect(copy.questions.find((q) => q.media)?.media?.alt).toBe(media.alt);
+  });
+
+  test("a school where nobody has saved a lesson yet has an empty library, and a lesson of it is not found", async () => {
+    const [item] = await api.listLibrary();
+    const state = source.state();
+    source.commit({ ...state, school: { ...state.school, library_empty: true } });
+    expect(await api.listLibrary()).toEqual([]);
+    expect((await rejection(api.getLesson(item.lesson_id))).code).toBe("not_found");
+    expect((await rejection(api.copyFromLibrary(item.lesson_id))).code).toBe("not_found");
+  });
+
+  test("a copy that the teacher deleted is not a copy any more: the lesson can be copied again, and says so", async () => {
+    const [item] = await api.listLibrary();
+    const first = await api.copyFromLibrary(item.lesson_id);
+    expect((await api.listLibrary()).find((i) => i.lesson_id === item.lesson_id)?.already_copied).toBe(true);
+    // Copying it again is possible, and a second copy is a second lesson.
+    const second = await api.copyFromLibrary(item.lesson_id);
+    expect(second.id).not.toBe(first.id);
+    await api.deleteLesson(first.id);
+    expect((await api.listLibrary()).find((i) => i.lesson_id === item.lesson_id)?.already_copied).toBe(true);
+    await api.deleteLesson(second.id);
+    expect((await api.listLibrary()).find((i) => i.lesson_id === item.lesson_id)?.already_copied).toBe(false);
+  });
+});
+
+describe("deleting a lesson", () => {
+  test("a lesson that a class is being held with cannot be deleted, and stays", async () => {
+    const lesson = (await api.listLessons()).find((l) => l.times_run === 0)!;
+    const [course] = await api.listCourses();
+    await api.createSession({ lesson_id: lesson.id, course_id: course.id });
+    expect((await rejection(api.deleteLesson(lesson.id))).code).toBe("invalid_state");
+    expect((await api.listLessons()).some((l) => l.id === lesson.id)).toBe(true);
+    // Another lesson can go while one is running.
+    const other = (await api.listLessons()).find((l) => l.id !== lesson.id && l.times_run === 0)!;
+    await api.deleteLesson(other.id);
+    expect((await api.listLessons()).some((l) => l.id === other.id)).toBe(false);
+  });
+
+  test("a lesson that was held goes from the list, and the held lessons and their results stay", async () => {
+    const held = (await api.listLessons()).find((l) => l.times_run > 0)!;
+    const [course] = await api.listCourses();
+    const before = await api.getDashboard(course.id);
+    await api.deleteLesson(held.id);
+    expect((await api.listLessons()).some((l) => l.id === held.id)).toBe(false);
+    expect((await rejection(api.getLesson(held.id))).code).toBe("not_found");
+    const after = await api.getDashboard(course.id);
+    expect(after.sessions).toEqual(before.sessions);
+    expect((await rejection(api.deleteLesson(held.id))).code).toBe("not_found");
+  });
+
+  test("what was being changed in it goes with it: the open edit draft, and the drafts that were saved from it", async () => {
+    const draft = await makeDraft();
+    const lesson = await api.saveLesson(saveRequest(draft));
+    const editing = await api.startEditing(lesson.id);
+    expect((await api.listDrafts()).map((d) => d.id)).toContain(editing.id);
+    await api.deleteLesson(lesson.id);
+    expect((await api.listDrafts()).some((d) => d.id === editing.id)).toBe(false);
+    expect((await rejection(api.getDraft(editing.id))).code).toBe("not_found");
+    // The draft the lesson was made from went with it too: nothing is left that leads to a lesson that is not there.
+    expect((await rejection(api.getDraft(draft.id))).code).toBe("not_found");
+  });
+
+  test("the drafts of other lessons, and of lessons not made yet, are not touched", async () => {
+    const waiting = await askDraft();
+    const draft = await makeDraft(typed + " Втор нацрт за сличен текст за проба.");
+    const lesson = await api.saveLesson(saveRequest(draft));
+    await api.deleteLesson(lesson.id);
+    expect((await api.listDrafts()).map((d) => d.id)).toContain(waiting.id);
+  });
+
+  test("a computer that is offline cannot delete, and nothing is changed", async () => {
+    const lesson = (await api.listLessons())[0];
+    vi.stubGlobal("navigator", { onLine: false });
+    try {
+      expect((await rejection(api.deleteLesson(lesson.id))).code).toBe("network");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect((await api.listLessons()).some((l) => l.id === lesson.id)).toBe(true);
+  });
+});
+
+describe("the picture of a question", () => {
+  /** A browser that draws any picture and says it is large. */
+  const env: ImageEnv = {
+    decode: async () => ({ width: 3000, height: 2000, source: "bitmap" }),
+    encode: async (_s, width, height) => `data:image/jpeg;base64,${width}x${height}`,
+  };
+  const withImages = () => createMockApi(source, { delay: () => Promise.resolve(), image: env });
+  const picture = (name: string, type: string, size = 5000) => ({ name, type, size }) as File;
+
+  test("a picture is made small and given an id and an address the page can show", async () => {
+    const media = await withImages().uploadMedia(picture("graf.png", "image/png"));
+    expect(media).toEqual({ id: expect.stringMatching(/^m-n\d+$/), url: "data:image/jpeg;base64,1000x667", alt: null });
+  });
+
+  test("two pictures get two ids", async () => {
+    const a = withImages();
+    const first = await a.uploadMedia(picture("a.jpg", "image/jpeg"));
+    const second = await a.uploadMedia(picture("b.jpg", "image/jpeg"));
+    expect(first.id).not.toBe(second.id);
+  });
+
+  test("takes a moment, as the server does", async () => {
+    expect(MEDIA_MS).toBeGreaterThanOrEqual(500);
+    const waits: number[] = [];
+    const a = createMockApi(source, { delay: async (ms) => void waits.push(ms), image: env });
+    await a.uploadMedia(picture("a.jpg", "image/jpeg"));
+    expect(waits).toEqual([MEDIA_MS]);
+  });
+
+  test("a computer that is offline cannot add a picture, before or after the wait", async () => {
+    vi.stubGlobal("navigator", { onLine: false });
+    try {
+      expect((await rejection(withImages().uploadMedia(picture("a.jpg", "image/jpeg")))).code).toBe("network");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    // The connection drops while the picture is on its way.
+    const a = createMockApi(source, {
+      delay: async () => void vi.stubGlobal("navigator", { onLine: false }),
+      image: env,
+    });
+    try {
+      expect((await rejection(a.uploadMedia(picture("a.jpg", "image/jpeg")))).code).toBe("network");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  test("a type that is not JPEG, PNG or WebP is refused, with its reason, before it is waited for", async () => {
+    const waits: number[] = [];
+    const a = createMockApi(source, { delay: async (ms) => void waits.push(ms), image: env });
+    const error = await rejection(a.uploadMedia(picture("a.gif", "image/gif")));
+    expect(error).toMatchObject({ code: "validation_failed", reason: "image_type", status: 422 });
+    expect(waits).toEqual([]);
+  });
+
+  test("a picture over 10 MB is refused, and one of exactly 10 MB is not", async () => {
+    const a = withImages();
+    expect(await rejection(a.uploadMedia(picture("a.jpg", "image/jpeg", 10 * 1024 * 1024 + 1)))).toMatchObject({ code: "validation_failed", reason: "image_too_large" });
+    await expect(a.uploadMedia(picture("a.jpg", "image/jpeg", 10 * 1024 * 1024))).resolves.toMatchObject({ alt: null });
+  });
+
+  test("a file the browser cannot read as a picture is refused as unreadable", async () => {
+    const a = createMockApi(source, { delay: () => Promise.resolve(), image: { decode: async () => Promise.reject(new Error("no")), encode: async () => "" } });
+    expect(await rejection(a.uploadMedia(picture("a.png", "image/png")))).toMatchObject({ code: "validation_failed", reason: "image_unreadable" });
+  });
+
+  test("a picture stays on the question through a draft, a save and an edit, with its words", async () => {
+    const a = withImages();
+    const media = await a.uploadMedia(picture("graf.png", "image/png"));
+    const draft = await makeDraft();
+    const questions = draft.questions.map((q, i) => (i === 0 ? { ...q, media: { ...media, alt: "Графикот на парабола" } } : q));
+    await a.updateDraft(draft.id, { questions });
+    const lesson = await a.saveLesson({ draft_id: draft.id, title: draft.title, review_summary: draft.review_summary, questions: questions as Lesson["questions"] });
+    expect(lesson.questions[0].media).toEqual({ id: media.id, url: media.url, alt: "Графикот на парабола" });
+    expect((await a.getLesson(lesson.id)).questions[0].media?.alt).toBe("Графикот на парабола");
+  });
+});
+
 describe("what is not built yet", () => {
   test("the rest of the live lesson answers not_implemented", async () => {
     const calls: Promise<unknown>[] = [
@@ -454,7 +661,6 @@ describe("what is not built yet", () => {
       api.endSession("s"),
       api.getReview("s"),
       api.createPracticeSet("s"),
-      api.uploadMedia(new Blob(["x"])),
     ];
     for (const call of calls) expect((await rejection(call)).code).toBe("not_implemented");
     expect(() => api.openChannel("session.s.public", () => {})).toThrowError(ApiError);

@@ -102,8 +102,12 @@ export interface TeacherApi {
   startEditing(lessonId: Id): Promise<LessonDraft>;
   /** POST /lessons: the draft as edited, saved as version 1 (FR-LES-09). Consumes the draft. */
   saveLesson(request: SaveLessonRequest): Promise<Lesson>;
-  /** PROPOSED, POST /lessons/media: an image for a question (FR-LES-10, FR-LES-11). */
-  uploadMedia(file: Blob): Promise<QuestionMedia>;
+  /**
+   * PROPOSED, POST /lessons/media: a picture for a question (FR-LES-10, FR-LES-11, FR-LES-19). Answers `{ id, url, alt }`, `alt` null: the
+   * words about the picture travel with the question that holds it. Rejects `validation_failed` with a reason (`image_type`,
+   * `image_too_large`, `image_unreadable`) and `network` when the computer cannot reach it.
+   */
+  uploadMedia(file: File): Promise<QuestionMedia>;
 
   // ---- Lessons and the school library (F-05) ----
   /** GET /lessons. */

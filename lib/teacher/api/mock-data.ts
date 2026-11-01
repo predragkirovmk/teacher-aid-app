@@ -107,12 +107,16 @@ type SchoolDef = {
   colleagues: { id: string; name: string }[];
   /** Prepared and not run: a bank lesson, and the index of the class whose subject and year it is for. */
   prepared: { key: string; classIndex: number }[];
-  /** In the school library, saved by a colleague. */
-  library: { key: string; colleague: number; daysAgo: number }[];
-  librarySubject: Subject;
+  /** In the school library, saved by a colleague: a bank lesson, the colleague (an index of `colleagues`), when, and the subject the colleague teaches it in. */
+  library: { key: string; colleague: number; daysAgo: number; subject: Subject }[];
 };
 
 const MATH: Subject = { id: "math", name: "Математика" };
+const PHYSICS: Subject = { id: "physics", name: "Физика" };
+const ANALYSIS: Subject = { id: "analysis-1", name: "Математичка анализа 1" };
+const LINEAR: Subject = { id: "linear-algebra", name: "Линеарна алгебра" };
+const PROBABILITY: Subject = { id: "probability", name: "Веројатност и статистика" };
+const DISCRETE: Subject = { id: "discrete", name: "Дискретна математика" };
 
 export const SCHOOLS: Record<SchoolType, SchoolDef> = {
   school: {
@@ -137,17 +141,19 @@ export const SCHOOLS: Record<SchoolType, SchoolDef> = {
     colleagues: [
       { id: "t-iliev", name: "Зоран Илиев" },
       { id: "t-stojanovska", name: "Билјана Стојановска" },
+      { id: "t-avramovska", name: "Весна Аврамовска" },
     ],
     prepared: [
       { key: "procenti", classIndex: 0 },
       { key: "verojatnost", classIndex: 2 },
     ],
     library: [
-      { key: "planimetrija", colleague: 0, daysAgo: 12 },
-      { key: "statistika", colleague: 1, daysAgo: 20 },
-      { key: "kombinatorika", colleague: 0, daysAgo: 33 },
+      { key: "dvizenje", colleague: 2, daysAgo: 6, subject: PHYSICS },
+      { key: "planimetrija", colleague: 0, daysAgo: 12, subject: MATH },
+      { key: "njutn", colleague: 2, daysAgo: 15, subject: PHYSICS },
+      { key: "statistika", colleague: 1, daysAgo: 20, subject: MATH },
+      { key: "kombinatorika", colleague: 0, daysAgo: 33, subject: MATH },
     ],
-    librarySubject: MATH,
   },
   university: {
     type: "university",
@@ -160,27 +166,29 @@ export const SCHOOLS: Record<SchoolType, SchoolDef> = {
         lessons: ["nizi", "granici", "granici", "izvodi", "izvodi", "integrali"],
       },
       {
-        id: "g-2b", name: "Група 2Б", year: 2, subject: { id: "linear-algebra", name: "Линеарна алгебра" }, size: 24, hour: 11,
+        id: "g-2b", name: "Група 2Б", year: 2, subject: LINEAR, size: 24, hour: 11,
         lessons: ["sistemi", "matrici", "sistemi", "matrici", "matrici", "sistemi"],
       },
       {
-        id: "g-3a", name: "Група 3А", year: 3, subject: { id: "probability", name: "Веројатност и статистика" }, size: 22, hour: 13, midYear: 3,
+        id: "g-3a", name: "Група 3А", year: 3, subject: PROBABILITY, size: 22, hour: 13, midYear: 3,
         lessons: ["kombinatorika", "verojatnost", "kombinatorika", "verojatnost", "verojatnost", "kombinatorika"],
       },
     ],
     colleagues: [
       { id: "t-iliev", name: "Зоран Илиев" },
       { id: "t-stojanovska", name: "Билјана Стојановска" },
+      { id: "t-ristevski", name: "Драган Ристевски" },
     ],
     prepared: [
       { key: "logaritmi", classIndex: 0 },
       { key: "trigonometrija", classIndex: 0 },
     ],
     library: [
-      { key: "statistika", colleague: 1, daysAgo: 9 },
-      { key: "kvadratna-funkcija", colleague: 0, daysAgo: 27 },
+      { key: "statistika", colleague: 1, daysAgo: 9, subject: PROBABILITY },
+      { key: "matrici", colleague: 0, daysAgo: 14, subject: LINEAR },
+      { key: "integrali", colleague: 2, daysAgo: 21, subject: ANALYSIS },
+      { key: "kombinatorika", colleague: 1, daysAgo: 30, subject: DISCRETE },
     ],
-    librarySubject: MATH,
   },
 };
 

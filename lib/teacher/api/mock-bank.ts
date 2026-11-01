@@ -8,9 +8,12 @@ import type { Question, Refinement } from "./types";
  * library are made from them. Invented for the demo; nothing here is a source for the backend.
  */
 
+/** A picture on a question: the address it is served from (the demo's own are drawings kept in the address itself) and what it shows. */
+type Picture = { url: string; alt: string };
+
 type Template =
-  | { kind: "multiple_choice"; prompt: string; options: string[]; correct: string; explanation: string; timer?: number }
-  | { kind: "true_false"; prompt: string; correct: "true" | "false"; explanation: string; timer?: number }
+  | { kind: "multiple_choice"; prompt: string; options: string[]; correct: string; explanation: string; timer?: number; picture?: Picture }
+  | { kind: "true_false"; prompt: string; correct: "true" | "false"; explanation: string; timer?: number; picture?: Picture }
   | {
       kind: "numeric";
       prompt: string;
@@ -20,7 +23,20 @@ type Template =
       allow_negative: boolean;
       explanation: string;
       timer?: number;
+      picture?: Picture;
     };
+
+/** A drawing as an address, so that the demo needs no file and no server for it: what the real API serves as a picture's `url`. */
+const drawing = (svg: string, alt: string): Picture => ({ url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`, alt });
+
+const RIGHT_TRIANGLE = drawing(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" width="320" height="240"><rect width="320" height="240" fill="#ffffff"/>' +
+    '<polygon points="40,210 280,210 40,30" fill="#cfe8ec" stroke="#124554" stroke-width="4" stroke-linejoin="round"/>' +
+    '<rect x="40" y="186" width="24" height="24" fill="none" stroke="#124554" stroke-width="3"/>' +
+    '<text x="150" y="234" font-size="24" font-family="sans-serif" fill="#124554">8</text>' +
+    '<text x="14" y="125" font-size="24" font-family="sans-serif" fill="#124554">6</text></svg>',
+  "Правоаголен триаголник со катети 6 и 8",
+);
 
 const mc = (prompt: string, options: string[], correct: number, explanation: string, timer?: number): Template => ({
   kind: "multiple_choice",
@@ -43,7 +59,7 @@ const num = (
   prompt: string,
   correct: number | string,
   explanation: string,
-  { tolerance = 0, unit = null, negative = false, timer }: { tolerance?: number; unit?: string | null; negative?: boolean; timer?: number } = {},
+  { tolerance = 0, unit = null, negative = false, timer, picture }: { tolerance?: number; unit?: string | null; negative?: boolean; timer?: number; picture?: Picture } = {},
 ): Template => ({
   kind: "numeric",
   prompt,
@@ -53,6 +69,7 @@ const num = (
   allow_negative: negative,
   explanation,
   timer,
+  picture,
 });
 
 export type BankLesson = {
@@ -324,11 +341,47 @@ export const BANK: BankLesson[] = [
     summary:
       "Во правоаголен триаголник важи Питагоровата теорема a² + b² = c². Збирот на аглите во триаголник е 180°. Плоштината на круг е πr², а на паралелограм основата помножена со висината.",
     questions: [
-      num("Колку е хипотенузата на правоаголен триаголник со катети 6 и 8?", 10, "6² + 8² = 36 + 64 = 100, па c = 10.", { timer: 30 }),
+      num("Колку е хипотенузата на правоаголен триаголник со катети 6 и 8?", 10, "6² + 8² = 36 + 64 = 100, па c = 10.", { timer: 30, picture: RIGHT_TRIANGLE }),
       tf("Збирот на внатрешните агли во секој триаголник е 180°.", true, "Тоа важи за секој триаголник."),
       mc("Плоштината на круг со радиус r е ...", ["2πr", "πr²", "πr", "2πr²"], 1, "P = πr²."),
       num("Колку cm² е плоштината на паралелограм со основа 7 cm и висина 5 cm?", 35, "P = a · h = 7 · 5 = 35.", { unit: "cm²" }),
       mc("Колку степени има секој внатрешен агол на правилен шестаголник?", ["108°", "120°", "135°", "144°"], 1, "Збирот на аглите е 6 · 180° − 360° = 720°, па секој е 720° / 6 = 120°."),
+    ],
+  },
+  {
+    key: "dvizenje",
+    title: "Праволиниско движење и брзина",
+    topic: "Движење",
+    year: 1,
+    difficulty: 0.03,
+    keywords: ["кинематик", "праволиниск", "рамномерно движење", "забрзување"],
+    summary:
+      "Брзината покажува колкав пат телото поминува за единица време: v = s / t, и се мери во метри во секунда (m/s). При рамномерно праволиниско движење брзината е постојана. Забрзувањето е промена на брзината во единица време: a = Δv / Δt.",
+    questions: [
+      num("Возило се движи со постојана брзина од 20 m/s. Колку метри поминува за 15 секунди?", 300, "s = v · t = 20 · 15 = 300 m.", { unit: "m", timer: 30 }),
+      mc("Која е основната единица за брзина во SI системот?", ["km/h", "m/s", "m/s²", "N"], 1, "Брзината се мери во метри во секунда, m/s."),
+      tf("Ако телото мирува, неговата брзина е нула.", true, "Мирувањето значи дека положбата не се менува, па брзината е 0."),
+      num("Колку m/s е брзина од 72 km/h?", 20, "72 km/h = 72 · 1000 m / 3600 s = 20 m/s.", { unit: "m/s", timer: 30 }),
+      mc("Што покажува наклонот на графикот на патот во зависност од времето при рамномерно движење?", ["Забрзувањето", "Брзината", "Масата", "Силата"], 1, "Наклонот е s / t, а тоа е брзината."),
+      num("Колку е забрзувањето на тело што за 5 секунди ја зголемува брзината од 0 на 20 m/s?", 4, "a = Δv / Δt = 20 / 5 = 4 m/s².", { unit: "m/s²", timer: 30 }),
+    ],
+  },
+  {
+    key: "njutn",
+    title: "Њутнови закони",
+    topic: "Њутнови закони",
+    year: 2,
+    difficulty: 0.05,
+    keywords: ["њутн", "инерциј", "динамик"],
+    summary:
+      "Првиот закон: телото мирува или се движи рамномерно право додека сила не го принуди да го промени тоа (инерција). Вториот закон: F = m · a. Третиот закон: на секоја акција одговара реакција со иста јачина и спротивна насока, а двете дејствуваат врз различни тела.",
+    questions: [
+      mc("Првиот Њутнов закон е закон за ...", ["инерцијата", "гравитацијата", "акцијата и реакцијата", "енергијата"], 0, "Телото го задржува своето движење или мирување додека сила не го промени тоа."),
+      num("Колку нутни е силата што на тело од 5 kg му дава забрзување од 3 m/s²?", 15, "F = m · a = 5 · 3 = 15 N.", { unit: "N", timer: 30 }),
+      tf("Силите на акцијата и на реакцијата дејствуваат врз исто тело.", false, "Дејствуваат врз две различни тела, па не се поништуваат."),
+      mc("Што се случува со забрзувањето кога масата се зголемува, а силата останува иста?", ["Се зголемува", "Се намалува", "Останува исто", "Станува нула"], 1, "a = F / m: поголема маса, помало забрзување."),
+      num("Колку нутни е тежината на тело од 2 kg? Земете g = 10 m/s².", 20, "G = m · g = 2 · 10 = 20 N.", { unit: "N", timer: 30 }),
+      tf("Масата и тежината на телото се иста величина.", false, "Масата е во килограми и не зависи од местото, а тежината е сила и се мери во нутни."),
     ],
   },
 ];
@@ -358,7 +411,7 @@ export function toQuestion(template: Template, id: string, order: number, topic:
     id,
     order,
     prompt: template.prompt,
-    media: null,
+    media: template.picture ? { id: `${id}-img`, url: template.picture.url, alt: template.picture.alt } : null,
     explanation: template.explanation,
     timer_seconds: template.timer ?? defaultTimerSeconds(template.kind),
     topic,

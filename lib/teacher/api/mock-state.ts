@@ -77,6 +77,8 @@ export type Overlay = {
   sources: DemoSource[];
   /** The open lesson, if there is one. */
   session: DemoSession | null;
+  /** A school where no colleague has saved a lesson yet: the library is empty. Only a test or a screenshot sets it. */
+  library_empty: boolean;
   /** Counts the ids handed out, so they never repeat. */
   counter: number;
 };
@@ -107,6 +109,7 @@ export const emptyOverlay = (persona: Persona = "veteran"): Overlay => ({
   drafts: [],
   sources: [],
   session: null,
+  library_empty: false,
   counter: 0,
 });
 
@@ -228,6 +231,7 @@ function sanitizeOverlay(saved: unknown, persona: Persona = "veteran"): Overlay 
     // A source saved before jobs had a count of runs has had none.
     sources: Array.isArray(s.sources) ? s.sources.map((x) => (isObject(x) && x.runs === undefined ? { ...x, runs: 0 } : x)).filter(isSource) : base.sources,
     session: isDemoSession(s.session) && s.session.state !== "ended" ? s.session : base.session,
+    library_empty: typeof s.library_empty === "boolean" ? s.library_empty : base.library_empty,
     counter: isCount(s.counter) ? s.counter : base.counter,
   };
 }

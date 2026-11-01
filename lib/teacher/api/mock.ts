@@ -8,6 +8,7 @@ import {
   TYPED_TEXT_MAX_CHARS,
   TYPED_TEXT_MIN_CHARS,
 } from "../lessons";
+import { browserImageEnv, checkImage, downscaleImage, UnreadableImage, type ImageEnv } from "../images";
 import { QUESTIONS_MAX } from "../scoring";
 import type { SchoolType } from "../store";
 import type { CallOptions, DemoControls, SettledPromise, TeacherApi, Unsubscribe } from "./client";
@@ -155,6 +156,8 @@ const invalid = (reason?: ValidationReason) => new ApiError("validation_failed",
 /** Reading a document takes a moment, as it does on the server; typed sentences are taken at once, as the real API would. */
 export const SOURCE_MS = 1500;
 const MAX_SOURCES = 20;
+/** Making a picture small takes a moment on the server too; long enough for the calm wait to be seen. */
+export const MEDIA_MS = 1200;
 
 type Ctx = { type: SchoolType; persona: Persona; state: MockState; overlay: Overlay; world: World; now: number };
 
@@ -198,11 +201,15 @@ function isDraftPatch(v: unknown): v is DraftPatch {
   return true;
 }
 
-/** The adapter alone, for the tests and the server render. */
-export const createMockApi = (source: MockSource, options: { delay?: Delay } = {}): TeacherApi => createMock(source, options).api;
+/** What a test may replace: how time passes, and what the browser does with a picture. */
+export type MockOptions = { delay?: Delay; image?: ImageEnv };
 
-export function createMock(source: MockSource, options: { delay?: Delay } = {}): { api: TeacherApi; demo: MockDemo } {
+/** The adapter alone, for the tests and the server render. */
+export const createMockApi = (source: MockSource, options: MockOptions = {}): TeacherApi => createMock(source, options).api;
+
+export function createMock(source: MockSource, options: MockOptions = {}): { api: TeacherApi; demo: MockDemo } {
   const delay = options.delay ?? wait;
+  const image = options.image ?? browserImageEnv;
 
   const ctx = (): Ctx => {
     const type = source.schoolType();
@@ -303,7 +310,7 @@ export function createMock(source: MockSource, options: { delay?: Delay } = {}):
     return {
       id,
       title: bank.title,
-      subject: def.librarySubject,
+      subject: entry.subject,
       year: bank.year,
       question_count: questions.length,
       version: 1,
@@ -319,9 +326,12 @@ export function createMock(source: MockSource, options: { delay?: Delay } = {}):
     };
   };
 
+  /** The lessons colleagues saved: those of the demo school, or none in a school where nobody has saved one yet. */
+  const libraryEntries = (c: Ctx) => (c.overlay.library_empty ? [] : c.world.def.library);
+
   const libraryOf = (c: Ctx): LibraryItem[] => {
     const copied = new Set(lessonsOf(c).map((l) => l.copied_from?.lesson_id));
-    return c.world.def.library.map((entry) => {
+    return libraryEntries(c).map((entry) => {
       const lesson = libraryLesson(c, entry.key);
       return {
         lesson_id: lesson.id,
@@ -851,7 +861,27 @@ export function createMock(source: MockSource, options: { delay?: Delay } = {}):
         });
         return lesson;
       }),
-    uploadMedia: () => notImplemented(),
+    uploadMedia: async (file) => {
+      if (isOffline()) throw new ApiError("network");
+      // The real API judges a picture by what is in it (BR-LES-05 says so of a document); the demo by its type and size first, and then by
+      // whether the browser can read it.
+      const problem = checkImage(file);
+      if (problem) throw invalid(problem);
+      await delay(MEDIA_MS);
+      if (isOffline()) throw new ApiError("network");
+      let url: string;
+      try {
+        // Made small, as the server makes its phone-sized variants (FR-LES-11), so that the browser's storage holds more than one.
+        url = (await downscaleImage(file, image)).url;
+      } catch (e) {
+        if (e instanceof UnreadableImage) throw invalid("image_unreadable");
+        throw e;
+      }
+      const c = ctx();
+      const id = nextId(c.overlay, "m-n");
+      save(c, { ...c.overlay, counter: c.overlay.counter + 1 });
+      return { id, url, alt: null };
+    },
 
     listLessons: () => run(() => lessonsOf(ctx()).map(summary)),
     getLesson: (lessonId) =>
@@ -860,7 +890,7 @@ export function createMock(source: MockSource, options: { delay?: Delay } = {}):
         const own = lessonsOf(c).find((l) => l.id === lessonId);
         if (own) return own;
         // A colleague's lesson in the school library may be read to preview it (FR-LIB-01).
-        const entry = c.world.def.library.find((l) => libraryIdOf(l.key) === lessonId);
+        const entry = libraryEntries(c).find((l) => libraryIdOf(l.key) === lessonId);
         if (!entry) throw notFound();
         return libraryLesson(c, entry.key);
       }),
@@ -895,19 +925,24 @@ export function createMock(source: MockSource, options: { delay?: Delay } = {}):
       }),
     deleteLesson: (lessonId) =>
       run(() => {
+        if (isOffline()) throw new ApiError("network");
         const c = ctx();
         if (!lessonsOf(c).some((l) => l.id === lessonId)) throw notFound();
+        // The lesson of a lesson that is going on cannot go: the teacher ends the lesson first (PROPOSED, `invalid_state`).
+        if (c.overlay.session?.lesson.id === lessonId) throw new ApiError("invalid_state", { status: 409 });
         save(c, {
           ...c.overlay,
           lessons: c.overlay.lessons.filter((l) => l.id !== lessonId),
           deleted: c.overlay.deleted.includes(lessonId) ? c.overlay.deleted : [...c.overlay.deleted, lessonId],
+          // What was being changed in the lesson goes with it (PROPOSED), the drafts that were saved from it too: nothing is left that leads to it.
+          drafts: c.overlay.drafts.filter((d) => d.lesson_id !== lessonId),
         });
       }),
     listLibrary: () => run(() => libraryOf(ctx())),
     copyFromLibrary: (lessonId) =>
       run(() => {
         const c = ctx();
-        const entry = c.world.def.library.find((l) => libraryIdOf(l.key) === lessonId);
+        const entry = libraryEntries(c).find((l) => libraryIdOf(l.key) === lessonId);
         if (!entry) throw notFound();
         const original = libraryLesson(c, entry.key);
         const id = nextId(c.overlay, "l-n");
