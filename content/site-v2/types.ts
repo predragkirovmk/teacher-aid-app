@@ -27,6 +27,8 @@ export type SiteV2Dict = {
     kicker: string;
     title: string[];
     deck: string;
+    /** The deck on phones, where the first screen also has to show the devices. */
+    deckShort: string;
     cta: string;
     secondary: string;
     meta: string[];

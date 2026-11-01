@@ -79,8 +79,9 @@ export function Motion() {
             document.addEventListener("click", onAnchor);
 
             /* The hero (act 1): pinned for two screens of scroll. The text clears and the stage
-               rises, the headline settles as the scene's caption, the laptop settles on the desk and
-               the student's phone moves to the front of the stack beside it. The other 28 phones of the class
+               rises, the headline settles as the scene's caption, the laptop settles on the desk (on
+               phones it steps back and leaves) and the student's phone moves to the front of the
+               stack beside it. The other 28 phones of the class
                are dealt up behind it, then answer: their edges light yellow in a wave from the
                front to the back while the count climbs to 29. Only a few layers move at once.
                Both layouts are CSS (the start is the page, the end is .hero__end), measured here
@@ -113,7 +114,9 @@ export function Motion() {
               // headline (lower on wide screens, where the headline is taller); then each travels to
               // its place. They move on their own, never the stage, so the stage stays flat and the
               // stack can stand between them: the laptop behind it, the phone in front.
-              const rise = () => Math.min(0, hero.offsetHeight * (narrow ? 0.42 : 0.58) - box(stage, hero).y);
+              // On phones the phone stands taller than the laptop, so its top is the one that has to
+              // stay clear of the headline.
+              const rise = () => Math.min(0, hero.offsetHeight * (narrow ? 0.46 : 0.58) - Math.min(box(stage, hero).y, box(phone, hero).y));
               const flip = (el: HTMLElement, to: HTMLElement, origin: "top" | "center") => {
                 const a = box(el, hero);
                 const b = box(to, hero);
@@ -133,9 +136,11 @@ export function Motion() {
                 y: () => m().y,
                 scale: () => m().scale,
               });
-              // Each card behind the front sits one step higher and a little narrower.
-              const step = () => front.offsetWidth * 0.03;
-              gsap.set(cards, { transformOrigin: "50% 0%", scale: (i) => 1 - (i + 1) * 0.008 });
+              // Each card behind the front sits one step higher and a little narrower. Phones show
+              // every third card of the class (the CSS hides the rest), with wider steps.
+              const dealt = cards.filter((c) => getComputedStyle(c).display !== "none");
+              const step = () => front.offsetWidth * (narrow ? 0.065 : 0.03);
+              gsap.set(dealt, { transformOrigin: "50% 0%", scale: (i) => 1 - (i + 1) * (narrow ? 0.016 : 0.008) });
               const count = { n: 1 };
 
               heroTl = gsap.timeline({
@@ -157,16 +162,23 @@ export function Motion() {
                 // From explicit values: the CSS entrance may still be mid-way when this is built.
                 .fromTo("[data-hero-out]", { y: 0, autoAlpha: 1 }, { y: -48, autoAlpha: 0, duration: 1.2 }, 0)
                 .to([laptop, phone], { y: () => rise(), duration: 1.6, ease: "power2.out" }, 0)
-                .to(title, { ...toward(titleTo), transformOrigin: "0 0", duration: 2.8, ease: "power2.inOut" }, 0.2)
-                // The teacher's laptop settles on the desk; the student's phone goes to the class.
-                .to(laptop, { ...toward(() => flip(laptop, desk, "top")), transformOrigin: "50% 0%", duration: 2.2, ease: "power2.inOut" }, 1.6)
+                .to(title, { ...toward(titleTo), transformOrigin: "0 0", duration: 2.8, ease: "power2.inOut" }, 0.2);
+              // The teacher's laptop settles on the desk; on phones, where the frame is too narrow
+              // for both, it steps back and leaves, and the class takes the frame.
+              if (narrow) {
+                heroTl.to(laptop, { y: () => rise() - 24, scale: 0.9, autoAlpha: 0, duration: 1.4, ease: "power2.inOut" }, 1.6);
+              } else {
+                heroTl.to(laptop, { ...toward(() => flip(laptop, desk, "top")), transformOrigin: "50% 0%", duration: 2.2, ease: "power2.inOut" }, 1.6);
+              }
+              heroTl
+                // The student's phone goes to the front of the class.
                 .to(phone, { ...toward(() => flip(phone, front, "center")), duration: 2.2, ease: "power3.inOut" }, 1.8)
                 .to("[data-stack]", { autoAlpha: 1, duration: 0.01 }, 3.6)
                 // The class is dealt up behind the front phone, nearest first.
-                .fromTo(cards, { y: 0 }, { y: (i) => -(i + 1) * step(), duration: 0.6, ease: "power2.out", stagger: { amount: 1.6 } }, 3.6)
+                .fromTo(dealt, { y: 0 }, { y: (i) => -(i + 1) * step(), duration: 0.6, ease: "power2.out", stagger: { amount: 1.6 } }, 3.6)
                 .fromTo("[data-hero-count]", { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.6, ease: "power2.out" }, 4.8)
                 // Then they answer, front to back, and the count keeps pace.
-                .to("[data-lit]", { opacity: 1, duration: 0.3, stagger: { amount: 3.4, ease: "sine.inOut" } }, 5.4)
+                .to(dealt.map((c) => c.querySelector("[data-lit]")), { opacity: 1, duration: 0.3, stagger: { amount: 3.4, ease: "sine.inOut" } }, 5.4)
                 .to(count, { n: CLASS_SIZE, duration: 3.7, onUpdate: () => (num.textContent = String(Math.round(count.n))) }, 5.4)
                 .to({}, { duration: 1 });
             }
