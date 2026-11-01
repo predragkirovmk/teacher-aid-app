@@ -1,7 +1,7 @@
 "use client";
 
-import { ArrowDownIcon, ArrowUpIcon, CheckCircleIcon, CheckIcon, CircleIcon, PlusIcon, TrashIcon, XIcon } from "@phosphor-icons/react";
-import { useEffect, useId, useRef, type Dispatch, type ReactNode } from "react";
+import { ArrowDownIcon, ArrowUpIcon, CaretDownIcon, CaretUpIcon, CheckCircleIcon, CheckIcon, CircleIcon, PlusIcon, TrashIcon, XIcon } from "@phosphor-icons/react";
+import { useEffect, useId, useRef, useState, type Dispatch, type ReactNode } from "react";
 import type { DraftQuestion, QuestionKind } from "@/lib/teacher/api/types";
 import type { EditorAction } from "@/lib/teacher/editor-state";
 import { addOption, canAddOption, canRemoveOption, KINDS, nudgeTimer, removeOption, setOption, type Field, type Problem, type RawText } from "@/lib/teacher/editor";
@@ -10,6 +10,7 @@ import { useT } from "@/lib/teacher/i18n";
 import { QUESTIONS_MIN } from "@/lib/teacher/scoring";
 import { Choices } from "./Choices";
 import { problemWords } from "./problemWords";
+import { QuestionImage } from "./QuestionImage";
 
 /**
  * Where the focus is sent: a field of a question, or the button that opens it. `nonce` makes the same request twice a request twice.
@@ -127,6 +128,14 @@ export function QuestionEditor({
   const invalid = (field: Field) => problems?.some((p) => p.field === field) ?? false;
   const timerText = raw?.timer ?? String(q.timer_seconds);
 
+  // A numeric question keeps the answer and the unit in view, and puts how far off an answer may be and whether it may be negative behind
+  // "Повеќе опции". What is already set is never hidden: the group is open when either is set, when the teacher opened it, and when what is wrong
+  // with the question is in it (a number that is not one, or an answer below zero with no minus allowed).
+  const optionsSet = q.kind === "numeric" && (q.tolerance > 0 || q.allow_negative || raw?.tolerance !== undefined);
+  const [moreOpen, setMoreOpen] = useState(optionsSet);
+  const optionsWrong = problems?.some((p) => p.field === "tolerance" || p.code === "answer_negative") ?? false;
+  const showMore = moreOpen || optionsSet || optionsWrong;
+
   return (
     <li className="question question--open" id={`q-${q.id}`} ref={root}>
       <div className="question__top">
@@ -150,6 +159,8 @@ export function QuestionEditor({
           onChange={(e) => set({ prompt: e.target.value })}
         />
       </Field>
+
+      <QuestionImage questionId={q.id} media={q.media} dispatch={dispatch} />
 
       <div className="editor__field" data-field="kind">
         <h4 className="editor__label" id={id("kind")}>
@@ -278,27 +289,46 @@ export function QuestionEditor({
               onChange={(e) => set({ unit: e.target.value === "" ? null : e.target.value })}
             />
           </Field>
-          <Field id={id("tolerance")} label={t("edit.tolerance")} hint={t("edit.tolerance.hint")}>
-            <input
-              id={id("tolerance")}
-              type="text"
-              inputMode="decimal"
-              className="field editor__short"
-              data-field="tolerance"
-              aria-describedby={`${id("tolerance")}-hint`}
-              aria-invalid={invalid("tolerance")}
-              value={raw?.tolerance ?? decimal(String(q.tolerance), locale)}
-              onChange={(e) => dispatch({ type: "tolerance", id: q.id, text: e.target.value })}
-            />
-          </Field>
-          <label className="choice editor__check" data-checked={q.allow_negative}>
-            <input type="checkbox" checked={q.allow_negative} aria-describedby={`${id("negative")}-hint`} onChange={(e) => set({ allow_negative: e.target.checked })} />
-            {q.allow_negative ? <CheckCircleIcon size={28} weight="fill" aria-hidden="true" /> : <CircleIcon size={28} aria-hidden="true" />}
-            <span>{t("edit.negative")}</span>
-          </label>
-          <p id={`${id("negative")}-hint`} className="editor__hint">
-            {t("edit.negative.hint")}
-          </p>
+          {/* While anything in it is set, or wrong, the group stays open and there is nothing to press. */}
+          {!optionsSet && !optionsWrong && (
+            <div>
+              <button
+                type="button"
+                className="btn btn--secondary btn--small"
+                aria-expanded={moreOpen}
+                aria-controls={showMore ? id("more") : undefined}
+                onClick={() => setMoreOpen(!moreOpen)}
+              >
+                {moreOpen ? <CaretUpIcon size={24} aria-hidden="true" /> : <CaretDownIcon size={24} aria-hidden="true" />}
+                {t(moreOpen ? "edit.less" : "edit.more")}
+              </button>
+            </div>
+          )}
+          {showMore && (
+            <div id={id("more")} className="editor__more">
+              <Field id={id("tolerance")} label={t("edit.tolerance")} hint={t("edit.tolerance.hint")}>
+                <input
+                  id={id("tolerance")}
+                  type="text"
+                  inputMode="decimal"
+                  className="field editor__short"
+                  data-field="tolerance"
+                  aria-describedby={`${id("tolerance")}-hint`}
+                  aria-invalid={invalid("tolerance")}
+                  value={raw?.tolerance ?? decimal(String(q.tolerance), locale)}
+                  onChange={(e) => dispatch({ type: "tolerance", id: q.id, text: e.target.value })}
+                />
+              </Field>
+              <label className="choice editor__check" data-checked={q.allow_negative}>
+                <input type="checkbox" checked={q.allow_negative} aria-describedby={`${id("negative")}-hint`} onChange={(e) => set({ allow_negative: e.target.checked })} />
+                {q.allow_negative ? <CheckCircleIcon size={28} weight="fill" aria-hidden="true" /> : <CircleIcon size={28} aria-hidden="true" />}
+                <span>{t("edit.negative")}</span>
+              </label>
+              <p id={`${id("negative")}-hint`} className="editor__hint">
+                {t("edit.negative.hint")}
+              </p>
+            </div>
+          )}
         </>
       )}
 
