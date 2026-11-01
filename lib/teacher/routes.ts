@@ -1,12 +1,23 @@
 import type { Id } from "./api/types";
 import type { Key } from "./i18n";
+import { UNFINISHED_ANCHOR } from "./lessons-list";
 import { GUIDE, TODAY } from "./signin";
 
 /** The addresses of the screens that link to each other, and where a Back from a lesson goes. */
 
 export const LESSONS = "/teacher/lessons";
 export const NEW_LESSON = "/teacher/lessons/new";
+export const LIBRARY = "/teacher/library";
 export const SETTINGS = "/teacher/settings";
+
+/** The lessons that are not finished, on the Lessons page: where Today's "Сите недовршени" leads. */
+export const UNFINISHED = `${LESSONS}#${UNFINISHED_ANCHOR}`;
+
+/** The Lessons page, with the line that a lesson has just been deleted (told once, then taken off the address). */
+export const LESSONS_DELETED = `${LESSONS}?deleted=1`;
+
+/** A colleague's lesson in the Library, to read and copy. */
+export const libraryLessonUrl = (lessonId: Id): string => `${LIBRARY}/${encodeURIComponent(lessonId)}`;
 
 /** A screen that links to a lesson says where the teacher came from, so Back can go there (`?from=today`). */
 export const FROM_TODAY = "today";
@@ -17,9 +28,9 @@ export type From = typeof FROM_TODAY | typeof FROM_GUIDE;
 export const lessonUrl = (lessonId: Id, from?: typeof FROM_TODAY): string =>
   `${LESSONS}/${encodeURIComponent(lessonId)}${from ? `?from=${from}` : ""}`;
 
-/** What a lesson page says once, on arriving from saving: a new lesson was saved, or a saved one was changed. */
-export type Saved = "new" | "changes";
-export const isSaved = (v: unknown): v is Saved => v === "new" || v === "changes";
+/** What a lesson page says once, on arriving: a new lesson was saved, a saved one was changed, or a colleague's lesson was copied. */
+export type Saved = "new" | "changes" | "copied";
+export const isSaved = (v: unknown): v is Saved => v === "new" || v === "changes" || v === "copied";
 
 /** The lesson, as the teacher lands on it after saving. The address is cleaned as soon as the line has been said. */
 export const savedLessonUrl = (lessonId: Id, saved: Saved, from?: typeof FROM_TODAY): string =>
@@ -44,6 +55,9 @@ export function backFromLesson(from: string | null): { href: string; label: Key 
   if (from === FROM_GUIDE) return { href: GUIDE, label: "back.guide" };
   return { href: LESSONS, label: "back.lessons" };
 }
+
+/** Where Back goes from a colleague's lesson. */
+export const backFromLibraryLesson = (): { href: string; label: Key } => ({ href: LIBRARY, label: "back.library" });
 
 /**
  * Where Back goes from the page of a draft. A draft of a saved lesson (`lessonId`) goes back to that lesson, in every state it is

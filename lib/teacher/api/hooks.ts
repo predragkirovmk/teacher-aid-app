@@ -27,6 +27,7 @@ import type {
   LibraryItem,
   Me,
   OpenSession,
+  QuestionMedia,
   Refinement,
   SaveLessonRequest,
   SignInRedirect,
@@ -63,8 +64,13 @@ export const useDashboard = (courseId: Id | undefined): Query<CourseDashboard> =
 export const useLessons = (): Query<LessonSummary[]> => useQuery("lessons", (a) => a.listLessons());
 
 /** One lesson, whole: its questions and review summary. Also reads a lesson of the school library, to preview it. */
-export const useLesson = (lessonId: Id | undefined): Query<Lesson> =>
-  useQuery(`lessons:${lessonId}`, (a) => a.getLesson(lessonId as Id), lessonId !== undefined);
+export function useLesson(lessonId: Id | undefined): Query<Lesson> {
+  const q = useQuery(`lessons:${lessonId}`, (a) => a.getLesson(lessonId as Id), lessonId !== undefined);
+  // A lesson that has just been deleted by the page that is showing it: the teacher is on the way to the list, so the page waits for
+  // that and does not say, for the moment in between, that the lesson cannot be loaded.
+  if (lessonId !== undefined && deletedLessons.has(lessonId)) return { ...q, status: "loading", data: undefined, error: null };
+  return q;
+}
 
 /**
  * Ask again every few seconds for as long as `active` (11.4: a pending draft is read every 2 to 3 seconds). Nothing is asked while
@@ -301,8 +307,23 @@ export async function updateLesson(lessonId: Id, request: UpdateLessonRequest): 
   return lesson;
 }
 
-/** Delete a lesson. Copies of it and the lessons already run stay. */
-export const deleteLesson = (lessonId: Id): Promise<void> => change((a) => a.deleteLesson(lessonId), ["lessons", "library"]);
+/** Lessons deleted a moment ago, for `useLesson`; each is forgotten after a few seconds, when whoever deleted it has gone to the list. */
+const deletedLessons = new Set<Id>();
+
+/**
+ * Delete a lesson. Copies of it and the lessons already run stay, and what was being changed in it goes with it. Whoever has it open is
+ * going to the list, so it is forgotten rather than read again.
+ */
+export async function deleteLesson(lessonId: Id): Promise<void> {
+  await api.deleteLesson(lessonId);
+  deletedLessons.add(lessonId);
+  setTimeout(() => deletedLessons.delete(lessonId), 5000);
+  forget(`lessons:${lessonId}`);
+  invalidate("lessons", "library", "draft-list", "drafts");
+}
+
+/** A picture for a question: the address it is served from, and the id the question holds. Nothing is listed, so nothing is loaded again. */
+export const uploadMedia = (file: File): Promise<QuestionMedia> => change((a) => a.uploadMedia(file));
 
 /** Copy a colleague's lesson into the teacher's own. */
 export async function copyFromLibrary(lessonId: Id): Promise<Lesson> {
