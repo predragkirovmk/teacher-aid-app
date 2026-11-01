@@ -27,62 +27,65 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
       <Nav t={t.nav} ctaHref="#book" />
 
       <main id="main" tabIndex={-1}>
-        {/* Act 1, hook: the claim in one line, then the scene that proves it. The motion layer
-            pins this section: the one phone is joined by the whole class, and every student answers. */}
+        {/* Act 1, hook: the claim in one line, then the scene that proves it. With the motion layer
+            the frame holds still for two screens of scroll (sticky, see .motion .hero__frame):
+            the one phone is joined by the whole class, and every student answers. */}
         <section className="hero" id="top" data-theme="paper" data-hero aria-labelledby="hero-title">
-          <div className="wrap hero__grid">
-            <p className="kicker hero__kicker" data-hero-out>
-              {t.hero.kicker}
-            </p>
-            <h1 className="mega hero__title" id="hero-title" data-hero-title>
-              {t.hero.title.map((line, i) => (
-                <span className="line" key={line} style={{ "--i": i } as React.CSSProperties}>
-                  <span>{line}</span>
-                </span>
-              ))}
-            </h1>
-            <div className="hero__deck" data-hero-out>
-              <p className="lead hero__lead">{t.hero.deck}</p>
-              <p className="lead hero__lead-short">{t.hero.deckShort}</p>
-              <div className="actions">
-                <a className="btn btn--primary" href="#book">
-                  {t.hero.cta}
-                </a>
-                <a className="chev" href="#teacher">
-                  {t.hero.secondary}
-                  <ArrowRightIcon size={18} weight="bold" aria-hidden="true" />
-                </a>
-              </div>
-              <ul className="hero__meta">
-                {t.hero.meta.map((m) => (
-                  <li key={m}>{m}</li>
+          <div className="hero__frame" data-hero-frame>
+            <div className="wrap hero__grid">
+              <p className="kicker hero__kicker" data-hero-out>
+                {t.hero.kicker}
+              </p>
+              <h1 className="mega hero__title" id="hero-title" data-hero-title>
+                {t.hero.title.map((line, i) => (
+                  <span className="line" key={line} style={{ "--i": i } as React.CSSProperties}>
+                    <span>{line}</span>
+                  </span>
                 ))}
-              </ul>
+              </h1>
+              <div className="hero__deck" data-hero-out>
+                <p className="lead hero__lead">{t.hero.deck}</p>
+                <p className="lead hero__lead-short">{t.hero.deckShort}</p>
+                <div className="actions">
+                  <a className="btn btn--primary" href="#book">
+                    {t.hero.cta}
+                  </a>
+                  <a className="chev" href="#teacher">
+                    {t.hero.secondary}
+                    <ArrowRightIcon size={18} weight="bold" aria-hidden="true" />
+                  </a>
+                </div>
+                <ul className="hero__meta">
+                  {t.hero.meta.map((m) => (
+                    <li key={m}>{m}</li>
+                  ))}
+                </ul>
+              </div>
             </div>
-          </div>
 
-          <div className="wrap hero__stage">
-            <Laptop label={s.alt.console} className="hero__laptop">
-              <Shot name="t-today" lang={t.lang} sizes="(max-width: 899px) 92vw, 1000px" eager />
-            </Laptop>
-            <Phone label={s.alt.phone} className="hero__phone">
-              <PhoneShot name="s-question" lang={t.lang} sizes="(max-width: 767px) 48vw, 230px" eager />
-            </Phone>
-          </div>
+            <div className="wrap hero__stage">
+              <Laptop label={s.alt.console} className="hero__laptop">
+                <Shot name="t-today" lang={t.lang} sizes="(max-width: 899px) 92vw, 1000px" eager />
+              </Laptop>
+              <Phone label={s.alt.phone} className="hero__phone">
+                <PhoneShot name="s-question" lang={t.lang} sizes="(max-width: 767px) 48vw, 230px" eager />
+              </Phone>
+            </div>
 
-          {/* Where the scene ends, laid out in CSS; the motion layer measures it. */}
-          <div className="hero__end">
-            <span className="hero__title-end" data-hero-title-end aria-hidden="true" />
-            <p className="hero__count" data-hero-count aria-hidden="true">
-              <b data-count>1</b>
-              <span>
-                {t.hero.class.of}
-                <br />
-                {t.hero.class.label}
-              </span>
-            </p>
-            <span className="hero__desk" data-hero-desk />
-            <ClassStack label={t.hero.class.alt} />
+            {/* Where the scene ends, laid out in CSS; the motion layer measures it. */}
+            <div className="hero__end">
+              <span className="hero__title-end" data-hero-title-end aria-hidden="true" />
+              <p className="hero__count" data-hero-count aria-hidden="true">
+                <b data-count>1</b>
+                <span>
+                  {t.hero.class.of}
+                  <br />
+                  {t.hero.class.label}
+                </span>
+              </p>
+              <span className="hero__desk" data-hero-desk />
+              <ClassStack label={t.hero.class.alt} />
+            </div>
           </div>
         </section>
 
@@ -155,26 +158,29 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
               <p className="lead live__lead" data-reveal>
                 {t.live.body}
               </p>
-              <div className="live__pin" data-live>
-                <ol className="live__steps">
-                  {t.live.steps.map((step, i) => (
-                    <li key={step} data-step>
-                      <span>{String(i + 1).padStart(2, "0")}</span>
-                      {step}
-                    </li>
-                  ))}
-                </ol>
-                <div className="live__stage">
-                  <Board label={s.alt.live} className="live__board">
-                    <BoardScreen s={s} lang={t.lang} />
-                  </Board>
-                  <Laptop className="live__laptop">
-                    <LiveConsoleScreen s={s} />
-                  </Laptop>
-                  <p className="flycard" data-flycard aria-hidden="true">
-                    <span className="flycard__bg" data-flycard-bg />
-                    <span className="flycard__text">{s.board.question}</span>
-                  </p>
+              {/* The run is the stretch of scroll the stage holds still for (see .motion .live__run). */}
+              <div className="live__run">
+                <div className="live__pin" data-live>
+                  <ol className="live__steps">
+                    {t.live.steps.map((step, i) => (
+                      <li key={step} data-step>
+                        <span>{String(i + 1).padStart(2, "0")}</span>
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                  <div className="live__stage">
+                    <Board label={s.alt.live} className="live__board">
+                      <BoardScreen s={s} lang={t.lang} />
+                    </Board>
+                    <Laptop className="live__laptop">
+                      <LiveConsoleScreen s={s} />
+                    </Laptop>
+                    <p className="flycard" data-flycard aria-hidden="true">
+                      <span className="flycard__bg" data-flycard-bg />
+                      <span className="flycard__text">{s.board.question}</span>
+                    </p>
+                  </div>
                 </div>
               </div>
               <div className="live__copy">
@@ -296,21 +302,23 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
               <p className="lead answer__lead" data-reveal>
                 {t.answer.body}
               </p>
-              <div className="answer__pin" data-answer-pin>
-                <ol className="answer__steps">
-                  {t.answer.steps.map((step, i) => (
-                    <li key={step} data-ans-step>
-                      <span>{String(i + 1).padStart(2, "0")}</span>
-                      {step}
-                    </li>
-                  ))}
-                </ol>
-                <Phone label={s.alt.answer} className="answer__phone">
-                  {["s-question", "s-answered", "s-verdict", "s-standings"].map((name, i) => (
-                    <PhoneShot key={name} name={name} lang={t.lang} sizes="(max-width: 899px) 78vw, 380px" data-ans-shot={i} />
-                  ))}
-                  <i className="answer__tap" data-ans-tap />
-                </Phone>
+              <div className="answer__run">
+                <div className="answer__pin" data-answer-pin>
+                  <ol className="answer__steps">
+                    {t.answer.steps.map((step, i) => (
+                      <li key={step} data-ans-step>
+                        <span>{String(i + 1).padStart(2, "0")}</span>
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                  <Phone label={s.alt.answer} className="answer__phone">
+                    {["s-question", "s-answered", "s-verdict", "s-standings"].map((name, i) => (
+                      <PhoneShot key={name} name={name} lang={t.lang} sizes="(max-width: 899px) 78vw, 380px" data-ans-shot={i} />
+                    ))}
+                    <i className="answer__tap" data-ans-tap />
+                  </Phone>
+                </div>
               </div>
             </div>
           </section>
