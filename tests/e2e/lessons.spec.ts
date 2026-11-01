@@ -416,6 +416,20 @@ test.describe("the subjects of a teacher who has several", () => {
     await expect(unfinished(page).first()).toContainText("Веројатност и статистика · 3. година");
   });
 
+  test("a choice is said to a screen reader: how many lessons the list shows now, in a line that was there before it had words", async ({ page }) => {
+    await page.goto("/teacher/lessons");
+    await expect(subjectRow(page)).toBeVisible();
+    const line = page.locator(".subjects [role=status]");
+    // There from the start and empty, so that the words are read out when they come, and nothing is read out on arriving.
+    await expect(line).toHaveCount(1);
+    await expect(line).toHaveText("");
+    await subjectRow(page).getByRole("radio", { name: "Линеарна алгебра" }).check();
+    const n = await page.locator(".lessons > li").count();
+    await expect(line).toHaveText(n === 1 ? "Прикажана е 1 лекција: Линеарна алгебра." : `Прикажани се ${n} лекции: Линеарна алгебра.`);
+    await subjectRow(page).getByRole("radio", { name: "Сите предмети" }).check();
+    await expect(line).toHaveText(new RegExp(`^Прикажани се ${await page.locator(".lessons > li").count()} лекции: Сите предмети\\.$`));
+  });
+
   test("the arrow keys choose, and the focus stays on the choice", async ({ page }) => {
     await page.goto("/teacher/lessons");
     await expect(subjectRow(page)).toBeVisible();
@@ -662,12 +676,19 @@ test.describe("the picture of a question", () => {
 
   test("a picture is added with a calm wait, shown, made about 1000 pixels wide, and kept in the draft", async ({ page }) => {
     await fileField(page).setInputFiles({ name: "grafik.png", mimeType: "image/png", buffer: await picture(page, 2400, 1200) });
-    await expect(open(page).getByText("Сликата се додава. Почекајте малку.")).toBeVisible();
+    await expect(open(page).locator(".imagefield__busy")).toHaveText("Сликата се додава. Почекајте малку.");
+    // The wait is said to a screen reader in the line that was on the page before it, not in a line that comes with its words (which is
+    // often not read out), and the visible line is not a second live region that would say it twice.
+    const said = open(page).locator(".imagefield > [role=status]");
+    await expect(said).toHaveCount(1);
+    await expect(said).toHaveText("Сликата се додава. Почекајте малку.");
+    await expect(open(page).locator(".imagefield__busy")).not.toHaveAttribute("role", /.+/);
     // Nothing can be pressed to add another while one is on its way.
     await expect(open(page).locator("label.btn", { hasText: "Додај слика" })).toHaveCount(0);
     const preview = open(page).locator(".imagefield__preview");
     await expect(preview).toBeVisible();
-    await expect(open(page).getByText("Сликата се додава. Почекајте малку.")).toHaveCount(0);
+    await expect(open(page).locator(".imagefield__busy")).toHaveCount(0);
+    await expect(said).toHaveText("Сликата е додадена.");
     expect(await preview.evaluate((img: HTMLImageElement) => [img.naturalWidth, img.naturalHeight])).toEqual([1000, 500]);
     await expect(preview).toHaveAttribute("src", /^data:image\/jpeg;base64,/);
     // "Замени" and "Отстрани" are there, a word beside each icon, and "Додај слика" is not.
@@ -714,10 +735,10 @@ test.describe("the picture of a question", () => {
     const preview = open(page).locator(".imagefield__preview");
     const first = await preview.getAttribute("src");
     await fileField(page).setInputFiles({ name: "vtora.png", mimeType: "image/png", buffer: await picture(page, 400, 400, "#22c55e") });
-    await expect(open(page).getByText("Сликата се додава. Почекајте малку.")).toBeVisible();
+    await expect(open(page).locator(".imagefield__busy")).toBeVisible();
     // The old picture stays on screen until the new one has come.
     await expect(preview).toBeVisible();
-    await expect(open(page).getByText("Сликата се додава. Почекајте малку.")).toHaveCount(0);
+    await expect(open(page).locator(".imagefield__busy")).toHaveCount(0);
     expect(await preview.getAttribute("src")).not.toBe(first);
     expect(await preview.evaluate((img: HTMLImageElement) => [img.naturalWidth, img.naturalHeight])).toEqual([400, 400]);
     // The words of the first picture are not the second's.

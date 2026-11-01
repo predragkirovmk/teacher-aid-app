@@ -107,6 +107,10 @@ export function LibraryPreview() {
                 <CopyIcon size={24} weight="bold" aria-hidden="true" />
                 {t(copying ? "library.copying" : "library.copy")}
               </button>
+              {/* A button that changes its words is not read out again; a line that was there before its words are is. */}
+              <p role="status" className="sr">
+                {copying ? t("library.copying") : ""}
+              </p>
               {problem !== null && <Problem title={t("library.copy.failed")}>{te(problem)}</Problem>}
             </div>
             <QuestionList questions={lesson.questions} />

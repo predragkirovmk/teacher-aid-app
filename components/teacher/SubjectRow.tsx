@@ -8,15 +8,19 @@ import { Choices } from "./Choices";
 /**
  * "Предмет": the row of subjects at the top of the Lessons page and the Library. It is a few large radio choices, the first of which
  * is every subject, so the arrow keys work and the chosen one has a tick, a bold label and a white edge. The page shows it only for
- * a teacher who has more than one subject: with one there is nothing to choose.
+ * a teacher who has more than one subject: with one there is nothing to choose. The list changes under the choice, which a screen reader
+ * does not see, so the page says what it now shows (`result`, "Прикажани се 5 лекции: Математика.") in a line that is there from the
+ * start and empty until a choice is made, which is what makes it read out.
  */
 export function SubjectRow({
   choices,
   value,
+  result,
   onChange,
 }: {
   choices: { value: SubjectChoice; label: string }[];
   value: SubjectChoice;
+  result: string;
   onChange: (value: SubjectChoice) => void;
 }) {
   const { t } = useT();
@@ -29,6 +33,9 @@ export function SubjectRow({
       <div className="prepare__tiles">
         <Choices<SubjectChoice> name="subject" labelledBy={heading} value={value} options={choices} onChange={onChange} />
       </div>
+      <p role="status" className="sr">
+        {result}
+      </p>
     </section>
   );
 }

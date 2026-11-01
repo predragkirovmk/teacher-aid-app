@@ -58,7 +58,8 @@ export function QuestionImage({ questionId, media, dispatch }: { questionId: str
       return;
     }
     setBusy(true);
-    setSaid("");
+    // Said in the line that is always on the page: a line that appears with its words is often not read out, one that changes is.
+    setSaid(t("image.busy"));
     try {
       const uploaded = await uploadMedia(file);
       // A new picture is not described yet: the words of the one it replaces would be about something else.
@@ -67,6 +68,7 @@ export function QuestionImage({ questionId, media, dispatch }: { questionId: str
       if (alive.current) setSaid(t("image.added"));
     } catch (e) {
       if (alive.current) {
+        setSaid("");
         setProblem(e);
         // A failure of the connection or of the server is worth trying again with the same file; a refusal of the file is not.
         setAgain(e instanceof ApiError && e.code === "validation_failed" ? null : file);
@@ -115,7 +117,7 @@ export function QuestionImage({ questionId, media, dispatch }: { questionId: str
       )}
 
       {busy ? (
-        <p role="status" className="imagefield__busy">
+        <p className="imagefield__busy">
           <CircleNotchIcon size={28} aria-hidden="true" />
           {t("image.busy")}
         </p>

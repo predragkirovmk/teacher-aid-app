@@ -9,6 +9,7 @@ import { useToday } from "@/lib/teacher/day";
 import { isOne } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
 import { libraryChoice, libraryChoices, LIBRARY_LONG, shownLibrary, showsRow } from "@/lib/teacher/library";
+import { shownWords } from "@/lib/teacher/lessons-list";
 import { libraryLessonUrl } from "@/lib/teacher/routes";
 import { MINE, type SubjectChoice } from "@/lib/teacher/subjects";
 import { relativeDay, sayWhen } from "@/lib/teacher/when";
@@ -24,11 +25,13 @@ import { SubjectRow } from "./SubjectRow";
  * the main action, copying, is on the preview. A short library is shown whole; a long one opens on the teacher's own subjects.
  */
 export function LibraryPage() {
-  const { t } = useT();
+  const { t, locale } = useT();
   const today = useToday();
   const library = useLibrary();
   const courses = useCourses();
   const [chosen, setChosen] = useState<SubjectChoice | null>(null);
+  // What the list became when a subject was chosen, said to a screen reader (the list changes where it cannot see).
+  const [result, setResult] = useState("");
 
   const items = useMemo(() => library.data ?? [], [library.data]);
   // The subjects the teacher teaches. Without the courses (they have not come, or could not) the library is shown whole.
@@ -39,6 +42,12 @@ export function LibraryPage() {
   const loading = library.status === "loading" || (courses.status === "loading" && items.length > LIBRARY_LONG);
 
   const label = (value: SubjectChoice, name: string | null) => (value === MINE ? t("library.mine") : name ?? t("lessons.subject.all"));
+  const choose = (value: SubjectChoice) => {
+    setChosen(value);
+    const next = libraryChoice(value, items, mine);
+    const named = libraryChoices(items, mine).find((c) => c.value === next);
+    setResult(shownWords(t, locale, shownLibrary(items, next, mine).length, label(next, named?.subject?.name ?? null)));
+  };
 
   return (
     <>
@@ -74,7 +83,8 @@ export function LibraryPage() {
               <SubjectRow
                 choices={libraryChoices(items, mine).map((c) => ({ value: c.value, label: label(c.value, c.subject?.name ?? null) }))}
                 value={choice}
-                onChange={setChosen}
+                result={result}
+                onChange={choose}
               />
             )}
             <ul className="lessons">

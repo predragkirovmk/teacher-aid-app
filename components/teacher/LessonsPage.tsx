@@ -6,7 +6,7 @@ import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useDrafts, useLessons } from "@/lib/teacher/api/hooks";
 import { useToday } from "@/lib/teacher/day";
 import { useT } from "@/lib/teacher/i18n";
-import { lessonSections, unfinishedDrafts, UNFINISHED_ANCHOR, withCount } from "@/lib/teacher/lessons-list";
+import { lessonSections, shownWords, unfinishedDrafts, UNFINISHED_ANCHOR, withCount } from "@/lib/teacher/lessons-list";
 import { newLessonUrl } from "@/lib/teacher/routes";
 import { ALL, choiceOf, effectiveChoice, needsSubjectRow, subjectsOf, type SubjectChoice } from "@/lib/teacher/subjects";
 import { DraftCard } from "./DraftCard";
@@ -27,7 +27,7 @@ import { SubjectRow } from "./SubjectRow";
  * lessons are only read here: deleting one is on its own page.
  */
 export function LessonsPage() {
-  const { t } = useT();
+  const { t, locale } = useT();
   const today = useToday();
   const lessons = useLessons();
   const drafts = useDrafts();
@@ -35,6 +35,8 @@ export function LessonsPage() {
   const [starting, setStarting] = useState<StartLesson | null>(null);
   const discarding = useDiscardDraft();
   const [chosen, setChosen] = useState<SubjectChoice | null>(null);
+  // What the list became when a subject was chosen, said to a screen reader (the list changes where it cannot see).
+  const [result, setResult] = useState("");
   const [deleted, setDeleted] = useState(false);
 
   // What the address said when the page opened: that a lesson has just been deleted. Told once, then taken off the address.
@@ -55,6 +57,14 @@ export function LessonsPage() {
   const sections = useMemo(() => lessonSections(all, choice), [all, choice]);
   const shownDrafts = useMemo(() => unfinishedDrafts(unfinished, choice), [unfinished, choice]);
   const nothing = all.length === 0 && unfinished.length === 0;
+
+  const choose = (value: SubjectChoice) => {
+    setChosen(value);
+    const next = effectiveChoice(value, subjects) ?? ALL;
+    const inIt = lessonSections(all, next);
+    const n = inIt.prepared.length + inIt.held.length + unfinishedDrafts(unfinished, next).length;
+    setResult(shownWords(t, locale, n, next === ALL ? t("lessons.subject.all") : (subjects.find((s) => choiceOf(s.id) === next)?.name ?? "")));
+  };
 
   // A link to "the lessons not finished" (`#nedovrseni`) lands on that section: the page is built after the address is read, so the
   // browser's own jump has nothing to jump to. The focus goes to the heading, so that it is also where a screen reader starts.
@@ -114,7 +124,8 @@ export function LessonsPage() {
               <SubjectRow
                 choices={[{ value: ALL, label: t("lessons.subject.all") }, ...subjects.map((s) => ({ value: choiceOf(s.id), label: s.name }))]}
                 value={choice}
-                onChange={setChosen}
+                result={result}
+                onChange={choose}
               />
             )}
             {sections.prepared.length > 0 && (
