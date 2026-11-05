@@ -1,7 +1,7 @@
-import { isDraftQuestion, isObject, isText, isValidContent } from "../lessons";
+import { isDraftQuestion, isObject, isText, isValidContent, isValidQuestion } from "../lessons";
 import { NO_DEVICE_REASONS } from "../live";
 import type { SchoolType } from "../store";
-import type { DraftQuestion, Lesson, NoDeviceReason, Refinement, SessionState, SourceKind, Subject } from "./types";
+import type { DraftQuestion, Lesson, NoDeviceReason, Question, Refinement, SessionState, SourceKind, Subject } from "./types";
 
 /**
  * What the mock adapter keeps in the browser. The demo school and its history are worked out from a
@@ -71,7 +71,16 @@ export type DemoSession = {
   /** When the teacher moved the lesson on from the lobby; null while it is in it. A join after this is late (BR-JOIN-04). */
   teaching_at: string | null;
   marks: MockMark[];
+  /** What the teacher did with the questions: when each was sent, skipped or had its answer shown. A question not listed is untouched. */
+  runs: DemoRun[];
+  /** The quick questions made on the spot, whole, in the order they were made. */
+  adhoc: Question[];
+  /** When the teacher marked an anonymous question answered, by its id. Taking the mark back removes it. */
+  anon_answered: Record<string, string>;
 };
+
+/** What happened to one question of the lesson: the session question's id and the times, ISO 8601. */
+export type DemoRun = { id: string; fired_at: string | null; skipped_at: string | null; revealed_at: string | null };
 
 export type Overlay = {
   first_run_done: boolean;
@@ -216,6 +225,12 @@ const SESSION_STATES: readonly SessionState[] = ["lobby", "teaching", "review", 
 const isMark = (v: unknown): v is MockMark =>
   isObject(v) && isText(v.student_id) && NO_DEVICE_REASONS.includes(v.reason as NoDeviceReason) && isIso(v.at);
 
+const isRun = (v: unknown): v is DemoRun =>
+  isObject(v) && isText(v.id) && (v.fired_at === null || isIso(v.fired_at)) && (v.skipped_at === null || isIso(v.skipped_at)) && (v.revealed_at === null || isIso(v.revealed_at));
+
+/** A quick question saved by the demo: the fields a live question needs, checked like a finished lesson's question. */
+const isLiveQuestion = (v: unknown): v is Question => isValidQuestion(v);
+
 const isDemoSession = (v: unknown): v is DemoSession =>
   isObject(v) &&
   isText(v.id) &&
@@ -228,7 +243,20 @@ const isDemoSession = (v: unknown): v is DemoSession =>
   isIso(v.started_at) &&
   (v.teaching_at === null || isIso(v.teaching_at)) &&
   Array.isArray(v.marks) &&
-  v.marks.every(isMark);
+  v.marks.every(isMark) &&
+  Array.isArray(v.runs) &&
+  v.runs.every(isRun) &&
+  Array.isArray(v.adhoc) &&
+  v.adhoc.every(isLiveQuestion) &&
+  isObject(v.anon_answered) &&
+  Object.values(v.anon_answered).every(isIso);
+
+/** The saved session, with the fields of the questions filled in if it was saved without them, or null. */
+function sessionOf(saved: unknown): DemoSession | null {
+  if (!isObject(saved)) return null;
+  const filled = { ...saved, runs: saved.runs ?? [], adhoc: saved.adhoc ?? [], anon_answered: saved.anon_answered ?? {} };
+  return isDemoSession(filled) && filled.state !== "ended" ? filled : null;
+}
 
 function sanitizeOverlay(saved: unknown, persona: Persona = "veteran"): Overlay {
   const s = isObject(saved) ? saved : {};
@@ -243,7 +271,7 @@ function sanitizeOverlay(saved: unknown, persona: Persona = "veteran"): Overlay 
     drafts: Array.isArray(s.drafts) ? s.drafts.filter(isDemoDraft) : base.drafts,
     // A source saved before jobs had a count of runs has had none.
     sources: Array.isArray(s.sources) ? s.sources.map((x) => (isObject(x) && x.runs === undefined ? { ...x, runs: 0 } : x)).filter(isSource) : base.sources,
-    session: isDemoSession(s.session) && s.session.state !== "ended" ? s.session : base.session,
+    session: sessionOf(s.session) ?? base.session,
     library_empty: typeof s.library_empty === "boolean" ? s.library_empty : base.library_empty,
     counter: isCount(s.counter) ? s.counter : base.counter,
   };

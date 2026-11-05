@@ -280,7 +280,10 @@ export type PublicQuestion = {
   fired_at: IsoTime | null;
   closes_at: IsoTime | null;
   numeric: { unit: string | null; tolerance: number; allow_negative: boolean } | null;
+  /** The picture, with the words that name it. PROPOSED on `question.opened` too, since students need it (the snapshots carry it already). */
   media: QuestionMedia | null;
+  /** PROPOSED: a question made on the spot (FR-POP-04); the projector calls it a quick question and not "question 3 of 8". */
+  adhoc: boolean;
 };
 
 /** A question in the console's run order, with what only the teacher sees. PROPOSED. */
@@ -299,6 +302,8 @@ export type ConsoleQuestion = {
   answered: number;
   /** How many students had joined when it opened. */
   joined: number;
+  /** PROPOSED: the counts once the question has closed (right, wrong, unanswered, and by response), so the console can say them at the reveal. Null before. */
+  counts: RevealCounts | null;
 };
 
 /** Counts at the reveal, for the class view's bars (11.2 `question.revealed`). PROPOSED fields. */
@@ -384,8 +389,8 @@ export type ConsoleSnapshot = {
   anon_questions: AnonQuestionItem[];
   focus_flags: FocusFlag[];
   board: LeaderboardRow[];
-  /** True when no question has been fired for a while (FR-POP-06). */
-  nudge: boolean;
+  /** Set when no question has been fired for a while (FR-POP-06): how long it has been, in seconds. PROPOSED: the spec has a flag; the console says how long. */
+  nudge: { idle_seconds: number } | null;
 };
 
 /** One of the most-missed questions, worst first (FR-REV-01). */
@@ -436,11 +441,14 @@ export type AdvanceRequest = { to: "teaching" | "review" };
  * This reading keeps both open: a question with `correct: null` is a poll and scores nothing.
  */
 export type AdhocRequest = {
-  kind: "true_false" | "multiple_choice";
+  /** PROPOSED: `numeric` too (the spec lists two kinds). */
+  kind: QuestionKind;
   prompt: string;
   options?: string[];
   correct: string | null;
   timer_seconds: number;
+  /** PROPOSED: for `numeric` only; the tolerance is 0 in a quick question. */
+  numeric?: { unit: string | null; tolerance: number; allow_negative: boolean };
 };
 
 /** POST /sessions/{id}/attendance/{student_id}/no-device (FR-ATT-04, F-11). */

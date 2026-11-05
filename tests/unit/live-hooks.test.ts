@@ -49,7 +49,7 @@ const snapshot = (over: Partial<ConsoleSnapshot> = {}): ConsoleSnapshot => ({
   anon_questions: [],
   focus_flags: [],
   board: [],
-  nudge: false,
+  nudge: null,
   ...over,
 });
 
@@ -92,7 +92,7 @@ describe("a snapshot that a stream keeps up to date", () => {
   test("an event that changes nothing is not news", () => {
     const { slot } = watch();
     const before = slot.read().data;
-    stream.onEvent({ type: "nudge", channel: "session.s1.console", server_now: "2026-10-29T08:31:05.000Z", idle_seconds: 300 });
+    stream.onEvent({ type: "ping", channel: "session.s1.console", server_now: "2026-10-29T08:31:05.000Z" });
     expect(slot.read().data).toBe(before);
   });
 

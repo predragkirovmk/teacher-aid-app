@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DRAFT_POLL_MS } from "../lessons";
 import { firstName, initials, personName, schoolTypeOf } from "../format";
 import { authStatusOf, type AuthStatus, type EndReason } from "../guard";
-import { applyClassEvent, applyConsoleEvent, serverOffset, tokenIsStale } from "../live";
+import { applyClassEvent, applyConsoleEvent, consoleNeedsRead, serverOffset, tokenIsStale } from "../live";
 import { preparedLessons } from "../today";
 import { actions, useTeacher } from "../store";
 import { apiMode } from "./config";
@@ -22,6 +22,7 @@ import {
   type TeacherChannel,
 } from "./types";
 import type {
+  AdhocRequest,
   CourseDashboard,
   CoursePatch,
   CourseSummary,
@@ -159,7 +160,14 @@ export function useOpenSessionAnywhere(page: string): Query<OpenSession> {
  * opens, since what happened while it was down is not replayed (11.4). `connection` is where the stream stands, for the line that says
  * so calmly. A reload, or a window opened later, is the snapshot read again (FR-SES-08). Exported for the tests.
  */
-export function watchSnapshot<T>(key: string, load: (a: TeacherApi) => Promise<T>, channel: TeacherChannel, reduce: (data: T, event: ChannelEvent) => T, onStatus: (s: ChannelStatus) => void) {
+export function watchSnapshot<T>(
+  key: string,
+  load: (a: TeacherApi) => Promise<T>,
+  channel: TeacherChannel,
+  reduce: (data: T, event: ChannelEvent) => T,
+  onStatus: (s: ChannelStatus) => void,
+  needsRead?: (data: T, event: ChannelEvent) => boolean,
+) {
   const slot = slotFor(key, load);
   return api.openChannel(channel, {
     onEvent: (event) => {
@@ -167,6 +175,7 @@ export function watchSnapshot<T>(key: string, load: (a: TeacherApi) => Promise<T
       if (held === undefined) return;
       const next = reduce(held, event);
       if (next !== held) slot.put(next);
+      if (needsRead?.(held, event)) void slot.fetch(true);
     },
     onStatus: (status) => {
       onStatus(status);
@@ -180,7 +189,7 @@ export function useConsole(sessionId: Id): { query: Query<ConsoleSnapshot>; conn
   const query = useQuery(`console:${sessionId}`, (a) => a.getConsole(sessionId));
   const [connection, setConnection] = useState<ChannelStatus>("connecting");
   useEffect(
-    () => watchSnapshot(`console:${sessionId}`, (a) => a.getConsole(sessionId), consoleChannel(sessionId), applyConsoleEvent, setConnection),
+    () => watchSnapshot(`console:${sessionId}`, (a) => a.getConsole(sessionId), consoleChannel(sessionId), applyConsoleEvent, setConnection, consoleNeedsRead),
     [sessionId],
   );
   return { query, connection };
@@ -241,6 +250,37 @@ export async function clearNoDevice(sessionId: Id, studentId: Id): Promise<Conso
   const snapshot = await change((a) => a.clearNoDevice(sessionId, studentId));
   seed(`console:${sessionId}`, snapshot);
   return snapshot;
+}
+
+/**
+ * A question sent, its answer shown or skipped, or a quick one made: each answers the fresh console, which is put into the cache, so the panel
+ * moves at once and the next event finds it already there (FR-CON-06).
+ */
+async function control(sessionId: Id, call: (a: TeacherApi) => Promise<ConsoleSnapshot>): Promise<ConsoleSnapshot> {
+  try {
+    const snapshot = await change(call);
+    seed(`console:${sessionId}`, snapshot);
+    return snapshot;
+  } catch (e) {
+    // The lesson is not as the screen thought (another window moved it): read how it stands now.
+    const code = toApiError(e).code;
+    if (code === "invalid_state" || code === "question_open") invalidate(`console:${sessionId}`);
+    throw e;
+  }
+}
+
+/** Send a question to the students (one tap, FR-POP-01). */
+export const fireQuestion = (sessionId: Id, sqId: Id): Promise<ConsoleSnapshot> => control(sessionId, (a) => a.fireQuestion(sessionId, sqId));
+/** Show the right answer and the counts, once the question has closed. */
+export const revealQuestion = (sessionId: Id, sqId: Id): Promise<ConsoleSnapshot> => control(sessionId, (a) => a.revealQuestion(sessionId, sqId));
+/** Take a question out of the lesson: it does not count (BR-SKIP-01). */
+export const skipQuestion = (sessionId: Id, sqId: Id): Promise<ConsoleSnapshot> => control(sessionId, (a) => a.skipQuestion(sessionId, sqId));
+/** A quick question made on the spot, sent at once (FR-POP-04). */
+export const fireAdhoc = (sessionId: Id, request: AdhocRequest): Promise<ConsoleSnapshot> => control(sessionId, (a) => a.fireAdhoc(sessionId, request));
+
+/** Mark a student's question answered aloud, or take that back (FR-ANON-10). The console is read again for it. */
+export async function setAnonAnswered(sessionId: Id, anonId: Id, answered: boolean): Promise<void> {
+  await change((a) => a.markAnonAnswered(sessionId, anonId, answered), [`console:${sessionId}`]);
 }
 
 // ---- Who is signed in -----------------------------------------------------------------------------

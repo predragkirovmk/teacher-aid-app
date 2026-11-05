@@ -1,9 +1,12 @@
 import type {
   ChannelEvent,
   ClassViewSnapshot,
+  ConsoleQuestion,
   ConsoleSnapshot,
   ConsoleStudent,
+  FocusFlag,
   NoDeviceReason,
+  QuestionStatus,
   SessionState,
 } from "./api/types";
 
@@ -187,6 +190,34 @@ export function recentNames(students: readonly Pick<ConsoleStudent, "full_name" 
     .map((s) => s.full_name);
 }
 
+const questionRank = (status: QuestionStatus): number => ["ready", "open", "closed", "revealed"].indexOf(status);
+
+/** A console question after a lifecycle event: a status only moves forward (4.2), so an event that repeats or comes late changes nothing. */
+function moveQuestion(q: ConsoleQuestion, event: ChannelEvent): ConsoleQuestion {
+  if (q.status === "skipped") return q;
+  switch (event.type) {
+    case "question.opened":
+      return q.status === "ready" ? { ...q, status: "open", fired_at: event.question.fired_at, closes_at: event.question.closes_at, answered: 0 } : q;
+    case "question.closed":
+      return questionRank(q.status) < questionRank("closed") ? { ...q, status: "closed", closed_at: event.server_now } : q;
+    case "question.revealed":
+      return q.status !== "revealed" ? { ...q, status: "revealed", revealed_at: event.server_now, counts: event.counts, closed_at: q.closed_at ?? event.server_now } : q;
+    case "question.skipped":
+      return { ...q, status: "skipped", skipped_at: event.server_now };
+    case "question.progress":
+      return { ...q, answered: event.answered, joined: event.joined };
+    default:
+      return q;
+  }
+}
+
+/**
+ * Whether the console must read its snapshot again for an event: a question it does not know has been sent (a quick question made in another
+ * window carries its answer, which the event does not).
+ */
+export const consoleNeedsRead = (snapshot: ConsoleSnapshot, event: ChannelEvent): boolean =>
+  event.type === "question.opened" && !snapshot.questions.some((q) => q.id === event.question.id);
+
 /**
  * The console after an event. An event stamped before the snapshot the screen holds is dropped, and a state only moves forward, so
  * events may repeat or come in any order (11.2). What a screen does not show is left alone.
@@ -202,6 +233,36 @@ export function applyConsoleEvent(snapshot: ConsoleSnapshot, event: ChannelEvent
       return { ...snapshot, students: snapshot.students.map((s) => (s.id === event.student.id ? event.student : s)) };
     case "student.presence":
       return { ...snapshot, students: snapshot.students.map((s) => (s.id === event.student_id ? { ...s, online: event.online } : s)) };
+    case "student.answer_state":
+      return { ...snapshot, students: snapshot.students.map((s) => (s.id === event.student_id ? { ...s, answer_state: event.state } : s)) };
+    case "question.opened":
+    case "question.closed":
+    case "question.revealed":
+    case "question.skipped":
+    case "question.progress": {
+      const id = event.type === "question.opened" ? event.question.id : event.type === "question.progress" ? event.session_question_id : event.session_question_id;
+      const questions = snapshot.questions.map((q) => (q.id === id ? moveQuestion(q, event) : q));
+      const changed = questions.some((q, i) => q !== snapshot.questions[i]);
+      const closing = event.type === "question.closed" || event.type === "question.skipped" || event.type === "question.revealed";
+      const students = closing ? snapshot.students.map((s) => (s.answer_state === null ? s : { ...s, answer_state: null })) : snapshot.students;
+      // A question sent clears the nudge: the line is only for a lesson that has gone quiet.
+      const nudge = event.type === "question.opened" ? null : snapshot.nudge;
+      return changed || nudge !== snapshot.nudge ? { ...snapshot, questions, students, nudge } : snapshot;
+    }
+    case "leaderboard.updated": {
+      const points = new Map(event.rows.map((r) => [r.student_id, r.points]));
+      return { ...snapshot, board: event.rows, students: snapshot.students.map((s) => ({ ...s, points: points.get(s.id) ?? s.points })) };
+    }
+    case "anon_question.received":
+      return snapshot.anon_questions.some((a) => a.id === event.question.id) ? snapshot : { ...snapshot, anon_questions: [...snapshot.anon_questions, event.question] };
+    case "focus.flag": {
+      const f = event.flag;
+      const same = (x: FocusFlag) => x.student_id === f.student_id && x.session_question_id === f.session_question_id && x.lost_at === f.lost_at;
+      const flags = snapshot.focus_flags.some(same) ? snapshot.focus_flags.map((x) => (same(x) ? f : x)) : [...snapshot.focus_flags, f];
+      return { ...snapshot, focus_flags: flags, students: snapshot.students.map((s) => (s.id === f.student_id ? { ...s, focus_flags: flags.filter((x) => x.student_id === s.id).length } : s)) };
+    }
+    case "nudge":
+      return { ...snapshot, nudge: { idle_seconds: event.idle_seconds } };
     default:
       return snapshot;
   }
@@ -210,6 +271,7 @@ export function applyConsoleEvent(snapshot: ConsoleSnapshot, event: ChannelEvent
 /** The class view after an event: the same rules, and only what the projector shows. */
 export function applyClassEvent(snapshot: ClassViewSnapshot, event: ChannelEvent): ClassViewSnapshot {
   if (stamped(event) < Date.parse(snapshot.server_now)) return snapshot;
+  const asked = snapshot.question;
   switch (event.type) {
     case "state.changed":
       return stateRank(event.state) > stateRank(snapshot.session.state) ? { ...snapshot, session: { ...snapshot.session, state: event.state } } : snapshot;
@@ -217,6 +279,24 @@ export function applyClassEvent(snapshot: ClassViewSnapshot, event: ChannelEvent
       return { ...snapshot, join: { token: event.token, short_code: event.short_code, valid_to: event.valid_to } };
     case "joined.count":
       return { ...snapshot, session: { ...snapshot.session, joined_count: event.joined_count, recent: event.recent ?? snapshot.session.recent } };
+    case "question.opened":
+      return { ...snapshot, question: event.question, progress: { answered: 0, joined: snapshot.session.joined_count }, reveal: null, skipped: false };
+    case "question.progress":
+      return asked && asked.id === event.session_question_id ? { ...snapshot, progress: { answered: event.answered, joined: event.joined } } : snapshot;
+    case "question.closed":
+      return asked && asked.id === event.session_question_id && questionRank(asked.status) < questionRank("closed") ? { ...snapshot, question: { ...asked, status: "closed" } } : snapshot;
+    case "question.revealed":
+      return asked && asked.id === event.session_question_id
+        ? {
+            ...snapshot,
+            question: { ...asked, status: "revealed" },
+            reveal: { session_question_id: event.session_question_id, correct_answer: event.correct_answer, explanation: event.explanation, counts: event.counts },
+          }
+        : snapshot;
+    case "question.skipped":
+      return asked && asked.id === event.session_question_id ? { ...snapshot, question: { ...asked, status: "skipped" }, skipped: true } : snapshot;
+    case "leaderboard.updated":
+      return { ...snapshot, board: event.rows };
     default:
       return snapshot;
   }

@@ -1,7 +1,8 @@
 import { hasJoined, recentNames, TOKEN_ROTATE_MS } from "../live";
 import { hashSeed, rng } from "./mock-data";
 import type { MockMark } from "./mock-state";
-import type { ChannelEvent, ClassViewSnapshot, ConsoleSnapshot, ConsoleStudent, JoinToken, TeacherChannel } from "./types";
+import { currentQuestion } from "../questions";
+import type { ChannelEvent, ClassViewSnapshot, ConsoleQuestion, ConsoleSnapshot, ConsoleStudent, JoinToken, PublicQuestion, QuestionStatus, TeacherChannel } from "./types";
 
 /**
  * A believable class, played by the demo from the clock alone. There is no worker in the browser, so a lesson that has been started is
@@ -139,8 +140,37 @@ export function tokenAt(sessionId: string, now: number): JoinToken {
 
 // ---- The snapshots and the events ---------------------------------------------------------------------
 
-/** The class view's snapshot from the console's: only what the projector may show, and no name of a student who is not here (BR-PRIV-01). */
+/** What the projector may know of a question: the prompt, the options, the time and the picture, and never the right answer (11.2). */
+export function publicQuestion(q: ConsoleQuestion, index: number, total: number): PublicQuestion {
+  const question = q.question;
+  return {
+    id: q.id,
+    index,
+    total,
+    kind: question.kind,
+    prompt: question.prompt,
+    options: question.kind === "multiple_choice" ? question.options : null,
+    status: q.status,
+    timer_seconds: question.timer_seconds,
+    fired_at: q.fired_at,
+    closes_at: q.closes_at,
+    numeric: question.kind === "numeric" ? { unit: question.unit, tolerance: question.tolerance, allow_negative: question.allow_negative } : null,
+    media: question.media,
+    adhoc: q.adhoc,
+  };
+}
+
+/** The questions that count in "question 3 of 8": those of the lesson, not the quick ones made on the spot. */
+const lessonTotal = (c: ConsoleSnapshot) => c.questions.filter((q) => !q.adhoc).length;
+
+/**
+ * The class view's snapshot from the console's: only what the projector may show, and no name of a student who is not here (BR-PRIV-01). It shows
+ * the question the panel is about, in the state it is in; a question skipped before it was sent was never seen, so there is nothing to say of it.
+ */
 export function classViewOf(c: ConsoleSnapshot): ClassViewSnapshot {
+  const current = currentQuestion(c.questions);
+  const shown = current && !(current.status === "skipped" && current.fired_at === null) ? current : null;
+  const revealed = shown?.status === "revealed" && shown.counts;
   return {
     server_now: c.server_now,
     session: {
@@ -153,11 +183,14 @@ export function classViewOf(c: ConsoleSnapshot): ClassViewSnapshot {
       recent: recentNames(c.students),
     },
     join: c.join,
-    question: null,
-    progress: null,
-    reveal: null,
-    skipped: false,
-    board: [],
+    question: shown ? publicQuestion(shown, c.questions.indexOf(shown), shown.adhoc ? c.questions.length : lessonTotal(c)) : null,
+    progress: shown ? { answered: shown.answered, joined: shown.joined } : null,
+    reveal:
+      shown && revealed
+        ? { session_question_id: shown.id, correct_answer: shown.question.correct, explanation: shown.question.explanation, counts: shown.counts as NonNullable<typeof shown.counts> }
+        : null,
+    skipped: shown?.status === "skipped",
+    board: c.board,
     review: null,
   };
 }
@@ -182,6 +215,8 @@ export function eventsBetween(prev: ConsoleSnapshot, next: ConsoleSnapshot, chan
     out.push({ type: "join_token.rotated", token: next.join.token, short_code: next.join.short_code, valid_to: next.join.valid_to, ...at });
   }
 
+  out.push(...questionEvents(prev, next, channel));
+
   if (channel.endsWith(".console")) {
     const before = new Map(prev.students.map((s) => [s.id, s]));
     for (const s of next.students) {
@@ -189,7 +224,59 @@ export function eventsBetween(prev: ConsoleSnapshot, next: ConsoleSnapshot, chan
       if (!old) continue;
       if (hasJoined(s) && !hasJoined(old)) out.push({ type: "student.joined", student: s, ...at });
       else if (hasJoined(s) && s.online !== old.online) out.push({ type: "student.presence", student_id: s.id, online: s.online, ...at });
+      if (s.answer_state !== old.answer_state && s.answer_state !== null) {
+        const open = next.questions.find((q) => q.status === "open");
+        if (open) out.push({ type: "student.answer_state", session_question_id: open.id, student_id: s.id, state: s.answer_state, ...at });
+      }
     }
+    const known = new Set(prev.anon_questions.map((a) => a.id));
+    for (const a of next.anon_questions) if (!known.has(a.id)) out.push({ type: "anon_question.received", question: a, ...at });
+    const flagKey = (f: { student_id: string; session_question_id: string; lost_at: string }) => `${f.student_id}/${f.session_question_id}/${f.lost_at}`;
+    const flagBefore = new Map(prev.focus_flags.map((f) => [flagKey(f), f]));
+    for (const f of next.focus_flags) {
+      const old = flagBefore.get(flagKey(f));
+      if (!old || old.back_at !== f.back_at) out.push({ type: "focus.flag", flag: f, ...at });
+    }
+    if (next.nudge && !prev.nudge) out.push({ type: "nudge", idle_seconds: next.nudge.idle_seconds, ...at });
   }
+  return out;
+}
+
+const RANK: Record<QuestionStatus, number> = { ready: 0, open: 1, closed: 2, revealed: 3, skipped: 4 };
+
+/**
+ * What happened to the questions between two looks, in the order it happened: opened (with the first progress), the answers coming in, closed, the new
+ * ranking, revealed, skipped. A look may find a question several steps on (the page was asleep), and then says each step.
+ */
+function questionEvents(prev: ConsoleSnapshot, next: ConsoleSnapshot, channel: TeacherChannel): ChannelEvent[] {
+  const at = { channel, server_now: next.server_now };
+  const out: ChannelEvent[] = [];
+  const before = new Map(prev.questions.map((q) => [q.id, q]));
+  next.questions.forEach((q, index) => {
+    const old = before.get(q.id);
+    const was = old ? RANK[old.status] : 0;
+    const now = RANK[q.status];
+    if (q.status === "skipped") {
+      if (old?.status !== "skipped") {
+        if (q.fired_at && was < RANK.open) out.push({ type: "question.opened", question: publicQuestion({ ...q, status: "open" }, index, q.adhoc ? next.questions.length : lessonTotal(next)), ...at });
+        out.push({ type: "question.skipped", session_question_id: q.id, ...at });
+      }
+      return;
+    }
+    if (was < RANK.open && now >= RANK.open) {
+      out.push({ type: "question.opened", question: publicQuestion({ ...q, status: "open" }, index, q.adhoc ? next.questions.length : lessonTotal(next)), ...at });
+      out.push({ type: "question.progress", session_question_id: q.id, answered: q.status === "open" ? q.answered : q.answered, joined: q.joined, ...at });
+    } else if (q.status === "open" && old && old.answered !== q.answered) {
+      out.push({ type: "question.progress", session_question_id: q.id, answered: q.answered, joined: q.joined, ...at });
+    }
+    if (was < RANK.closed && now >= RANK.closed) {
+      out.push({ type: "question.progress", session_question_id: q.id, answered: q.answered, joined: q.joined, ...at });
+      out.push({ type: "question.closed", session_question_id: q.id, ...at });
+      out.push({ type: "leaderboard.updated", rows: next.board, ...at });
+    }
+    if (was < RANK.revealed && now >= RANK.revealed && q.counts) {
+      out.push({ type: "question.revealed", session_question_id: q.id, correct_answer: q.question.correct, explanation: q.question.explanation, counts: q.counts, ...at });
+    }
+  });
   return out;
 }

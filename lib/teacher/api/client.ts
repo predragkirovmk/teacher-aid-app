@@ -161,8 +161,8 @@ export interface TeacherApi {
    * here yet). Nothing to take back is not an error. Answers the fresh console snapshot.
    */
   clearNoDevice(sessionId: Id, studentId: Id): Promise<ConsoleSnapshot>;
-  /** PROPOSED, PATCH /sessions/{id}/anon-questions/{id}: the teacher answered it aloud. */
-  markAnonAnswered(sessionId: Id, anonQuestionId: Id): Promise<AnonQuestionItem>;
+  /** PATCH /sessions/{id}/anon-questions/{id} (FR-ANON-10): the teacher answered it aloud (`answered: true`), or takes that back (`false`, PROPOSED). */
+  markAnonAnswered(sessionId: Id, anonQuestionId: Id, answered: boolean): Promise<AnonQuestionItem>;
   /** POST /sessions/{id}/end: the full attendance list and the most-missed questions (F-10). */
   endSession(sessionId: Id): Promise<EndResult>;
   /** GET /sessions/{id}/review. */

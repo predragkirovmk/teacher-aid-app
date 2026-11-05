@@ -164,7 +164,7 @@ describe("the snapshots and events", () => {
       anon_questions: [],
       focus_flags: [],
       board: [],
-      nudge: false,
+      nudge: null,
     };
   };
 

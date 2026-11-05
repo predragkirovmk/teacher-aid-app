@@ -258,7 +258,7 @@ describe("what an event does to the console", () => {
     anon_questions: [],
     focus_flags: [],
     board: [],
-    nudge: false,
+    nudge: null,
   });
   const at = (seconds: number) => ({ channel: "session.s1.console" as const, server_now: new Date(Date.parse("2026-10-29T08:31:00.000Z") + seconds * 1000).toISOString() });
 
@@ -289,7 +289,7 @@ describe("what an event does to the console", () => {
   test("an event stamped before the snapshot is dropped, and so is one the screen does not show", () => {
     const snapshot = base();
     expect(applyConsoleEvent(snapshot, { type: "student.joined", student: joined("a"), ...at(-1) })).toBe(snapshot);
-    expect(applyConsoleEvent(snapshot, { type: "nudge", idle_seconds: 300, ...at(1) })).toBe(snapshot);
+    expect(applyConsoleEvent(snapshot, { type: "ping", ...at(1) })).toBe(snapshot);
   });
 
   test("the same event twice is the same lesson", () => {

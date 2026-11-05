@@ -149,7 +149,8 @@ export function createLiveApi(): TeacherApi {
     markNoDevice: (sessionId, studentId, req) =>
       request<ConsoleSnapshot>("POST", `${session(sessionId)}/attendance/${id(studentId)}/no-device`, { body: req }),
     clearNoDevice: (sessionId, studentId) => request<ConsoleSnapshot>("DELETE", `${session(sessionId)}/attendance/${id(studentId)}/no-device`),
-    markAnonAnswered: (sessionId, anonId) => request("PATCH", `${session(sessionId)}/anon-questions/${id(anonId)}`, { body: { answered: true } }),
+    markAnonAnswered: (sessionId, anonId, answered) =>
+      request("PATCH", `${session(sessionId)}/anon-questions/${id(anonId)}`, { body: { answered } }),
     endSession: (sessionId) => request("POST", `${session(sessionId)}/end`),
     getReview: (sessionId) => request("GET", `${session(sessionId)}/review`),
     createPracticeSet: (sessionId) => request("POST", `${session(sessionId)}/practice-set`),

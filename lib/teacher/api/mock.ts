@@ -28,8 +28,10 @@ import {
 } from "./mock-data";
 import { GENERATE_MS, latestUnsaved, REFINE_MS, startJob, statusOf, toSummary, toWire, trimDrafts } from "./mock-drafts";
 import { classViewOf, consoleStudents, eventsBetween, hasJoinedAt, planClass, tokenAt, type SimInput } from "./mock-live";
+import { anonQuestions, DEMO_NUDGE_AFTER_MS, nudgeAt, showQuestions, withQuestions, type PlayInput, type QuestionRun } from "./mock-questions";
+import { adhocQuestion } from "./mock-adhoc";
 import { demoProviderUrl, isOffline } from "./mock-session";
-import { overlayOf, withOverlay, type DemoDraft, type DemoSession, type MockState, type Overlay, type Persona } from "./mock-state";
+import { overlayOf, withOverlay, type DemoDraft, type DemoRun, type DemoSession, type MockState, type Overlay, type Persona } from "./mock-state";
 import type {
   AttendanceTally,
   ChannelEvent,
@@ -50,6 +52,7 @@ import type {
   OpenSession,
   PracticeResults,
   PracticeSetSummary,
+  AdhocRequest,
   Question,
   SessionRef,
   TeacherChannel,
@@ -208,7 +211,13 @@ function isDraftPatch(v: unknown): v is DraftPatch {
 }
 
 /** What a test may replace: how time passes, what the browser does with a picture, and what makes the realtime stream look again. */
-export type MockOptions = { delay?: Delay; image?: ImageEnv; tick?: (look: () => void) => Unsubscribe };
+export type MockOptions = {
+  delay?: Delay;
+  image?: ImageEnv;
+  tick?: (look: () => void) => Unsubscribe;
+  /** How long a lesson may go without a question before the console's nudge (FR-POP-06). The demo's is short, so that it can be seen. */
+  nudgeAfterMs?: number;
+};
 
 /** The stream looks again at the lesson once a second: that is how quickly a join or a code that changed reaches a screen. */
 const everySecond = (look: () => void): Unsubscribe => {
@@ -223,6 +232,7 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
   const delay = options.delay ?? wait;
   const image = options.image ?? browserImageEnv;
   const tick = options.tick ?? everySecond;
+  const nudgeAfterMs = options.nudgeAfterMs ?? DEMO_NUDGE_AFTER_MS;
 
   const ctx = (): Ctx => {
     const type = source.schoolType();
@@ -575,32 +585,50 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
    * joined, who is late, who has lost the connection, who is marked present without a phone) with the code of this 30-second window.
    */
   const consoleOf = (c: Ctx, s: DemoSession, course: SeedCourse): ConsoleSnapshot => {
-    const lesson = lessonsOf(c).find((l) => l.id === s.lesson.id);
-    // A teacher who has made no lesson yet is shown one of the demo's own (simulateRunning), whose questions come from the bank.
-    const questions = lesson ? lesson.questions : bankQuestions(bankLesson("procenti"), s.lesson.id);
-    return {
+    const input = simInput(c, s);
+    const plans = planOf(s, course);
+    const runs = runsOf(c, s);
+    const play: PlayInput = { sessionId: s.id, roster: course.students, plans, sim: input, speedBonusOn: c.overlay.speed_bonus[course.course_id] ?? true };
+    const shown = showQuestions(runs, play, c.now);
+    const answered = Object.fromEntries(Object.entries(s.anon_answered));
+    const snapshot: ConsoleSnapshot = {
       server_now: iso(c.now),
       session: { ...sessionRef(s), class_name: course.def.name, subject_name: course.def.subject.name },
       join: s.state === "ended" ? null : tokenAt(s.id, c.now),
-      questions: questions.map((question, i) => ({
-        id: `${s.id}-sq${i + 1}`,
-        question,
-        status: "ready",
-        adhoc: false,
-        fired_at: null,
-        closes_at: null,
-        closed_at: null,
-        revealed_at: null,
-        skipped_at: null,
-        answered: 0,
-        joined: 0,
-      })),
-      students: consoleStudents(course.students, planOf(s, course), s.marks, simInput(c, s)),
-      anon_questions: [],
-      focus_flags: [],
-      board: [],
-      nudge: false,
+      questions: shown.questions,
+      students: withQuestions(consoleStudents(course.students, plans, s.marks, input), shown, c.now),
+      anon_questions: anonQuestions(s.id, course.students, plans, input, answered, c.now),
+      focus_flags: shown.flags,
+      board: shown.board,
+      nudge: null,
     };
+    return { ...snapshot, nudge: nudgeAt(snapshot, input.teaching_at, c.now, nudgeAfterMs) };
+  };
+
+  /** The lesson's questions in the order they are sent, then the quick ones in the order they were made, each with what the teacher did with it. */
+  const runsOf = (c: Ctx, s: DemoSession): QuestionRun[] => {
+    const lesson = lessonsOf(c).find((l) => l.id === s.lesson.id);
+    // A teacher who has made no lesson yet is shown one of the demo's own (simulateRunning), whose questions come from the bank.
+    const prepared = lesson ? lesson.questions : bankQuestions(bankLesson("procenti"), s.lesson.id);
+    const ms = (v: string | null | undefined) => (v ? Date.parse(v) : null);
+    const make = (id: string, question: Question, adhoc: boolean): QuestionRun => {
+      const done = s.runs.find((r) => r.id === id);
+      return { id, question, adhoc, fired_at: ms(done?.fired_at), skipped_at: ms(done?.skipped_at), revealed_at: ms(done?.revealed_at) };
+    };
+    return [...prepared.map((q, i) => make(`${s.id}-sq${i + 1}`, q, false)), ...s.adhoc.map((q, i) => make(`${s.id}-aq${i + 1}`, q, true))];
+  };
+
+  /** Change what the teacher did with a question; the question is saved as touched. */
+  const touch = (s: DemoSession, id: string, change: Partial<Omit<DemoRun, "id">>): DemoSession => {
+    const old = s.runs.find((r) => r.id === id) ?? { id, fired_at: null, skipped_at: null, revealed_at: null };
+    return { ...s, runs: [...s.runs.filter((r) => r.id !== id), { ...old, ...change }] };
+  };
+
+  /** A question of this lesson and what it is doing now, or `not_found`. */
+  const questionOf = (c: Ctx, s: DemoSession, course: SeedCourse, sqId: Id) => {
+    const q = consoleOf(c, s, course).questions.find((x) => x.id === sqId);
+    if (!q) throw notFound();
+    return q;
   };
 
   /** The stream of a lesson: what changed since it last looked (mock-live.ts), as often as the tick, and at once when another window changed it. */
@@ -1063,6 +1091,9 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
           started_at: iso(c.now),
           teaching_at: null,
           marks: [],
+          runs: [],
+          adhoc: [],
+          anon_answered: {},
         };
         save(c, { ...c.overlay, counter: c.overlay.counter + 1, session });
         return consoleOf({ ...c, overlay: { ...c.overlay, session } }, session, course);
@@ -1093,10 +1124,55 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
         save(c, { ...c.overlay, session: next });
         return consoleOf(c, next, course);
       }),
-    fireQuestion: () => notImplemented(),
-    revealQuestion: () => notImplemented(),
-    skipQuestion: () => notImplemented(),
-    fireAdhoc: () => notImplemented(),
+    fireQuestion: (sessionId, sqId) =>
+      run(() => {
+        if (isOffline()) throw new ApiError("network");
+        const { c, s, course } = liveOf(sessionId);
+        const q = questionOf(c, s, course, sqId);
+        // Questions are sent while teaching; one that is not ready (sent, skipped) cannot be sent again, and only one is open at a time (4.2).
+        if (s.state !== "teaching" || q.status !== "ready") throw new ApiError("invalid_state", { status: 409 });
+        if (consoleOf(c, s, course).questions.some((x) => x.status === "open")) throw new ApiError("question_open", { status: 409 });
+        const next = touch(s, sqId, { fired_at: iso(c.now) });
+        save(c, { ...c.overlay, session: next });
+        return consoleOf({ ...c, overlay: { ...c.overlay, session: next } }, next, course);
+      }),
+    revealQuestion: (sessionId, sqId) =>
+      run(() => {
+        if (isOffline()) throw new ApiError("network");
+        const { c, s, course } = liveOf(sessionId);
+        // Only a question that has closed can be revealed (4.2); the reveal of one already revealed is the console as it is.
+        const q = questionOf(c, s, course, sqId);
+        if (q.status === "revealed") return consoleOf(c, s, course);
+        if (q.status !== "closed") throw new ApiError("invalid_state", { status: 409 });
+        const next = touch(s, sqId, { revealed_at: iso(c.now) });
+        save(c, { ...c.overlay, session: next });
+        return consoleOf({ ...c, overlay: { ...c.overlay, session: next } }, next, course);
+      }),
+    skipQuestion: (sessionId, sqId) =>
+      run(() => {
+        if (isOffline()) throw new ApiError("network");
+        const { c, s, course } = liveOf(sessionId);
+        const q = questionOf(c, s, course, sqId);
+        if (q.status === "skipped") return consoleOf(c, s, course);
+        // Ready, open or closed; once the answer is shown it is part of the lesson (4.2).
+        if (q.status === "revealed") throw new ApiError("invalid_state", { status: 409 });
+        const next = touch(s, sqId, { skipped_at: iso(c.now) });
+        save(c, { ...c.overlay, session: next });
+        return consoleOf({ ...c, overlay: { ...c.overlay, session: next } }, next, course);
+      }),
+    fireAdhoc: (sessionId, request: AdhocRequest) =>
+      run(() => {
+        if (isOffline()) throw new ApiError("network");
+        const { c, s, course } = liveOf(sessionId);
+        const question = adhocQuestion(request, s.adhoc.length, runsOf(c, s).length);
+        if (!question) throw invalid();
+        if (s.state !== "teaching") throw new ApiError("invalid_state", { status: 409 });
+        if (consoleOf(c, s, course).questions.some((x) => x.status === "open")) throw new ApiError("question_open", { status: 409 });
+        const id = `${s.id}-aq${s.adhoc.length + 1}`;
+        const next = touch({ ...s, adhoc: [...s.adhoc, question] }, id, { fired_at: iso(c.now) });
+        save(c, { ...c.overlay, session: next });
+        return consoleOf({ ...c, overlay: { ...c.overlay, session: next } }, next, course);
+      }),
     markNoDevice: (sessionId, studentId, request: NoDeviceRequest) =>
       run(() => {
         if (isOffline()) throw new ApiError("network");
@@ -1119,7 +1195,18 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
         if (next.marks.length !== s.marks.length) save(c, { ...c.overlay, session: next });
         return consoleOf(c, next, course);
       }),
-    markAnonAnswered: () => notImplemented(),
+    markAnonAnswered: (sessionId, anonId, answered) =>
+      run(() => {
+        if (isOffline()) throw new ApiError("network");
+        const { c, s, course } = liveOf(sessionId);
+        const item = consoleOf(c, s, course).anon_questions.find((a) => a.id === anonId);
+        if (!item || typeof answered !== "boolean") throw item ? invalid() : notFound();
+        const { [anonId]: _old, ...rest } = s.anon_answered;
+        void _old;
+        const next: DemoSession = { ...s, anon_answered: answered ? { ...rest, [anonId]: iso(c.now) } : rest };
+        save(c, { ...c.overlay, session: next });
+        return { ...item, answered_at: answered ? iso(c.now) : null };
+      }),
     endSession: () => notImplemented(),
     getReview: () => notImplemented(),
     createPracticeSet: () => notImplemented(),
@@ -1171,6 +1258,9 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
         started_at: iso(c.now - 12 * 60_000),
         teaching_at: null,
         marks: [],
+        runs: [],
+        adhoc: [],
+        anon_answered: {},
       };
       save(c, { ...c.overlay, counter: c.overlay.counter + 1, session });
     },

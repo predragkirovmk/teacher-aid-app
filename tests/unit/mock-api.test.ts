@@ -882,13 +882,8 @@ describe("the live lesson", () => {
 });
 
 describe("what is not built yet", () => {
-  test("firing and the rest of the live lesson answer not_implemented", async () => {
+  test("ending, the review and the practice set answer not_implemented", async () => {
     const calls: Promise<unknown>[] = [
-      api.fireQuestion("s", "q"),
-      api.revealQuestion("s", "q"),
-      api.skipQuestion("s", "q"),
-      api.fireAdhoc("s", { kind: "true_false", prompt: "?", correct: null, timer_seconds: 15 }),
-      api.markAnonAnswered("s", "a"),
       api.endSession("s"),
       api.getReview("s"),
       api.createPracticeSet("s"),
@@ -935,7 +930,7 @@ describe("starting a lesson", () => {
     expect(snapshot.questions.every((q) => q.status === "ready" && q.fired_at === null && !q.adhoc)).toBe(true);
     expect(snapshot.students).toHaveLength(course.student_count);
     expect(snapshot.students.every((s) => s.attendance === null && !s.online)).toBe(true);
-    expect(snapshot.nudge).toBe(false);
+    expect(snapshot.nudge).toBeNull();
   });
 
   test("GET /sessions/open then returns it, with the names of the class and the subject (AC-END-05)", async () => {
