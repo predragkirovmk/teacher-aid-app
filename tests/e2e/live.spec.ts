@@ -1,7 +1,8 @@
-import jsQR from "jsqr";
-import type { BrowserContext, Page } from "@playwright/test";
-import { planClass, simulate, tokenAt } from "../../lib/teacher/api/mock-live";
+import { simulate, tokenAt } from "../../lib/teacher/api/mock-live";
 import { expect, SETTINGS_KEY, test } from "./fixtures";
+import {
+  at, cards, classCode, code, comesLater, count, joinedAt, nextEdge, openProjector, people, PLANS, readQr, row, SESSION, start, T0, title, yellow,
+} from "./live-helpers";
 
 /**
  * The live lesson, step 8: starting a lesson with a class, the console, the class view in a second window, and what each shows. In mock mode, in
@@ -9,57 +10,6 @@ import { expect, SETTINGS_KEY, test } from "./fixtures";
  * test's: it stands still at `T0` and moves only when a test moves it, so who has joined is known exactly, with nothing slow and nothing that
  * can flake. The first lesson started in a fresh demo is the session `s-n1`, and II-4 has 26 students.
  */
-
-const T0 = Date.parse("2026-10-29T09:30:05+01:00");
-const SESSION = "s-n1";
-const CLASS_IDS = Array.from({ length: 26 }, (_, i) => `st-ii-4-${String(i + 1).padStart(2, "0")}`);
-const PLANS = planClass(SESSION, CLASS_IDS);
-
-const title = (page: Page) => page.getByRole("heading", { level: 1 });
-const yellow = (page: Page) => page.locator(".btn--primary:visible");
-const cards = (page: Page) => page.locator(".lessons > li");
-const startDialog = (page: Page) => page.getByRole("dialog", { name: /^Со кој(а)? (клас|група)\?$/ });
-const people = (page: Page) => page.locator(".person");
-const count = (page: Page) => page.locator(".roster__count");
-const code = (page: Page) => page.getByTestId("short-code");
-const classCode = (page: Page) => page.getByTestId("class-code");
-
-/**
- * Move the clock of every window of the browser to `seconds` after the lesson began, and, with the console's `page`, wait until it shows the
- * class as that moment has it (the console looks again once a second), so that what a test does next is done to the class it can see.
- */
-const at = async (context: BrowserContext, seconds: number, page?: Page, teachingAt: number | null = null) => {
-  await context.clock.setFixedTime(T0 + seconds * 1000);
-  if (page) await expect(count(page)).toHaveText(new RegExp(`^${joinedAt(seconds, teachingAt)} (од|of) 26 `));
-};
-
-/** How many of the class have joined `seconds` after the lesson began, with the lesson moved on at `teachingAt` seconds (null: still in the lobby). */
-const joinedAt = (seconds: number, teachingAt: number | null = null) =>
-  PLANS.filter((p) => simulate(p, { started_at: T0, teaching_at: teachingAt === null ? null : T0 + teachingAt * 1000, now: T0 + seconds * 1000 }).joined_at !== null).length;
-
-async function start(page: Page, context: BrowserContext, className = "II-4") {
-  await context.clock.setFixedTime(T0);
-  await page.goto("/teacher");
-  await cards(page).filter({ hasText: "Проценти и пропорции" }).getByRole("button", { name: "Започни час" }).click();
-  const dialog = startDialog(page);
-  await dialog.getByRole("radio", { name: new RegExp(className) }).check();
-  await dialog.getByRole("button", { name: `Започни со ${className}` }).click();
-  await expect(page).toHaveURL(new RegExp(`/teacher/live/${SESSION}$`));
-  await expect(count(page)).toBeVisible();
-}
-
-/** The console's button that opens the projector, and the page it opens. */
-async function openProjector(page: Page, context: BrowserContext, name = "Отвори го екранот за проектор") {
-  const opened = context.waitForEvent("page");
-  await page.getByRole("button", { name }).click();
-  const projector = await opened;
-  await projector.waitForLoadState();
-  return projector;
-}
-
-/** A student who has not joined at `seconds` and will, a while after: for the tests of a mark that a join then replaces. */
-const comesLater = (seconds: number) => PLANS.filter((p) => p.kind === "early" && p.after_ms > seconds * 1000).sort((a, b) => a.after_ms - b.after_ms)[0];
-const row = (page: Page, id: string) => page.locator(".person", { has: page.locator(`[data-mark="${id}"], [data-remove="${id}"]`) });
 
 test.describe("starting", () => {
   test("from Today: the button names the class, and the lesson opens on its console with the subject, class and lesson in plain words", async ({ page, context }) => {
@@ -93,11 +43,11 @@ test.describe("the lobby", () => {
     await expect(states.getByRole("listitem").nth(1)).toContainText("следно");
   });
 
-  test("the code is large enough to read out, in two groups of three, and the class is listed with nobody here", async ({ page, context }) => {
+  test("no code is shown to read out while students cannot type it, and the class is listed with nobody here", async ({ page, context }) => {
     await start(page, context);
-    const token = tokenAt(SESSION, T0);
-    await expect(code(page)).toHaveText(`${token.short_code.slice(0, 3)}\u00a0${token.short_code.slice(3)}`);
-    expect(await code(page).evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(48);
+    await expect(code(page)).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Код за приклучување" })).toHaveCount(0);
+    await expect(page.getByText(/Кодот се менува/)).toHaveCount(0);
     await expect(count(page)).toHaveText("0 од 26 се приклучија");
     await expect(people(page)).toHaveCount(26);
     await expect(page.getByRole("heading", { name: "Уште не се тука (26)" })).toBeVisible();
@@ -150,20 +100,10 @@ test.describe("the lobby", () => {
     await at(context, away.off!.to_ms / 1000 + 1, page);
     await expect(offline).toHaveCount(0);
   });
-
-  test("the code changes every 30 seconds and the console shows the new one", async ({ page, context }) => {
-    await start(page, context);
-    const first = await code(page).textContent();
-    const edge = Math.ceil(T0 / 30_000) * 30_000;
-    await context.clock.setFixedTime(edge + 500);
-    const next = tokenAt(SESSION, edge + 500);
-    await expect(code(page)).toHaveText(`${next.short_code.slice(0, 3)}\u00a0${next.short_code.slice(3)}`);
-    expect(await code(page).textContent()).not.toBe(first);
-  });
 });
 
 test.describe("the projector", () => {
-  test("one click opens the class view in a window of its own: the QR, the code, how to join and who has joined, with no sidebar and no names of those who are not here", async ({ page, context }) => {
+  test("one click opens the class view in a window of its own: the QR, how to join and who has joined, and no code, with no sidebar and no names of those who are not here", async ({ page, context }) => {
     await start(page, context);
     await at(context, 30, page);
     const n = joinedAt(30);
@@ -171,6 +111,8 @@ test.describe("the projector", () => {
     await expect(projector).toHaveURL(new RegExp(`/teacher/live/${SESSION}/class$`));
     await expect(projector.getByText("Скенирајте го QR-кодот со TeacherAid или со камерата на телефонот")).toBeVisible();
     await expect(projector.locator(".cv__qr svg")).toBeVisible();
+    await expect(classCode(projector)).toHaveCount(0);
+    await expect(projector.getByText(/се менува/)).toHaveCount(0);
     await expect(projector.getByText(n === 1 ? "1 се приклучи" : `${n} се приклучија`)).toBeVisible();
     // Nothing of the console: no sidebar, no roster, no word that belongs to it.
     await expect(projector.getByRole("navigation")).toHaveCount(0);
@@ -179,14 +121,11 @@ test.describe("the projector", () => {
     await expect(projector).toHaveTitle("Екран за проектор · TeacherAid");
   });
 
-  test("the code on the projector is the console's and is huge: at least 12 percent of the window's height, in type", async ({ page, context }) => {
+  test("nothing on the projector is under 20px, whatever the size of the window: it is read from the back of a classroom", async ({ page, context }) => {
     await start(page, context);
+    await at(context, 40, page);
     const projector = await openProjector(page, context);
-    await projector.setViewportSize({ width: 1920, height: 1080 });
-    await expect(classCode(projector)).toHaveText(await code(page).innerText());
-    const size = await classCode(projector).evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
-    expect(size).toBeGreaterThanOrEqual(0.12 * 1080);
-    // Nothing on it is under 20px, whatever the size of the window: it is read from the back of a classroom.
+    await projector.setViewportSize({ width: 1024, height: 768 });
     const small = await projector.evaluate(() =>
       [...document.querySelectorAll("main *")]
         .filter((el) => el.childNodes.length && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent?.trim()))
@@ -194,30 +133,25 @@ test.describe("the projector", () => {
         .filter((px) => px < 20).length,
     );
     expect(small).toBe(0);
+    // The count is the biggest thing after the QR: a class reads how many are in from the back.
+    const size = await projector.locator(".cv__count").evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    expect(size).toBeGreaterThanOrEqual(0.07 * 768);
   });
 
-  test("the QR holds the student app's check-in address with the current token, and the code and the QR change together every 30 seconds without being drawn again", async ({ page, context }) => {
+  test("the QR changes every 30 seconds, in place and without being drawn again, and the projector shows no countdown and no code", async ({ page, context }) => {
     await start(page, context);
     const projector = await openProjector(page, context);
     const qr = projector.locator(".cv__qr svg");
     await expect(qr).toBeVisible();
     await qr.evaluate((el) => ((window as unknown as { __qr: Element }).__qr = el));
-    const before = { code: await classCode(projector).innerText(), paths: await qr.innerHTML() };
-    expect(before.code).toBe(await code(page).innerText());
-
-    const edge = Math.ceil(T0 / 30_000) * 30_000;
-    await context.clock.setFixedTime(edge + 500);
-    const next = tokenAt(SESSION, edge + 500);
-    await expect(classCode(projector)).toHaveText(`${next.short_code.slice(0, 3)}\u00a0${next.short_code.slice(3)}`);
-    expect(await qr.innerHTML()).not.toBe(before.paths);
+    const before = await qr.innerHTML();
+    await context.clock.setFixedTime(nextEdge() + 500);
+    await expect.poll(() => qr.innerHTML()).not.toBe(before);
     // The same element, changed in place: there was no moment with none, so no flash.
     expect(await qr.evaluate((el) => el === (window as unknown as { __qr: Element }).__qr)).toBe(true);
-    // The console shows the same code at the same moment.
-    await expect(code(page)).toHaveText(await classCode(projector).innerText());
-    // It says once, quietly, that the code changes, and shows no countdown.
-    await expect(projector.getByText("Кодот се менува на секои 30 секунди.")).toHaveCount(1);
-    await expect(projector.getByText(/сек/)).toHaveCount(1);
+    await expect(projector.getByText(/сек/)).toHaveCount(0);
     await expect(projector.getByText(/\b[0-9]+:[0-9]{2}\b/)).toHaveCount(0);
+    await expect(classCode(projector)).toHaveCount(0);
   });
 
   test("the address in the QR, read back from the picture, is the check-in path of the student app on this app's own origin, with the token of the moment", async ({ page, context, baseURL }) => {
@@ -225,29 +159,12 @@ test.describe("the projector", () => {
     const projector = await openProjector(page, context);
     const qr = projector.locator(".cv__qr svg");
     await expect(qr).toBeVisible();
-    // Draw the picture and read it as a phone would: the page hands over its pixels, and the test decodes them.
-    const read = async () => {
-      const pixels = await qr.evaluate(async (svg) => {
-        const source = new XMLSerializer().serializeToString(svg).replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ');
-        const image = new Image();
-        image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`;
-        await image.decode();
-        const canvas = document.createElement("canvas");
-        canvas.width = canvas.height = 480;
-        const g = canvas.getContext("2d")!;
-        g.fillStyle = "#fff";
-        g.fillRect(0, 0, 480, 480);
-        g.drawImage(image, 0, 0, 480, 480);
-        return Array.from(g.getImageData(0, 0, 480, 480).data);
-      });
-      return jsQR(Uint8ClampedArray.from(pixels), 480, 480)?.data;
-    };
+    const read = () => readQr(qr);
     expect(await read()).toBe(`${new URL(baseURL!).origin}/app/checkin/${tokenAt(SESSION, T0).token}`);
     // And after the code has changed it is the new token's.
-    const edge = Math.ceil(T0 / 30_000) * 30_000;
+    const edge = nextEdge();
     await context.clock.setFixedTime(edge + 500);
-    await expect(classCode(projector)).toHaveText(new RegExp(`^${tokenAt(SESSION, edge + 500).short_code.slice(0, 3)}`));
-    expect(await read()).toBe(`${new URL(baseURL!).origin}/app/checkin/${tokenAt(SESSION, edge + 500).token}`);
+    await expect.poll(read, { timeout: 20_000 }).toBe(`${new URL(baseURL!).origin}/app/checkin/${tokenAt(SESSION, edge + 500).token}`);
   });
 
   test("the last few names are on the projector, and only those who have joined", async ({ page, context }) => {
@@ -255,7 +172,7 @@ test.describe("the projector", () => {
     await at(context, 40, page);
     const projector = await openProjector(page, context);
     await expect(projector.locator(".cv__names")).toBeVisible();
-    const names = (await projector.locator(".cv__names").innerText()).replace(/^[^:]*:\s*/, "").split(" · ").map((s) => s.trim());
+    const names = (await projector.locator(".cv__names li").allTextContents()).map((s) => s.trim());
     expect(names.length).toBeLessThanOrEqual(5);
     const here = await page.locator(".person[data-state=joined], .person[data-state=offline], .person[data-state=late]").locator(".person__name").allTextContents();
     expect(names.length).toBeGreaterThan(0);
@@ -564,14 +481,14 @@ test.describe("starting the lesson, and teaching", () => {
     await expect(projector.getByRole("heading", { name: "Часот почна" })).toBeVisible();
     const corner = projector.locator(".cv__corner");
     await expect(corner).toBeVisible();
-    await expect(corner.getByText("Доцните? Скенирајте го кодот.")).toBeVisible();
+    await expect(corner.getByText("Доцните? Скенирајте го QR-кодот.")).toBeVisible();
     await expect(corner.locator(".cv__qr svg")).toBeVisible();
-    await expect(classCode(projector)).toHaveText(await code(page).innerText());
+    await expect(classCode(projector)).toHaveCount(0);
     await expect(projector.locator(".person")).toHaveCount(0);
-    // The code keeps changing there too.
-    const edge = Math.ceil(T0 / 30_000) * 30_000;
-    await context.clock.setFixedTime(edge + 500);
-    await expect(classCode(projector)).toHaveText(await code(page).innerText());
+    // The QR keeps changing there too.
+    const before = await corner.locator(".cv__qr svg").innerHTML();
+    await context.clock.setFixedTime(nextEdge() + 500);
+    await expect.poll(() => corner.locator(".cv__qr svg").innerHTML()).not.toBe(before);
   });
 });
 
@@ -597,14 +514,14 @@ test.describe("coming back", () => {
     await expect(page.getByRole("heading", { name: "Прашањата на овој час" })).toBeVisible();
   });
 
-  test("a reload of the class view brings it back, with the same code", async ({ page, context }) => {
+  test("a reload of the class view brings it back, with the same count and the same QR", async ({ page, context }) => {
     await start(page, context);
     await at(context, 40, page);
     const projector = await openProjector(page, context);
-    await expect(classCode(projector)).toBeVisible();
-    const shown = { code: await classCode(projector).innerText(), count: await projector.locator(".cv__count").innerText() };
+    await expect(projector.locator(".cv__qr svg")).toBeVisible();
+    const shown = { qr: await readQr(projector.locator(".cv__qr svg")), count: await projector.locator(".cv__count").innerText() };
     await projector.reload();
-    await expect(classCode(projector)).toHaveText(shown.code);
+    await expect.poll(() => readQr(projector.locator(".cv__qr svg")), { timeout: 20_000 }).toBe(shown.qr);
     await expect(projector.locator(".cv__count")).toHaveText(shown.count);
     // And the console still knows the window is open.
     await expect(page.getByText("Екранот за проектор е отворен.")).toBeVisible();
@@ -640,7 +557,7 @@ test.describe("coming back", () => {
   test("the projector says the same, quietly, and recovers", async ({ page, context }) => {
     await start(page, context);
     const projector = await openProjector(page, context);
-    await expect(classCode(projector)).toBeVisible();
+    await expect(projector.locator(".cv__qr svg")).toBeVisible();
     await context.setOffline(true);
     await expect(projector.getByRole("status").filter({ hasText: "Се поврзуваме повторно…" })).toBeVisible();
     await context.setOffline(false);
@@ -677,9 +594,9 @@ test.describe("who may see it", () => {
     await at(context, 40, page);
     const names = await page.locator(".person__name").allTextContents();
     const projector = await openProjector(page, context);
-    await expect(classCode(projector)).toBeVisible();
+    await expect(projector.locator(".cv__qr svg")).toBeVisible();
     const html = await projector.content();
-    const recent = (await projector.locator(".cv__names").innerText()).replace(/^[^:]*:\s*/, "").split(" · ");
+    const recent = (await projector.locator(".cv__names li").allTextContents()).map((s) => s.trim());
     for (const name of names.filter((n) => !recent.includes(n))) expect(html.includes(name), name).toBe(false);
     for (const word of ["Без телефон", "Уште не се тука", "Предавање", "Отстрани ја ознаката"]) expect(html.includes(word), word).toBe(false);
     // The console's pages are the sidebar's: the projected page has none of it.
@@ -697,7 +614,8 @@ test.describe("words", () => {
     await page.getByRole("dialog").getByRole("button", { name: "Start with II-4" }).click();
     await expect(page.getByText("Математика, II-4: Проценти и пропорции")).toBeVisible();
     await expect(page.getByRole("list", { name: "Where the lesson is" }).getByRole("listitem")).toHaveText([/Waiting for the students/, /Teaching/, /Review/, /The end/]);
-    await expect(page.getByRole("heading", { name: "Code to join" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "When you are ready" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Projector screen" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Start the lesson" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Open the projector screen" })).toBeVisible();
     await expect(count(page)).toHaveText("0 of 26 joined");
@@ -711,7 +629,7 @@ test.describe("words", () => {
     const projector = await openProjector(page, context, "Open the projector screen");
     await expect(projector.getByText("Scan the QR code with TeacherAid, or with your phone's camera")).toBeVisible();
     await expect(projector.getByText(/^\d+ joined$|^1 joined$/)).toBeVisible();
-    await expect(projector.getByText("The code changes every 30 seconds.")).toBeVisible();
+    await expect(projector.getByText(/code changes|Code/i)).toHaveCount(1); // only "QR code" in the line that says to scan
     await expect(projector.getByRole("button", { name: "Full screen" })).toBeVisible();
     await page.getByRole("link", { name: "How do I set that up?" }).click();
     await expect(page.locator("details#projector").getByText("Press the Windows key and P together (Win+P).")).toBeVisible();
@@ -733,13 +651,13 @@ test.describe("words", () => {
 });
 
 test.describe("the screen", () => {
-  test("the console works at 200% zoom: no sideways scroll, and the yellow button and the code are in reach", async ({ page, context }) => {
+  test("the console works at 200% zoom: no sideways scroll, and the projector button and the yellow button are in reach", async ({ page, context }) => {
     // 200% on a 1280 x 720 window leaves 640 x 360 CSS pixels.
     await page.setViewportSize({ width: 640, height: 360 });
     await start(page, context);
     await at(context, 40, page);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
-    await expect(code(page)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Отвори го екранот за проектор" })).toBeVisible();
     await page.getByRole("button", { name: "Почни го часот" }).scrollIntoViewIfNeeded();
     await expect(page.getByRole("button", { name: "Почни го часот" })).toBeInViewport();
     await expect(people(page).first()).toBeAttached();
@@ -766,14 +684,18 @@ test.describe("the screen", () => {
     await start(page, context);
     await at(context, 40, page);
     const projector = await openProjector(page, context);
-    await expect(classCode(projector)).toBeVisible();
+    await expect(projector.locator(".cv__qr svg")).toBeVisible();
     for (const size of [{ width: 1920, height: 1080 }, { width: 1280, height: 720 }, { width: 1024, height: 768 }]) {
       await projector.setViewportSize(size);
       expect(await projector.evaluate(() => [document.documentElement.scrollWidth - innerWidth, document.documentElement.scrollHeight - innerHeight])).toEqual([0, 0]);
       const qr = (await projector.locator(".cv__qr").first().boundingBox())!;
       expect(qr.width).toBeGreaterThanOrEqual(0.4 * size.height);
-      const codeBox = (await classCode(projector).boundingBox())!;
-      expect(codeBox.x + codeBox.width).toBeLessThanOrEqual(size.width);
+      // The QR and the words beside it stay inside the window.
+      for (const part of [".cv__qr", ".cv__how", ".cv__count", ".cv__names"]) {
+        const box = (await projector.locator(part).first().boundingBox())!;
+        expect(box.x + box.width, part).toBeLessThanOrEqual(size.width);
+        expect(box.y + box.height, part).toBeLessThanOrEqual(size.height);
+      }
     }
   });
 });
@@ -784,5 +706,113 @@ test.describe("the reminder", () => {
     await expect(page.getByRole("group", { name: /Час во тек/ })).toHaveCount(0);
     await page.getByRole("link", { name: "Библиотека" }).click();
     await expect(page.getByRole("group", { name: /Час во тек/ })).toBeVisible();
+  });
+});
+
+test.describe("what the review of step 8 changed", () => {
+  test("the projector button comes first and is in the first screen at 1280 x 720 and 1024 x 768, above the one yellow button", async ({ page, context }) => {
+    await start(page, context);
+    await at(context, 40, page);
+    for (const size of [{ width: 1280, height: 720 }, { width: 1024, height: 768 }]) {
+      await page.setViewportSize(size);
+      const projector = page.getByRole("button", { name: "Отвори го екранот за проектор" });
+      await expect(projector).toBeInViewport({ ratio: 1 });
+      const start = page.getByRole("button", { name: "Почни го часот" });
+      expect((await projector.boundingBox())!.y).toBeLessThan((await start.boundingBox())!.y);
+      // The projector button is outlined and big, and the yellow one is the page's only yellow.
+      await expect(projector).toHaveClass(/btn--secondary/);
+      await expect(projector).toHaveClass(/btn--big/);
+      await expect(yellow(page)).toHaveCount(1);
+    }
+  });
+
+  test("the card of who has joined has no gap between the count and the list, and the line that says what was done takes room only while it has something to say", async ({ page, context }) => {
+    await start(page, context);
+    await at(context, 40, page);
+    const gap = async () => {
+      const a = (await count(page).boundingBox())!;
+      const b = (await page.locator(".roster__heading").first().boundingBox())!;
+      return b.y - (a.y + a.height);
+    };
+    expect(await gap()).toBeLessThanOrEqual(32);
+    await page.locator(".person[data-state=not_yet]").first().getByRole("button", { name: /^Без телефон/ }).click();
+    await page.getByRole("dialog").getByRole("radio", { name: "Нема телефон" }).check();
+    await page.getByRole("dialog").getByRole("button", { name: "Означи како присутен" }).click();
+    await expect(page.locator(".roster__said")).toContainText("е означен како присутен без телефон");
+    // It is read out by a region that was there before it was needed.
+    await expect(page.getByRole("status").filter({ hasText: "е означен како присутен без телефон" })).toHaveCount(1);
+  });
+
+  test("the question before starting is calm, and does not count a student marked without a phone among those who have not joined", async ({ page, context }) => {
+    await start(page, context);
+    await at(context, 40, page);
+    const missing = 26 - joinedAt(40);
+    await page.locator(".person[data-state=not_yet]").first().getByRole("button", { name: /^Без телефон/ }).click();
+    await page.getByRole("dialog").getByRole("radio", { name: "Нема телефон" }).check();
+    await page.getByRole("dialog").getByRole("button", { name: "Означи како присутен" }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page.getByRole("button", { name: "Почни го часот" }).click();
+    const ask = page.getByRole("alertdialog", { name: "Да го почнеме часот сега?" });
+    await expect(ask).toContainText(`Уште ${missing - 1} не се приклучиле.`);
+    // The safe answer is the yellow one and has the focus; Escape stays, and the lesson is still in the lobby.
+    await expect(ask.getByRole("button", { name: "Не, уште чекам" })).toBeFocused();
+    await expect(ask.getByRole("button", { name: "Не, уште чекам" })).toHaveClass(/btn--primary/);
+    await page.keyboard.press("Escape");
+    await expect(ask).toHaveCount(0);
+    await expect(page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]")).toContainText("Чекаме ученици");
+    await expect(page.getByRole("button", { name: "Почни го часот" })).toBeFocused();
+  });
+
+  test("a screen reader hears the count once the joins have slowed, not every join", async ({ page, context }) => {
+    await start(page, context);
+    const calm = page.getByTestId("calm-count");
+    await expect(calm).toHaveText("0 од 26 се приклучија");
+    // Not a live region for the people: only the one that says the count.
+    await expect(page.locator(".person[role], .roster__list[aria-live]")).toHaveCount(0);
+    await at(context, 40, page);
+    await expect(calm).toHaveText(`${joinedAt(40)} од 26 се приклучија`, { timeout: 10_000 });
+    await expect(calm).toHaveAttribute("role", "status");
+  });
+
+  test("the QR is dark on a white quiet zone, so that a phone reads it", async ({ page, context }) => {
+    await start(page, context);
+    const projector = await openProjector(page, context);
+    const qr = projector.locator(".cv__qr");
+    await expect(qr.locator("svg")).toBeVisible();
+    expect(await qr.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(255, 255, 255)");
+    const fills = await qr.locator("svg path").evaluateAll((els) => els.map((el) => el.getAttribute("fill")));
+    expect(fills).toContain("#0a2e37");
+    // The picture holds a margin of its own inside the white tile.
+    const [tile, svg] = [(await qr.boundingBox())!, (await qr.locator("svg").boundingBox())!];
+    expect(svg.x - tile.x).toBeGreaterThan(0.02 * tile.width);
+  });
+
+  test("long names on the projector stay inside the window and break inside themselves", async ({ page, context }) => {
+    await start(page, context);
+    await at(context, 40, page);
+    const projector = await openProjector(page, context);
+    await projector.evaluate(() => {
+      const list = document.querySelector(".cv__names")!;
+      list.innerHTML = ["Александар-Константин Христодулопулос-Папаиоанопулос", "Ана", "Анастасија Ристовска-Јовановска", "Ем", "Мартина Илиевска"].map((n) => `<li>${n}</li>`).join("");
+    });
+    for (const size of [{ width: 1920, height: 1080 }, { width: 1024, height: 768 }]) {
+      await projector.setViewportSize(size);
+      expect(await projector.evaluate(() => [document.documentElement.scrollWidth - innerWidth, document.documentElement.scrollHeight - innerHeight])).toEqual([0, 0]);
+      for (const li of await projector.locator(".cv__names li").all()) {
+        const box = (await li.boundingBox())!;
+        expect(box.x + box.width).toBeLessThanOrEqual(size.width);
+      }
+    }
+  });
+
+  test("with the projector closed after it was open, the console says so with a warning mark and offers to open it again", async ({ page, context }) => {
+    await start(page, context);
+    const projector = await openProjector(page, context);
+    await expect(page.getByText("Екранот за проектор е отворен.")).toBeVisible();
+    await projector.close();
+    const closed = page.locator(".projector__status[data-status=closed]");
+    await expect(closed).toContainText("Екранот за проектор е затворен.", { timeout: 15_000 });
+    await expect(closed.locator("svg")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Отвори повторно" })).toBeVisible();
   });
 });

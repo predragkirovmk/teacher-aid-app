@@ -423,7 +423,7 @@ test.describe("starting a lesson", () => {
     await expect(page.getByText("Математика, III-5")).toBeVisible();
     const kept = await savedSession(page);
     expect(kept).toMatchObject({ state: "lobby", lesson: { id: "l-procenti", title: "Проценти и пропорции", version: 1 }, course_id: "course-iii-5" });
-    await expect(page.getByRole("heading", { name: "Код за приклучување" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Екран за проектор" })).toBeVisible();
 
     // Back on Today the band is there, and the lesson that runs is not listed again.
     await page.getByRole("link", { name: "Назад кон Денес" }).click();

@@ -96,7 +96,7 @@ describe("two windows of one browser", () => {
     vi.stubGlobal("document", { documentElement: {}, addEventListener: () => {}, removeEventListener: () => {} });
     const old = memory(serializeState(freshState(startOfDay(Date.now()))));
     const sets: string[] = [];
-    browser({ getItem: old.getItem, setItem: (k: string, v: string) => void sets.push(k) });
+    browser({ getItem: old.getItem, setItem: (k: string) => void sets.push(k) });
     const { api } = createBrowserMock();
     const [course] = await api.listCourses();
     expect(course.speed_bonus_on).toBe(true);
