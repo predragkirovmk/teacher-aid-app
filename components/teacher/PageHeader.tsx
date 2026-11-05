@@ -17,17 +17,20 @@ export function PageHeader({
   date,
   back,
   backLabel,
+  compact,
 }: {
   title: string;
   subtitle?: string;
   date?: string;
   back?: string;
   backLabel?: string;
+  /** A lesson that is running: the Back, the title and the line under it share the height of a title, so what the teacher does is in the first screen. */
+  compact?: boolean;
 }) {
   const { t } = useT();
   const teacher = useTeacherName();
   return (
-    <header className="head">
+    <header className={compact ? "head head--compact" : "head"}>
       <PageTitle title={title} />
       <div className="head__text">
         {back && (

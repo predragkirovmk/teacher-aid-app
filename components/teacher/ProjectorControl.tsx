@@ -72,8 +72,9 @@ export function MirrorWarning() {
       <WarningIcon size={28} weight="fill" aria-hidden="true" />
       <div>
         <p>{t("live.mirror.warn")}</p>
-        <Link href={PROJECTOR_HELP} className="callout__link">
+        <Link href={PROJECTOR_HELP} className="callout__link" target="_blank" rel="noopener">
           {t("live.mirror.link")}
+          <span className="sr">{`, ${t("link.newtab")}`}</span>
         </Link>
       </div>
     </div>

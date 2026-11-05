@@ -17,10 +17,10 @@ const WORDS = {
  * the lesson is in has a filled mark and the word "Сега" under it, the ones behind it a tick, the ones ahead an empty ring, and a screen
  * reader is told each: never colour alone. It is only read, and it never offers a way back (4.1).
  */
-export function StateLine({ state }: { state: SessionState }) {
+export function StateLine({ state, compact }: { state: SessionState; compact?: boolean }) {
   const { t } = useT();
   return (
-    <ol className="states" aria-label={t("live.states.label")}>
+    <ol className={compact ? "states states--compact" : "states"} aria-label={t("live.states.label")}>
       {stateSteps(state).map(({ state: step, position }) => (
         <li key={step} className="states__item" data-position={position} aria-current={position === "current" ? "step" : undefined}>
           {position === "done" && <CheckCircleIcon size={28} weight="fill" aria-hidden="true" />}

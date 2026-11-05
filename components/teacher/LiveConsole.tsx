@@ -20,14 +20,16 @@ import { Problem } from "./Problem";
 import { MirrorWarning, ProjectorControl } from "./ProjectorControl";
 import { Bar, Loading } from "./Skeleton";
 import { StateLine } from "./StateLine";
-import { QuestionCard } from "./LessonView";
+import { AnonInbox } from "./AnonInbox";
+import { QuestionList } from "./QuestionList";
+import { QuestionPanel } from "./QuestionPanel";
 
 /**
  * The teacher's own screen of a lesson that is running (F-06, FR-CON-*), with the sidebar. It says which lesson, class and subject
  * this is; where the lesson stands; and, in the lobby, the one yellow button that starts it, the code to read out, the button that opens
  * the projected window, and who has joined. Everything comes from `GET /sessions/{id}/console`, kept up to date by the stream, so a
  * reload or a window closed and opened again brings it all back (FR-SES-08), and a lost connection is said calmly and mended by itself.
- * Firing the questions is the next step: while teaching, the questions are listed to read, and there is no yellow button.
+ * While teaching it is the panel "Прашањето сега" with the one yellow button, the list of questions, the inbox of anonymous questions and the class.
  */
 export function LiveConsole() {
   const { t } = useT();
@@ -36,6 +38,7 @@ export function LiveConsole() {
   const snapshot = query.data;
   useFreshCode(snapshot?.server_now, snapshot?.join?.valid_to, query.refetch);
   // A lesson that is not the open one (it ended, or the link is old) is not found: said plainly, with the way back to Today.
+  const teaching = snapshot?.session.state === "teaching";
   const gone = query.status === "error" && isApiError(query.error) && query.error.code === "not_found";
 
   return (
@@ -45,6 +48,7 @@ export function LiveConsole() {
         subtitle={snapshot ? `${courseLabel(snapshot.session.subject_name, snapshot.session.class_name)}: ${snapshot.session.lesson.title}` : undefined}
         back={TODAY}
         backLabel={t("back.today")}
+        compact={snapshot?.session.state === "teaching"}
       />
       <div className="content live">
         {query.status === "loading" && (
@@ -81,17 +85,35 @@ export function LiveConsole() {
                 </p>
               </div>
             )}
-            <StateLine state={snapshot.session.state} />
-            <div className="live__grid">
-              {/* In the order a teacher does them: open the projector, then wait for the class, then start. */}
-              <div className="live__side">
-                <ProjectorControl sessionId={snapshot.session.id} />
-                <JoinCard snapshot={snapshot} />
-                <MirrorWarning />
+            <StateLine state={snapshot.session.state} compact={teaching} />
+            {teaching ? (
+              <>
+                {/* The panel first: what is happening to the question now and the one thing to press. Then the questions and what the class writes, beside who is here. */}
+                <QuestionPanel snapshot={snapshot} />
+                <div className="live__teach">
+                  <div className="live__main">
+                    <QuestionList snapshot={snapshot} />
+                    <AnonInbox sessionId={snapshot.session.id} items={snapshot.anon_questions} />
+                  </div>
+                  <div className="live__side">
+                    <LiveRoster sessionId={snapshot.session.id} students={snapshot.students} />
+                    <ProjectorControl sessionId={snapshot.session.id} />
+                    <JoinCard snapshot={snapshot} />
+                    <MirrorWarning />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="live__grid">
+                {/* In the order a teacher does them: open the projector, then wait for the class, then start. */}
+                <div className="live__side">
+                  <ProjectorControl sessionId={snapshot.session.id} />
+                  <JoinCard snapshot={snapshot} />
+                  <MirrorWarning />
+                </div>
+                <LiveRoster sessionId={snapshot.session.id} students={snapshot.students} />
               </div>
-              <LiveRoster sessionId={snapshot.session.id} students={snapshot.students} />
-            </div>
-            {snapshot.session.state === "teaching" && <Questions snapshot={snapshot} />}
+            )}
           </>
         )}
       </div>
@@ -157,27 +179,6 @@ function JoinCard({ snapshot }: { snapshot: ConsoleSnapshot }) {
           />
         </>
       )}
-    </section>
-  );
-}
-
-/** While teaching: the lesson's questions, to read, and an honest line that sending them comes next. */
-function Questions({ snapshot }: { snapshot: ConsoleSnapshot }) {
-  const { t } = useT();
-  const questions = snapshot.questions;
-  return (
-    <section className="live__questions" aria-labelledby="live-questions">
-      <h2 className="section__title" id="live-questions">
-        {t("live.teaching.title")}
-      </h2>
-      <div className="card card--compact">
-        <p>{t("live.teaching.soon")}</p>
-      </div>
-      <ol className="questions">
-        {questions.map((q, i) => (
-          <QuestionCard key={q.id} question={q.question} n={i + 1} total={questions.length} />
-        ))}
-      </ol>
     </section>
   );
 }

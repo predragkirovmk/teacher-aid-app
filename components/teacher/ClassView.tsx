@@ -13,6 +13,8 @@ import { useT } from "@/lib/teacher/i18n";
 import { formatShortCode, joinUrl, STUDENTS_CAN_TYPE_CODE } from "@/lib/teacher/live";
 import { courseLabel } from "@/lib/teacher/start";
 import { useClassViewBeat } from "@/lib/teacher/windows";
+import { projectedScreen, topOfBoard } from "@/lib/teacher/questions";
+import { Board, ClosedQuestion, OpenQuestion, RevealedQuestion, SkippedQuestion } from "./ClassQuestion";
 import { PageTitle } from "./PageTitle";
 
 /** Whether the page is full screen: the button that asks for it is gone while it is, and back when the teacher leaves it. */
@@ -127,14 +129,31 @@ function Lobby({ snapshot }: { snapshot: ClassViewSnapshot }) {
   );
 }
 
-/** The lesson has begun: the words, and a small corner for a student who is late (the code goes on changing, so the corner stays right). */
+/**
+ * The lesson is going on: the question that is open, closed, shown or skipped, or, between questions, the last ranking or "the lesson is going on" with a
+ * small corner for a student who is late (the code goes on changing, so the corner stays right). The corner is only between questions; a question has the
+ * whole screen.
+ */
 function Teaching({ snapshot }: { snapshot: ClassViewSnapshot }) {
   const { t } = useT();
-  const { join, session } = snapshot;
+  const { join, session, question } = snapshot;
+  const screen = projectedScreen(question, snapshot.skipped, snapshot.reveal !== null);
+  if (question && screen === "open") return <OpenQuestion snapshot={snapshot} q={question} />;
+  if (question && screen === "closed") return <ClosedQuestion snapshot={snapshot} q={question} />;
+  if (question && screen === "revealed") return <RevealedQuestion snapshot={snapshot} q={question} />;
+  if (question && screen === "skipped") return <SkippedQuestion q={question} />;
+  const ranked = topOfBoard(snapshot.board).length > 0;
   return (
     <>
-      <h1 className="cv__big">{t("class.started")}</h1>
-      <p className="cv__lesson">{session.lesson_title}</p>
+      {ranked ? (
+        <div className="cv__between">
+          <h1 className="sr">{t("cv.between")}</h1>
+          <Board rows={snapshot.board} className="cvb--between" />
+        </div>
+      ) : (
+        <h1 className="cv__big">{t("cv.between")}</h1>
+      )}
+      {!ranked && <p className="cv__lesson">{session.lesson_title}</p>}
       {join && (
         <aside className="cv__corner">
           <Qr token={join.token} label={t("class.qr.label")} />

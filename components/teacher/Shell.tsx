@@ -111,10 +111,18 @@ function Frame({ children }: { children: ReactNode }) {
     const current = isCurrent(href);
     return (
       <li key={href}>
-        <Link href={href} className="nav__item" aria-current={current ? "page" : undefined} onClick={() => setOpenAt(null)}>
+        <Link
+          href={href}
+          className="nav__item"
+          aria-current={current ? "page" : undefined}
+          onClick={() => setOpenAt(null)}
+          // From a running lesson Help opens beside it, so the console is never left.
+          {...(href === "/teacher/help" && pathname.startsWith("/teacher/live/") ? { target: "_blank", rel: "noopener" } : {})}
+        >
           {/* The selected row shows the filled icon, as well as the bar and the bold label. */}
           <Icon size={28} weight={current ? "fill" : "regular"} aria-hidden="true" />
           {t(label)}
+          {href === "/teacher/help" && pathname.startsWith("/teacher/live/") && <span className="sr">{`, ${t("link.newtab")}`}</span>}
         </Link>
       </li>
     );

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowSquareOutIcon,
   CheckCircleIcon,
   ClockIcon,
   DeviceMobileSlashIcon,
@@ -11,7 +12,7 @@ import {
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { clearNoDevice, markNoDevice } from "@/lib/teacher/api/hooks";
 import { isApiError } from "@/lib/teacher/api/errors";
-import type { ConsoleStudent, NoDeviceReason } from "@/lib/teacher/api/types";
+import type { AnswerState, ConsoleStudent, NoDeviceReason } from "@/lib/teacher/api/types";
 import { personName } from "@/lib/teacher/format";
 import { useT, type Key } from "@/lib/teacher/i18n";
 import { canMarkNoDevice, joinedCount, NO_DEVICE_REASONS, rosterSections, studentState, type StudentState } from "@/lib/teacher/live";
@@ -35,6 +36,14 @@ const STATE_ICONS: Record<StudentState, Icon> = {
   no_device: DeviceMobileSlashIcon,
 };
 
+const ANSWER_WORDS = {
+  answered: "q.answer.answered",
+  not_answered: "q.answer.not_answered",
+  offline: "q.answer.offline",
+} as const satisfies Record<AnswerState, Key>;
+
+const ANSWER_ICONS: Record<AnswerState, Icon> = { answered: CheckCircleIcon, not_answered: HourglassIcon, offline: PlugsIcon };
+
 const REASON_WORDS = {
   no_phone: "live.reason.no_phone",
   battery: "live.reason.battery",
@@ -46,13 +55,24 @@ const REASON_WORDS = {
 export const CALM_COUNT_MS = 4000;
 
 /** The text once it has stopped changing for a while; the first text is there at once and is not announced. */
-function useCalm(text: string, ms = CALM_COUNT_MS): string {
+export function useCalm(text: string, ms = CALM_COUNT_MS): string {
   const [calm, setCalm] = useState(text);
   useEffect(() => {
     const id = setTimeout(() => setCalm(text), ms);
     return () => clearTimeout(id);
   }, [text, ms]);
   return calm;
+}
+
+function AnswerLine({ state }: { state: AnswerState }) {
+  const { t } = useT();
+  const AnswerIcon = ANSWER_ICONS[state];
+  return (
+    <span className="person__detail person__answer" data-answer={state}>
+      <AnswerIcon size={20} weight={state === "answered" ? "fill" : "regular"} aria-hidden="true" />
+      {t(ANSWER_WORDS[state])}
+    </span>
+  );
 }
 
 /**
@@ -111,6 +131,15 @@ export function LiveRoster({ sessionId, students }: { sessionId: string; student
           <span>
             <span className="person__word">{t(STATE_WORDS[state])}</span>
             {detail && <span className="person__detail">{detail}</span>}
+            {/* While a question is open, each student who is here also says whether they have answered: an icon and a word. */}
+            {s.answer_state && s.answer_state !== "offline" && <AnswerLine state={s.answer_state} />}
+            {/* A student who left the app during a question: said quietly, in an icon and words, never in red (FR-FOC). */}
+            {s.focus_flags > 0 && (
+              <span className="person__detail person__focus" data-testid="focus">
+                <ArrowSquareOutIcon size={20} aria-hidden="true" />
+                {t(s.focus_flags === 1 ? "q.focus.one" : "q.focus", { n: s.focus_flags })}
+              </span>
+            )}
           </span>
         </span>
         {state === "not_yet" && canMarkNoDevice(s) && (

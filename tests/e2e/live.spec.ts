@@ -274,7 +274,7 @@ test.describe("present without a phone", () => {
     await missing.getByRole("button", { name: `Без телефон: ${name}` }).click();
     const dialog = page.getByRole("dialog", { name: `Зошто ${name} е без телефон?` });
     await expect(dialog).toBeVisible();
-    await expect(dialog.locator(".choice")).toHaveText(["Нема телефон", "Празна батерија", "Нема интернет", "Нема дозвола за заклучување"]);
+    await expect(dialog.locator(".choice")).toHaveText(["Нема телефон", "Празна батерија", "Нема интернет", "Заклучувањето на екранот не е дозволено"]);
     for (const radio of await dialog.getByRole("radio").all()) await expect(radio).not.toBeChecked();
     for (const choice of await dialog.locator(".choice").all()) expect((await choice.boundingBox())!.height).toBeGreaterThanOrEqual(56);
     await expect(dialog.getByRole("button", { name: "Означи како присутен" })).toHaveClass(/btn--primary/);
@@ -318,7 +318,7 @@ test.describe("present without a phone", () => {
 
   test("the mark can be taken back, and the student is as before it; every reason is kept", async ({ page, context }) => {
     await start(page, context);
-    const reasons = ["Нема телефон", "Празна батерија", "Нема интернет", "Нема дозвола за заклучување"];
+    const reasons = ["Нема телефон", "Празна батерија", "Нема интернет", "Заклучувањето на екранот не е дозволено"];
     for (const [i, reason] of reasons.entries()) {
       await page.locator(".person[data-state=not_yet]").nth(i).getByRole("button", { name: /^Без телефон/ }).click();
       await page.getByRole("dialog").getByRole("radio", { name: reason }).check();
@@ -473,12 +473,12 @@ test.describe("starting the lesson, and teaching", () => {
     await expect(page.locator(".person[data-state=no_device]")).toHaveCount(1);
   });
 
-  test("the class view says the lesson has started, with a small corner for those who are late", async ({ page, context }) => {
+  test("the class view says the lesson is going on, with a small corner for those who are late", async ({ page, context }) => {
     await start(page, context);
     const projector = await openProjector(page, context);
     await page.getByRole("button", { name: "Почни го часот" }).click();
     await page.getByRole("button", { name: "Да, почни го часот" }).click();
-    await expect(projector.getByRole("heading", { name: "Часот почна" })).toBeVisible();
+    await expect(projector.getByRole("heading", { name: "Часот е во тек" })).toBeVisible();
     const corner = projector.locator(".cv__corner");
     await expect(corner).toBeVisible();
     await expect(corner.getByText("Доцните? Скенирајте го QR-кодот.")).toBeVisible();
@@ -623,7 +623,7 @@ test.describe("words", () => {
     const name = await page.locator(".person__name").first().innerText();
     expect(name).toMatch(/^[A-Za-z' -]+$/);
     await page.locator(".person").first().getByRole("button", { name: /^No phone/ }).click();
-    await expect(page.getByRole("dialog").locator(".choice")).toHaveText(["No phone", "Empty battery", "No internet", "No permission for the focus lock"]);
+    await expect(page.getByRole("dialog").locator(".choice")).toHaveText(["No phone", "Empty battery", "No internet", "Screen locking is not allowed"]);
     await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
     await at(context, 40, page);
     const projector = await openProjector(page, context, "Open the projector screen");
