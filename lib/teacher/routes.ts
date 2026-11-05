@@ -46,8 +46,15 @@ export const newLessonUrl = (from?: From): string => `${NEW_LESSON}${from ? `?fr
 export const draftUrl = (draftId: Id, from?: From, undone = false): string =>
   `${LESSONS}/drafts/${encodeURIComponent(draftId)}${from || undone ? `?${[from ? `from=${from}` : "", undone ? "undone=1" : ""].filter(Boolean).join("&")}` : ""}`;
 
-/** The live lesson of a session: the console. Step 7 builds it; until then it says it is coming. */
+/** The live lesson of a session: the console, with the names of the students. It is for the teacher's own screen and never for the projector. */
 export const liveUrl = (sessionId: Id): string => `/teacher/live/${encodeURIComponent(sessionId)}`;
+
+/** The projected window of the same lesson (the class view): no sidebar, no names of students who are not here. A protected page like every other. */
+export const classViewUrl = (sessionId: Id): string => `${liveUrl(sessionId)}/class`;
+
+/** The steps that make the projector show only the class view, on the Help page (it opens at them). */
+export const PROJECTOR_HELP_ID = "projector";
+export const PROJECTOR_HELP = `/teacher/help#${PROJECTOR_HELP_ID}`;
 
 /** Where Back goes from a lesson or from the page that prepares one, and what it is called: the screen the teacher came from, else the lessons. */
 export function backFromLesson(from: string | null): { href: string; label: Key } {

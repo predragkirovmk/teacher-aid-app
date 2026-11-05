@@ -125,16 +125,19 @@ export const HEARTBEAT_STALE_MS = 3 * HEARTBEAT_MS;
 /** A console that has just opened waits this long for the first beat before it says the window is closed. */
 export const HEARTBEAT_GRACE_MS = 2500;
 
-export type ClassViewStatus = "checking" | "open" | "closed" | "unknown";
+export type ClassViewStatus = "checking" | "open" | "closed" | "never" | "unknown";
 
 /**
- * Whether the projected window is open, from the last beat the console heard (null if none) and when it began listening. A window that
- * went quiet for longer than `HEARTBEAT_STALE_MS` is closed; one never heard from is "checking" for a moment, then closed. `supported`
- * is false in a browser with no BroadcastChannel, where nothing can be known and nothing is claimed.
+ * Whether the projected window is open, from the last beat the console heard (null if none), when it began listening, and whether the window
+ * was ever open for this lesson (`wasOpen`: a beat was heard before, here or before a reload). A window that went quiet for longer than
+ * `HEARTBEAT_STALE_MS` is closed. One that has never been opened is not "closed": nothing is said of it, and the button is the plain one.
+ * One that was open before a reload is "checking" for a moment, then closed if no beat comes. `supported` is false in a browser with no
+ * BroadcastChannel, where nothing can be known and nothing is claimed.
  */
-export function classViewStatus(lastBeat: number | null, listeningSince: number, now: number, supported = true): ClassViewStatus {
+export function classViewStatus(lastBeat: number | null, listeningSince: number, now: number, { supported = true, wasOpen = false } = {}): ClassViewStatus {
   if (!supported) return "unknown";
   if (lastBeat !== null) return now - lastBeat <= HEARTBEAT_STALE_MS ? "open" : "closed";
+  if (!wasOpen) return "never";
   return now - listeningSince < HEARTBEAT_GRACE_MS ? "checking" : "closed";
 }
 

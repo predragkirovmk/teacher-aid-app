@@ -758,6 +758,21 @@ button {
 .faq p {
   padding: 0 var(--sp-3) var(--sp-3);
 }
+/* The steps that make the projector show only the class view: a line, then each kind of computer with its own numbered steps. */
+.faq__steps {
+  display: grid;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-3) var(--sp-3);
+}
+.faq__steps p {
+  padding: 0;
+}
+.faq__steps h3 {
+  margin: 0 0 var(--sp-1);
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+}
 
 .address {
   color: var(--text);
@@ -2226,6 +2241,441 @@ button {
   }
 }
 
+/* ---- The live lesson: the console (names, the teacher's own screen) ---- */
+/* Where the lesson stands: four words in order. The current one has a filled mark, a white edge and the word "Сега"; never colour alone. */
+.states {
+  list-style: none;
+  margin: 0;
+  padding: var(--sp-1) var(--sp-3);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--sp-2);
+  border-radius: var(--r-l);
+  background: var(--panel);
+}
+.states__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--tap);
+  color: var(--text-2);
+  font-weight: 500;
+}
+.states__item + .states__item::before {
+  content: "";
+  width: 1.5rem;
+  height: 2px;
+  margin-right: var(--sp-1);
+  border-radius: 1px;
+  background: var(--line-strong);
+}
+.states__item svg {
+  flex: none;
+}
+.states__item[data-position="current"] {
+  color: var(--text);
+  font-weight: 700;
+}
+.states__word {
+  line-height: 1.2;
+}
+.states__item[data-position="current"] .states__word {
+  padding-block: 0.25rem;
+  border-bottom: 3px solid var(--text);
+}
+.states__now {
+  padding: 0.125rem 0.75rem;
+  border-radius: var(--r-pill);
+  background: var(--text);
+  color: var(--ink);
+  font-size: var(--fs-small);
+  font-weight: 700;
+}
+
+/* The code and the controls beside who has joined; one column where the window is not wide enough for both. */
+.live__grid {
+  display: grid;
+  gap: var(--sp-3);
+  align-items: start;
+}
+.live__side {
+  display: grid;
+  gap: var(--sp-3);
+}
+@media (min-width: 70rem) {
+  .live__grid {
+    grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr);
+  }
+}
+
+.live__code {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-2);
+}
+/* Large enough to read out from the teacher's desk across a room. */
+.card .live__digits {
+  margin: 0;
+  max-width: none;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 2.2rem + 2.4vw, 4.5rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
+}
+.card .live__rotates,
+.card .live__starthint {
+  font-size: var(--fs-small);
+}
+.live__code .btn {
+  width: 100%;
+}
+
+/* The projector: the button, where its window stands, and the one warning that matters. */
+.projector {
+  display: grid;
+  gap: var(--sp-2);
+}
+.projector .btn {
+  width: 100%;
+}
+.card .projector__status {
+  min-height: 1.5em;
+  color: var(--text);
+  font-weight: 600;
+}
+.card .projector__hint {
+  font-size: var(--fs-small);
+}
+.callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: var(--sp-2);
+  border-radius: var(--r-m);
+  border-left: 4px solid var(--text);
+  background: var(--deep);
+}
+.callout svg {
+  flex: none;
+  margin-top: 0.125rem;
+}
+.card .callout p {
+  color: var(--text);
+}
+.card .callout .callout__title {
+  font-weight: 700;
+}
+.callout__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-small);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+.reconnecting p {
+  color: var(--text);
+}
+
+/* Who has joined: every student by name, in two groups, each with an icon and a word. */
+.roster {
+  container: roster / inline-size;
+  display: grid;
+  gap: var(--sp-2);
+}
+.card .roster__count {
+  color: var(--text);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+}
+.card .roster__nophone {
+  color: var(--text-2);
+}
+/* Reserved, so a line that is said after a change does not push the list down. */
+.card .roster__said {
+  min-height: 1.75rem;
+}
+.roster__group {
+  display: grid;
+  gap: var(--sp-1);
+}
+.roster__heading {
+  margin: var(--sp-1) 0 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+}
+.card .roster__none {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text);
+  font-weight: 600;
+}
+.roster__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.person {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "name action"
+    "state action";
+  align-items: center;
+  gap: 0.25rem var(--sp-2);
+  min-height: var(--tap);
+  padding: 0.5rem var(--sp-2);
+  border-radius: var(--r-m);
+  background: var(--deep);
+}
+.person__name {
+  grid-area: name;
+  min-width: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.person__state {
+  grid-area: state;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  color: var(--text-2);
+  line-height: 1.3;
+}
+.person__state svg {
+  flex: none;
+  margin-top: 0.0625rem;
+}
+.person__word {
+  font-weight: 600;
+  color: var(--text);
+}
+.person__detail {
+  display: block;
+  font-size: var(--fs-small);
+}
+.person__action {
+  grid-area: action;
+  align-self: center;
+}
+.person__problem {
+  grid-column: 1 / -1;
+}
+/* A student whose connection is lost is worth a look: a white edge besides the icon and the words. */
+.person[data-state="offline"] {
+  box-shadow: inset 4px 0 0 var(--text);
+}
+@container roster (min-width: 40rem) {
+  .person {
+    grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 1.2fr) auto;
+    grid-template-areas: "name state action";
+  }
+}
+
+.live__questions {
+  display: grid;
+  gap: var(--sp-2);
+}
+
+/* ---- The class view: the projected window. Big, high contrast, and nothing small; sized by the height of the window. ---- */
+.cv {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding: 3vh 4vw 4vh;
+  background: linear-gradient(180deg, var(--deep) 0%, var(--ground-top) 100%);
+  color: var(--text);
+  font-family: var(--font);
+  overflow: hidden;
+}
+.cv__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2vw;
+  min-height: 8vh;
+}
+.cv__brand {
+  display: flex;
+  align-items: center;
+  gap: 1.5vh;
+  font-family: var(--font-display);
+  font-size: max(1.5rem, 3.6vh);
+  font-weight: 700;
+}
+.cv__course {
+  margin: 0;
+  flex: 1;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: max(1.5rem, 4vh);
+  font-weight: 600;
+}
+.cv__fullscreen {
+  min-height: max(3.5rem, 7vh);
+  font-size: max(1.25rem, 3vh);
+}
+.cv__quiet {
+  margin: 0;
+  color: var(--text-2);
+  font-size: max(1.25rem, 3vh);
+  font-weight: 500;
+}
+.cv__lobby {
+  flex: 1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 5vw;
+  padding-top: 2vh;
+}
+.cv__qr {
+  display: grid;
+  place-items: center;
+  width: min(54vh, 34vw);
+  aspect-ratio: 1;
+  padding: 2vh;
+  border-radius: 3vh;
+  background: #ffffff;
+}
+.cv__qr svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.cv__info {
+  display: grid;
+  align-content: center;
+  gap: 1.5vh;
+  min-width: 0;
+}
+.cv__how {
+  margin: 0;
+  max-width: 24ch;
+  font-family: var(--font-display);
+  font-size: max(1.75rem, 4.4vh);
+  font-weight: 600;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+.cv__label {
+  margin: 1vh 0 0;
+  color: var(--text-2);
+  font-size: max(1.25rem, 3vh);
+  font-weight: 600;
+}
+/* The code is about 15vh of type, on its own dark panel, so it reads from the back of the room even on a weak projector. */
+.cv__code {
+  margin: 0;
+  padding: 1vh 2.5vh;
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 2.5vh;
+  background: var(--shadow);
+  font-family: var(--font-display);
+  /* The type is 15vh, and no wider than what is left of the width beside the QR: seven characters and the panel's edges are about 4.4 times the size of the type. */
+  font-size: min(15vh, calc((53vw - 5vh) / 4.4));
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+.cv__count {
+  margin: 2vh 0 0;
+  font-family: var(--font-display);
+  font-size: max(2rem, 6.4vh);
+  font-weight: 700;
+  line-height: 1.1;
+}
+.cv__names {
+  margin: 0;
+  color: var(--text-2);
+  font-size: max(1.5rem, 3.8vh);
+  font-weight: 500;
+  line-height: 1.3;
+}
+.cv__big {
+  margin: 0;
+  flex: 1;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: min(14vh, 9vw);
+  font-weight: 800;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+.cv__lesson {
+  margin: 0 0 12vh;
+  text-align: center;
+  color: var(--text-2);
+  font-family: var(--font-display);
+  font-size: max(1.75rem, 4.6vh);
+  font-weight: 600;
+}
+.cv__corner {
+  position: absolute;
+  right: 4vw;
+  bottom: 4vh;
+  display: flex;
+  align-items: center;
+  gap: 2vh;
+  padding: 2vh;
+  border-radius: 3vh;
+  background: var(--deep);
+}
+.cv__corner .cv__qr {
+  width: 20vh;
+  padding: 1vh;
+  border-radius: 1.5vh;
+}
+.cv__corner .cv__label {
+  margin: 0 0 0.5vh;
+}
+.cv__code--small {
+  padding: 0.5vh 1.5vh;
+  font-size: 6vh;
+}
+.cv__reconnecting {
+  position: absolute;
+  left: 4vw;
+  bottom: 2vh;
+  margin: 0;
+  color: var(--text-2);
+  font-size: max(1.25rem, 2.6vh);
+  font-weight: 500;
+}
+/* A window that is narrow and tall (a phone in a test, a zoomed window): the QR above the words. */
+@media (max-aspect-ratio: 1/1) {
+  .cv__lobby {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    text-align: center;
+  }
+  .cv__qr {
+    width: min(48vh, 80vw);
+  }
+  .cv__code {
+    font-size: min(11vh, 16vw);
+  }
+  .cv__info {
+    justify-items: center;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .waiting__dots span {
     animation: none;
@@ -2256,6 +2706,12 @@ button {
   .running,
   .option,
   .field,
+  .states,
+  .person,
+  .callout,
+  .cv__qr,
+  .cv__code,
+  .cv__corner,
   .opt__right {
     border: 2px solid CanvasText;
   }

@@ -1,6 +1,6 @@
-import { LivePlaceholder } from "@/components/teacher/LivePlaceholder";
+import { LiveConsole } from "@/components/teacher/LiveConsole";
 
-/** The live lesson of a session. Step 7 builds it; until then it says it is coming. */
+/** The teacher's own screen of a lesson that is running: the console, with names. The projected window is `./class`. */
 export default function LivePage() {
-  return <LivePlaceholder />;
+  return <LiveConsole />;
 }

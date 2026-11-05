@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DRAFT_POLL_MS } from "../lessons";
 import { firstName, initials, personName, schoolTypeOf } from "../format";
 import { authStatusOf, type AuthStatus, type EndReason } from "../guard";
-import { applyClassEvent, applyConsoleEvent } from "../live";
+import { applyClassEvent, applyConsoleEvent, serverOffset, tokenIsStale } from "../live";
 import { preparedLessons } from "../today";
 import { actions, useTeacher } from "../store";
 import { apiMode } from "./config";
@@ -198,6 +198,21 @@ export function useClassView(sessionId: Id): { query: Query<ClassViewSnapshot>; 
     [sessionId],
   );
   return { query, connection };
+}
+
+/**
+ * The code is read again when its time is up and nothing has replaced it: an event may have been missed, and a code that does not change is
+ * a code nobody can join with. The time is the server's, carried on by this computer's clock (`serverNow` is when the snapshot was made).
+ */
+export function useFreshCode(serverNow: string | undefined, validTo: string | undefined, refetch: () => void): void {
+  useEffect(() => {
+    if (!serverNow || !validTo) return;
+    const offset = serverOffset(serverNow, Date.now());
+    const timer = setInterval(() => {
+      if (tokenIsStale(validTo, offset, Date.now())) refetch();
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [serverNow, validTo, refetch]);
 }
 
 /** The lesson, moved on from the lobby to teaching (forward only, 4.1). The answer is the fresh console, put into the cache. */

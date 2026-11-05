@@ -181,19 +181,28 @@ describe("whether the projected window is open", () => {
     expect(classViewStatus(T, T - 20_000, T + HEARTBEAT_STALE_MS + 1)).toBe("closed");
   });
 
-  test("a console that has only just begun to listen waits a moment for the first beat before it says closed", () => {
-    expect(classViewStatus(null, T, T)).toBe("checking");
-    expect(classViewStatus(null, T, T + HEARTBEAT_GRACE_MS - 1)).toBe("checking");
-    expect(classViewStatus(null, T, T + HEARTBEAT_GRACE_MS)).toBe("closed");
+  test("a window that has never been opened is not closed: nothing is said of it", () => {
+    expect(classViewStatus(null, T, T)).toBe("never");
+    expect(classViewStatus(null, T, T + 60_000)).toBe("never");
+  });
+
+  test("a console that is reloaded after the window was open waits a moment for its first beat before it says closed", () => {
+    expect(classViewStatus(null, T, T, { wasOpen: true })).toBe("checking");
+    expect(classViewStatus(null, T, T + HEARTBEAT_GRACE_MS - 1, { wasOpen: true })).toBe("checking");
+    expect(classViewStatus(null, T, T + HEARTBEAT_GRACE_MS, { wasOpen: true })).toBe("closed");
   });
 
   test("a window that came back is open again at once", () => {
-    expect(classViewStatus(T + 30_000, T, T + 30_500)).toBe("open");
+    expect(classViewStatus(T + 30_000, T, T + 30_500, { wasOpen: true })).toBe("open");
+  });
+
+  test("a window that said it was closing is closed at once", () => {
+    expect(classViewStatus(Number.NEGATIVE_INFINITY, T, T)).toBe("closed");
   });
 
   test("a browser with no way for windows to talk claims nothing", () => {
-    expect(classViewStatus(null, T, T + 60_000, false)).toBe("unknown");
-    expect(classViewStatus(T, T, T, false)).toBe("unknown");
+    expect(classViewStatus(null, T, T + 60_000, { supported: false, wasOpen: true })).toBe("unknown");
+    expect(classViewStatus(T, T, T, { supported: false })).toBe("unknown");
   });
 
   test("a message between the windows is one of three, and nothing else is believed", () => {
