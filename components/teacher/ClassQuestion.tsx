@@ -220,12 +220,12 @@ export function RevealedQuestion({ snapshot, q }: { snapshot: ClassViewSnapshot;
                     {q.kind === "multiple_choice" && <span className="cvq__letter">{optionLetter(i)}</span>}
                     <span className="cvq__label">{labelOf(r.key, i)}</span>
                     {r.right && <RightMark />}
+                    <span className="cvq__barcount" data-testid="cv-count">
+                      {t("cv.count", { n: r.count, percent: r.percent })}
+                    </span>
                   </span>
                   <span className="cvq__track" aria-hidden="true">
                     <span className="cvq__barfill" style={{ width: `${r.percent}%` }} />
-                  </span>
-                  <span className="cvq__barcount" data-testid="cv-count">
-                    {t("cv.count", { n: r.count, percent: r.percent })}
                   </span>
                 </li>
               ))}

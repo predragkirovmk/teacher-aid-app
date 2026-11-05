@@ -515,7 +515,7 @@ describe("coming back", () => {
     await api.skipQuestion(c.session.id, c.questions[1].id);
     await api.fireAdhoc(c.session.id, { kind: "true_false", prompt: "Брзо?", correct: "false", timer_seconds: 10 });
     const again = await createMockApi(source, { delay: () => Promise.resolve() }).getConsole(c.session.id);
-    expect(again.questions.map((q) => q.status)).toEqual(c.questions.map((_, i) => (i === 0 ? "revealed" : i === 1 ? "skipped" : "ready")).concat("open"));
+    expect(again.questions.map((q) => q.status)).toEqual(c.questions.map((_, i): string => (i === 0 ? "revealed" : i === 1 ? "skipped" : "ready")).concat("open"));
     expect(again.questions.at(-1)).toMatchObject({ adhoc: true, question: { prompt: "Брзо?" } });
   });
 });

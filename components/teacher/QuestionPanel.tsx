@@ -82,10 +82,10 @@ export function QuestionPanel({ snapshot }: { snapshot: ConsoleSnapshot }) {
   const progress = (q: ConsoleQuestion) => t(isOne(q.answered, locale) ? "q.progress.one" : "q.progress", { n: q.answered, total: q.joined });
   const calmProgress = useCalm(step.step === "open" || step.step === "closed" ? progress(step.question) : "");
 
-  const skipTarget = step.step === "send" ? step.next : step.step === "open" || step.step === "closed" ? step.question : null;
+  const skipTarget = step.step === "send" || step.step === "revealed" ? step.next : step.question;
 
   const skipButton = skipTarget && (
-    <button type="button" className="btn btn--secondary" aria-haspopup="dialog" disabled={busy !== null} onClick={() => setSkipping(skipTarget)}>
+    <button type="button" className="btn btn--secondary" aria-haspopup="dialog" aria-disabled={busy !== null} onClick={() => setSkipping(skipTarget)}>
       <SkipForwardIcon size={24} aria-hidden="true" />
       {t("q.skip")}
     </button>
@@ -119,7 +119,7 @@ export function QuestionPanel({ snapshot }: { snapshot: ConsoleSnapshot }) {
                   className="btn btn--primary btn--big"
                   data-main
                   aria-busy={busy === "send"}
-                  disabled={busy !== null}
+                  aria-disabled={busy !== null}
                   onClick={() => step.next && void run("send", t("q.send.failed"), () => fireQuestion(sessionId, (step.next as ConsoleQuestion).id))}
                 >
                   <PaperPlaneTiltIcon size={28} weight="fill" aria-hidden="true" />
@@ -178,7 +178,7 @@ export function QuestionPanel({ snapshot }: { snapshot: ConsoleSnapshot }) {
               className="btn btn--primary btn--big"
               data-main
               aria-busy={busy === "reveal"}
-              disabled={busy !== null}
+              aria-disabled={busy !== null}
               onClick={() => void run("reveal", t("q.reveal.failed"), () => revealQuestion(sessionId, step.question.id))}
             >
               <EyeIcon size={28} weight="fill" aria-hidden="true" />
@@ -225,12 +225,13 @@ export function QuestionPanel({ snapshot }: { snapshot: ConsoleSnapshot }) {
                   className="btn btn--primary btn--big"
                   data-main
                   aria-busy={busy === "send"}
-                  disabled={busy !== null}
+                  aria-disabled={busy !== null}
                   onClick={() => step.next && void run("send", t("q.send.failed"), () => fireQuestion(sessionId, (step.next as ConsoleQuestion).id))}
                 >
                   <PaperPlaneTiltIcon size={28} weight="fill" aria-hidden="true" />
                   {t("q.next")}
                 </button>
+                {skipButton}
               </div>
               <p className="qpanel__hint">{t("q.next.what", { prompt: step.next.question.prompt })}</p>
             </>

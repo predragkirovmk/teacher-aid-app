@@ -81,3 +81,35 @@ export async function readQr(qr: Locator): Promise<string | undefined> {
 export const nextEdge = () => Math.ceil(T0 / 30_000) * 30_000;
 
 export type { Page };
+
+// ---- The questions of a lesson (step 9) ----
+
+/** The lesson begins teaching this long after it began: the clock stands here when the questions start. */
+export const TEACHING_AT = 30;
+
+/** Move every window's clock to `seconds` after the lesson began. The stream looks again once a second, so what a test expects is waited for. */
+export const go = (context: BrowserContext, seconds: number) => context.clock.setFixedTime(T0 + seconds * 1000);
+
+/** The panel "Прашањето сега". */
+export const panel = (page: Page) => page.locator(".qpanel");
+export const send = (page: Page) => panel(page).getByRole("button", { name: "Испрати го прашањето", exact: true });
+export const reveal = (page: Page) => panel(page).getByRole("button", { name: "Прикажи го точниот одговор" });
+export const next = (page: Page) => panel(page).getByRole("button", { name: "Испрати го следното прашање" });
+export const skipInPanel = (page: Page) => panel(page).getByRole("button", { name: "Прескокни", exact: true });
+/** A question's own "Испрати" in the list, by its number in the lesson. */
+export const listSend = (page: Page, n: number) => page.getByRole("button", { name: `Испрати го прашањето ${n}`, exact: true });
+export const listItem = (page: Page, n: number) => page.locator(".qitem").nth(n - 1);
+
+/** Start the lesson, open the projector, let the class join, and begin teaching: the console and the projector, both at the panel's first state. */
+export async function teach(page: Page, context: BrowserContext): Promise<Page> {
+  await start(page, context);
+  const projector = await openProjector(page, context);
+  await at(context, TEACHING_AT, page);
+  await page.getByRole("button", { name: "Почни го часот" }).click();
+  await page.getByRole("button", { name: "Да, почни го часот" }).click();
+  await expect(panel(page)).toBeVisible();
+  return projector;
+}
+
+/** How many had joined when the first question was sent at `TEACHING_AT`. */
+export const joinedWhenTeaching = () => joinedAt(TEACHING_AT, TEACHING_AT);
