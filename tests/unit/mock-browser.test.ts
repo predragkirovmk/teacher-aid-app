@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { createBrowserMock, createServerMock, SERVER_ANCHOR } from "@/lib/teacher/api/mock-browser";
 import { MOCK_SESSION_KEY } from "@/lib/teacher/api/mock-session";
-import { MOCK_KEY, MOCK_VERSION, startOfDay } from "@/lib/teacher/api/mock-state";
+import { freshState, MOCK_KEY, MOCK_VERSION, serializeState, startOfDay } from "@/lib/teacher/api/mock-state";
 
 /** A browser whose localStorage is the one given; the mock reads `window.localStorage` when it first needs the state. */
 function browser(storage: Pick<Storage, "getItem" | "setItem"> | "blocked") {
@@ -87,6 +87,32 @@ describe("the demo in the browser", () => {
     demo.reset();
     expect((await api.listCourses())[0].speed_bonus_on).toBe(true);
     expect(JSON.parse(storage.map.get(MOCK_KEY)!).school.speed_bonus).toEqual({});
+  });
+});
+
+describe("two windows of one browser", () => {
+  test("a window told of a change takes the state from the message, and never saves the old text it can still read over the new", async () => {
+    // The other window's write has not reached this window's localStorage yet (another process): a read here still gives the old text.
+    vi.stubGlobal("document", { documentElement: {}, addEventListener: () => {}, removeEventListener: () => {} });
+    const old = memory(serializeState(freshState(startOfDay(Date.now()))));
+    const sets: string[] = [];
+    browser({ getItem: old.getItem, setItem: (k: string, v: string) => void sets.push(k) });
+    const { api } = createBrowserMock();
+    const [course] = await api.listCourses();
+    expect(course.speed_bonus_on).toBe(true);
+    const heard = vi.fn();
+    api.subscribe(heard);
+
+    const next = freshState(startOfDay(Date.now()));
+    next.school.speed_bonus = { [course.id]: false };
+    const other = new BroadcastChannel("teacheraid-teacher-mock-changed");
+    other.postMessage(serializeState(next));
+    await vi.waitFor(() => expect(heard).toHaveBeenCalled());
+    other.close();
+
+    expect((await api.listCourses())[0].speed_bonus_on).toBe(false);
+    // The first read saved nothing: the old text was a good save.
+    expect(sets).toEqual([]);
   });
 });
 

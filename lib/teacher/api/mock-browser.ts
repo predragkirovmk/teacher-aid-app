@@ -2,7 +2,7 @@ import { getTeacherState, subscribeTeacher } from "../store";
 import type { DemoControls, TeacherApi } from "./client";
 import { createMock, createMockApi, memorySource, type MockSource } from "./mock";
 import { finishSignIn, MOCK_SESSION_KEY, readSession, writeSession, type DemoAccount } from "./mock-session";
-import { freshState, MOCK_KEY, readState, startOfDay, writeState, type MockState, type Persona } from "./mock-state";
+import { adoptState, freshState, MOCK_KEY, readState, serializeState, startOfDay, writeState, type MockState, type Persona } from "./mock-state";
 
 /**
  * The mock's own seams to the browser: the saved state in localStorage, and the demo school the teacher
@@ -17,7 +17,9 @@ const SERVER_NOW = SERVER_ANCHOR + 9 * 3_600_000;
 /**
  * The windows of one browser tell each other the moment the demo's data changed, besides the `storage` event the browser sends: the
  * console moves the lesson on or marks a student and the projected window looks again at once, as the API's realtime stream would
- * make it. Where there is no BroadcastChannel the storage event alone does it, a moment later.
+ * make it. The message carries the saved text itself: a browser may hand the message over before the write is visible to the other
+ * window's own read of localStorage (they can be different processes), and a window that read the old text then would save it back
+ * over the new. Where there is no BroadcastChannel the storage event alone does it, a moment later.
  */
 const CHANGED = "teacheraid-teacher-mock-changed";
 const changes = (): BroadcastChannel | null => {
@@ -54,8 +56,15 @@ function browserSource(): MockSource & { reset(): void; changed(): void } {
     const store = storage();
     state = readState(store, Date.now());
     // Saved straight away, so a first visit, or a save that could not be read, keeps the day it starts on and the demo's
-    // history does not slide from one day to the next. A good save is written back with anything damaged left out.
-    writeState(store, state);
+    // history does not slide from one day to the next. A good save is written back only when something damaged was left out of
+    // it: a read never saves what it has read over a newer save that has not reached this window yet.
+    let saved: string | null = null;
+    try {
+      saved = store?.getItem(MOCK_KEY) ?? null;
+    } catch {
+      // ignore
+    }
+    if (saved !== serializeState(state)) writeState(store, state);
     return state;
   };
 
@@ -64,7 +73,7 @@ function browserSource(): MockSource & { reset(): void; changed(): void } {
     commit: (next) => {
       state = next;
       writeState(storage(), next);
-      talk()?.postMessage("changed");
+      talk()?.postMessage(serializeState(next));
     },
     schoolType: () => getTeacherState().schoolType,
     session,
@@ -77,17 +86,20 @@ function browserSource(): MockSource & { reset(): void; changed(): void } {
       if (!watching) {
         watching = true;
         // Another window may change the demo's data (or clear it) while this one is open.
+        const heard = talk();
         window.addEventListener("storage", (e) => {
           // The session key too: signing out in another window ends this one's session as well, as a cookie would.
           if (e.key !== MOCK_KEY && e.key !== MOCK_SESSION_KEY && e.key !== null) return;
+          // Where the channel works it has said it already, with the text itself, and this event (which may come later than a newer
+          // message) must not put the older state back.
+          if (heard && e.key === MOCK_KEY && e.newValue !== null) return;
           state = null;
           notify();
         });
-        // The same, said at once by the window that made the change.
-        const heard = talk();
+        // The same, said at once by the window that made the change, with what it saved.
         if (heard) {
-          heard.onmessage = () => {
-            state = null;
+          heard.onmessage = (e: MessageEvent<unknown>) => {
+            state = typeof e.data === "string" ? adoptState(e.data, Date.now()) : null;
             notify();
           };
         }

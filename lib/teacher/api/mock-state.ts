@@ -281,10 +281,16 @@ export function readState(storage: ReadableStorage | null, now: number): MockSta
   return freshState(startOfDay(now));
 }
 
+/** The state as the text that is saved, and that a window tells the others (see `adoptState`). */
+export const serializeState = (state: MockState): string => JSON.stringify(state);
+
+/** The state from the text `serializeState` made, as `readState` reads a save: a text that is not valid gives a fresh state. */
+export const adoptState = (raw: string, now: number): MockState => readState({ getItem: () => raw }, now);
+
 /** Save the state. A browser that refuses (private mode, full) just keeps the demo for as long as the page is open. */
 export function writeState(storage: WritableStorage | null, state: MockState): void {
   try {
-    storage?.setItem(MOCK_KEY, JSON.stringify(state));
+    storage?.setItem(MOCK_KEY, serializeState(state));
   } catch {
     // ignore
   }
