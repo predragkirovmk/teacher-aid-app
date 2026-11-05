@@ -38,6 +38,15 @@ import type {
 
 export type Unsubscribe = () => void;
 
+/**
+ * Where a realtime stream stands: being opened, open (said again after every reconnection, which is the moment to read the snapshot
+ * afresh, since what happened while it was down is not replayed), or lost and being opened again, on its own.
+ */
+export type ChannelStatus = "connecting" | "open" | "reconnecting";
+
+/** What a screen asks of a realtime stream. */
+export type ChannelHandlers = { onEvent: (event: ChannelEvent) => void; onStatus?: (status: ChannelStatus) => void };
+
 /** What a slow call may be given: a way for the screen to stop waiting (Cancel, a connection that dropped, a limit that ran out). */
 export type CallOptions = { signal?: AbortSignal };
 
@@ -142,8 +151,16 @@ export interface TeacherApi {
   skipQuestion(sessionId: Id, sessionQuestionId: Id): Promise<ConsoleSnapshot>;
   /** POST /sessions/{id}/adhoc (FR-POP-04, OPEN-14). */
   fireAdhoc(sessionId: Id, request: AdhocRequest): Promise<ConsoleSnapshot>;
-  /** POST /sessions/{id}/attendance/{student_id}/no-device (FR-ATT-04). */
+  /**
+   * POST /sessions/{id}/attendance/{student_id}/no-device (FR-ATT-04): present without a phone, with the reason. Refused `invalid_state`
+   * for a student who has joined with a phone; on a student already marked it changes the reason.
+   */
   markNoDevice(sessionId: Id, studentId: Id, request: NoDeviceRequest): Promise<ConsoleSnapshot>;
+  /**
+   * PROPOSED, DELETE /sessions/{id}/attendance/{student_id}/no-device: takes the mark back, and the student is as before it was made (not
+   * here yet). Nothing to take back is not an error. Answers the fresh console snapshot.
+   */
+  clearNoDevice(sessionId: Id, studentId: Id): Promise<ConsoleSnapshot>;
   /** PROPOSED, PATCH /sessions/{id}/anon-questions/{id}: the teacher answered it aloud. */
   markAnonAnswered(sessionId: Id, anonQuestionId: Id): Promise<AnonQuestionItem>;
   /** POST /sessions/{id}/end: the full attendance list and the most-missed questions (F-10). */
@@ -157,10 +174,11 @@ export interface TeacherApi {
 
   // ---- Realtime (11.2, 11.4) ----
   /**
-   * `GET /api/v1/realtime?channels=...` as Server-Sent Events. Calls `onEvent` for each event of the channel until the
-   * returned function is called. The mock rejects it as `not_implemented` until the session driver exists.
+   * `GET /api/v1/realtime?channels=...` as Server-Sent Events (11.4). Calls `onEvent` for each event of the channel until the returned
+   * function is called, and `onStatus` as the stream opens, is lost and opens again on its own. The mock plays the same stream from the
+   * demo's own clock (mock-live.ts).
    */
-  openChannel(channel: TeacherChannel, onEvent: (event: ChannelEvent) => void): Unsubscribe;
+  openChannel(channel: TeacherChannel, handlers: ChannelHandlers): Unsubscribe;
 
   /**
    * Called when what the client knows may have changed behind the app's back: the mock when its data changes in another
@@ -182,7 +200,7 @@ export type DemoControls = {
   reset(): void;
   /** Open a lesson that began twelve minutes ago, so Today and the rest can be seen while one is running. */
   simulateRunning(): void;
-  /** Close the open lesson. Ending a lesson is step 9's; until then this is how the demo gets back to none running. */
+  /** Close the open lesson. Ending a lesson is step 10's; until then this is how the demo gets back to none running. */
   closeRunning(): void;
 };
 

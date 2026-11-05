@@ -1,10 +1,13 @@
 import type { TeacherApi } from "./client";
 import { apiBase } from "./config";
 import { ApiError, parseErrorResponse } from "./errors";
+import { connectSse } from "./sse";
 import {
+  CLASS_EVENT_TYPES,
   CONSOLE_EVENT_TYPES,
   PUBLIC_EVENT_TYPES,
   type ChannelEvent,
+  type ClassViewSnapshot,
   type CourseDashboard,
   type CourseSummary,
   type OpenSession,
@@ -137,7 +140,7 @@ export function createLiveApi(): TeacherApi {
     createSession: (req) => request<ConsoleSnapshot>("POST", "/sessions", { body: req }),
     getOpenSession: () => request<OpenSession>("GET", "/sessions/open"),
     getConsole: (sessionId) => request<ConsoleSnapshot>("GET", `${session(sessionId)}/console`),
-    getClassView: (sessionId) => request("GET", `${session(sessionId)}/class-view`),
+    getClassView: (sessionId) => request<ClassViewSnapshot>("GET", `${session(sessionId)}/class-view`),
     advance: (sessionId, req) => request<ConsoleSnapshot>("POST", `${session(sessionId)}/advance`, { body: req }),
     fireQuestion: (sessionId, sqId) => request<ConsoleSnapshot>("POST", `${question(sessionId, sqId)}/fire`),
     revealQuestion: (sessionId, sqId) => request<ConsoleSnapshot>("POST", `${question(sessionId, sqId)}/reveal`),
@@ -145,29 +148,23 @@ export function createLiveApi(): TeacherApi {
     fireAdhoc: (sessionId, req) => request<ConsoleSnapshot>("POST", `${session(sessionId)}/adhoc`, { body: req }),
     markNoDevice: (sessionId, studentId, req) =>
       request<ConsoleSnapshot>("POST", `${session(sessionId)}/attendance/${id(studentId)}/no-device`, { body: req }),
+    clearNoDevice: (sessionId, studentId) => request<ConsoleSnapshot>("DELETE", `${session(sessionId)}/attendance/${id(studentId)}/no-device`),
     markAnonAnswered: (sessionId, anonId) => request("PATCH", `${session(sessionId)}/anon-questions/${id(anonId)}`, { body: { answered: true } }),
     endSession: (sessionId) => request("POST", `${session(sessionId)}/end`),
     getReview: (sessionId) => request("GET", `${session(sessionId)}/review`),
     createPracticeSet: (sessionId) => request("POST", `${session(sessionId)}/practice-set`),
     getPracticeResults: (sessionId) => request("GET", `${session(sessionId)}/practice-set`),
 
-    // Server-Sent Events with the session cookie (spec 11.4). Each message is `event: <type>` and a JSON body of 11.2.
-    openChannel: (channel, onEvent) => {
-      const source = new EventSource(`${apiBase}/realtime?channels=${encodeURIComponent(channel)}`, { withCredentials: true });
-      const types = channel.endsWith(".console") ? CONSOLE_EVENT_TYPES : PUBLIC_EVENT_TYPES;
-      for (const type of types) {
-        source.addEventListener(type, (e) => {
-          try {
-            onEvent({ ...JSON.parse((e as MessageEvent<string>).data), type } as ChannelEvent);
-          } catch {
-            // A message that is not JSON is ignored: an event the app does not understand is never fatal (11.2).
-          }
-        });
-      }
-      return () => source.close();
-    },
+    // Server-Sent Events with the session cookie (spec 11.4), kept open by sse.ts. Each message is `event: <type>` and a JSON body of 11.2.
+    openChannel: (channel, { onEvent, onStatus }) =>
+      connectSse({
+        url: `${apiBase}/realtime?channels=${encodeURIComponent(channel)}`,
+        types: channel.endsWith(".console") ? CONSOLE_EVENT_TYPES : channel.endsWith(".class") ? CLASS_EVENT_TYPES : PUBLIC_EVENT_TYPES,
+        onEvent: (type, body) => onEvent({ ...(body as object), type } as ChannelEvent),
+        onStatus: (status) => onStatus?.(status),
+      }),
 
-    // Nothing pushes changes until the realtime driver exists.
+    // What changes behind the app's back arrives on the realtime stream, not here.
     subscribe: () => () => {},
   };
 }

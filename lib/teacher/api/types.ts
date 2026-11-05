@@ -374,6 +374,11 @@ export type FocusFlag = {
 export type ConsoleSnapshot = {
   server_now: IsoTime;
   session: SessionRef & { class_name: string; subject_name: string };
+  /**
+   * PROPOSED: the code the console reads out, `short_code`, and the token behind the QR; null once students may no longer join. The
+   * teacher's own screen may hold it (it is the teacher's lesson), unlike a channel students read.
+   */
+  join: JoinToken | null;
   questions: ConsoleQuestion[];
   students: ConsoleStudent[];
   anon_questions: AnonQuestionItem[];
@@ -401,7 +406,16 @@ export type ClassViewReview = { most_missed: MissedQuestion[]; anon_questions: {
 /** GET /sessions/{id}/class-view: the projected window's snapshot. No private data (FR-SES-02). */
 export type ClassViewSnapshot = {
   server_now: IsoTime;
-  session: { id: Id; state: SessionState; lesson_title: string; class_name: string; subject_name: string; joined_count: number };
+  session: {
+    id: Id;
+    state: SessionState;
+    lesson_title: string;
+    class_name: string;
+    subject_name: string;
+    joined_count: number;
+    /** PROPOSED: the names of the last five to join, newest first, for the lobby (the `recent` of `joined.count`, so a reload shows them too). */
+    recent: string[];
+  };
   /** While students may still join; null after End. */
   join: JoinToken | null;
   question: PublicQuestion | null;
@@ -555,18 +569,21 @@ export type CourseDashboard = {
 
 // ---- Realtime (11.2, 11.4) -----------------------------------------------------------------------
 
-/** `session.{id}.public`: the class view; `session.{id}.console`: the teacher only. */
+/**
+ * `session.{id}.public`: what a student may read too (11.2). `session.{id}.class` (PROPOSED): the projected window's own channel,
+ * for what only the class view and the teacher may read: the live join token and the text of anonymous questions in the review.
+ * `session.{id}.console`: the teacher only, and everything the other two carry.
+ */
 export type PublicChannel = `session.${string}.public`;
+export type ClassChannel = `session.${string}.class`;
 export type ConsoleChannel = `session.${string}.console`;
-export type TeacherChannel = PublicChannel | ConsoleChannel;
+export type TeacherChannel = PublicChannel | ClassChannel | ConsoleChannel;
 
 type Event<T extends string, F = object> = { type: T; channel: TeacherChannel; server_now: IsoTime } & F;
 
-/** On the public channel, and so on the console's too. */
+/** On the public channel, which students read, and so on the class view's and the console's too. */
 export type PublicEvent =
   | Event<"state.changed", { state: SessionState }>
-  /** Class view only. PROPOSED fields. */
-  | Event<"join_token.rotated", JoinToken>
   | Event<"joined.count", { joined_count: number; recent?: string[] }>
   | Event<"question.opened", { question: PublicQuestion }>
   | Event<"question.progress", { session_question_id: Id; answered: number; joined: number }>
@@ -576,9 +593,14 @@ export type PublicEvent =
       { session_question_id: Id; correct_answer: string; explanation: string | null; counts: RevealCounts }
     >
   | Event<"question.skipped", { session_question_id: Id }>
-  | Event<"leaderboard.updated", { rows: LeaderboardRow[] }>
-  /** PROPOSED fields: the class view's review, without names. */
-  | Event<"review.ready", ClassViewReview>;
+  | Event<"leaderboard.updated", { rows: LeaderboardRow[] }>;
+
+/**
+ * On the class channel (PROPOSED), and so on the console's: nothing a student may read. The spec puts `join_token.rotated` on the
+ * public channel and calls it "class view only", and students subscribe to that channel (11.2), so a student at home could follow the
+ * rotating token; the text of the review's anonymous questions conflicts with BR-ANON-06 the same way (OPEN-36).
+ */
+export type ClassOnlyEvent = Event<"join_token.rotated", JoinToken> | Event<"review.ready", ClassViewReview>;
 
 /** Only on the console channel. All PROPOSED fields. */
 export type ConsoleOnlyEvent =
@@ -593,13 +615,12 @@ export type ConsoleOnlyEvent =
 /** Sent by the stream itself every 20 s. */
 export type PingEvent = Event<"ping">;
 
-export type ChannelEvent = PublicEvent | ConsoleOnlyEvent | PingEvent;
+export type ChannelEvent = PublicEvent | ClassOnlyEvent | ConsoleOnlyEvent | PingEvent;
 export type ChannelEventType = ChannelEvent["type"];
 
 /** The event names a channel carries, for a client that wants to check what it was sent. */
 export const PUBLIC_EVENT_TYPES = [
   "state.changed",
-  "join_token.rotated",
   "joined.count",
   "question.opened",
   "question.progress",
@@ -607,12 +628,13 @@ export const PUBLIC_EVENT_TYPES = [
   "question.revealed",
   "question.skipped",
   "leaderboard.updated",
-  "review.ready",
   "ping",
 ] as const satisfies readonly ChannelEventType[];
 
+export const CLASS_EVENT_TYPES = [...PUBLIC_EVENT_TYPES, "join_token.rotated", "review.ready"] as const satisfies readonly ChannelEventType[];
+
 export const CONSOLE_EVENT_TYPES = [
-  ...PUBLIC_EVENT_TYPES,
+  ...CLASS_EVENT_TYPES,
   "student.joined",
   "student.answer_state",
   "student.presence",
@@ -622,4 +644,5 @@ export const CONSOLE_EVENT_TYPES = [
 ] as const satisfies readonly ChannelEventType[];
 
 export const publicChannel = (sessionId: Id): PublicChannel => `session.${sessionId}.public`;
+export const classChannel = (sessionId: Id): ClassChannel => `session.${sessionId}.class`;
 export const consoleChannel = (sessionId: Id): ConsoleChannel => `session.${sessionId}.console`;
