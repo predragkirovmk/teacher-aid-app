@@ -84,6 +84,13 @@ export function QuestionPanel({ snapshot }: { snapshot: ConsoleSnapshot }) {
 
   const skipTarget = step.step === "send" ? step.next : step.step === "open" || step.step === "closed" ? step.question : null;
 
+  const skipButton = skipTarget && (
+    <button type="button" className="btn btn--secondary" aria-haspopup="dialog" disabled={busy !== null} onClick={() => setSkipping(skipTarget)}>
+      <SkipForwardIcon size={24} aria-hidden="true" />
+      {t("q.skip")}
+    </button>
+  );
+
   return (
     <section ref={panel} className="card qpanel" aria-labelledby={titleId} data-step={step.step}>
       <h2 id={titleId} ref={heading} tabIndex={-1} className="qpanel__title">
@@ -118,6 +125,7 @@ export function QuestionPanel({ snapshot }: { snapshot: ConsoleSnapshot }) {
                   <PaperPlaneTiltIcon size={28} weight="fill" aria-hidden="true" />
                   {t("q.send")}
                 </button>
+                {skipButton}
               </div>
               <p className="qpanel__hint">{t("q.send.what")}</p>
             </>
@@ -149,6 +157,7 @@ export function QuestionPanel({ snapshot }: { snapshot: ConsoleSnapshot }) {
           <p className="sr" role="status">
             {calmProgress}
           </p>
+          <div className="qpanel__actions">{skipButton}</div>
           <p className="qpanel__hint">{t("q.open.wait")}</p>
         </>
       )}
@@ -175,6 +184,7 @@ export function QuestionPanel({ snapshot }: { snapshot: ConsoleSnapshot }) {
               <EyeIcon size={28} weight="fill" aria-hidden="true" />
               {t("q.reveal")}
             </button>
+            {skipButton}
           </div>
           <p className="qpanel__hint">{t("q.reveal.what")}</p>
         </>
@@ -239,14 +249,6 @@ export function QuestionPanel({ snapshot }: { snapshot: ConsoleSnapshot }) {
         </p>
       )}
 
-      {skipTarget && (
-        <div className="qpanel__more">
-          <button type="button" className="btn btn--secondary" aria-haspopup="dialog" disabled={busy !== null} onClick={() => setSkipping(skipTarget)}>
-            <SkipForwardIcon size={24} aria-hidden="true" />
-            {t("q.skip")}
-          </button>
-        </div>
-      )}
       {problem && <Problem title={problem.title}>{te(problem.error)}</Problem>}
 
       <SkipQuestion

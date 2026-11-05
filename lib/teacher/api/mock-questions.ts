@@ -71,7 +71,8 @@ const planFor = (input: PlayInput) => new Map(input.plans.map((p) => [p.id, p]))
 /** The class's play with a question. */
 export function playOf(run: QuestionRun, input: PlayInput): Play {
   const fired = run.fired_at as number;
-  const key = `${input.sessionId}|${run.id}|${fired}|${input.sim.teaching_at}|${input.speedBonusOn}|${input.roster.length}`;
+  // Everything the play depends on is in the key: another test, or another lesson of the same id, never finds a play that was made for something else.
+  const key = `${input.sessionId}|${run.id}|${fired}|${input.sim.started_at}|${input.sim.teaching_at}|${input.speedBonusOn}|${input.roster.map((r) => r.id).join(",")}|${JSON.stringify(run.question)}`;
   const held = memo.get(key);
   if (held) return held;
 
