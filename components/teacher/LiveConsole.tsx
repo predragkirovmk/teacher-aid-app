@@ -7,8 +7,9 @@ import { useState } from "react";
 import { advanceSession, useConsole, useFreshCode } from "@/lib/teacher/api/hooks";
 import { isApiError } from "@/lib/teacher/api/errors";
 import type { ConsoleSnapshot } from "@/lib/teacher/api/types";
+import { isOne } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
-import { formatShortCode, joinedCount } from "@/lib/teacher/live";
+import { formatShortCode, missingCount, STUDENTS_CAN_TYPE_CODE } from "@/lib/teacher/live";
 import { courseLabel } from "@/lib/teacher/start";
 import { TODAY } from "@/lib/teacher/signin";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -16,7 +17,7 @@ import { LiveRoster } from "./LiveRoster";
 import { LoadProblem } from "./LoadProblem";
 import { PageHeader } from "./PageHeader";
 import { Problem } from "./Problem";
-import { ProjectorControl } from "./ProjectorControl";
+import { MirrorWarning, ProjectorControl } from "./ProjectorControl";
 import { Bar, Loading } from "./Skeleton";
 import { StateLine } from "./StateLine";
 import { QuestionCard } from "./LessonView";
@@ -82,9 +83,11 @@ export function LiveConsole() {
             )}
             <StateLine state={snapshot.session.state} />
             <div className="live__grid">
+              {/* In the order a teacher does them: open the projector, then wait for the class, then start. */}
               <div className="live__side">
-                <JoinCard snapshot={snapshot} />
                 <ProjectorControl sessionId={snapshot.session.id} />
+                <JoinCard snapshot={snapshot} />
+                <MirrorWarning />
               </div>
               <LiveRoster sessionId={snapshot.session.id} students={snapshot.students} />
             </div>
@@ -97,16 +100,19 @@ export function LiveConsole() {
 }
 
 /**
- * The code, large enough to read out, and in the lobby the page's one yellow button. The question before it is the app's own kind: the
- * lesson cannot be taken back to the lobby (4.1), and everyone who joins afterwards is late, so it asks first, with the safe answer as the default.
+ * In the lobby, the page's one yellow button. The question before it is the app's own kind: the lesson cannot be taken back to the lobby
+ * (4.1), and everyone who joins afterwards is late, so it asks first, with the safe answer as the default. The code to read out is shown only
+ * while a student can type it (`STUDENTS_CAN_TYPE_CODE`, OPEN-03); until then the QR on the projector is the one way in, and a code here
+ * would only invite the teacher to read out what nobody can use.
  */
 function JoinCard({ snapshot }: { snapshot: ConsoleSnapshot }) {
-  const { t, te } = useT();
+  const { t, te, locale } = useT();
   const [asking, setAsking] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const lobby = snapshot.session.state === "lobby";
-  const { total, joined } = joinedCount(snapshot.students);
-  const waiting = total - joined;
+  // Those the teacher is still waiting for: a student marked present without a phone is not one of them.
+  const waiting = missingCount(snapshot.students);
+  if (!lobby && !STUDENTS_CAN_TYPE_CODE) return null;
 
   const start = async () => {
     try {
@@ -120,17 +126,18 @@ function JoinCard({ snapshot }: { snapshot: ConsoleSnapshot }) {
 
   return (
     <section className="card live__code" aria-labelledby="live-code">
-      <h2 id="live-code">{t("live.code.label")}</h2>
-      {snapshot.join ? (
-        <>
-          <p className="live__digits" data-testid="short-code">
-            {formatShortCode(snapshot.join.short_code)}
-          </p>
-          <p className="live__rotates">{t("live.code.hint")}</p>
-        </>
-      ) : (
-        <p>{t("live.code.none")}</p>
-      )}
+      <h2 id="live-code">{t(STUDENTS_CAN_TYPE_CODE ? "live.code.label" : "live.start.title")}</h2>
+      {STUDENTS_CAN_TYPE_CODE &&
+        (snapshot.join ? (
+          <>
+            <p className="live__digits" data-testid="short-code">
+              {formatShortCode(snapshot.join.short_code)}
+            </p>
+            <p className="live__rotates">{t("live.code.hint")}</p>
+          </>
+        ) : (
+          <p>{t("live.code.none")}</p>
+        ))}
       {lobby && (
         <>
           <button type="button" className="btn btn--primary btn--big" aria-haspopup="dialog" onClick={() => setAsking(true)}>
@@ -142,7 +149,7 @@ function JoinCard({ snapshot }: { snapshot: ConsoleSnapshot }) {
           <ConfirmDialog
             open={asking}
             title={t("live.start.confirm.title")}
-            body={waiting > 0 ? t("live.start.confirm.waiting", { n: waiting }) : t("live.start.confirm.all")}
+            body={waiting > 0 ? t(isOne(waiting, locale) ? "live.start.confirm.waiting.one" : "live.start.confirm.waiting", { n: waiting }) : t("live.start.confirm.all")}
             stay={t("live.start.confirm.stay")}
             confirm={t("live.start.confirm.yes")}
             onStay={() => setAsking(false)}

@@ -2250,7 +2250,7 @@ button {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0 var(--sp-2);
+  gap: 0 var(--sp-1);
   border-radius: var(--r-l);
   background: var(--panel);
 }
@@ -2264,7 +2264,7 @@ button {
 }
 .states__item + .states__item::before {
   content: "";
-  width: 1.5rem;
+  width: 1rem;
   height: 2px;
   margin-right: var(--sp-1);
   border-radius: 1px;
@@ -2276,6 +2276,15 @@ button {
 .states__item[data-position="current"] {
   color: var(--text);
   font-weight: 700;
+}
+/* Where the window is not wide enough for the four on one line, the short lines between them go: the filled mark, the word and "Сега" say it. */
+@media (max-width: 69.99rem) {
+  .states__item + .states__item::before {
+    display: none;
+  }
+  .states {
+    gap: 0 var(--sp-2);
+  }
 }
 .states__word {
   line-height: 1.2;
@@ -2305,7 +2314,7 @@ button {
 }
 @media (min-width: 70rem) {
   .live__grid {
-    grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr);
+    grid-template-columns: 26rem minmax(0, 1fr);
   }
 }
 
@@ -2343,11 +2352,19 @@ button {
 }
 .projector .btn {
   width: 100%;
+  padding-inline: var(--sp-2);
+  text-wrap: balance;
 }
 .card .projector__status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   min-height: 1.5em;
   color: var(--text);
   font-weight: 600;
+}
+.projector__status svg {
+  flex: none;
 }
 .card .projector__hint {
   font-size: var(--fs-small);
@@ -2358,14 +2375,16 @@ button {
   gap: 0.75rem;
   padding: var(--sp-2);
   border-radius: var(--r-m);
-  border-left: 4px solid var(--text);
+  border: 2px solid var(--line-strong);
   background: var(--deep);
 }
 .callout svg {
   flex: none;
   margin-top: 0.125rem;
 }
+.callout p,
 .card .callout p {
+  margin: 0;
   color: var(--text);
 }
 .card .callout .callout__title {
@@ -2398,9 +2417,15 @@ button {
 .card .roster__nophone {
   color: var(--text-2);
 }
-/* Reserved, so a line that is said after a change does not push the list down. */
+/* What was done, said once and read out. It has no room of its own until it has something to say, so the list sits close under the count. */
 .card .roster__said {
-  min-height: 1.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+.card .roster__said:empty {
+  display: none;
 }
 .roster__group {
   display: grid;
@@ -2474,7 +2499,7 @@ button {
 }
 /* A student whose connection is lost is worth a look: a white edge besides the icon and the words. */
 .person[data-state="offline"] {
-  box-shadow: inset 4px 0 0 var(--text);
+  box-shadow: inset 0 0 0 2px var(--text);
 }
 @container roster (min-width: 40rem) {
   .person {
@@ -2544,7 +2569,7 @@ button {
 .cv__qr {
   display: grid;
   place-items: center;
-  width: min(54vh, 34vw);
+  width: min(68vh, 42vw);
   aspect-ratio: 1;
   padding: 2vh;
   border-radius: 3vh;
@@ -2563,9 +2588,9 @@ button {
 }
 .cv__how {
   margin: 0;
-  max-width: 24ch;
+  max-width: 20ch;
   font-family: var(--font-display);
-  font-size: max(1.75rem, 4.4vh);
+  font-size: max(2rem, 5.6vh);
   font-weight: 600;
   line-height: 1.2;
   text-wrap: balance;
@@ -2594,18 +2619,40 @@ button {
   white-space: nowrap;
 }
 .cv__count {
-  margin: 2vh 0 0;
+  margin: 3vh 0 0;
   font-family: var(--font-display);
-  font-size: max(2rem, 6.4vh);
-  font-weight: 700;
+  font-size: max(2.25rem, 8vh);
+  font-weight: 800;
   line-height: 1.1;
+  text-wrap: balance;
 }
+/* The last few names: each stays whole on its line, a name too long for the line breaks inside itself, and the dots between are only for the eye. */
 .cv__names {
+  list-style: none;
   margin: 0;
-  color: var(--text-2);
-  font-size: max(1.5rem, 3.8vh);
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5vh 0;
+  color: var(--text);
+  font-size: max(1.5rem, 4vh);
   font-weight: 500;
   line-height: 1.3;
+  /* Four lines at most, newest first: a run of very long names never pushes the window past its height. */
+  max-height: calc(4 * 1.3 * max(1.5rem, 4vh));
+  overflow: hidden;
+}
+/* Said to a screen reader only; kept as big as the rest, so that nothing on the window is under 20px. */
+.cv .sr {
+  font-size: 1.25rem;
+}
+.cv__names li {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.cv__names li:not(:last-child)::after {
+  content: "·" / "";
+  margin-inline: 0.5em 0.6em;
 }
 .cv__big {
   margin: 0;
@@ -2639,12 +2686,15 @@ button {
   background: var(--deep);
 }
 .cv__corner .cv__qr {
-  width: 20vh;
+  width: 26vh;
   padding: 1vh;
   border-radius: 1.5vh;
 }
 .cv__corner .cv__label {
   margin: 0 0 0.5vh;
+  max-width: 14ch;
+  color: var(--text);
+  font-size: max(1.5rem, 3.4vh);
 }
 .cv__code--small {
   padding: 0.5vh 1.5vh;

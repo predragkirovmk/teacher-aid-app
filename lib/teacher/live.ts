@@ -113,9 +113,11 @@ export const formatShortCode = (code: string): string => (code.match(/.{1,3}/g) 
 
 /**
  * The student app does not let a student type the code (OPEN-03, 2026-10-13): a student scans it, with the app or the phone's own camera.
- * So the line on the projector says to scan, and says to enter the code only when the student app brings typing back. One switch.
+ * So neither screen shows the code, and the line on the projector says to scan; both show it, with "or enter the code", only when the
+ * student app brings typing back. One switch: change it here to turn it on. A build made with `NEXT_PUBLIC_STUDENTS_CAN_TYPE_CODE=1` turns it
+ * on too, which is how `tests/e2e/live-code.spec.ts` runs.
  */
-export const STUDENTS_CAN_TYPE_CODE = false;
+export const STUDENTS_CAN_TYPE_CODE = process.env.NEXT_PUBLIC_STUDENTS_CAN_TYPE_CODE === "1";
 
 // ---- The projected window ----------------------------------------------------------------------------
 

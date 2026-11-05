@@ -1,6 +1,6 @@
 "use client";
 
-import { ProjectorScreenIcon, WarningIcon } from "@phosphor-icons/react";
+import { CheckCircleIcon, ProjectorScreenIcon, WarningIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useState } from "react";
 import { useT } from "@/lib/teacher/i18n";
@@ -8,10 +8,10 @@ import { classViewUrl, PROJECTOR_HELP } from "@/lib/teacher/routes";
 import { openProjector, useClassViewStatus } from "@/lib/teacher/windows";
 
 /**
- * The projected window, opened with one click, in a window of its own and under a fixed name, so a second press brings back the same one.
- * The console knows whether it is open (the two windows beat to each other) and says so, with "Отвори повторно" when it has been closed. A
- * browser that stops the new window is told in words, with a plain link that opens it in a new window. Under it, the one warning that
- * matters: the projector must show only that window, because this screen has names (EC-SES-05), with the way to set it up.
+ * The first thing to do in a lesson: the projected window, opened with one click, in a window of its own and under a fixed name, so a
+ * second press brings back the same one. It is the card at the top of the console, with the one button that is outlined and prominent. The
+ * console knows whether the window is open (the two windows beat to each other) and says so, in an icon and words, with "Отвори повторно"
+ * when it has been closed. A browser that stops the new window is told in words, with a plain link that opens it in a new window.
  */
 export function ProjectorControl({ sessionId }: { sessionId: string }) {
   const { t } = useT();
@@ -22,15 +22,26 @@ export function ProjectorControl({ sessionId }: { sessionId: string }) {
   const open = () => setBlocked(openProjector(sessionId) === "blocked");
 
   return (
-    <div className="card projector">
-      <button type="button" className="btn btn--secondary" onClick={open}>
-        <ProjectorScreenIcon size={24} aria-hidden="true" />
+    <section className="card projector" aria-labelledby="live-projector">
+      <h2 id="live-projector">{t("live.projector.title")}</h2>
+      <button type="button" className="btn btn--secondary btn--big" onClick={open}>
+        <ProjectorScreenIcon size={28} aria-hidden="true" />
         {closed ? t("live.projector.again") : t("live.projector.open")}
       </button>
       {/* A line that says where the window stands, and is read out when it changes. A window never opened has nothing to say, and keeps its room. */}
       <p className="projector__status" role="status" data-status={status}>
-        {status === "open" && t("live.projector.open.status")}
-        {status === "closed" && t("live.projector.closed")}
+        {status === "open" && (
+          <>
+            <CheckCircleIcon size={24} weight="fill" aria-hidden="true" />
+            {t("live.projector.open.status")}
+          </>
+        )}
+        {status === "closed" && (
+          <>
+            <WarningIcon size={24} weight="fill" aria-hidden="true" />
+            {t("live.projector.closed")}
+          </>
+        )}
         {status === "checking" && t("live.projector.checking")}
       </p>
       {blocked && (
@@ -46,14 +57,24 @@ export function ProjectorControl({ sessionId }: { sessionId: string }) {
         </div>
       )}
       <p className="projector__hint">{t("live.projector.hint")}</p>
-      <div className="callout">
-        <WarningIcon size={28} weight="fill" aria-hidden="true" />
-        <div>
-          <p>{t("live.mirror.warn")}</p>
-          <Link href={PROJECTOR_HELP} className="callout__link">
-            {t("live.mirror.link")}
-          </Link>
-        </div>
+    </section>
+  );
+}
+
+/**
+ * The one warning that matters: the projector must show only the projected window, because this screen has names (EC-SES-05), with the
+ * way to set it up. A band of its own under the lesson's controls, so it does not push them out of the first screen.
+ */
+export function MirrorWarning() {
+  const { t } = useT();
+  return (
+    <div className="callout mirror">
+      <WarningIcon size={28} weight="fill" aria-hidden="true" />
+      <div>
+        <p>{t("live.mirror.warn")}</p>
+        <Link href={PROJECTOR_HELP} className="callout__link">
+          {t("live.mirror.link")}
+        </Link>
       </div>
     </div>
   );

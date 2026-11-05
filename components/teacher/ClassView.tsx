@@ -101,7 +101,8 @@ function Lobby({ snapshot }: { snapshot: ClassViewSnapshot }) {
       {join && <Qr token={join.token} label={t("class.qr.label")} />}
       <div className="cv__info">
         <p className="cv__how">{t(STUDENTS_CAN_TYPE_CODE ? "class.how.type" : "class.how")}</p>
-        {join && (
+        {/* The code is shown only while a student can type it (OPEN-03): until then the QR is the one way in, and a code would be read out for nothing. */}
+        {STUDENTS_CAN_TYPE_CODE && join && (
           <>
             <p className="cv__label">{t("class.code.label")}</p>
             <p className="cv__code" data-testid="class-code">
@@ -112,10 +113,14 @@ function Lobby({ snapshot }: { snapshot: ClassViewSnapshot }) {
         )}
         <p className="cv__count">{t(isOne(session.joined_count, locale) ? "class.joined.one" : "class.joined", { n: session.joined_count })}</p>
         {session.recent.length > 0 && (
-          <p className="cv__names">
-            <span className="sr">{t("class.recent")}: </span>
-            {session.recent.map((name) => personName(name, locale)).join(" · ")}
-          </p>
+          <>
+            <p className="sr">{t("class.recent")}</p>
+            <ul className="cv__names">
+              {session.recent.map((name) => (
+                <li key={name}>{personName(name, locale)}</li>
+              ))}
+            </ul>
+          </>
         )}
       </div>
     </div>
@@ -134,10 +139,12 @@ function Teaching({ snapshot }: { snapshot: ClassViewSnapshot }) {
         <aside className="cv__corner">
           <Qr token={join.token} label={t("class.qr.label")} />
           <div>
-            <p className="cv__label">{t("class.late")}</p>
-            <p className="cv__code cv__code--small" data-testid="class-code">
-              {formatShortCode(join.short_code)}
-            </p>
+            <p className="cv__label">{t(STUDENTS_CAN_TYPE_CODE ? "class.late.type" : "class.late")}</p>
+            {STUDENTS_CAN_TYPE_CODE && (
+              <p className="cv__code cv__code--small" data-testid="class-code">
+                {formatShortCode(join.short_code)}
+              </p>
+            )}
           </div>
         </aside>
       )}

@@ -42,6 +42,19 @@ const REASON_WORDS = {
   no_focus_authorization: "live.reason.no_focus_authorization",
 } as const satisfies Record<NoDeviceReason, Key>;
 
+/** How long the joined count must stay as it is before it is read out. */
+export const CALM_COUNT_MS = 4000;
+
+/** The text once it has stopped changing for a while; the first text is there at once and is not announced. */
+function useCalm(text: string, ms = CALM_COUNT_MS): string {
+  const [calm, setCalm] = useState(text);
+  useEffect(() => {
+    const id = setTimeout(() => setCalm(text), ms);
+    return () => clearTimeout(id);
+  }, [text, ms]);
+  return calm;
+}
+
 /**
  * Every student of the class, by name, with where each one stands in an icon and a word (never colour alone): not here yet, here, late
  * (after the lesson began), the connection lost, or present without a phone and why. Two calm groups: those who are not here yet come first,
@@ -59,6 +72,7 @@ export function LiveRoster({ sessionId, students }: { sessionId: string; student
   const [after, setAfter] = useState<{ id: string; button: "remove" | "mark" } | null>(null);
 
   const counts = joinedCount(students);
+  const calmCount = useCalm(t("live.count", { n: counts.joined, total: counts.total }));
   const { missing, here } = rosterSections(students);
 
   // After a change the row's own button has changed too: the focus goes to the one that took its place, so a keyboard is not left on nothing.
@@ -145,13 +159,19 @@ export function LiveRoster({ sessionId, students }: { sessionId: string; student
       <h2 id={title}>{t("live.joined.title")}</h2>
       <p className="roster__count">{t("live.count", { n: counts.joined, total: counts.total })}</p>
       {counts.withoutPhone > 0 && <p className="roster__nophone">{t("live.count.nophone", { n: counts.withoutPhone })}</p>}
-      <p className="status roster__said" role="status">
-        {said && (
-          <>
-            <CheckCircleIcon size={28} weight="fill" aria-hidden="true" />
-            {said}
-          </>
-        )}
+      {/* The same line twice: once to be read out (a region that is always there, so a change in it is announced), once to be seen, which takes room only while it has something to say. */}
+      <p className="sr" role="status">
+        {said}
+      </p>
+      {said && (
+        <p className="status roster__said" aria-hidden="true">
+          <CheckCircleIcon size={28} weight="fill" aria-hidden="true" />
+          {said}
+        </p>
+      )}
+      {/* Joins come in a stream; a screen reader hears the count once they have slowed, not every name. */}
+      <p className="sr" role="status" data-testid="calm-count">
+        {calmCount}
       </p>
       {group(
         "missing",
