@@ -96,7 +96,7 @@ function Lobby({ snapshot }: { snapshot: ClassViewSnapshot }) {
   const { t, locale } = useT();
   const { join, session } = snapshot;
   return (
-    <div className="cv__lobby">
+    <div className={STUDENTS_CAN_TYPE_CODE ? "cv__lobby cv__lobby--code" : "cv__lobby"}>
       <h1 className="sr">{session.lesson_title}</h1>
       {join && <Qr token={join.token} label={t("class.qr.label")} />}
       <div className="cv__info">

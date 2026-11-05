@@ -2711,6 +2711,21 @@ button {
   font-size: max(1.25rem, 2.6vh);
   font-weight: 500;
 }
+/* With the code shown (students may type it) there is less room for the QR and the count: the sizes of a lobby that holds the code too. */
+.cv__lobby--code .cv__qr {
+  width: min(54vh, 34vw);
+}
+.cv__lobby--code .cv__how {
+  max-width: 24ch;
+  font-size: max(1.75rem, 4.4vh);
+}
+.cv__lobby--code .cv__count {
+  margin-top: 2vh;
+  font-size: max(2rem, 6.4vh);
+}
+.cv__lobby--code .cv__names {
+  font-size: max(1.5rem, 3.8vh);
+}
 /* A window that is narrow and tall (a phone in a test, a zoomed window): the QR above the words. */
 @media (max-aspect-ratio: 1/1) {
   .cv__lobby {
@@ -2718,7 +2733,8 @@ button {
     justify-items: center;
     text-align: center;
   }
-  .cv__qr {
+  .cv__qr,
+  .cv__lobby--code .cv__qr {
     width: min(48vh, 80vw);
   }
   .cv__code {
