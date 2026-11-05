@@ -14,6 +14,20 @@ export const SERVER_ANCHOR = new Date(2026, 9, 28).getTime();
 /** The moment the server renders it at, fixed like the day, so the render that hydrates it reads the same clock. */
 const SERVER_NOW = SERVER_ANCHOR + 9 * 3_600_000;
 
+/**
+ * The windows of one browser tell each other the moment the demo's data changed, besides the `storage` event the browser sends: the
+ * console moves the lesson on or marks a student and the projected window looks again at once, as the API's realtime stream would
+ * make it. Where there is no BroadcastChannel the storage event alone does it, a moment later.
+ */
+const CHANGED = "teacheraid-teacher-mock-changed";
+const changes = (): BroadcastChannel | null => {
+  try {
+    return typeof BroadcastChannel === "undefined" ? null : new BroadcastChannel(CHANGED);
+  } catch {
+    return null;
+  }
+};
+
 const storage = (): Storage | null => {
   try {
     return typeof window === "undefined" ? null : window.localStorage;
@@ -31,6 +45,9 @@ function browserSource(): MockSource & { reset(): void; changed(): void } {
   const listeners = new Set<() => void>();
   let watching = false;
   const notify = () => listeners.forEach((l) => l());
+  // One channel to say it on and to hear it on: a window does not hear its own message, so it never looks twice at its own change.
+  let channel: BroadcastChannel | null | undefined;
+  const talk = () => (channel === undefined ? (channel = changes()) : channel);
 
   const load = (): MockState => {
     if (state) return state;
@@ -47,6 +64,7 @@ function browserSource(): MockSource & { reset(): void; changed(): void } {
     commit: (next) => {
       state = next;
       writeState(storage(), next);
+      talk()?.postMessage("changed");
     },
     schoolType: () => getTeacherState().schoolType,
     session,
@@ -65,6 +83,14 @@ function browserSource(): MockSource & { reset(): void; changed(): void } {
           state = null;
           notify();
         });
+        // The same, said at once by the window that made the change.
+        const heard = talk();
+        if (heard) {
+          heard.onmessage = () => {
+            state = null;
+            notify();
+          };
+        }
         // The demo switch in Settings picks the other school.
         subscribeTeacher(() => {
           const type = getTeacherState().schoolType;

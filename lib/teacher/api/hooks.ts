@@ -1,18 +1,27 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DRAFT_POLL_MS } from "../lessons";
 import { firstName, initials, personName, schoolTypeOf } from "../format";
 import { authStatusOf, type AuthStatus, type EndReason } from "../guard";
+import { applyClassEvent, applyConsoleEvent } from "../live";
 import { preparedLessons } from "../today";
 import { actions, useTeacher } from "../store";
 import { apiMode } from "./config";
-import { api, type CallOptions } from "./client";
+import { api, type CallOptions, type ChannelStatus, type TeacherApi } from "./client";
 import { toApiError } from "./errors";
 import { change, forget, invalidate, mapQuery, resetQueries, seed, slotFor, useQuery, type Query } from "./query";
 import { endSession, useSessionEnd } from "./session";
+import {
+  classChannel,
+  consoleChannel,
+  type ChannelEvent,
+  type ClassViewSnapshot,
+  type ConsoleSnapshot,
+  type NoDeviceReason,
+  type TeacherChannel,
+} from "./types";
 import type {
-  ConsoleSnapshot,
   CourseDashboard,
   CoursePatch,
   CourseSummary,
@@ -45,7 +54,7 @@ export type { Query } from "./query";
  * through the adapter and then loads again what it touched, so a list is right the moment a change has been made.
  *
  * Query keys: `me`, `courses`, `dashboard:<course>`, `lessons`, `lessons:<id>`, `draft-list`, `drafts:<id>`, `library`,
- * `open-session`. A change names the first part of the keys it touches.
+ * `open-session`, `console:<session>`, `class-view:<session>`. A change names the first part of the keys it touches.
  */
 
 // ---- Reading --------------------------------------------------------------------------------------
@@ -141,6 +150,82 @@ export function useOpenSessionAnywhere(page: string): Query<OpenSession> {
     return () => document.removeEventListener("visibilitychange", lookAgain);
   }, []);
   return open;
+}
+
+// ---- The live lesson ----------------------------------------------------------------------------------
+
+/**
+ * A snapshot that a stream keeps up to date: read once, then changed by each event of the channel, and read again every time the stream
+ * opens, since what happened while it was down is not replayed (11.4). `connection` is where the stream stands, for the line that says
+ * so calmly. A reload, or a window opened later, is the snapshot read again (FR-SES-08). Exported for the tests.
+ */
+export function watchSnapshot<T>(key: string, load: (a: TeacherApi) => Promise<T>, channel: TeacherChannel, reduce: (data: T, event: ChannelEvent) => T, onStatus: (s: ChannelStatus) => void) {
+  const slot = slotFor(key, load);
+  return api.openChannel(channel, {
+    onEvent: (event) => {
+      const held = slot.entry.data;
+      if (held === undefined) return;
+      const next = reduce(held, event);
+      if (next !== held) slot.put(next);
+    },
+    onStatus: (status) => {
+      onStatus(status);
+      if (status === "open") void slot.fetch(true);
+    },
+  });
+}
+
+/** The teacher's own screen of a lesson: everything, with names (FR-CON-05). Its stream is the console channel, which carries every other channel's events too. */
+export function useConsole(sessionId: Id): { query: Query<ConsoleSnapshot>; connection: ChannelStatus } {
+  const query = useQuery(`console:${sessionId}`, (a) => a.getConsole(sessionId));
+  const [connection, setConnection] = useState<ChannelStatus>("connecting");
+  useEffect(
+    () => watchSnapshot(`console:${sessionId}`, (a) => a.getConsole(sessionId), consoleChannel(sessionId), applyConsoleEvent, setConnection),
+    [sessionId],
+  );
+  return { query, connection };
+}
+
+/**
+ * The projected window's snapshot, and its own stream (PROPOSED `session.{id}.class`): the one a student does not read, since it carries the
+ * live join token. It holds no private data (BR-PRIV-01).
+ */
+export function useClassView(sessionId: Id): { query: Query<ClassViewSnapshot>; connection: ChannelStatus } {
+  const query = useQuery(`class-view:${sessionId}`, (a) => a.getClassView(sessionId));
+  const [connection, setConnection] = useState<ChannelStatus>("connecting");
+  useEffect(
+    () => watchSnapshot(`class-view:${sessionId}`, (a) => a.getClassView(sessionId), classChannel(sessionId), applyClassEvent, setConnection),
+    [sessionId],
+  );
+  return { query, connection };
+}
+
+/** The lesson, moved on from the lobby to teaching (forward only, 4.1). The answer is the fresh console, put into the cache. */
+export async function advanceSession(sessionId: Id, to: "teaching" | "review"): Promise<ConsoleSnapshot> {
+  const snapshot = await change((a) => a.advance(sessionId, { to }));
+  seed(`console:${sessionId}`, snapshot);
+  seed("open-session", { server_now: snapshot.server_now, session: snapshot.session });
+  return snapshot;
+}
+
+/** A student marked present without a phone, with the reason (FR-ATT-04). The answer is the fresh console. */
+export async function markNoDevice(sessionId: Id, studentId: Id, reason: NoDeviceReason): Promise<ConsoleSnapshot> {
+  try {
+    const snapshot = await change((a) => a.markNoDevice(sessionId, studentId, { reason }));
+    seed(`console:${sessionId}`, snapshot);
+    return snapshot;
+  } catch (e) {
+    // The student joined with a phone while the teacher was choosing: the console is told how things stand now.
+    if (toApiError(e).code === "invalid_state") invalidate(`console:${sessionId}`);
+    throw e;
+  }
+}
+
+/** The mark taken back: the student is as they were before it. The answer is the fresh console. */
+export async function clearNoDevice(sessionId: Id, studentId: Id): Promise<ConsoleSnapshot> {
+  const snapshot = await change((a) => a.clearNoDevice(sessionId, studentId));
+  seed(`console:${sessionId}`, snapshot);
+  return snapshot;
 }
 
 // ---- Who is signed in -----------------------------------------------------------------------------
@@ -341,6 +426,8 @@ export async function startSession(request: CreateSessionRequest): Promise<Conso
   try {
     const snapshot = await change((a) => a.createSession(request));
     seed("open-session", { server_now: snapshot.server_now, session: snapshot.session });
+    // The console it goes to opens with the lesson already in it.
+    slotFor(`console:${snapshot.session.id}`, (a) => a.getConsole(snapshot.session.id)).put(snapshot);
     return snapshot;
   } catch (e) {
     if (toApiError(e).code === "session_open") invalidate("open-session");

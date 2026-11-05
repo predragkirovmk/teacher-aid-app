@@ -62,6 +62,14 @@ describe("starting a lesson", () => {
     expect(getOpenSession).toHaveBeenCalledTimes(1);
   });
 
+  test("the console it goes to opens with the lesson already in it, and asks for nothing", async () => {
+    openSlot();
+    createSession.mockResolvedValue(snapshot);
+    await startSession({ lesson_id: "l-procenti", course_id: "course-ii-4" });
+    const console_ = slotFor("console:s-n1", () => Promise.reject(new Error("must not be asked")));
+    expect(console_.read().data).toBe(snapshot);
+  });
+
   test("a refusal because a lesson is open asks for the open lesson again, so the screen can say which, and the refusal still comes through", async () => {
     const slot = openSlot();
     createSession.mockRejectedValue(new ApiError("session_open", { status: 409 }));
