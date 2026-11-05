@@ -2333,6 +2333,7 @@ button {
 }
 .live__code .btn {
   width: 100%;
+  padding-inline: var(--sp-2);
 }
 
 /* The projector: the button, where its window stands, and the one warning that matters. */
