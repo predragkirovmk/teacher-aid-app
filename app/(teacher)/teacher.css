@@ -2666,8 +2666,9 @@ button {
   line-height: 1.1;
   text-wrap: balance;
 }
+/* The bottom margin keeps the title clear of the corner with the QR, which is about 34vh high. */
 .cv__lesson {
-  margin: 0 0 12vh;
+  margin: 0 0 38vh;
   text-align: center;
   color: var(--text-2);
   font-family: var(--font-display);
@@ -2692,9 +2693,10 @@ button {
 }
 .cv__corner .cv__label {
   margin: 0 0 0.5vh;
-  max-width: 14ch;
+  max-width: 16ch;
   color: var(--text);
   font-size: max(1.5rem, 3.4vh);
+  text-wrap: balance;
 }
 .cv__code--small {
   padding: 0.5vh 1.5vh;
