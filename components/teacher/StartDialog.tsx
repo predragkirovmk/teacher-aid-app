@@ -144,7 +144,7 @@ export function StartDialog({ lesson, onClose }: { lesson: StartLesson; onClose:
         {view === "choose" && (
           <button type="button" className="btn btn--primary" aria-busy={busy} disabled={busy} onClick={() => void start()}>
             <PlayIcon size={24} weight="fill" aria-hidden="true" />
-            {t("start.go")}
+            {chosen ? t("start.go.class", { class: chosen.class.name }) : t("start.go")}
           </button>
         )}
         {view === "running" && running && (

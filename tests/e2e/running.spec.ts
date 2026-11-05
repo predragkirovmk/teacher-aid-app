@@ -87,7 +87,7 @@ test.describe("with a lesson running, on a laptop", () => {
     await page.goto("/teacher");
     await page.locator(".lessons > li", { hasText: "Проценти и пропорции" }).getByRole("button", { name: "Започни час" }).click();
     await page.getByRole("dialog", { name: "Со кој клас?" }).getByRole("radio", { name: /III-5/ }).check();
-    await page.getByRole("dialog").getByRole("button", { name: "Започни", exact: true }).click();
+    await page.getByRole("dialog").getByRole("button", { name: /^Започни( со .+)?$/ }).click();
     await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
     await expect(reminder(page)).toHaveCount(0);
 

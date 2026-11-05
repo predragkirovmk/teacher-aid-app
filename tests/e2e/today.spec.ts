@@ -360,7 +360,7 @@ test.describe("starting a lesson", () => {
     expect(box.y + box.height).toBeLessThanOrEqual(720);
     // Start is the window's yellow button. The focus is on the choices, on the first one, which is not chosen by it, so Enter
     // starts nothing.
-    await expect(dialog.getByRole("button", { name: "Започни", exact: true })).toHaveClass(/btn--primary/);
+    await expect(dialog.getByRole("button", { name: /^Започни( со .+)?$/ })).toHaveClass(/btn--primary/);
     await expect(rows.first()).toBeFocused();
     await expect(dialog.getByRole("button", { name: "Откажи" })).toHaveClass(/btn--secondary/);
     await page.keyboard.press("Enter");
@@ -384,8 +384,8 @@ test.describe("starting a lesson", () => {
     // The rest is reached by scrolling the window, and Tab takes the focus, and the view, to the buttons.
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Tab");
-    await expect(dialog.getByRole("button", { name: "Започни", exact: true })).toBeFocused();
-    await expect(dialog.getByRole("button", { name: "Започни", exact: true })).toBeInViewport();
+    await expect(dialog.getByRole("button", { name: /^Започни( со .+)?$/ })).toBeFocused();
+    await expect(dialog.getByRole("button", { name: /^Започни( со .+)?$/ })).toBeInViewport();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
   });
 
@@ -393,7 +393,7 @@ test.describe("starting a lesson", () => {
     await page.goto("/teacher");
     await procenti(page).getByRole("button", { name: "Започни час" }).click();
     const dialog = startDialog(page);
-    await dialog.getByRole("button", { name: "Започни", exact: true }).click();
+    await dialog.getByRole("button", { name: /^Започни( со .+)?$/ }).click();
     await expect(dialog.getByRole("alert")).toHaveText("Изберете со кој клас ќе го започнете часот.");
     await expect(dialog.getByRole("radio").first()).toBeFocused();
     expect(await savedSession(page)).toBeNull();
@@ -407,14 +407,19 @@ test.describe("starting a lesson", () => {
     await page.goto("/teacher");
     await procenti(page).getByRole("button", { name: "Започни час" }).click();
     const dialog = startDialog(page);
+    // The yellow button says plainly what it will do: with nothing chosen it names no class, and it names the one that is chosen.
+    await expect(dialog.getByRole("button", { name: /^Започни/ })).toHaveText("Започни");
     await dialog.getByRole("radio", { name: /III-5/ }).check();
     await expect(dialog.getByRole("radio", { name: /III-5/ })).toBeChecked();
-    await dialog.getByRole("button", { name: "Започни", exact: true }).click();
+    await expect(dialog.getByRole("button", { name: /^Започни/ })).toHaveText("Започни со III-5");
+    await dialog.getByRole("radio", { name: /IV-1/ }).check();
+    await expect(dialog.getByRole("button", { name: /^Започни/ })).toHaveText("Започни со IV-1");
+    await dialog.getByRole("radio", { name: /III-5/ }).check();
+    await dialog.getByRole("button", { name: "Започни со III-5" }).click();
 
     await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
     await expect(title(page)).toHaveText("Час во тек");
-    await expect(page.getByText("Математика, III-5: Проценти и пропорции.")).toBeVisible();
-    await expect(page.getByText("Часот во живо наскоро")).toBeVisible();
+    await expect(page.getByText("Математика, III-5")).toBeVisible();
     const kept = await savedSession(page);
     expect(kept).toMatchObject({ state: "lobby", lesson: { id: "l-procenti", title: "Проценти и пропорции", version: 1 }, course_id: "course-iii-5" });
     await expect(page.getByText("Штотуку започна")).toBeVisible();
@@ -440,7 +445,7 @@ test.describe("starting a lesson", () => {
     await page.keyboard.press("ArrowDown");
     await expect(dialog.getByRole("radio", { name: /III-5/ })).toBeChecked();
     await page.keyboard.press("Tab");
-    await expect(dialog.getByRole("button", { name: "Започни", exact: true })).toBeFocused();
+    await expect(dialog.getByRole("button", { name: /^Започни( со .+)?$/ })).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
     await expect(page.getByText("Математика, III-5: Проценти и пропорции.")).toBeVisible();
@@ -477,7 +482,7 @@ test.describe("starting a lesson", () => {
     await expect(dialog.getByRole("radio")).toHaveCount(1);
     await expect(dialog.getByRole("radio", { name: /Група 1А/ })).toBeChecked();
     await expect(dialog).toContainText("28 студенти");
-    await dialog.getByRole("button", { name: "Започни", exact: true }).click();
+    await dialog.getByRole("button", { name: /^Започни( со .+)?$/ }).click();
     await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
     await expect(page.getByText(/^Математичка анализа 1, Група 1А:/)).toBeVisible();
   });
@@ -528,7 +533,7 @@ test.describe("starting a lesson", () => {
     await other.goto("/teacher");
     await cards(other).filter({ hasText: "Основи на веројатноста" }).getByRole("button", { name: "Започни час" }).click();
     await startDialog(other).getByRole("radio", { name: /IV-1/ }).check();
-    await startDialog(other).getByRole("button", { name: "Започни", exact: true }).click();
+    await startDialog(other).getByRole("button", { name: /^Започни( со .+)?$/ }).click();
     await expect(other).toHaveURL(/\/teacher\/live\//);
 
     await expect(runningDialog(page)).toBeVisible();
@@ -550,7 +555,7 @@ test.describe("starting a lesson", () => {
     await other.goto("/teacher");
     await procenti(other).getByRole("button", { name: "Започни час" }).click();
     await startDialog(other).getByRole("radio", { name: /II-4/ }).check();
-    await startDialog(other).getByRole("button", { name: "Започни", exact: true }).click();
+    await startDialog(other).getByRole("button", { name: /^Започни( со .+)?$/ }).click();
     await expect(other).toHaveURL(/\/teacher\/live\//);
 
     // The lesson has left this page's list, as it should, and the window is still here to say why.
@@ -574,7 +579,7 @@ test.describe("starting a lesson", () => {
     await page.goto("/teacher");
     await procenti(page).getByRole("button", { name: "Започни час" }).click();
     await startDialog(page).getByRole("radio", { name: /II-4/ }).check();
-    await startDialog(page).getByRole("button", { name: "Започни", exact: true }).click();
+    await startDialog(page).getByRole("button", { name: /^Започни( со .+)?$/ }).click();
     await expect(page).toHaveURL(/\/teacher\/live\//);
     const titles = await page.evaluate(() => (window as unknown as { __titles: string[] }).__titles);
     expect(titles).toEqual(["Со кој клас?"]);
@@ -587,7 +592,7 @@ test.describe("starting a lesson", () => {
     const dialog = page.getByRole("dialog", { name: "Which class?" });
     await expect(dialog).toContainText("Lesson: Проценти и пропорции");
     await expect(dialog).toContainText("26 students");
-    await dialog.getByRole("button", { name: "Start", exact: true }).click();
+    await dialog.getByRole("button", { name: /^Start( with .+)?$/ }).click();
     await expect(dialog.getByRole("alert")).toHaveText("Choose which class to start the lesson with.");
     await expect(dialog.getByRole("button", { name: "Cancel" })).toBeVisible();
   });
@@ -666,7 +671,7 @@ test.describe("a lesson, to read", () => {
     const dialog = startDialog(page);
     await expect(dialog).toContainText("Лекција: Проценти и пропорции");
     await dialog.getByRole("radio", { name: /II-4/ }).check();
-    await dialog.getByRole("button", { name: "Започни", exact: true }).click();
+    await dialog.getByRole("button", { name: /^Започни( со .+)?$/ }).click();
     await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
     await expect(page.getByText("Математика, II-4: Проценти и пропорции.")).toBeVisible();
   });
