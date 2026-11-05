@@ -25,8 +25,9 @@ clock. Everything below is PROPOSED unless it says it is the spec's. Types: `lib
 2. The token is opaque, URL-safe (`[A-Za-z0-9-]`, the student route's pattern). The short code: the app shows what it is given, in groups of three;
    six digits are the easiest to read out and to type. Both rotate every 30 s on the server's clock (BR-JOIN-02); `valid_to` is the end of the window.
    The app carries the server's clock on by its own (`server_now` offset) and reads the snapshot again if a code is over by 4 s and no event replaced it.
-3. OPEN-03: the student app removed typing the code on 2026-10-13. The projector therefore says "scan" (QR, or the phone's camera) and does not say
-   "enter the code". One constant (`STUDENTS_CAN_TYPE_CODE` in `lib/teacher/live.ts`) flips the sentence if typing comes back. The code is still shown (FR-JOIN-01).
+3. OPEN-03: the student app removed typing the code on 2026-10-13. While `STUDENTS_CAN_TYPE_CODE` (`lib/teacher/live.ts`) is false, which it is, **neither
+   screen shows the code**: the projector says "scan" (QR, or the phone's camera) and the QR is the only way in. Turning the constant on brings the code back
+   on both screens, with "or enter the code". The API still sends `short_code` with the token (FR-JOIN-01, and typing may return); nothing new is needed.
 
 ## C. Present without a phone, and taking it back (F-11, FR-ATT-04)
 
