@@ -281,13 +281,14 @@ test.describe("Today with a lesson running", () => {
     expect(where.howLines).toBe(1);
   });
 
-  test("the way back leads to the live lesson, which says it is coming", async ({ page }) => {
+  test("the way back leads to the console of the live lesson", async ({ page }) => {
     await simulate(page);
     await page.getByRole("link", { name: "Врати се на часот" }).click();
     await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
     await expect(title(page)).toHaveText("Час во тек");
-    await expect(page.getByRole("heading", { level: 2, name: "Часот во живо наскоро" })).toBeVisible();
-    await expect(page.getByText("Математика, IV-1: Основи на веројатноста. Трае 12 минути.")).toBeVisible();
+    await expect(page.getByText("Математика, IV-1: Основи на веројатноста")).toBeVisible();
+    await expect(page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]")).toContainText("Чекаме ученици");
+    await expect(page.getByRole("button", { name: "Почни го часот" })).toBeVisible();
     await page.getByRole("link", { name: "Назад кон Денес" }).click();
     await expect(page).toHaveURL(/\/teacher$/);
     await expect(page.getByRole("region", { name: "Час во тек" })).toBeVisible();
@@ -422,7 +423,7 @@ test.describe("starting a lesson", () => {
     await expect(page.getByText("Математика, III-5")).toBeVisible();
     const kept = await savedSession(page);
     expect(kept).toMatchObject({ state: "lobby", lesson: { id: "l-procenti", title: "Проценти и пропорции", version: 1 }, course_id: "course-iii-5" });
-    await expect(page.getByText("Штотуку започна")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Код за приклучување" })).toBeVisible();
 
     // Back on Today the band is there, and the lesson that runs is not listed again.
     await page.getByRole("link", { name: "Назад кон Денес" }).click();
@@ -448,7 +449,7 @@ test.describe("starting a lesson", () => {
     await expect(dialog.getByRole("button", { name: /^Започни( со .+)?$/ })).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
-    await expect(page.getByText("Математика, III-5: Проценти и пропорции.")).toBeVisible();
+    await expect(page.getByText("Математика, III-5: Проценти и пропорции")).toBeVisible();
   });
 
   test("Cancel and Escape close it, start nothing, and give the focus back to the button that was pressed", async ({ page }) => {
@@ -484,7 +485,7 @@ test.describe("starting a lesson", () => {
     await expect(dialog).toContainText("28 студенти");
     await dialog.getByRole("button", { name: /^Започни( со .+)?$/ }).click();
     await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
-    await expect(page.getByText(/^Математичка анализа 1, Група 1А:/)).toBeVisible();
+    await expect(page.getByText(/^Математичка анализа 1, Група 1А: /)).toBeVisible();
   });
 
   test("a lesson for a subject the teacher has no class for says so, plainly, with nothing to choose", async ({ page }) => {
@@ -673,7 +674,7 @@ test.describe("a lesson, to read", () => {
     await dialog.getByRole("radio", { name: /II-4/ }).check();
     await dialog.getByRole("button", { name: /^Започни( со .+)?$/ }).click();
     await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
-    await expect(page.getByText("Математика, II-4: Проценти и пропорции.")).toBeVisible();
+    await expect(page.getByText("Математика, II-4: Проценти и пропорции")).toBeVisible();
   });
 
   test("with a lesson running its start button is not yellow, and says so when pressed", async ({ page }) => {
