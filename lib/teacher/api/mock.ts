@@ -9,9 +9,10 @@ import {
   TYPED_TEXT_MIN_CHARS,
 } from "../lessons";
 import { browserImageEnv, checkImage, downscaleImage, UnreadableImage, type ImageEnv } from "../images";
+import { NO_DEVICE_REASONS, nextState } from "../live";
 import { QUESTIONS_MAX } from "../scoring";
 import type { SchoolType } from "../store";
-import type { CallOptions, DemoControls, SettledPromise, TeacherApi, Unsubscribe } from "./client";
+import type { CallOptions, ChannelStatus, DemoControls, SettledPromise, TeacherApi, Unsubscribe } from "./client";
 import { isProvider } from "../signin";
 import { ApiError, toApiError, type ValidationReason } from "./errors";
 import { BANK, bankLesson, bankQuestions, refineQuestions, type BankLesson } from "./mock-bank";
@@ -26,10 +27,12 @@ import {
   type World,
 } from "./mock-data";
 import { GENERATE_MS, latestUnsaved, REFINE_MS, startJob, statusOf, toSummary, toWire, trimDrafts } from "./mock-drafts";
+import { classViewOf, consoleStudents, eventsBetween, hasJoinedAt, planClass, tokenAt, type SimInput } from "./mock-live";
 import { demoProviderUrl, isOffline } from "./mock-session";
 import { overlayOf, withOverlay, type DemoDraft, type DemoSession, type MockState, type Overlay, type Persona } from "./mock-state";
 import type {
   AttendanceTally,
+  ChannelEvent,
   ConsoleSnapshot,
   CourseDashboard,
   CourseSummary,
@@ -43,11 +46,13 @@ import type {
   LessonSummary,
   LibraryItem,
   Me,
+  NoDeviceRequest,
   OpenSession,
   PracticeResults,
   PracticeSetSummary,
   Question,
   SessionRef,
+  TeacherChannel,
 } from "./types";
 
 /**
@@ -70,9 +75,10 @@ import type {
  * Writing a lesson is a job, as it is in the API (BR-LES-08): `generateLesson` answers at once with the draft pending, and the draft is
  * ready `GENERATE_MS` later by the clock (mock-drafts.ts), however the page was left or reloaded in the meantime.
  *
- * The live lesson (the console, the class view, realtime) is not built yet: those calls answer `not_implemented`. What
- * Today needs is: `createSession` opens a lesson in the lobby, `getOpenSession` reports it, and a teacher has one open
- * lesson at a time. Ending it is step 9's, so until then the demo closes it from Settings (`MockDemo`).
+ * The live lesson (the console, the class view, realtime) is played from the clock alone (mock-live.ts): the class that joins, who is
+ * late, who loses the connection and the code are worked out from when the lesson began and what time it is, so two windows agree and a
+ * reload finds the lesson where it was. What is still not built (firing questions, ending) answers `not_implemented`. A teacher has one
+ * open lesson at a time; ending it is step 10's, so until then the demo closes it from Settings (`MockDemo`).
  */
 
 /** What the mock reads and writes: the saved state, the demo school the app is on, the clock. */
@@ -201,8 +207,14 @@ function isDraftPatch(v: unknown): v is DraftPatch {
   return true;
 }
 
-/** What a test may replace: how time passes, and what the browser does with a picture. */
-export type MockOptions = { delay?: Delay; image?: ImageEnv };
+/** What a test may replace: how time passes, what the browser does with a picture, and what makes the realtime stream look again. */
+export type MockOptions = { delay?: Delay; image?: ImageEnv; tick?: (look: () => void) => Unsubscribe };
+
+/** The stream looks again at the lesson once a second: that is how quickly a join or a code that changed reaches a screen. */
+const everySecond = (look: () => void): Unsubscribe => {
+  const handle = setInterval(look, 1000);
+  return () => clearInterval(handle);
+};
 
 /** The adapter alone, for the tests and the server render. */
 export const createMockApi = (source: MockSource, options: MockOptions = {}): TeacherApi => createMock(source, options).api;
@@ -210,6 +222,7 @@ export const createMockApi = (source: MockSource, options: MockOptions = {}): Te
 export function createMock(source: MockSource, options: MockOptions = {}): { api: TeacherApi; demo: MockDemo } {
   const delay = options.delay ?? wait;
   const image = options.image ?? browserImageEnv;
+  const tick = options.tick ?? everySecond;
 
   const ctx = (): Ctx => {
     const type = source.schoolType();
@@ -540,39 +553,109 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
     return s && course ? { ...sessionRef(s), class_name: course.def.name, subject_name: course.def.subject.name } : null;
   };
 
-  /** What the console shows of a lesson that has just been opened: every question ready, every student of the class not yet in. */
-  const consoleOf = (c: Ctx, s: DemoSession, course: SeedCourse, lesson: Lesson): ConsoleSnapshot => ({
-    server_now: iso(c.now),
-    session: { ...sessionRef(s), class_name: course.def.name, subject_name: course.def.subject.name },
-    questions: lesson.questions.map((question, i) => ({
-      id: `${s.id}-sq${i + 1}`,
-      question,
-      status: "ready",
-      adhoc: false,
-      fired_at: null,
-      closes_at: null,
-      closed_at: null,
-      revealed_at: null,
-      skipped_at: null,
-      answered: 0,
-      joined: 0,
-    })),
-    students: course.students.map((student) => ({
-      id: student.id,
-      full_name: student.full_name,
-      attendance: null,
-      joined_at: null,
-      no_device_reason: null,
-      online: false,
-      answer_state: null,
-      focus_flags: 0,
-      points: 0,
-    })),
-    anon_questions: [],
-    focus_flags: [],
-    board: [],
-    nudge: false,
+  /** The lesson of the open session, as it is asked about: the open session of this teacher, whose course is in this school, else `not_found`. */
+  const liveOf = (sessionId: Id) => {
+    const c = ctx();
+    const s = c.overlay.session;
+    const course = s && s.id === sessionId ? c.world.courses.find((x) => x.course_id === s.course_id) : undefined;
+    if (!s || !course) throw notFound();
+    return { c, s, course };
+  };
+
+  const simInput = (c: Ctx, s: DemoSession): SimInput => ({
+    started_at: Date.parse(s.started_at),
+    teaching_at: s.teaching_at === null ? null : Date.parse(s.teaching_at),
+    now: c.now,
   });
+
+  const planOf = (s: DemoSession, course: SeedCourse) => planClass(s.id, course.students.map((student) => student.id));
+
+  /**
+   * What the console shows of a lesson, at the moment of the question: every question ready, and the class as the clock has it (who has
+   * joined, who is late, who has lost the connection, who is marked present without a phone) with the code of this 30-second window.
+   */
+  const consoleOf = (c: Ctx, s: DemoSession, course: SeedCourse): ConsoleSnapshot => {
+    const lesson = lessonsOf(c).find((l) => l.id === s.lesson.id);
+    // A teacher who has made no lesson yet is shown one of the demo's own (simulateRunning), whose questions come from the bank.
+    const questions = lesson ? lesson.questions : bankQuestions(bankLesson("procenti"), s.lesson.id);
+    return {
+      server_now: iso(c.now),
+      session: { ...sessionRef(s), class_name: course.def.name, subject_name: course.def.subject.name },
+      join: s.state === "ended" ? null : tokenAt(s.id, c.now),
+      questions: questions.map((question, i) => ({
+        id: `${s.id}-sq${i + 1}`,
+        question,
+        status: "ready",
+        adhoc: false,
+        fired_at: null,
+        closes_at: null,
+        closed_at: null,
+        revealed_at: null,
+        skipped_at: null,
+        answered: 0,
+        joined: 0,
+      })),
+      students: consoleStudents(course.students, planOf(s, course), s.marks, simInput(c, s)),
+      anon_questions: [],
+      focus_flags: [],
+      board: [],
+      nudge: false,
+    };
+  };
+
+  /** The stream of a lesson: what changed since it last looked (mock-live.ts), as often as the tick, and at once when another window changed it. */
+  const stream = (channel: TeacherChannel, sessionId: Id, onEvent: (e: ChannelEvent) => void, onStatus?: (s: ChannelStatus) => void): Unsubscribe => {
+    let previous: ConsoleSnapshot | null = null;
+    let status: ChannelStatus = "connecting";
+    let stopped = false;
+    const say = (next: ChannelStatus) => {
+      if (next === status) return;
+      status = next;
+      onStatus?.(next);
+    };
+    const read = (): ConsoleSnapshot | null => {
+      try {
+        const { c, s, course } = liveOf(sessionId);
+        return consoleOf(c, s, course);
+      } catch {
+        return null;
+      }
+    };
+    const look = () => {
+      if (stopped) return;
+      // A computer with no connection cannot reach the lesson, in the mock as for real: it says so, and opens again on its own.
+      if (isOffline()) {
+        previous = null;
+        say("reconnecting");
+        return;
+      }
+      const next = read();
+      if (status !== "open") {
+        previous = next;
+        say("open");
+        return;
+      }
+      if (next && previous) for (const event of eventsBetween(previous, next, channel)) onEvent(event);
+      previous = next;
+    };
+    onStatus?.("connecting");
+    const stopTick = tick(look);
+    const stopListening = source.subscribe(look);
+    if (typeof window !== "undefined") {
+      window.addEventListener("online", look);
+      window.addEventListener("offline", look);
+    }
+    queueMicrotask(look);
+    return () => {
+      stopped = true;
+      stopTick();
+      stopListening();
+      if (typeof window !== "undefined") {
+        window.removeEventListener("online", look);
+        window.removeEventListener("offline", look);
+      }
+    };
+  };
 
   const findDraft = (c: Ctx, draftId: Id): DemoDraft => {
     const draft = c.overlay.drafts.find((d) => d.id === draftId);
@@ -978,23 +1061,64 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
           lesson: { id: lesson.id, title: lesson.title, version: lesson.version },
           state: "lobby",
           started_at: iso(c.now),
+          teaching_at: null,
+          marks: [],
         };
         save(c, { ...c.overlay, counter: c.overlay.counter + 1, session });
-        return consoleOf(c, session, course, lesson);
+        return consoleOf({ ...c, overlay: { ...c.overlay, session } }, session, course);
       }),
     getOpenSession: () =>
       run(() => {
         const c = ctx();
         return { server_now: iso(c.now), session: openOf(c) };
       }),
-    getConsole: () => notImplemented(),
-    getClassView: () => notImplemented(),
-    advance: () => notImplemented(),
+    getConsole: (sessionId) =>
+      run(() => {
+        const { c, s, course } = liveOf(sessionId);
+        return consoleOf(c, s, course);
+      }),
+    getClassView: (sessionId) =>
+      run(() => {
+        const { c, s, course } = liveOf(sessionId);
+        return classViewOf(consoleOf(c, s, course));
+      }),
+    advance: (sessionId, request) =>
+      run(() => {
+        if (isOffline()) throw new ApiError("network");
+        const { c, s, course } = liveOf(sessionId);
+        if (request?.to !== "teaching" && request?.to !== "review") throw invalid();
+        // Forward only, one state at a time, and nothing moves a lesson that has ended (4.1).
+        if (nextState(s.state) !== request.to) throw new ApiError("invalid_state", { status: 409 });
+        const next: DemoSession = { ...s, state: request.to, teaching_at: request.to === "teaching" ? iso(c.now) : s.teaching_at };
+        save(c, { ...c.overlay, session: next });
+        return consoleOf(c, next, course);
+      }),
     fireQuestion: () => notImplemented(),
     revealQuestion: () => notImplemented(),
     skipQuestion: () => notImplemented(),
     fireAdhoc: () => notImplemented(),
-    markNoDevice: () => notImplemented(),
+    markNoDevice: (sessionId, studentId, request: NoDeviceRequest) =>
+      run(() => {
+        if (isOffline()) throw new ApiError("network");
+        const { c, s, course } = liveOf(sessionId);
+        if (!NO_DEVICE_REASONS.includes(request?.reason)) throw invalid();
+        if (!course.students.some((student) => student.id === studentId)) throw notFound();
+        // A student who joined with a phone is present by that: the join stands, and a mark never overrides it.
+        if (hasJoinedAt(planOf(s, course).find((p) => p.id === studentId), simInput(c, s))) throw new ApiError("invalid_state", { status: 409 });
+        const next: DemoSession = { ...s, marks: [...s.marks.filter((m) => m.student_id !== studentId), { student_id: studentId, reason: request.reason, at: iso(c.now) }] };
+        save(c, { ...c.overlay, session: next });
+        return consoleOf(c, next, course);
+      }),
+    clearNoDevice: (sessionId, studentId) =>
+      run(() => {
+        if (isOffline()) throw new ApiError("network");
+        const { c, s, course } = liveOf(sessionId);
+        if (!course.students.some((student) => student.id === studentId)) throw notFound();
+        // Nothing to take back is not an error: the answer is the lesson as it is.
+        const next: DemoSession = { ...s, marks: s.marks.filter((m) => m.student_id !== studentId) };
+        if (next.marks.length !== s.marks.length) save(c, { ...c.overlay, session: next });
+        return consoleOf(c, next, course);
+      }),
     markAnonAnswered: () => notImplemented(),
     endSession: () => notImplemented(),
     getReview: () => notImplemented(),
@@ -1021,9 +1145,7 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
         throw notFound();
       }),
 
-    openChannel: () => {
-      throw new ApiError("not_implemented");
-    },
+    openChannel: (channel, { onEvent, onStatus }) => stream(channel, channel.split(".")[1], onEvent, onStatus),
     subscribe: (listener) => source.subscribe(listener),
   };
 
@@ -1047,6 +1169,8 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
         state: "lobby",
         // A lesson in the middle of its time, so Today reads like a lesson that is going on.
         started_at: iso(c.now - 12 * 60_000),
+        teaching_at: null,
+        marks: [],
       };
       save(c, { ...c.overlay, counter: c.overlay.counter + 1, session });
     },

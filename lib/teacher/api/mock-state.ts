@@ -1,6 +1,7 @@
 import { isDraftQuestion, isObject, isText, isValidContent } from "../lessons";
+import { NO_DEVICE_REASONS } from "../live";
 import type { SchoolType } from "../store";
-import type { DraftQuestion, Lesson, Refinement, SessionState, SourceKind, Subject } from "./types";
+import type { DraftQuestion, Lesson, NoDeviceReason, Refinement, SessionState, SourceKind, Subject } from "./types";
 
 /**
  * What the mock adapter keeps in the browser. The demo school and its history are worked out from a
@@ -52,9 +53,13 @@ export type DemoDraft = {
   content: { title: string; review_summary: string; questions: DraftQuestion[] };
 };
 
+/** What the teacher marked: a student present without a phone, and why (F-11). Taken back, it is gone. */
+export type MockMark = { student_id: string; reason: NoDeviceReason; at: string };
+
 /**
- * The lesson the teacher is running in the demo. A teacher has one open lesson at a time. It stays in the lobby: running the
- * lesson (the console, the class view) is step 7's, and ending it is step 9's, so until then the demo closes it from Settings.
+ * The lesson the teacher is running in the demo. A teacher has one open lesson at a time. The class that joins is not kept: it is worked
+ * out from these and the clock (mock-live.ts), so only what the teacher did is saved: when the lesson began, when it was moved on from
+ * the lobby, and who was marked present without a phone. Ending it is step 10's, so until then the demo closes it from Settings.
  */
 export type DemoSession = {
   id: string;
@@ -63,6 +68,9 @@ export type DemoSession = {
   state: SessionState;
   /** ISO 8601, UTC. */
   started_at: string;
+  /** When the teacher moved the lesson on from the lobby; null while it is in it. A join after this is late (BR-JOIN-04). */
+  teaching_at: string | null;
+  marks: MockMark[];
 };
 
 export type Overlay = {
@@ -205,6 +213,9 @@ const isSource = (v: unknown): v is DemoSource =>
 
 const SESSION_STATES: readonly SessionState[] = ["lobby", "teaching", "review", "ended"];
 
+const isMark = (v: unknown): v is MockMark =>
+  isObject(v) && isText(v.student_id) && NO_DEVICE_REASONS.includes(v.reason as NoDeviceReason) && isIso(v.at);
+
 const isDemoSession = (v: unknown): v is DemoSession =>
   isObject(v) &&
   isText(v.id) &&
@@ -214,8 +225,10 @@ const isDemoSession = (v: unknown): v is DemoSession =>
   isText(v.lesson.title) &&
   isCount(v.lesson.version) &&
   SESSION_STATES.includes(v.state as SessionState) &&
-  isText(v.started_at) &&
-  Number.isFinite(Date.parse(v.started_at));
+  isIso(v.started_at) &&
+  (v.teaching_at === null || isIso(v.teaching_at)) &&
+  Array.isArray(v.marks) &&
+  v.marks.every(isMark);
 
 function sanitizeOverlay(saved: unknown, persona: Persona = "veteran"): Overlay {
   const s = isObject(saved) ? saved : {};

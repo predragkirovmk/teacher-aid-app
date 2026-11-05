@@ -657,24 +657,243 @@ describe("the picture of a question", () => {
   });
 });
 
+describe("the live lesson", () => {
+  /** A lesson started with II-4, and the class as the clock gives it. */
+  async function started() {
+    const lesson = (await api.listLessons()).find((l) => l.times_run === 0 && l.year === 2)!;
+    const course = (await api.listCourses()).find((c) => c.class.year === 2)!;
+    return api.createSession({ lesson_id: lesson.id, course_id: course.id });
+  }
+  const here = <S extends { attendance: string | null }>(c: { students: S[] }) => c.students.filter((s) => s.attendance === "present" || s.attendance === "late");
+
+  test("a lesson that has just been started has its whole class listed, nobody here, the code and every question ready", async () => {
+    const c = await started();
+    expect(c.session).toMatchObject({ state: "lobby", class_name: "II-4", subject_name: "Математика" });
+    expect(c.students).toHaveLength(26);
+    expect(c.students.every((s) => s.attendance === null && !s.online)).toBe(true);
+    expect(c.join).toMatchObject({ short_code: expect.stringMatching(/^\d{6}$/), token: expect.any(String) });
+    expect(c.questions.length).toBeGreaterThanOrEqual(5);
+    expect(c.questions.every((q) => q.status === "ready")).toBe(true);
+  });
+
+  test("the class joins as time goes by, and a reload finds it where the clock has put it (FR-SES-08)", async () => {
+    const first = await started();
+    now += 5000;
+    const soon = await api.getConsole(first.session.id);
+    now += 70_000;
+    const later = await api.getConsole(first.session.id);
+    expect(here(soon).length).toBeLessThan(here(later).length);
+    const share = here(later).length / 26;
+    expect(share).toBeGreaterThanOrEqual(0.7);
+    expect(share).toBeLessThanOrEqual(0.85);
+    // A second read, as a second window or a reload, says the same.
+    expect(await api.getConsole(first.session.id)).toEqual(later);
+  });
+
+  test("the code is the same all through its 30 seconds and another one follows", async () => {
+    const first = await started();
+    const edge = Math.ceil(now / 30_000) * 30_000;
+    now = edge - 5000;
+    const a = await api.getConsole(first.session.id);
+    now = edge - 1;
+    expect((await api.getConsole(first.session.id)).join).toEqual(a.join);
+    now = edge;
+    const b = await api.getConsole(first.session.id);
+    expect(b.join!.token).not.toBe(a.join!.token);
+    expect(b.join!.valid_to).toBe(new Date(edge + 30_000).toISOString());
+  });
+
+  test("the class view holds no student who is not here and none of the console's own data", async () => {
+    const c = await started();
+    now += 30_000;
+    const view = await api.getClassView(c.session.id);
+    const console_ = await api.getConsole(c.session.id);
+    const absent = console_.students.filter((s) => s.attendance === null);
+    expect(absent.length).toBeGreaterThan(0);
+    const text = JSON.stringify(view);
+    for (const s of absent) expect(text).not.toContain(s.full_name);
+    expect(view.session).toMatchObject({ lesson_title: c.session.lesson.title, class_name: "II-4", joined_count: here(console_).length });
+    expect(view.join).toEqual(console_.join);
+    expect(text).not.toContain("students");
+  });
+
+  test("another session, or none, is not found", async () => {
+    expect((await rejection(api.getConsole("s-none"))).code).toBe("not_found");
+    expect((await rejection(api.getClassView("s-none"))).code).toBe("not_found");
+    const c = await started();
+    expect((await rejection(api.getConsole(`${c.session.id}x`))).code).toBe("not_found");
+  });
+
+  test("the teacher moves the lesson forward, one state at a time, and never back (4.1)", async () => {
+    const c = await started();
+    expect((await rejection(api.advance(c.session.id, { to: "review" }))).code).toBe("invalid_state");
+    const t = await api.advance(c.session.id, { to: "teaching" });
+    expect(t.session.state).toBe("teaching");
+    expect((await api.getOpenSession()).session?.state).toBe("teaching");
+    expect((await rejection(api.advance(c.session.id, { to: "teaching" }))).code).toBe("invalid_state");
+    expect((await rejection(api.advance(c.session.id, { to: "lobby" as "teaching" }))).code).toBe("validation_failed");
+    expect((await api.advance(c.session.id, { to: "review" })).session.state).toBe("review");
+  });
+
+  test("a student who joins after the lesson began is late, and the ones who joined before are not", async () => {
+    const c = await started();
+    now += 20_000;
+    const before = here(await api.getConsole(c.session.id)).map((s) => s.id);
+    await api.advance(c.session.id, { to: "teaching" });
+    now += 80_000;
+    const after = await api.getConsole(c.session.id);
+    const late = after.students.filter((s) => s.attendance === "late");
+    expect(late.length).toBeGreaterThanOrEqual(1);
+    for (const id of before) expect(after.students.find((s) => s.id === id)!.attendance).toBe("present");
+    for (const s of late) expect(Date.parse(s.joined_at!)).toBeGreaterThan(Date.parse(after.session.started_at) + 20_000);
+  });
+
+  test("a student can be marked present without a phone, with a reason, and the mark can be taken back", async () => {
+    const c = await started();
+    const target = c.students[0].id;
+    const marked = await api.markNoDevice(c.session.id, target, { reason: "battery" });
+    expect(marked.students.find((s) => s.id === target)).toMatchObject({ attendance: "present_no_device", no_device_reason: "battery", joined_at: null });
+    // It is kept: a reload finds it.
+    expect((await api.getConsole(c.session.id)).students.find((s) => s.id === target)).toMatchObject({ attendance: "present_no_device" });
+    // A second mark changes the reason.
+    const changed = await api.markNoDevice(c.session.id, target, { reason: "no_data" });
+    expect(changed.students.find((s) => s.id === target)?.no_device_reason).toBe("no_data");
+    const cleared = await api.clearNoDevice(c.session.id, target);
+    expect(cleared.students.find((s) => s.id === target)).toMatchObject({ attendance: null, no_device_reason: null });
+    // Taking back what is not there is not an error.
+    await expect(api.clearNoDevice(c.session.id, target)).resolves.toMatchObject({ session: { id: c.session.id } });
+  });
+
+  test("a student marked who then joins with a phone is present, and the reason is gone (the reversal rule)", async () => {
+    const c = await started();
+    // Somebody who will join later than the moment of the mark: the one who joins last in the lobby.
+    now += 5000;
+    const quiet = await api.getConsole(c.session.id);
+    const waiting = quiet.students.filter((s) => s.attendance === null);
+    now += 70_000;
+    const done = await api.getConsole(c.session.id);
+    const willJoin = waiting.find((s) => done.students.find((d) => d.id === s.id)!.attendance !== null)!;
+    // Go back to before they joined, mark them, and let the clock run.
+    now = Date.parse(c.session.started_at) + 5000;
+    await api.markNoDevice(c.session.id, willJoin.id, { reason: "no_phone" });
+    expect((await api.getConsole(c.session.id)).students.find((s) => s.id === willJoin.id)?.attendance).toBe("present_no_device");
+    now = Date.parse(c.session.started_at) + 75_000;
+    expect((await api.getConsole(c.session.id)).students.find((s) => s.id === willJoin.id)).toMatchObject({ attendance: "present", no_device_reason: null, online: true });
+  });
+
+  test("a student who has joined with a phone cannot be marked: the join stands", async () => {
+    const c = await started();
+    now += 75_000;
+    const joined = (await api.getConsole(c.session.id)).students.find((s) => s.attendance === "present")!;
+    expect((await rejection(api.markNoDevice(c.session.id, joined.id, { reason: "battery" }))).code).toBe("invalid_state");
+  });
+
+  test("a reason that is none of the four, and a student who is not in the class, are refused", async () => {
+    const c = await started();
+    expect((await rejection(api.markNoDevice(c.session.id, c.students[0].id, { reason: "lazy" as "battery" }))).code).toBe("validation_failed");
+    expect((await rejection(api.markNoDevice(c.session.id, "st-nobody", { reason: "battery" }))).code).toBe("not_found");
+    expect((await rejection(api.clearNoDevice(c.session.id, "st-nobody"))).code).toBe("not_found");
+  });
+
+  test("a computer that is offline cannot move the lesson or mark anyone, and nothing changes", async () => {
+    const c = await started();
+    vi.stubGlobal("navigator", { onLine: false });
+    try {
+      expect((await rejection(api.advance(c.session.id, { to: "teaching" }))).code).toBe("network");
+      expect((await rejection(api.markNoDevice(c.session.id, c.students[0].id, { reason: "battery" }))).code).toBe("network");
+      expect((await rejection(api.clearNoDevice(c.session.id, c.students[0].id))).code).toBe("network");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    const again = await api.getConsole(c.session.id);
+    expect(again.session.state).toBe("lobby");
+    expect(again.students[0].attendance).toBeNull();
+  });
+
+  describe("the stream", () => {
+    /** The stream, looking when the test says. */
+    function listen(channel: `session.${string}.${"public" | "class" | "console"}`) {
+      let look: () => void = () => {};
+      const streamed = createMockApi(source, { delay: () => Promise.resolve(), tick: (fn) => ((look = fn), () => {}) });
+      const events: { type: string }[] = [];
+      const statuses: string[] = [];
+      const stop = streamed.openChannel(channel, { onEvent: (e) => events.push(e), onStatus: (s) => statuses.push(s) });
+      return { events, statuses, stop, look: () => look() };
+    }
+
+    test("opens, then says what changed each time it looks, on the channel it was asked for", async () => {
+      const c = await started();
+      const stream = listen(`session.${c.session.id}.console`);
+      await Promise.resolve();
+      expect(stream.statuses).toEqual(["connecting", "open"]);
+      stream.look();
+      expect(stream.events).toEqual([]);
+      now += 30_000;
+      stream.look();
+      expect(stream.events.map((e) => e.type)).toEqual(expect.arrayContaining(["joined.count", "student.joined"]));
+      stream.stop();
+    });
+
+    test("the class channel carries the code and the count and no student", async () => {
+      const c = await started();
+      const stream = listen(`session.${c.session.id}.class`);
+      await Promise.resolve();
+      now += 45_000;
+      stream.look();
+      const types = stream.events.map((e) => e.type);
+      expect(types).toContain("joined.count");
+      expect(types).toContain("join_token.rotated");
+      expect(types).not.toContain("student.joined");
+      stream.stop();
+    });
+
+    test("a lesson the teacher moves on is said on every channel", async () => {
+      const c = await started();
+      const stream = listen(`session.${c.session.id}.public`);
+      await Promise.resolve();
+      await api.advance(c.session.id, { to: "teaching" });
+      stream.look();
+      expect(stream.events.map((e) => e.type)).toContain("state.changed");
+      stream.stop();
+    });
+
+    test("a computer with no connection is reconnecting, and opens again on its own when it is back", async () => {
+      const c = await started();
+      const stream = listen(`session.${c.session.id}.console`);
+      await Promise.resolve();
+      vi.stubGlobal("navigator", { onLine: false });
+      stream.look();
+      vi.unstubAllGlobals();
+      stream.look();
+      expect(stream.statuses).toEqual(["connecting", "open", "reconnecting", "open"]);
+      stream.stop();
+    });
+
+    test("stopping it stops it", async () => {
+      const c = await started();
+      const stream = listen(`session.${c.session.id}.console`);
+      await Promise.resolve();
+      stream.stop();
+      now += 45_000;
+      stream.look();
+      expect(stream.events).toEqual([]);
+    });
+  });
+});
+
 describe("what is not built yet", () => {
-  test("the rest of the live lesson answers not_implemented", async () => {
+  test("firing and the rest of the live lesson answer not_implemented", async () => {
     const calls: Promise<unknown>[] = [
-      api.getConsole("s"),
-      api.getClassView("s"),
-      api.advance("s", { to: "teaching" }),
       api.fireQuestion("s", "q"),
       api.revealQuestion("s", "q"),
       api.skipQuestion("s", "q"),
       api.fireAdhoc("s", { kind: "true_false", prompt: "?", correct: null, timer_seconds: 15 }),
-      api.markNoDevice("s", "st", { reason: "battery" }),
       api.markAnonAnswered("s", "a"),
       api.endSession("s"),
       api.getReview("s"),
       api.createPracticeSet("s"),
     ];
     for (const call of calls) expect((await rejection(call)).code).toBe("not_implemented");
-    expect(() => api.openChannel("session.s.public", () => {})).toThrowError(ApiError);
   });
 
   test("who did a practice set is read from the history", async () => {
