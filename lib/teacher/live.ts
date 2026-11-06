@@ -243,7 +243,10 @@ export function applyConsoleEvent(snapshot: ConsoleSnapshot, event: ChannelEvent
       const id = event.type === "question.opened" ? event.question.id : event.type === "question.progress" ? event.session_question_id : event.session_question_id;
       const questions = snapshot.questions.map((q) => (q.id === id ? moveQuestion(q, event) : q));
       const changed = questions.some((q, i) => q !== snapshot.questions[i]);
-      const closing = event.type === "question.closed" || event.type === "question.skipped" || event.type === "question.revealed";
+      // Only the question that is open holds the "answered" marks: skipping or revealing another one leaves them alone.
+      const closing =
+        (event.type === "question.closed" || event.type === "question.skipped" || event.type === "question.revealed") &&
+        snapshot.questions.some((q) => q.id === id && q.status === "open");
       const students = closing ? snapshot.students.map((s) => (s.answer_state === null ? s : { ...s, answer_state: null })) : snapshot.students;
       // A question sent clears the nudge: the line is only for a lesson that has gone quiet.
       const nudge = event.type === "question.opened" ? null : snapshot.nudge;

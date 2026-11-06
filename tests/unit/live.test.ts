@@ -292,6 +292,17 @@ describe("what an event does to the console", () => {
     expect(applyConsoleEvent(snapshot, { type: "ping", ...at(1) })).toBe(snapshot);
   });
 
+  test("a question skipped or revealed that is not the open one leaves the students' answered marks alone", () => {
+    const sq = (id: string, status: "ready" | "open"): ConsoleSnapshot["questions"][number] =>
+      ({ id, status, question: {}, adhoc: false, fired_at: null, closes_at: null, closed_at: null, revealed_at: null, skipped_at: null, answered: 0, joined: 0, counts: null }) as never;
+    const snapshot = { ...base([student("a", { answer_state: "answered" })]), questions: [sq("q3", "open"), sq("q5", "ready")] };
+    const other = applyConsoleEvent(snapshot, { type: "question.skipped", session_question_id: "q5", ...at(2) } as ChannelEvent);
+    expect(other.students[0].answer_state).toBe("answered");
+    expect(other.questions[1].status).toBe("skipped");
+    const open = applyConsoleEvent(snapshot, { type: "question.closed", session_question_id: "q3", ...at(2) } as ChannelEvent);
+    expect(open.students[0].answer_state).toBeNull();
+  });
+
   test("the same event twice is the same lesson", () => {
     const event: ChannelEvent = { type: "student.joined", student: joined("a"), ...at(2) };
     const once = applyConsoleEvent(base(), event);
