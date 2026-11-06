@@ -52,9 +52,14 @@ export function statusWords(row: Pick<AttendanceRow, "status" | "no_device_reaso
   return row.status === "present_no_device" && row.no_device_reason ? `${status} (${words.reason[row.no_device_reason].toLowerCase()})` : status;
 }
 
-/** One student, one line: "Петровска Ана: присутен/а". */
+const lowerWords = (words: AttendanceWords): AttendanceWords => ({
+  ...words,
+  status: Object.fromEntries(Object.entries(words.status).map(([k, v]) => [k, v.toLowerCase()])) as AttendanceWords["status"],
+});
+
+/** One student, one line: "Петровска Ана: присутен/а". The status is in lower case in a line; the page writes it with a capital. */
 export function attendanceLine(row: AttendanceRow, words: AttendanceWords, locale: Locale): string {
-  return `${registerName(row.full_name, locale)}: ${statusWords(row, words)}`;
+  return `${registerName(row.full_name, locale)}: ${statusWords(row, lowerWords(words))}`;
 }
 
 /** The whole list as plain text a teacher can paste: one student a line, in the register's order, with no heading. */

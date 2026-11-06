@@ -415,7 +415,7 @@ button {
     white-space: normal;
   }
   .running--top .running__actions {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
   .running--top .running__actions .btn {
     width: 100%;

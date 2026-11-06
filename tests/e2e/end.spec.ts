@@ -10,7 +10,7 @@ import { CLASS_IDS, go, next, openProjector, panel, PLANS, reveal, row, send, SE
 
 const LIVE = `/teacher/live/${SESSION}`;
 const endButton = (page: Page) => page.getByRole("button", { name: "Заврши го часот", exact: true });
-const question = (page: Page) => page.getByRole("dialog", { name: "Дали сакате да го завршите часот?" });
+const question = (page: Page) => page.getByRole("alertdialog", { name: "Дали сакате да го завршите часот?" });
 const toReview = (page: Page) => panel(page).getByRole("button", { name: "Премини на прегледот", exact: true });
 const early = (page: Page) => panel(page).getByRole("button", { name: "Премини на прегледот сега" });
 const neverJoins = CLASS_IDS.filter((id) => !PLANS.some((p) => p.id === id));
@@ -26,6 +26,12 @@ async function ask(page: Page, context: BrowserContext, count: number) {
     t += 1;
   }
   await go(context, t);
+}
+
+/** Leave the lesson for the review before every question has been sent: the quiet control and its question. */
+async function reviewEarly(page: Page) {
+  await early(page).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Да, премини на прегледот" }).click();
 }
 
 async function endIt(page: Page) {
@@ -62,7 +68,7 @@ test.describe("from teaching to the review", () => {
     await expect(early(page)).toBeVisible();
 
     await early(page).click();
-    const dialog = page.getByRole("dialog", { name: "Да преминеме на прегледот сега?" });
+    const dialog = page.getByRole("alertdialog", { name: "Да преминеме на прегледот сега?" });
     await expect(dialog).toContainText("5 прашања што не сте ги испратиле нема да бидат поставени.");
     await expect(dialog.getByRole("button", { name: "Не, продолжи со предавањето" })).toBeFocused();
     await expect(dialog.getByRole("button", { name: "Не, продолжи со предавањето" })).toHaveClass(/btn--primary/);
@@ -95,7 +101,7 @@ test.describe("the review", () => {
     await expect(anon.first()).toBeVisible();
     await expect(anon.first().locator("strong")).not.toBeEmpty();
     await anon.first().getByRole("button", { name: /^Означи како одговорено/ }).click();
-    await expect(anon.first().locator(".inbox__done, [data-answered=true]").first()).toBeVisible();
+    await expect(page.locator('[data-testid="anon"][data-answered=true]')).toHaveCount(1);
     await expect(yellow(page)).toHaveText("Прикажи го следното на проекторот");
   });
 
@@ -136,7 +142,7 @@ test.describe("the review", () => {
   test("a projector opened or reloaded in the middle of the review finds the place the console is at", async ({ page, context }) => {
     const projector = await teach(page, context);
     await ask(page, context, 2);
-    await toReview(page).click();
+    await reviewEarly(page);
     await page.getByRole("button", { name: "Прикажи го следното на проекторот" }).click();
     await expect(projector.getByTestId("cv-missed")).toContainText("2 од");
     await projector.reload();
@@ -146,7 +152,7 @@ test.describe("the review", () => {
   test("with nothing missed and no questions asked it says so, plainly, on both screens, and goes on to End", async ({ page, context }) => {
     const projector = await teach(page, context);
     await early(page).click();
-    await page.getByRole("dialog").getByRole("button", { name: "Да, премини на прегледот" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Да, премини на прегледот" }).click();
     await expect(page.getByTestId("none-missed")).toHaveText("Никој не згреши ниту едно прашање");
     await expect(projector.getByTestId("cv-none")).toHaveText("Никој не згреши ниту едно прашање");
     await expect(endButton(page)).toBeVisible();
@@ -167,7 +173,7 @@ test.describe("End", () => {
       await page.getByRole("button", { name: "Почни го часот" }).click();
       await page.getByRole("button", { name: "Да, почни го часот" }).click();
       await early(page).click();
-      await page.getByRole("dialog").getByRole("button", { name: "Да, премини на прегледот" }).click();
+      await page.getByRole("alertdialog").getByRole("button", { name: "Да, премини на прегледот" }).click();
       await expect(page.getByTestId("none-missed")).toBeVisible();
     }],
   ] as const) {
@@ -325,8 +331,7 @@ test.describe("the end page", () => {
     await page.reload();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Часот заврши");
     await expect(page.getByTestId("count-absent")).toHaveText(before);
-    await page.goto("/teacher/lessons");
-    await page.getByRole("link", { name: /Проценти и пропорции/ }).first().click();
+    await page.goto("/teacher/lessons/l-procenti");
     await page.getByTestId("last-run").click();
     await expect(page).toHaveURL(new RegExp(`${LIVE}$`));
     await expect(page.getByTestId("count-absent")).toHaveText(before);
@@ -378,7 +383,7 @@ test.describe("the review survives a reload", () => {
   test("the console in the review, and the projector in the review, show the review again", async ({ page, context }) => {
     const projector = await teach(page, context);
     await ask(page, context, 3);
-    await toReview(page).click();
+    await reviewEarly(page);
     await expect(page.getByTestId("missed-list")).toBeVisible();
     await page.reload();
     await expect(page.getByTestId("missed-list")).toBeVisible();

@@ -99,7 +99,7 @@ test.describe("with a lesson running, on a laptop", () => {
 
   const endFrom = async (page: Page) => {
     await reminder(page).getByRole("button", { name: "Заврши го часот" }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "Да, заврши го часот" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Да, заврши го часот" }).click();
   };
 
   test("goes the moment the lesson is ended, from the reminder, which leads to the end page", async ({ page }) => {
@@ -112,7 +112,8 @@ test.describe("with a lesson running, on a laptop", () => {
     // And comes back the moment one is shown again.
     await page.goto("/teacher/settings");
     await demoButton(page, "Симулирај час во тек").click();
-    await expect(reminder(page)).toBeVisible();
+    // Another lesson is shown now: the one that was run is a held one.
+    await expect(reminder(page, /^Час во тек\s*,/)).toBeVisible();
   });
 
   test("follows a lesson started or closed in another window, with no change of page", async ({ page, context }: { page: Page; context: BrowserContext }) => {

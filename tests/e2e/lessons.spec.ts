@@ -606,7 +606,7 @@ test.describe("deleting a lesson", () => {
     await expect(page.getByText("Прво завршете го часот")).toHaveCount(0);
     // When the class is over the lesson can go again.
     await page.locator(".running--side").getByRole("button", { name: "Заврши го часот" }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "Да, заврши го часот" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Да, заврши го часот" }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Часот заврши");
     await page.goto("/teacher/lessons/l-verojatnost");
     await expect(deleteButton(page)).toBeVisible();

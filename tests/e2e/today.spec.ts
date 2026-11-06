@@ -301,7 +301,7 @@ test.describe("Today with a lesson running", () => {
     await expect(demoButton(page, "Затвори го демо часот")).toHaveCount(0);
     await mainMenu(page).getByRole("link", { name: "Денес" }).click();
     await page.getByRole("region", { name: "Час во тек" }).getByRole("button", { name: "Заврши го часот" }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "Да, заврши го часот" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Да, заврши го часот" }).click();
     await expect(title(page)).toHaveText("Часот заврши");
     expect(await savedSession(page)).toBeNull();
     await mainMenu(page).getByRole("link", { name: "Денес" }).click();
