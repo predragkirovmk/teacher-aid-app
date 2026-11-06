@@ -117,7 +117,7 @@ test.describe("the life of a question", () => {
     await expect(panel(page).getByTestId("countdown")).toHaveText("Уште 1 секунда");
   });
 
-  test("when the last question has its answer shown, the panel says plainly that none is left, and does not offer the review", async ({ page, context }) => {
+  test("when the last question has its answer shown, the panel says plainly that none is left, and the one yellow button goes on to the review", async ({ page, context }) => {
     await teach(page, context);
     const times = [30, 25, 15, 45, 25, 45];
     let t = TEACHING_AT;
@@ -131,8 +131,7 @@ test.describe("the life of a question", () => {
       await expect(panel(page).getByText("Одговорот е прикажан")).toBeVisible();
     }
     await expect(panel(page).getByTestId("none-left")).toContainText("Сите прашања се готови");
-    await expect(yellow(page)).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /Преглед/ })).toHaveCount(0);
+    await expect(yellow(page)).toHaveText("Премини на прегледот");
     await expect(page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]")).toContainText("Предавање");
     await expect(page.locator(".qitem[data-status=shown]")).toHaveCount(6);
   });

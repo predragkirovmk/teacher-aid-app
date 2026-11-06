@@ -40,7 +40,7 @@ export function OpenLesson({ session, where }: { session: NonNullable<OpenSessio
           <ArrowUUpLeftIcon size={24} weight="bold" aria-hidden="true" />
           {t("running.here.back")}
         </Link>
-        <EndLesson sessionId={session.id} size="small" goToEndPage />
+        <EndLesson sessionId={session.id} size="small" goToEndPage short />
       </div>
     </div>
   );

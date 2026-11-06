@@ -15,7 +15,18 @@ import { ConfirmDialog } from "./ConfirmDialog";
  * "Да" again tries again; the lesson is untouched. A lesson another window already ended is as good as ended. From another page it leads to the end page.
  * White on red is 4.4:1, so the label is bold and 19px or larger (the stylesheet).
  */
-export function EndLesson({ sessionId, size = "normal", goToEndPage = false }: { sessionId: Id; size?: "normal" | "small"; goToEndPage?: boolean }) {
+export function EndLesson({
+  sessionId,
+  size = "normal",
+  goToEndPage = false,
+  short = false,
+}: {
+  sessionId: Id;
+  size?: "normal" | "small";
+  goToEndPage?: boolean;
+  /** The reminder in the frame is narrow: it says "Заврши" and its name for a screen reader is the whole phrase, which contains the visible word. */
+  short?: boolean;
+}) {
   const { t, te } = useT();
   const router = useRouter();
   const [asking, setAsking] = useState(false);
@@ -34,9 +45,15 @@ export function EndLesson({ sessionId, size = "normal", goToEndPage = false }: {
 
   return (
     <>
-      <button type="button" className={size === "small" ? "btn btn--danger btn--small" : "btn btn--danger"} aria-haspopup="dialog" onClick={() => setAsking(true)}>
+      <button
+        type="button"
+        className={size === "small" ? "btn btn--danger btn--small" : "btn btn--danger"}
+        aria-haspopup="dialog"
+        aria-label={short ? t("end.button") : undefined}
+        onClick={() => setAsking(true)}
+      >
         <StopCircleIcon size={24} weight="fill" aria-hidden="true" />
-        {t("end.button")}
+        {short ? t("end.short") : t("end.button")}
       </button>
       <ConfirmDialog
         open={asking}

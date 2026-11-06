@@ -294,17 +294,21 @@ test.describe("Today with a lesson running", () => {
     await expect(page.getByRole("region", { name: "Час во тек" })).toBeVisible();
   });
 
-  test("closing the demo lesson in Settings takes the band away and gives the yellow back", async ({ page }) => {
+  test("ending the lesson from the band takes the band away and gives the yellow back; the lesson is then a held one", async ({ page }) => {
     await simulate(page);
     await page.goto("/teacher/settings");
     await expect(demoButton(page, "Симулирај час во тек")).toHaveCount(0);
-    await demoButton(page, "Затвори го демо часот").click();
-    await expect(page.getByRole("status")).toHaveText("Готово. Демо часот е затворен.");
+    await expect(demoButton(page, "Затвори го демо часот")).toHaveCount(0);
+    await mainMenu(page).getByRole("link", { name: "Денес" }).click();
+    await page.getByRole("region", { name: "Час во тек" }).getByRole("button", { name: "Заврши го часот" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Да, заврши го часот" }).click();
+    await expect(title(page)).toHaveText("Часот заврши");
     expect(await savedSession(page)).toBeNull();
     await mainMenu(page).getByRole("link", { name: "Денес" }).click();
     await expect(page.getByRole("region", { name: "Час во тек" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Подготви лекција" })).toHaveClass(/btn--primary/);
-    await expect(cards(page)).toHaveCount(2);
+    // The lesson that was run is held now, so one prepared lesson is left.
+    await expect(cards(page)).toHaveCount(1);
   });
 
   test("a lesson nobody ended says when it began", async ({ page }) => {

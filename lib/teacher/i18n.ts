@@ -797,6 +797,7 @@ const en = {
   "cv.picture": "Picture for the question",
 
   "end.button": "End the lesson",
+  "end.short": "End",
   "end.q.title": "Do you want to end the lesson?",
   "end.q.body": {
     school: "The lesson closes. Your students can no longer join or answer, and the list of who was present is written.",
@@ -1683,6 +1684,7 @@ const mk: Record<Key, Entry> = {
   "cv.picture": "Слика кон прашањето",
 
   "end.button": "Заврши го часот",
+  "end.short": "Заврши",
   "end.q.title": "Дали сакате да го завршите часот?",
   "end.q.body": {
     school: "Часот се затвора. Учениците повеќе не можат да се приклучат ниту да одговараат, и се запишува списокот кој бил присутен.",

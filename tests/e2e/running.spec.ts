@@ -97,13 +97,20 @@ test.describe("with a lesson running, on a laptop", () => {
     await expect(page.getByRole("link", { name: "Врати се на часот, III-5", exact: true })).toBeVisible();
   });
 
-  test("goes the moment the demo lesson is closed, on the page where it is closed", async ({ page }) => {
+  const endFrom = async (page: Page) => {
+    await reminder(page).getByRole("button", { name: "Заврши го часот" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Да, заврши го часот" }).click();
+  };
+
+  test("goes the moment the lesson is ended, from the reminder, which leads to the end page", async ({ page }) => {
     await simulate(page);
     await expect(reminder(page)).toBeVisible();
-    await demoButton(page, "Затвори го демо часот").click();
-    await expect(page.getByRole("status")).toHaveText("Готово. Демо часот е затворен.");
+    await expect(reminder(page).getByRole("button", { name: "Заврши го часот" })).toHaveClass(/btn--danger/);
+    await endFrom(page);
+    await expect(title(page)).toHaveText("Часот заврши");
     await expect(reminder(page)).toHaveCount(0);
     // And comes back the moment one is shown again.
+    await page.goto("/teacher/settings");
     await demoButton(page, "Симулирај час во тек").click();
     await expect(reminder(page)).toBeVisible();
   });
@@ -118,7 +125,7 @@ test.describe("with a lesson running, on a laptop", () => {
     await simulate(other);
     await expect(reminder(page)).toBeVisible();
 
-    await demoButton(other, "Затвори го демо часот").click();
+    await endFrom(other);
     await expect(reminder(page)).toHaveCount(0);
   });
 
@@ -126,7 +133,7 @@ test.describe("with a lesson running, on a laptop", () => {
     await simulate(page);
     await page.goto("/teacher/classes");
     const tile = reminder(page);
-    await expect(tile.locator("svg")).toHaveCount(2);
+    await expect(tile.locator("svg")).toHaveCount(3);
     await expect(back(page)).toHaveClass(/btn--secondary/);
     await expect(back(page)).not.toHaveClass(/btn--primary/);
     // The edge is white and 2px; the tile has its own ground, which the menu rows do not.
@@ -168,8 +175,12 @@ test.describe("with a lesson running, on a laptop", () => {
     await mainMenu(page).getByRole("link", { name: "Библиотека" }).focus();
     await page.keyboard.press("Tab");
     await expect(back(page)).toBeFocused();
+    // Then End, the red one; the way back is first, so a press of Enter on a Tab from the menu never ends a lesson.
+    await page.keyboard.press("Tab");
+    await expect(reminder(page).getByRole("button", { name: "Заврши го часот" })).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(page.getByRole("navigation").nth(1).getByRole("link", { name: "Поставки" })).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);

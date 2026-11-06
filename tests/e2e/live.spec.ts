@@ -430,7 +430,7 @@ test.describe("starting the lesson, and teaching", () => {
     await expect(page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]")).toContainText("Чекаме ученици");
   });
 
-  test("moves to teaching: the state line says so, the panel for the question now has the one yellow button, the questions are listed, and nothing says anything about ending", async ({ page, context }) => {
+  test("moves to teaching: the state line says so, the panel for the question now has the one yellow button, the questions are listed, and the only way to end is the red one at the foot", async ({ page, context }) => {
     await start(page, context);
     await at(context, 30, page);
     await page.getByRole("button", { name: "Почни го часот" }).click();
@@ -445,7 +445,8 @@ test.describe("starting the lesson, and teaching", () => {
     await expect(page.getByRole("heading", { name: "Прашањето сега" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Прашања на часот" })).toBeVisible();
     await expect(page.locator(".qitem").first()).toContainText("Прашање 1 од");
-    await expect(page.getByRole("button", { name: /Заврши|Крај/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Заврши|Крај/ })).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "Заврши го часот", exact: true })).toHaveClass(/btn--danger/);
     // The joined list is still there, and keeps working.
     await expect(page.getByRole("heading", { name: "Кој се приклучи" })).toBeVisible();
   });
