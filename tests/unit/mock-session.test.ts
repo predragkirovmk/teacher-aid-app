@@ -191,7 +191,7 @@ describe("the mock adapter's sign-in and sign-out", () => {
 
   test("signing out ends the session for every call after it, and for a second sign-out nothing is left to end", async () => {
     const { api, source } = build("veteran");
-    expect((await api.listCourses()).length).toBe(3);
+    expect((await api.listCourses()).length).toBe(4);
     await api.signOut();
     expect(source.session()).toBeNull();
     await expect(api.listCourses()).rejects.toMatchObject({ code: "unauthenticated" });

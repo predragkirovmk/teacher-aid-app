@@ -1,7 +1,7 @@
 import { isDraftQuestion, isObject, isText, isValidContent, isValidQuestion } from "../lessons";
 import { NO_DEVICE_REASONS } from "../live";
 import type { SchoolType } from "../store";
-import type { AnonQuestionItem, AttendanceRow, DraftQuestion, Lesson, MissedQuestion, NoDeviceReason, Question, Refinement, SessionState, SourceKind, Subject } from "./types";
+import type { AnonQuestionItem, AttendanceRow, DraftQuestion, FocusFlag, Lesson, MissedQuestion, NoDeviceReason, Question, Refinement, SessionState, SourceKind, Subject } from "./types";
 
 /**
  * What the mock adapter keeps in the browser. The demo school and its history are worked out from a
@@ -87,6 +87,18 @@ export type DemoRun = { id: string; fired_at: string | null; skipped_at: string 
  * and the practice set are made of), and the questions the class wrote. Frozen when End is pressed, because the class that was played from the clock
  * stops with the lesson.
  */
+/** What a lesson ended in the demo adds to the class results: the numbers of its questions, kept as they were when the lesson ended. */
+export type EndedResults = {
+  /** Questions that were put to the class (a skipped one and one never sent are not here). */
+  question_count: number;
+  participation: number;
+  right_rate: number;
+  points: number;
+  /** Per topic (an empty topic is the lesson's title, BR-TOP-03). */
+  topics: { topic: string; right: number; total: number }[];
+  focus: FocusFlag[];
+};
+
 export type EndedSession = {
   id: string;
   course_id: string;
@@ -97,6 +109,7 @@ export type EndedSession = {
   /** Worst first; a question nobody missed, one skipped and one never sent are not here. */
   most_missed: MissedQuestion[];
   anon_questions: AnonQuestionItem[];
+  results: EndedResults;
 };
 
 /** A practice set the teacher sent in the demo: when, and which questions (their session question ids, in lesson order). */
@@ -298,7 +311,12 @@ const isEnded = (v: unknown): v is EndedSession =>
   Array.isArray(v.most_missed) &&
   v.most_missed.every((m) => isObject(m) && isText(m.session_question_id) && isText(m.prompt)) &&
   Array.isArray(v.anon_questions) &&
-  v.anon_questions.every((a) => isObject(a) && isText(a.id) && isText(a.text));
+  v.anon_questions.every((a) => isObject(a) && isText(a.id) && isText(a.text)) &&
+  isObject(v.results) &&
+  isCount(v.results.question_count) &&
+  typeof v.results.points === "number" &&
+  Array.isArray(v.results.topics) &&
+  Array.isArray(v.results.focus);
 
 const isPracticeRecord = (v: unknown): v is PracticeRecord =>
   isObject(v) && isText(v.id) && isIso(v.created_at) && Array.isArray(v.question_ids) && v.question_ids.every(isText);

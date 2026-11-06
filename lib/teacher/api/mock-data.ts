@@ -89,7 +89,7 @@ type ClassDef = {
   year: number;
   subject: Subject;
   size: number;
-  /** The bank lessons run in the six finished lessons, oldest first. */
+  /** The bank lessons run in the finished lessons, oldest first (none for a class not taught yet). */
   lessons: string[];
   /** The hour the lesson starts. */
   hour: number;
@@ -127,7 +127,10 @@ export const SCHOOLS: Record<SchoolType, SchoolDef> = {
     classes: [
       {
         id: "ii-4", name: "II-4", year: 2, subject: MATH, size: 26, hour: 8, midYear: 21,
-        lessons: ["sistemi", "kvadratni-ravenki", "kvadratna-funkcija", "kvadratni-ravenki", "kvadratna-funkcija", "sistemi"],
+        lessons: [
+          "planimetrija", "kombinatorika", "statistika", "sistemi",
+          "sistemi", "kvadratni-ravenki", "kvadratna-funkcija", "kvadratni-ravenki", "kvadratna-funkcija", "sistemi",
+        ],
       },
       {
         id: "iii-5", name: "III-5", year: 3, subject: MATH, size: 24, hour: 10,
@@ -137,6 +140,8 @@ export const SCHOOLS: Record<SchoolType, SchoolDef> = {
         id: "iv-1", name: "IV-1", year: 4, subject: MATH, size: 28, hour: 12, midYear: 5,
         lessons: ["nizi", "granici", "izvodi", "granici", "izvodi", "trigonometrija"],
       },
+      // A class the teacher has been given and has not taught yet.
+      { id: "i-2", name: "I-2", year: 1, subject: MATH, size: 25, hour: 13, lessons: [] },
     ],
     colleagues: [
       { id: "t-iliev", name: "Зоран Илиев" },
@@ -163,7 +168,10 @@ export const SCHOOLS: Record<SchoolType, SchoolDef> = {
     classes: [
       {
         id: "g-1a", name: "Група 1А", year: 1, subject: { id: "analysis-1", name: "Математичка анализа 1" }, size: 28, hour: 9, midYear: 24,
-        lessons: ["nizi", "granici", "granici", "izvodi", "izvodi", "integrali"],
+        lessons: [
+          "nizi", "nizi", "granici", "izvodi",
+          "nizi", "granici", "granici", "izvodi", "izvodi", "integrali",
+        ],
       },
       {
         id: "g-2b", name: "Група 2Б", year: 2, subject: LINEAR, size: 24, hour: 11,
@@ -173,6 +181,7 @@ export const SCHOOLS: Record<SchoolType, SchoolDef> = {
         id: "g-3a", name: "Група 3А", year: 3, subject: PROBABILITY, size: 22, hour: 13, midYear: 3,
         lessons: ["kombinatorika", "verojatnost", "kombinatorika", "verojatnost", "verojatnost", "kombinatorika"],
       },
+      { id: "g-1b", name: "Група 1Б", year: 1, subject: { id: "analysis-1", name: "Математичка анализа 1" }, size: 26, hour: 14, lessons: [] },
     ],
     colleagues: [
       { id: "t-iliev", name: "Зоран Илиев" },
@@ -394,7 +403,7 @@ function seedSession(def: SchoolDef, course: SeedCourse, index: number, courseIn
 
   // A practice set after some lessons (F-12): the questions the class missed, and who did it.
   let practice: SeedSession["practice"] = null;
-  if (index === 1 || index === 4) {
+  if (index % 3 === 1) {
     const candidates = questions.map((sq, i) => {
       const given = new Map(answers.filter((a) => a.question_id === sq.id).map((a) => [a.student_id, a.correct]));
       return { id: sq.id, order: i, skipped: sq.skipped, joined: present.length, missed: present.filter((s) => !given.get(s.id)).length };

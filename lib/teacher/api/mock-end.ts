@@ -22,6 +22,19 @@ export function endedFrom(snapshot: ConsoleSnapshot, endedAt: string): EndedSess
     marked_by: hasJoined(s) ? "student" : s.attendance === "present_no_device" ? "teacher" : "system",
   }));
   const { session } = snapshot;
+  // The questions that were put to the class and have closed (a skipped one, one never sent and one still open have no result).
+  const put = snapshot.questions.filter((q) => (q.status === "closed" || q.status === "revealed") && q.counts);
+  const joined = put.reduce((n, q) => n + q.joined, 0);
+  const given = put.reduce((n, q) => n + q.counts!.right + q.counts!.wrong, 0);
+  const right = put.reduce((n, q) => n + q.counts!.right, 0);
+  const topics = new Map<string, { right: number; total: number }>();
+  for (const q of put) {
+    const topic = q.question.topic.trim() || session.lesson.title;
+    const t = topics.get(topic) ?? { right: 0, total: 0 };
+    t.right += q.counts!.right;
+    t.total += q.counts!.right + q.counts!.wrong + q.counts!.unanswered;
+    topics.set(topic, t);
+  }
   return {
     id: session.id,
     course_id: session.course_id,
@@ -31,6 +44,14 @@ export function endedFrom(snapshot: ConsoleSnapshot, endedAt: string): EndedSess
     attendance,
     most_missed: missedOfQuestions(snapshot.questions, session.lesson.title),
     anon_questions: snapshot.anon_questions,
+    results: {
+      question_count: put.length,
+      participation: joined ? Math.round((given / joined) * 100) / 100 : 0,
+      right_rate: given ? Math.round((right / given) * 100) / 100 : 0,
+      points: snapshot.students.reduce((n, s) => n + s.points, 0),
+      topics: [...topics].map(([topic, v]) => ({ topic, ...v })),
+      focus: snapshot.focus_flags,
+    },
   };
 }
 

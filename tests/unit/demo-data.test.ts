@@ -11,14 +11,14 @@ const each = (fn: (type: SchoolType, course: SeedCourse, session: SeedSession) =
   types.forEach((type) => courses(type).forEach((course) => course.sessions.forEach((session) => fn(type, course, session))));
 
 describe("the demo school", () => {
-  test("is Марија Петровска teaching three classes at a school, and the same teacher as a professor with three groups", () => {
+  test("is Марија Петровска teaching four classes at a school, and the same teacher as a professor with four groups", () => {
     expect(SCHOOLS.school.teacher.name).toBe("Марија Петровска");
     expect(SCHOOLS.university.teacher.name).toBe("Марија Петровска");
     expect(SCHOOLS.school.school.kind).toBe("gymnasium");
     expect(SCHOOLS.university.school.kind).toBe("faculty");
-    expect(courses("school").map((c) => c.def.name)).toEqual(["II-4", "III-5", "IV-1"]);
+    expect(courses("school").map((c) => c.def.name)).toEqual(["II-4", "III-5", "IV-1", "I-2"]);
     expect(courses("school").every((c) => c.def.subject.name === "Математика")).toBe(true);
-    expect(courses("university")).toHaveLength(3);
+    expect(courses("university")).toHaveLength(4);
   });
 
   test("has 22 to 28 students in every class, with names that are not repeated", () => {
@@ -50,13 +50,14 @@ describe("the demo school", () => {
 });
 
 describe("the history", () => {
-  test("is six finished lessons per class, in the past, in order, on weekdays", () => {
+  test("is ten finished lessons for the first class, six for two more and none for the last, in the past, in order, on weekdays", () => {
     each((_, course, session) => {
       expect(session.started_at).toBeLessThan(ANCHOR);
       expect(session.ended_at).toBeGreaterThan(session.started_at);
       const day = new Date(session.started_at).getDay();
       expect(day === 0 || day === 6).toBe(false);
-      expect(course.sessions).toHaveLength(6);
+      expect(course.sessions).toHaveLength(course.def.lessons.length);
+      expect([10, 6]).toContain(course.sessions.length);
     });
     for (const type of types) {
       for (const course of courses(type)) {
@@ -164,7 +165,7 @@ describe("the history", () => {
   });
 
   test("a student's points are the sum of their answers, and the lesson's board ranks them from zero (BR-PTS-09)", () => {
-    for (const course of courses("school")) {
+    for (const course of courses("school").filter((c) => c.sessions.length > 0)) {
       for (const s of course.students) {
         const total = course.sessions.flatMap((x) => x.answers).filter((a) => a.student_id === s.id).reduce((t, a) => t + a.points, 0);
         expect(studentPoints(course, s.id)).toBe(total);

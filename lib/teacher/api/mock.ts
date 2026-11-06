@@ -34,7 +34,7 @@ import { anonQuestions, DEMO_NUDGE_AFTER_MS, nudgeAt, showQuestions, withQuestio
 import { adhocQuestion } from "./mock-adhoc";
 import { endedFrom, practiceResultsAt } from "./mock-end";
 import { demoProviderUrl, isOffline } from "./mock-session";
-import { overlayOf, withOverlay, type DemoDraft, type DemoRun, type DemoSession, type MockState, type Overlay, type Persona } from "./mock-state";
+import { overlayOf, withOverlay, type DemoDraft, type DemoRun, type DemoSession, type EndedSession, type MockState, type Overlay, type Persona } from "./mock-state";
 import type {
   AnonQuestionItem,
   AttendanceRow,
@@ -482,9 +482,47 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
     };
   };
 
+  /** A lesson ended in the demo, as the course's history lists it. */
+  const frozenSession = (e: EndedSession): DashboardSession => ({
+    id: e.id,
+    lesson: e.lesson,
+    started_at: e.started_at,
+    ended_at: e.ended_at,
+    question_count: e.results.question_count,
+    tally: tallyOf(e.attendance),
+    participation: e.results.participation,
+    right_rate: e.results.right_rate,
+    points: e.results.points,
+  });
+
+  const frozenPractice = (c: Ctx, course: SeedCourse, e: EndedSession): DashboardPractice | null => {
+    const record = c.overlay.practice[e.id];
+    if (!record) return null;
+    const done = practiceResultsAt(record, e.attendance, c.now).filter((r) => r.completed_at !== null && r.score !== null);
+    return {
+      practice_set: { id: record.id, session_id: e.id, course_id: course.course_id, created_at: record.created_at, question_count: record.question_ids.length },
+      students: e.attendance.length,
+      completed: done.length,
+      average_score: done.length ? Math.round((done.reduce((sum, r) => sum + (r.score ?? 0), 0) / done.length) * 10) / 10 : null,
+    };
+  };
+
+  /** The class's topics, the seeded lessons' and those ended in the demo added up. The demo does not keep who answered what in a lesson it ended. */
+  const withFrozenTopics = (seeded: DashboardTopic[], frozen: EndedSession[]): DashboardTopic[] => {
+    const all = new Map(seeded.map((t) => [t.topic, { ...t }]));
+    for (const e of frozen) {
+      for (const t of e.results.topics) {
+        const have = all.get(t.topic) ?? { topic: t.topic, right: 0, total: 0, by_student: [] };
+        all.set(t.topic, { ...have, right: have.right + t.right, total: have.total + t.total });
+      }
+    }
+    return [...all.values()];
+  };
+
   const dashboardOf = (c: Ctx, course: SeedCourse): CourseDashboard => {
     const names = new Map(course.students.map((s) => [s.id, s.full_name]));
     const newestFirst = [...course.sessions].reverse();
+    const frozen = c.overlay.ended.filter((e) => e.course_id === course.course_id).reverse();
     return {
       server_now: iso(c.now),
       course: courseSummary(c, course),
@@ -495,32 +533,48 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
         joined_class_at: s.joined_class_at === null ? null : iso(s.joined_class_at),
         points: studentPoints(course, s.id),
       })),
-      sessions: newestFirst.map(dashboardSession),
-      attendance: course.sessions.flatMap((s) =>
-        s.marks.map((m) => ({ session_id: s.id, student_id: m.student_id, status: m.status, no_device_reason: m.reason })),
-      ),
-      topics: dashboardTopics(course),
-      focus_flags: newestFirst.flatMap((s) =>
-        s.focus.map((f) => ({
-          student_id: f.student_id,
-          session_question_id: f.question_id,
-          lost_at: iso(f.lost_at),
-          back_at: iso(f.back_at),
-          session_id: s.id,
-          away_seconds: Math.round((f.back_at - f.lost_at) / 1000),
-        })),
-      ),
-      anon_questions: newestFirst.flatMap((s) =>
-        s.anon.map((a) => ({
-          id: a.id,
-          text: a.text,
-          sender: { id: a.sender_id, name: names.get(a.sender_id) ?? "" },
-          created_at: iso(a.created_at),
-          answered_at: a.answered_at === null ? null : iso(a.answered_at),
-          session_id: s.id,
-        })),
-      ),
-      practice: newestFirst.map((s) => dashboardPractice(course, s)).filter((p): p is DashboardPractice => p !== null),
+      sessions: [...frozen.map(frozenSession), ...newestFirst.map(dashboardSession)],
+      attendance: [
+        ...course.sessions.flatMap((s) => s.marks.map((m) => ({ session_id: s.id, student_id: m.student_id, status: m.status, no_device_reason: m.reason }))),
+        ...frozen.flatMap((e) => e.attendance.map((a) => ({ session_id: e.id, student_id: a.student_id, status: a.status, no_device_reason: a.no_device_reason }))),
+      ],
+      topics: withFrozenTopics(dashboardTopics(course), frozen),
+      focus_flags: [
+        ...frozen.flatMap((e) =>
+          e.results.focus.map((f) => ({
+            ...f,
+            session_id: e.id,
+            away_seconds: f.back_at === null ? null : Math.round((Date.parse(f.back_at) - Date.parse(f.lost_at)) / 1000),
+          })),
+        ),
+        ...newestFirst.flatMap((s) =>
+          s.focus.map((f) => ({
+            student_id: f.student_id,
+            session_question_id: f.question_id,
+            lost_at: iso(f.lost_at),
+            back_at: iso(f.back_at),
+            session_id: s.id,
+            away_seconds: Math.round((f.back_at - f.lost_at) / 1000),
+          })),
+        ),
+      ],
+      anon_questions: [
+        ...frozen.flatMap((e) => e.anon_questions.map((a) => ({ ...a, session_id: e.id }))),
+        ...newestFirst.flatMap((s) =>
+          s.anon.map((a) => ({
+            id: a.id,
+            text: a.text,
+            sender: { id: a.sender_id, name: names.get(a.sender_id) ?? "" },
+            created_at: iso(a.created_at),
+            answered_at: a.answered_at === null ? null : iso(a.answered_at),
+            session_id: s.id,
+          })),
+        ),
+      ],
+      practice: [
+        ...frozen.map((e) => frozenPractice(c, course, e)),
+        ...newestFirst.map((s) => dashboardPractice(course, s)),
+      ].filter((p): p is DashboardPractice => p !== null),
     };
   };
 

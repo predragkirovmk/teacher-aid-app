@@ -63,13 +63,15 @@ const saveRequest = (draft: ReadyDraft) => ({
 });
 
 describe("who and what", () => {
-  test("the teacher is Марија Петровска at a gymnasium, with three courses", async () => {
+  test("the teacher is Марија Петровска at a gymnasium, with four courses, the last not taught yet", async () => {
     const me = await api.getMe();
     expect(me).toMatchObject({ name: "Марија Петровска", role: "teacher", first_run_done: true, school: { type: "gymnasium" } });
     const courses = await api.listCourses();
-    expect(courses.map((c) => c.class.name)).toEqual(["II-4", "III-5", "IV-1"]);
-    expect(courses.map((c) => c.student_count)).toEqual([26, 24, 28]);
-    expect(courses.every((c) => c.speed_bonus_on && c.lessons_run === 6 && c.last_session_at)).toBe(true);
+    expect(courses.map((c) => c.class.name)).toEqual(["II-4", "III-5", "IV-1", "I-2"]);
+    expect(courses.map((c) => c.student_count)).toEqual([26, 24, 28, 25]);
+    expect(courses.map((c) => c.lessons_run)).toEqual([10, 6, 6, 0]);
+    expect(courses.every((c) => c.speed_bonus_on)).toBe(true);
+    expect(courses.map((c) => c.last_session_at === null)).toEqual([false, false, false, true]);
   });
 
   test("the demo switch serves the faculty: the same teacher as a professor, with study groups", async () => {
@@ -77,7 +79,7 @@ describe("who and what", () => {
     const me = await api.getMe();
     expect(me.name).toBe("Марија Петровска");
     expect(me.school.type).toBe("faculty");
-    expect((await api.listCourses()).map((c) => c.class.name)).toEqual(["Група 1А", "Група 2Б", "Група 3А"]);
+    expect((await api.listCourses()).map((c) => c.class.name)).toEqual(["Група 1А", "Група 2Б", "Група 3А", "Група 1Б"]);
   });
 
   test("tells whoever is listening that the school changed", () => {
@@ -106,9 +108,9 @@ describe("the course dashboard", () => {
     const d = await api.getDashboard(course.id);
     expect(d.course.id).toBe(course.id);
     expect(d.students).toHaveLength(26);
-    expect(d.sessions).toHaveLength(6);
-    expect(d.sessions[0].started_at > d.sessions[5].started_at).toBe(true); // newest first
-    expect(d.attendance.length).toBeGreaterThan(130);
+    expect(d.sessions).toHaveLength(10);
+    expect(d.sessions[0].started_at > d.sessions[9].started_at).toBe(true); // newest first
+    expect(d.attendance.length).toBeGreaterThan(200);
     expect(d.topics.length).toBeGreaterThan(0);
     expect(d.practice.length).toBeGreaterThanOrEqual(1);
     expect(d.students.some((s) => s.joined_mid_year)).toBe(true);
@@ -129,7 +131,7 @@ describe("the course dashboard", () => {
   });
 
   test("the points of the lessons add up to the points of the students", async () => {
-    for (const course of await api.listCourses()) {
+    for (const course of (await api.listCourses()).filter((c) => c.lessons_run > 0)) {
       const d = await api.getDashboard(course.id);
       const byLesson = d.sessions.reduce((n, s) => n + s.points, 0);
       const byStudent = d.students.reduce((n, s) => n + s.points, 0);
@@ -182,7 +184,7 @@ describe("lessons", () => {
     expect(prepared).toHaveLength(2);
     expect(prepared.every((l) => l.last_run_at === null && l.question_count >= 5)).toBe(true);
     const run = lessons.filter((l) => l.times_run > 0);
-    expect(run.reduce((n, l) => n + l.times_run, 0)).toBe(18);
+    expect(run.reduce((n, l) => n + l.times_run, 0)).toBe(22);
     expect(run.every((l) => l.last_run_at)).toBe(true);
   });
 
@@ -380,7 +382,7 @@ describe("saving, editing and deleting", () => {
     const run = (await api.listLessons()).find((l) => l.times_run > 0)!;
     await api.deleteLesson(run.id);
     const [course] = await api.listCourses();
-    expect((await api.getDashboard(course.id)).sessions).toHaveLength(6);
+    expect((await api.getDashboard(course.id)).sessions).toHaveLength(10);
 
     const draft = await makeDraft();
     const mine = await api.saveLesson(saveRequest(draft));
@@ -393,7 +395,7 @@ describe("saving, editing and deleting", () => {
     source.setSchoolType("university");
     const lessons = await api.listLessons();
     expect(lessons.filter((l) => l.times_run === 0)).toHaveLength(2);
-    expect(lessons.some((l) => l.title === "Граници на низи и функции" && l.times_run === 2)).toBe(true);
+    expect(lessons.some((l) => l.title === "Граници на низи и функции" && l.times_run === 3)).toBe(true);
     source.setSchoolType("school");
     expect((await api.listLessons()).filter((l) => l.times_run === 0)).toHaveLength(3);
   });
@@ -1061,8 +1063,8 @@ describe("the new teacher: invited, signed in for the first time", () => {
   test("has the same classes and rosters, and has run nothing: no history, no points", async () => {
     const { api } = novice();
     const courses = await api.listCourses();
-    expect(courses.map((c) => c.class.name)).toEqual(["II-4", "III-5", "IV-1"]);
-    expect(courses.map((c) => c.student_count)).toEqual([26, 24, 28]);
+    expect(courses.map((c) => c.class.name)).toEqual(["II-4", "III-5", "IV-1", "I-2"]);
+    expect(courses.map((c) => c.student_count)).toEqual([26, 24, 28, 25]);
     expect(courses.every((c) => c.lessons_run === 0 && c.last_session_at === null)).toBe(true);
     const d = await api.getDashboard(courses[0].id);
     expect(d.students).toHaveLength(26);
