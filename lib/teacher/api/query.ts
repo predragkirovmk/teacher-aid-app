@@ -199,7 +199,7 @@ export type Query<T> = {
   data: T | undefined;
   /** The last failure; with `ready` it means the latest refresh failed and `data` is the one before. */
   error: ApiError | null;
-  refetch: () => void;
+  refetch: () => Promise<unknown>;
 };
 
 /** The same query with its data turned into something else; loading and error pass through. */
@@ -226,7 +226,7 @@ export function useQuery<T>(key: string, load: (a: TeacherApi) => Promise<T>, en
       status: entry.data !== undefined ? "ready" : entry.error ? "error" : "loading",
       data: entry.data,
       error: entry.error,
-      refetch: () => void slot.fetch(true),
+      refetch: () => slot.fetch(true),
     }),
     [entry, slot],
   );

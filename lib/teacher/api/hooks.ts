@@ -173,17 +173,38 @@ export function watchSnapshot<T>(
   needsRead?: (data: T, event: ChannelEvent) => boolean,
 ) {
   const slot = slotFor(key, load);
+  // An event put into the slot cancels a read that is on its way (its answer may be older than the event), so a read that was
+  // cut short by an event is made again once it is over, instead of the screen keeping what it had before the stream was lost.
+  let reading = false;
+  let again = false;
+  const read = () => {
+    if (reading) {
+      again = true;
+      return;
+    }
+    reading = true;
+    void slot.fetch(true).then(() => {
+      reading = false;
+      if (again) {
+        again = false;
+        read();
+      }
+    });
+  };
   return api.openChannel(channel, {
     onEvent: (event) => {
       const held = slot.entry.data;
       if (held === undefined) return;
       const next = reduce(held, event);
-      if (next !== held) slot.put(next);
-      if (needsRead?.(held, event)) void slot.fetch(true);
+      if (next !== held) {
+        slot.put(next);
+        if (reading) again = true;
+      }
+      if (needsRead?.(held, event)) read();
     },
     onStatus: (status) => {
       onStatus(status);
-      if (status === "open") void slot.fetch(true);
+      if (status === "open") read();
     },
   });
 }
@@ -217,12 +238,18 @@ export function useClassView(sessionId: Id): { query: Query<ClassViewSnapshot>; 
  * The code is read again when its time is up and nothing has replaced it: an event may have been missed, and a code that does not change is
  * a code nobody can join with. The time is the server's, carried on by this computer's clock (`serverNow` is when the snapshot was made).
  */
-export function useFreshCode(serverNow: string | undefined, validTo: string | undefined, refetch: () => void): void {
+export function useFreshCode(serverNow: string | undefined, validTo: string | undefined, refetch: () => Promise<unknown>): void {
   useEffect(() => {
     if (!serverNow || !validTo) return;
     const offset = serverOffset(serverNow, Date.now());
+    // One look at a time: asking again cancels the one on its way, so on a slow line the answer would never land.
+    let asking = false;
     const timer = setInterval(() => {
-      if (tokenIsStale(validTo, offset, Date.now())) refetch();
+      if (asking || !tokenIsStale(validTo, offset, Date.now())) return;
+      asking = true;
+      void refetch().finally(() => {
+        asking = false;
+      });
     }, 1000);
     return () => clearInterval(timer);
   }, [serverNow, validTo, refetch]);

@@ -117,6 +117,21 @@ describe("a snapshot that a stream keeps up to date", () => {
     expect(seen).toEqual(["reconnecting", "open"]);
   });
 
+  test("an event that comes while the snapshot is being read does not leave the screen with the old one", async () => {
+    const { slot } = watch();
+    let answer: (s: ConsoleSnapshot) => void = () => {};
+    const fresh = snapshot({ students: [student("a", { attendance: "present", online: true, joined_at: "2026-10-29T08:31:02.000Z" }), student("b")] });
+    getConsole.mockClear();
+    getConsole.mockImplementationOnce(() => new Promise<ConsoleSnapshot>((r) => (answer = r)));
+    getConsole.mockImplementation(() => Promise.resolve(fresh));
+    stream.onStatus?.("open");
+    stream.onEvent({ type: "student.presence", channel: "session.s1.console", server_now: "2026-10-29T08:31:05.000Z", student_id: "b", online: true });
+    answer(snapshot());
+    await new Promise((r) => setTimeout(r, 0));
+    expect(getConsole).toHaveBeenCalledTimes(2);
+    expect(slot.read().data?.students[0].attendance).toBe("present");
+  });
+
   test("stopping closes the stream", () => {
     const { stop: close } = watch();
     close();
