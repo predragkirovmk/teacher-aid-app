@@ -6,6 +6,7 @@ import { useId } from "react";
 import type { OpenSession } from "@/lib/teacher/api/types";
 import { useT } from "@/lib/teacher/i18n";
 import { liveUrl } from "@/lib/teacher/routes";
+import { EndLesson } from "./EndLesson";
 
 /**
  * A lesson is running, said in the frame of every page that does not say it already (Today has its band): the icon, "Час во
@@ -29,15 +30,18 @@ export function OpenLesson({ session, where }: { session: NonNullable<OpenSessio
         </span>
       </p>
       {/* The words on the button are the short ones; the name a screen reader gives says which lesson, and starts with them. */}
-      <Link
-        href={liveUrl(session.id)}
-        prefetch={false}
-        className="btn btn--secondary btn--small running__back"
-        aria-label={t("running.here.name", { class: session.class_name })}
-      >
-        <ArrowUUpLeftIcon size={24} weight="bold" aria-hidden="true" />
-        {t("running.here.back")}
-      </Link>
+      <div className="running__actions">
+        <Link
+          href={liveUrl(session.id)}
+          prefetch={false}
+          className="btn btn--secondary btn--small running__back"
+          aria-label={t("running.here.name", { class: session.class_name })}
+        >
+          <ArrowUUpLeftIcon size={24} weight="bold" aria-hidden="true" />
+          {t("running.here.back")}
+        </Link>
+        <EndLesson sessionId={session.id} size="small" goToEndPage />
+      </div>
     </div>
   );
 }

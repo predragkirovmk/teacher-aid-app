@@ -9,6 +9,7 @@ import { isOne } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
 import { liveUrl } from "@/lib/teacher/routes";
 import { runningFor, sayWhen, type Running } from "@/lib/teacher/when";
+import { EndLesson } from "./EndLesson";
 
 /** How long the lesson has been going, said as a person would. */
 export function useRunningWords(session: NonNullable<OpenSession["session"]>, serverNow: string): string {
@@ -55,10 +56,13 @@ export function RunningBand({ session, serverNow }: { session: NonNullable<OpenS
           <span className="keep">{how}</span>
         </p>
       </div>
-      <Link href={liveUrl(session.id)} prefetch={false} className="btn btn--primary">
-        <ArrowUUpLeftIcon size={24} weight="bold" aria-hidden="true" />
-        {t("running.back")}
-      </Link>
+      <div className="band__actions">
+        <Link href={liveUrl(session.id)} prefetch={false} className="btn btn--primary">
+          <ArrowUUpLeftIcon size={24} weight="bold" aria-hidden="true" />
+          {t("running.back")}
+        </Link>
+        <EndLesson sessionId={session.id} goToEndPage />
+      </div>
     </section>
   );
 }

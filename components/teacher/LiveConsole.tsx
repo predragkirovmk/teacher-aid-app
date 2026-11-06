@@ -1,7 +1,6 @@
 "use client";
 
-import { MagnifyingGlassIcon, PlayIcon } from "@phosphor-icons/react";
-import Link from "next/link";
+import { PlayIcon } from "@phosphor-icons/react";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { advanceSession, useConsole, useFreshCode } from "@/lib/teacher/api/hooks";
@@ -13,6 +12,8 @@ import { formatShortCode, missingCount, STUDENTS_CAN_TYPE_CODE } from "@/lib/tea
 import { courseLabel } from "@/lib/teacher/start";
 import { TODAY } from "@/lib/teacher/signin";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { EndLesson } from "./EndLesson";
+import { EndPage } from "./EndPage";
 import { LiveRoster } from "./LiveRoster";
 import { LoadProblem } from "./LoadProblem";
 import { PageHeader } from "./PageHeader";
@@ -23,6 +24,7 @@ import { StateLine } from "./StateLine";
 import { AnonInbox } from "./AnonInbox";
 import { QuestionList } from "./QuestionList";
 import { QuestionPanel } from "./QuestionPanel";
+import { ReviewPanel } from "./ReviewPanel";
 
 /**
  * The teacher's own screen of a lesson that is running (F-06, FR-CON-*), with the sidebar. It says which lesson, class and subject
@@ -37,9 +39,12 @@ export function LiveConsole() {
   const { query, connection } = useConsole(sessionId);
   const snapshot = query.data;
   useFreshCode(snapshot?.server_now, snapshot?.join?.valid_to, query.refetch);
-  // A lesson that is not the open one (it ended, or the link is old) is not found: said plainly, with the way back to Today.
   const teaching = snapshot?.session.state === "teaching";
-  const gone = query.status === "error" && isApiError(query.error) && query.error.code === "not_found";
+  const reviewing = snapshot?.session.state === "review";
+  // A lesson that has ended (this window pressed End, another did, or the page was opened afterwards) is no longer a console: the answer is `ended` or
+  // `not_found`, and the page becomes the end page, which reads the lesson from its review. A link to no lesson at all says so there.
+  const over = snapshot?.session.state === "ended" || (isApiError(query.error) && query.error.code === "not_found");
+  if (over) return <EndPage sessionId={sessionId} />;
 
   return (
     <>
@@ -63,19 +68,7 @@ export function LiveConsole() {
             </div>
           </Loading>
         )}
-        {gone && (
-          <div className="card card--stack">
-            <span className="card__icon">
-              <MagnifyingGlassIcon size={32} aria-hidden="true" />
-            </span>
-            <h2>{t("live.notopen.title")}</h2>
-            <p>{t("live.notopen.body")}</p>
-            <Link href={TODAY} className="btn btn--primary">
-              {t("notfound.cta")}
-            </Link>
-          </div>
-        )}
-        {query.status === "error" && !gone && <LoadProblem title={t("live.error.title")} error={query.error} onRetry={query.refetch} />}
+        {query.status === "error" && <LoadProblem title={t("live.error.title")} error={query.error} onRetry={query.refetch} />}
         {snapshot && (
           <>
             {connection === "reconnecting" && (
@@ -86,7 +79,17 @@ export function LiveConsole() {
               </div>
             )}
             <StateLine state={snapshot.session.state} compact={teaching} />
-            {teaching ? (
+            {reviewing ? (
+              <div className="live__teach">
+                <div className="live__main">
+                  <ReviewPanel snapshot={snapshot} />
+                </div>
+                <div className="live__side">
+                  <ProjectorControl sessionId={snapshot.session.id} />
+                  <MirrorWarning />
+                </div>
+              </div>
+            ) : teaching ? (
               <>
                 {/* The panel first: what is happening to the question now and the one thing to press. Then the questions and what the class writes, beside who is here. */}
                 <QuestionPanel snapshot={snapshot} />
@@ -114,6 +117,13 @@ export function LiveConsole() {
                 <LiveRoster sessionId={snapshot.session.id} students={snapshot.students} />
               </div>
             )}
+            <section className="live__end" aria-labelledby="live-end">
+              <h2 id="live-end" className="sr">
+                {t("end.button")}
+              </h2>
+              <EndLesson sessionId={snapshot.session.id} />
+              <p className="live__endhint">{t("end.hint")}</p>
+            </section>
           </>
         )}
       </div>

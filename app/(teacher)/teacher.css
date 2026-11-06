@@ -352,6 +352,13 @@ button {
 .running__back {
   width: 100%;
 }
+.running__actions {
+  display: grid;
+  gap: 0.5rem;
+}
+.running__actions .btn {
+  width: 100%;
+}
 .nowrap {
   white-space: nowrap;
 }
@@ -381,7 +388,10 @@ button {
     align-items: center;
     white-space: nowrap;
   }
-  .running--top .running__back {
+  .running--top .running__actions {
+    grid-auto-flow: column;
+  }
+  .running--top .running__actions .btn {
     width: auto;
   }
   html:has(.topbar--running) {
@@ -399,7 +409,10 @@ button {
     align-items: flex-start;
     white-space: normal;
   }
-  .running--top .running__back {
+  .running--top .running__actions {
+    grid-auto-flow: row;
+  }
+  .running--top .running__actions .btn {
     width: 100%;
   }
 }
@@ -601,6 +614,22 @@ button {
   background: var(--deep);
   border-color: var(--line-strong);
   color: var(--text);
+}
+/* End, the one red control (FR-END-04). White on red is 4.4:1, so the label is bold and 19px or larger, always with a word and an icon. */
+.btn--danger {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--text);
+  font-size: 1.1875rem;
+  font-weight: 800;
+}
+.btn--danger:active {
+  background: #b81513;
+}
+@media (hover: hover) {
+  .btn--danger:hover {
+    background: #d11d1a;
+  }
 }
 /* A button that cannot be pressed now (the refinements while one is being made, "Повеќе прашања" at the most): dimmer, and it says so. */
 .btn[aria-disabled="true"] {
@@ -1252,6 +1281,14 @@ button {
   color: var(--text-2);
   font-size: var(--fs-button);
   text-wrap: pretty;
+}
+/* The yellow way back, and beside it the one red control. */
+.band__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  max-width: 100%;
 }
 /* The button keeps its size while it can and gives way when the line is narrower than it (a zoomed window), so it stays inside the band. */
 .band .btn {
@@ -3222,7 +3259,8 @@ button {
   --u: min(1vh, 0.56vw);
   --text-2: var(--text);
 }
-.cv[data-state="teaching"] {
+.cv[data-state="teaching"],
+.cv[data-state="review"] {
   height: 100dvh;
   min-height: 0;
 }
@@ -3750,5 +3788,347 @@ button {
   }
   .btn--primary {
     border-width: 4px;
+  }
+}
+
+.btn--danger.btn--small {
+  font-size: 1.1875rem;
+}
+
+/* ---- The review on the projector: one most-missed question, or the questions the class wrote, filling the window ---- */
+.cvr {
+  justify-content: flex-start;
+}
+.cvr__facts {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: calc(2.4 * var(--u));
+}
+.cvr__answer {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: calc(1.6 * var(--u));
+  font-size: max(2rem, calc(6.4 * var(--u)));
+  line-height: 1.15;
+}
+.cvr__answer strong {
+  font-family: var(--font-display);
+  font-weight: 800;
+}
+.cvr__answer svg {
+  flex: none;
+}
+.cvr__count {
+  margin: 0;
+  font-size: max(1.75rem, calc(4.6 * var(--u)));
+  font-weight: 700;
+}
+.cvr--none {
+  flex: 1;
+  display: grid;
+  place-items: center;
+}
+.cvr__none {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: calc(2.4 * var(--u));
+  max-width: 90%;
+  font-family: var(--font-display);
+  font-size: max(2.5rem, calc(10 * var(--u)));
+  font-weight: 800;
+  line-height: 1.12;
+  text-wrap: balance;
+}
+.cvr__none svg {
+  flex: none;
+}
+.cvr__anon {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-auto-rows: minmax(min-content, 1fr);
+  gap: calc(2 * var(--u));
+}
+.cvr__anon li {
+  display: grid;
+  align-content: center;
+  padding: calc(1.6 * var(--u)) calc(3 * var(--u));
+  border-radius: calc(2 * var(--u));
+  background: var(--deep);
+  font-size: max(1.75rem, calc(5.2 * var(--u)));
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.cvr__anon[data-count="3"] li {
+  font-size: max(1.625rem, calc(4.4 * var(--u)));
+}
+
+/* ---- The review and the end page on the console ---- */
+.rpanel {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: start;
+  border: 3px solid var(--yellow);
+}
+.card .rpanel__title {
+  font-size: var(--fs-h2);
+}
+.card .rpanel__hint {
+  color: var(--text-2);
+  max-width: var(--measure);
+}
+.card .rpanel__sub {
+  margin: var(--sp-1) 0 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+}
+.rpanel__none {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: 700;
+}
+.rlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-1);
+  width: 100%;
+}
+.rlist__item {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  gap: 0.25rem var(--sp-2);
+  padding: var(--sp-2);
+  border-radius: var(--r-m);
+  background: var(--deep);
+}
+.card .rlist__item p {
+  margin: 0;
+}
+.rlist__n {
+  grid-row: 1 / span 3;
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: 800;
+  color: var(--text-2);
+}
+.rlist__prompt {
+  font-size: var(--fs-lead);
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.rlist__answer,
+.rlist__count {
+  color: var(--text);
+  font-size: var(--fs-body);
+}
+.rlist__count {
+  font-weight: 700;
+}
+.rproj {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: start;
+}
+.rproj__now,
+.rproj__closed {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+}
+.rproj__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.rpanel__anon {
+  display: contents;
+}
+.qpanel__early {
+  margin-top: var(--sp-1);
+}
+.live__end {
+  display: grid;
+  gap: var(--sp-1);
+  justify-items: start;
+  padding-top: var(--sp-3);
+  border-top: 2px solid var(--line);
+}
+.live__endhint {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-body);
+}
+
+/* ---- The end page ---- */
+.endpage {
+  display: grid;
+  gap: var(--sp-3);
+}
+.att {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: start;
+}
+.att__hint {
+  margin: 0;
+  color: var(--text-2);
+  max-width: var(--measure);
+}
+.att-print__title {
+  display: none;
+}
+.att__counts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.att__counts li {
+  display: grid;
+  min-width: 8rem;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-m);
+  background: var(--deep);
+}
+.att__counts strong {
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.att__counts span {
+  font-size: var(--fs-body);
+  font-weight: 600;
+}
+.att__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.att__note {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+}
+.att__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-lead);
+}
+.att__table th,
+.att__table td {
+  padding: 0.5rem var(--sp-2);
+  border-top: 1px solid var(--line);
+  text-align: left;
+}
+.att__table thead th {
+  font-size: var(--fs-body);
+  color: var(--text-2);
+}
+.att__table tbody th {
+  font-weight: 600;
+}
+.att__table tr[data-status="absent"] td {
+  font-weight: 700;
+}
+.endpage__way {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: start;
+}
+.practice {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: start;
+}
+.practice__sent {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--fs-lead);
+}
+.card .practice__sub {
+  margin: var(--sp-1) 0 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+}
+.practice__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+}
+.practice__list li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--line);
+}
+
+/* The attendance list on paper: only the list, black on white. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .att-print,
+  .att-print * {
+    visibility: visible;
+  }
+  .att-print {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: #fff;
+    color: #000;
+  }
+  .att-print .att__actions,
+  .att-print .att__note,
+  .att-print .att__hint {
+    display: none;
+  }
+  .att-print .att-print__title {
+    display: block;
+    margin: 0;
+    font-size: 1.125rem;
+    color: #000;
+  }
+  .att-print .att__counts li {
+    background: none;
+    border: 1px solid #000;
+    color: #000;
+  }
+  .att-print .att__table th,
+  .att-print .att__table td {
+    color: #000;
+    border-top: 1px solid #999;
+    font-size: 1rem;
+    padding: 0.25rem 0.5rem;
   }
 }

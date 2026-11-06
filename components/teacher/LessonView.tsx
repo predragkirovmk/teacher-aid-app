@@ -1,13 +1,14 @@
 "use client";
 
 import { CheckCircleIcon, PencilSimpleIcon, TimerIcon } from "@phosphor-icons/react";
+import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useEffect, useState, type ReactNode } from "react";
 import { startEditing, useLesson } from "@/lib/teacher/api/hooks";
 import type { DraftQuestion } from "@/lib/teacher/api/types";
 import { decimal, isOne } from "@/lib/teacher/format";
 import { useT, type Key } from "@/lib/teacher/i18n";
-import { backFromLesson, draftUrl, fromOf, isSaved, type Saved } from "@/lib/teacher/routes";
+import { backFromLesson, draftUrl, fromOf, isSaved, liveUrl, type Saved } from "@/lib/teacher/routes";
 import { DeleteLesson } from "./DeleteLesson";
 import { OnceLine } from "./OnceLine";
 import { LoadProblem } from "./LoadProblem";
@@ -90,6 +91,13 @@ export function LessonView() {
                 {t("lesson.edit")}
               </button>
             </div>
+            {lesson.last_session_id && (
+              <p>
+                <Link href={liveUrl(lesson.last_session_id)} prefetch={false} className="btn btn--quiet" data-testid="last-run">
+                  {t("lesson.lastrun")}
+                </Link>
+              </p>
+            )}
             {openProblem !== null && <LoadProblem title={t("lesson.edit.failed")} error={openProblem} onRetry={() => void edit()} />}
             {lesson.emphasis && (
               <div className="card card--stack">

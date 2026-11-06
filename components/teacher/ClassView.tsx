@@ -14,6 +14,7 @@ import { formatShortCode, joinUrl, STUDENTS_CAN_TYPE_CODE } from "@/lib/teacher/
 import { courseLabel } from "@/lib/teacher/start";
 import { useClassViewBeat } from "@/lib/teacher/windows";
 import { projectedScreen, topOfBoard } from "@/lib/teacher/questions";
+import { ClassReview } from "./ClassReview";
 import { Board, ClosedQuestion, OpenQuestion, RevealedQuestion, SkippedQuestion } from "./ClassQuestion";
 import { PageTitle } from "./PageTitle";
 
@@ -76,7 +77,8 @@ function Screen({ snapshot }: { snapshot: ClassViewSnapshot }) {
   const { state } = snapshot.session;
   if (state === "lobby") return <Lobby snapshot={snapshot} />;
   if (state === "teaching") return <Teaching snapshot={snapshot} />;
-  return <h1 className="cv__big">{t(state === "review" ? "class.review" : "class.ended")}</h1>;
+  if (state === "review") return <ClassReview snapshot={snapshot} />;
+  return <h1 className="cv__big">{t("class.ended")}</h1>;
 }
 
 /** The QR of the join address with the token of the moment, on a white ground with its own margin, so that a phone reads it from across a room. */

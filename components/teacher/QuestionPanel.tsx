@@ -1,8 +1,8 @@
 "use client";
 
-import { CheckCircleIcon, CircleDashedIcon, ClockCountdownIcon, EyeIcon, MinusCircleIcon, PaperPlaneTiltIcon, SkipForwardIcon, TimerIcon } from "@phosphor-icons/react";
+import { CheckCircleIcon, CircleDashedIcon, ClockCountdownIcon, ClipboardTextIcon, EyeIcon, MinusCircleIcon, PaperPlaneTiltIcon, SkipForwardIcon, TimerIcon } from "@phosphor-icons/react";
 import { useEffect, useId, useRef, useState } from "react";
-import { fireQuestion, revealQuestion, skipQuestion } from "@/lib/teacher/api/hooks";
+import { advanceSession, fireQuestion, revealQuestion, skipQuestion } from "@/lib/teacher/api/hooks";
 import type { ConsoleQuestion, ConsoleSnapshot } from "@/lib/teacher/api/types";
 import { useServerNow } from "@/lib/teacher/clock";
 import { isOne } from "@/lib/teacher/format";
@@ -48,9 +48,10 @@ export function QuestionPanel({ snapshot }: { snapshot: ConsoleSnapshot }) {
   const heading = useRef<HTMLHeadingElement>(null);
   const panel = useRef<HTMLElement>(null);
   const titleId = useId();
-  const [busy, setBusy] = useState<"send" | "reveal" | "skip" | null>(null);
+  const [busy, setBusy] = useState<"send" | "reveal" | "skip" | "review" | null>(null);
   const [problem, setProblem] = useState<{ title: string; error: unknown } | null>(null);
   const [skipping, setSkipping] = useState<ConsoleQuestion | null>(null);
+  const [leaving, setLeaving] = useState(false);
 
   // What the panel is on: a change of it is the teacher's own press or the clock's. If the focus was on the button that went away, it moves on to the new one.
   const on = step.step === "send" ? `send:${step.next?.id ?? "none"}` : `${step.step}:${step.question.id}`;
@@ -63,7 +64,7 @@ export function QuestionPanel({ snapshot }: { snapshot: ConsoleSnapshot }) {
     (panel.current?.querySelector<HTMLElement>("[data-main]") ?? heading.current)?.focus();
   }, [on]);
 
-  const run = async (kind: "send" | "reveal" | "skip", title: string, call: () => Promise<unknown>) => {
+  const run = async (kind: "send" | "reveal" | "skip" | "review", title: string, call: () => Promise<unknown>) => {
     if (busy) return;
     setBusy(kind);
     setProblem(null);
@@ -82,6 +83,7 @@ export function QuestionPanel({ snapshot }: { snapshot: ConsoleSnapshot }) {
   const progress = (q: ConsoleQuestion) => t(isOne(q.answered, locale) ? "q.progress.one" : "q.progress", { n: q.answered, total: q.joined });
   const calmProgress = useCalm(step.step === "open" || step.step === "closed" ? progress(step.question) : "");
 
+  const unsentCount = snapshot.questions.filter((q) => !q.adhoc && q.status === "ready").length;
   const skipTarget = step.step === "send" || step.step === "revealed" ? step.next : step.question;
 
   const skipButton = skipTarget && (
@@ -136,6 +138,20 @@ export function QuestionPanel({ snapshot }: { snapshot: ConsoleSnapshot }) {
                 {t("q.none.title")}
               </p>
               <p className="qpanel__hint">{t("q.none.body")}</p>
+              <div className="qpanel__actions">
+                <button
+                type="button"
+                className="btn btn--primary btn--big"
+                data-main
+                aria-busy={busy === "review"}
+                aria-disabled={busy !== null}
+                onClick={() => void run("review", t("q.review.failed"), () => advanceSession(sessionId, "review"))}
+              >
+                <ClipboardTextIcon size={28} weight="fill" aria-hidden="true" />
+                {t("q.review.go")}
+              </button>
+              </div>
+              <p className="qpanel__hint">{t("q.review.what")}</p>
             </>
           )}
         </>
@@ -236,9 +252,25 @@ export function QuestionPanel({ snapshot }: { snapshot: ConsoleSnapshot }) {
               <p className="qpanel__hint">{t("q.next.what", { prompt: step.next.question.prompt })}</p>
             </>
           ) : (
-            <p className="qpanel__hint" data-testid="none-left">
-              {t("q.none.title")}. {t("q.none.body")}
-            </p>
+            <>
+              <p className="qpanel__hint" data-testid="none-left">
+                {t("q.none.title")}. {t("q.none.body")}
+              </p>
+              <div className="qpanel__actions">
+                <button
+                type="button"
+                className="btn btn--primary btn--big"
+                data-main
+                aria-busy={busy === "review"}
+                aria-disabled={busy !== null}
+                onClick={() => void run("review", t("q.review.failed"), () => advanceSession(sessionId, "review"))}
+              >
+                <ClipboardTextIcon size={28} weight="fill" aria-hidden="true" />
+                {t("q.review.go")}
+              </button>
+              </div>
+              <p className="qpanel__hint">{t("q.review.what")}</p>
+            </>
           )}
         </>
       )}
@@ -250,7 +282,28 @@ export function QuestionPanel({ snapshot }: { snapshot: ConsoleSnapshot }) {
         </p>
       )}
 
+      {(step.step === "send" || step.step === "revealed") && step.next && (
+        <div className="qpanel__early">
+          <button type="button" className="btn btn--quiet" aria-haspopup="dialog" aria-disabled={busy !== null} onClick={() => setLeaving(true)}>
+            {t("q.review.early")}
+          </button>
+        </div>
+      )}
+
       {problem && <Problem title={problem.title}>{te(problem.error)}</Problem>}
+
+      <ConfirmDialog
+        open={leaving}
+        title={t("q.review.early.title")}
+        body={unsentCount === 1 ? t("q.review.early.body.one") : t("q.review.early.body", { n: unsentCount })}
+        stay={t("q.review.early.stay")}
+        confirm={t("q.review.early.yes")}
+        onStay={() => setLeaving(false)}
+        onConfirm={async () => {
+          setLeaving(false);
+          await run("review", t("q.review.failed"), () => advanceSession(sessionId, "review"));
+        }}
+      />
 
       <SkipQuestion
         question={skipping}
