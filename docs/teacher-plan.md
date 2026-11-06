@@ -172,6 +172,9 @@ The app is dark teal only (no light mode).
 - Step 10: after the last question the panel says "Сите прашања се готови" and offers nothing yet;
   step 10 gives it the way on (to the review, then End). Between questions the class view says
   "Часот е во тек".
+- Step 10 (planner, 2026-11-06, against OPEN-14): a quick question counts like any other question
+  of the session: in most-missed, in the practice set under BR-PRA-01, its topic the lesson's
+  title. A skipped one counts nowhere.
 - Step 12: the projector check looks at the ranking beside the bars at 1024x768, its smallest text.
   The planner runs review-animations itself (agents cannot start that skill) over all the motion.
 
