@@ -1,0 +1,3078 @@
+/*
+  TeacherAid website v2. Paper and ink, one deep-teal chapter, Geologica over Golos Text.
+  Brief and rules: docs/site-v2/DESIGN.md. Plain CSS like the first site, so no preflight
+  reaches the device drawings.
+
+  Performance rules: only transform and opacity move; no filter, no backdrop-filter, no animated
+  shadows or clip-paths; colour changes only on small surfaces.
+*/
+
+:root {
+  --paper: oklch(98.6% 0.004 200);
+  --paper-2: oklch(95.8% 0.008 205);
+  --ink: oklch(23% 0.035 220);
+  --ink-2: oklch(44% 0.025 220);
+  --line: oklch(88% 0.01 205);
+
+  /* The teacher app's own colours (docs/teacher-plan.md on the teacher branch). */
+  --deep: #124554;
+  --panel: #145667;
+  --ground-top: #155869;
+  --ground: #32878c;
+  --shadow: #0a2e37;
+  --yellow: #ffc83e;
+  --yellow-deep: #cea034;
+  --on-teal: oklch(98.6% 0.004 200);
+  --on-teal-2: oklch(86% 0.03 200);
+  --line-teal: oklch(100% 0 0 / 0.16);
+
+  /* The student app's blue and yellow, for the phone. */
+  --blue: #1a5dae;
+  --blue-deep: #134785;
+  --blue-card: #2468be;
+  --on-blue-2: oklch(91% 0.03 255);
+
+  --graphite: oklch(22% 0.008 230);
+  --alu-1: oklch(90% 0.006 220);
+  --alu-2: oklch(76% 0.008 220);
+
+  --display: var(--font-geologica), "Geologica", var(--font-golos), system-ui, sans-serif;
+  --text: var(--font-golos), "Golos Text", system-ui, sans-serif;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-press: cubic-bezier(0.2, 0, 0, 1);
+  /* The iOS sheet curve, for the menu. */
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --gutter: clamp(20px, 4vw, 64px);
+  --scene-y: clamp(5rem, 12vh, 9.5rem);
+  --nav-h: 60px;
+}
+
+/* ---------- Reset, only what this page uses ---------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-top: var(--nav-h);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Lenis scrolls the page itself on wheel devices. */
+html.lenis,
+html.lenis body {
+  height: auto;
+  scroll-behavior: auto;
+}
+
+html.menu-open {
+  overflow: hidden;
+}
+
+body.v2 {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--text);
+  font-size: 1.125rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+/* Zero specificity, so every component rule below wins over the reset. */
+:where(.v2) :where(h1, h2, h3, p, ul, ol, figure) {
+  margin: 0;
+}
+
+:where(.v2) :where(ul, ol) {
+  padding: 0;
+  list-style: none;
+}
+
+:where(.v2) a {
+  color: inherit;
+}
+
+/* The press scale is the feedback; the system's grey tap flash is noise on top of it. */
+:where(.v2) :where(a, button) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.v2 ::selection {
+  background: var(--yellow);
+  color: var(--shadow);
+}
+
+.v2 :focus-visible {
+  outline: 3px solid var(--deep);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.v2 main:focus,
+.v2 [tabindex="-1"]:focus {
+  outline: none;
+}
+
+.skip {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 60;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-160%);
+}
+
+.skip:focus-visible {
+  transform: none;
+}
+
+.wrap {
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/* ---------- Type ---------- */
+
+.mega,
+.display {
+  font-family: var(--display);
+  font-weight: 800;
+  text-wrap: balance;
+  hyphens: manual;
+}
+
+/* Capped by height too, so on short phones the headline stays two lines and the main button
+   stays on the first screen. */
+.mega {
+  font-size: clamp(2.5rem, min(12.5vw, 19svh), 12.5rem);
+  line-height: 0.92;
+  letter-spacing: -0.045em;
+}
+
+.display {
+  font-size: clamp(2.6rem, 7vw, 7.25rem);
+  line-height: 0.96;
+  letter-spacing: -0.04em;
+  max-width: 13em;
+}
+
+
+.lead {
+  font-size: clamp(1.25rem, 1.55vw, 1.6rem);
+  line-height: 1.42;
+  max-width: 34ch;
+  text-wrap: pretty;
+}
+
+.body {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  max-width: 52ch;
+  text-wrap: pretty;
+}
+
+.note {
+  font-size: 1rem;
+  line-height: 1.55;
+  max-width: 52ch;
+  color: var(--on-teal-2);
+  text-wrap: pretty;
+}
+
+.note--ink {
+  color: var(--ink-2);
+}
+
+.note--quiet {
+  font-size: 1rem;
+}
+
+.kicker {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  color: var(--ink-2);
+}
+
+.kicker--on-teal {
+  color: var(--yellow);
+}
+
+/* "01 Подготовка": the scene's number in display type, then its name. */
+.index {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75em;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--on-teal-2);
+}
+
+.index span {
+  font-family: var(--display);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--yellow);
+}
+
+.index--ink {
+  color: var(--ink-2);
+}
+
+.index--ink span {
+  color: var(--deep);
+}
+
+.display--ink {
+  color: var(--ink);
+}
+
+/* ---------- Actions ---------- */
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 28px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  padding: 0 28px;
+  border: 0;
+  border-radius: 999px;
+  font: 600 1.0625rem/1 var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform 160ms var(--ease-press),
+    background-color 200ms var(--ease-out),
+    color 200ms var(--ease-out);
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn--sm {
+  min-height: 44px;
+  padding: 0 20px;
+  font-size: 1rem;
+}
+
+.btn--primary {
+  background: var(--deep);
+  color: var(--on-teal);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn--primary:hover {
+    background: var(--shadow);
+  }
+}
+
+.btn--quiet {
+  background: transparent;
+  color: inherit;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+
+/* On teal the main action turns yellow, with dark ink (white on yellow fails contrast). */
+.chapter .btn--primary,
+.nav:is([data-nav-theme="teal"], [data-nav-theme="blue"]) .btn--primary {
+  background: var(--yellow);
+  color: var(--shadow);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .chapter .btn--primary:hover,
+  .nav:is([data-nav-theme="teal"], [data-nav-theme="blue"]) .btn--primary:hover {
+    background: var(--yellow-deep);
+  }
+}
+
+/* Apple's chevron link: the secondary action, never a box. */
+.chev {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-weight: 600;
+  color: var(--deep);
+  text-decoration: none;
+}
+
+.chev svg {
+  transition: transform 200ms var(--ease-out);
+}
+
+/* Text links press like buttons. */
+.chev,
+.nav__lang,
+.menu__inner li a {
+  transition: transform 160ms var(--ease-press);
+}
+
+.chev:active,
+.nav__lang:active,
+.menu__inner li a:active {
+  transform: scale(0.97);
+}
+
+.menu__inner li a {
+  transform-origin: left center;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .chev:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  .chev:hover svg {
+    transform: translateX(3px);
+  }
+}
+
+/* ---------- Nav ---------- */
+
+.nav__sentinel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 8px;
+  pointer-events: none;
+}
+
+.nav {
+  --nav-bg: var(--paper);
+  --nav-fg: var(--ink);
+  --nav-line: var(--line);
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 50;
+  height: var(--nav-h);
+  background: var(--nav-bg);
+  color: var(--nav-fg);
+  transition:
+    background-color 240ms ease,
+    color 240ms ease;
+}
+
+.nav[data-nav-theme="teal"] {
+  --nav-bg: var(--ground-top);
+  --nav-fg: var(--on-teal);
+  --nav-line: var(--line-teal);
+}
+
+.nav[data-nav-theme="blue"] {
+  --nav-bg: var(--blue);
+  --nav-fg: var(--on-teal);
+  --nav-line: oklch(100% 0 0 / 0.18);
+}
+
+.nav[data-nav-theme="yellow"] {
+  --nav-bg: var(--yellow);
+  --nav-fg: var(--shadow);
+  --nav-line: oklch(20% 0.04 230 / 0.16);
+}
+
+.nav::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: var(--nav-line);
+  opacity: 0;
+  transition: opacity 240ms var(--ease-out);
+}
+
+.nav[data-moved]::after {
+  opacity: 1;
+}
+
+.nav__bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 100%;
+}
+
+.nav__mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.125rem;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.nav__links {
+  margin-left: auto;
+}
+
+.nav__links ul {
+  display: flex;
+  gap: 4px;
+}
+
+.nav__links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nav__links a:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
+  }
+}
+
+.nav__end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav__lang {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.nav__toggle {
+  display: none;
+}
+
+.nav:is([data-nav-theme="teal"], [data-nav-theme="blue"]) :focus-visible {
+  outline-color: var(--yellow);
+}
+
+@media (max-width: 899px) {
+  .nav__links {
+    display: none;
+  }
+
+  .nav__end {
+    margin-left: auto;
+  }
+
+  .nav__toggle {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 559px) {
+  :root {
+    --nav-h: 56px;
+  }
+
+  .nav__cta {
+    display: none;
+  }
+}
+
+/* The menu sheet: in on the iOS sheet curve, out faster; links follow one after another. Closed,
+   it stays in the page but invisible, so it can fade out instead of vanishing. */
+.menu {
+  position: fixed;
+  inset: var(--nav-h) 0 0;
+  z-index: 49;
+  background: var(--paper);
+  color: var(--ink);
+  overflow-y: auto;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 180ms var(--ease-out),
+    visibility 0s linear 180ms;
+}
+
+.menu[data-open] {
+  visibility: visible;
+  opacity: 1;
+  transition:
+    opacity 280ms var(--ease-sheet),
+    transform 280ms var(--ease-sheet),
+    visibility 0s;
+}
+
+.menu__inner li,
+.menu__end {
+  opacity: 0;
+  transition:
+    opacity 140ms var(--ease-out),
+    transform 140ms var(--ease-out);
+}
+
+.menu[data-open] :is(.menu__inner li, .menu__end) {
+  opacity: 1;
+  transition:
+    opacity 320ms var(--ease-out) calc(60ms + var(--n, 0) * 40ms),
+    transform 320ms var(--ease-out) calc(60ms + var(--n, 0) * 40ms);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .menu {
+    transform: translate3d(0, -8px, 0);
+  }
+
+  .menu[data-open] {
+    transform: none;
+  }
+
+  .menu__inner li,
+  .menu__end {
+    transform: translate3d(0, 10px, 0);
+  }
+
+  .menu[data-open] :is(.menu__inner li, .menu__end) {
+    transform: none;
+  }
+}
+
+.menu__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  padding-block: 32px 48px;
+}
+
+.menu__inner ul {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu__inner li a {
+  display: block;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(2rem, 9vw, 3rem);
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  text-decoration: none;
+}
+
+.menu__end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+/* ---------- Hero (act 1) ---------- */
+
+.hero {
+  position: relative;
+  padding-top: calc(var(--nav-h) + clamp(1.25rem, 7svh, 6rem));
+  padding-bottom: clamp(2rem, 6vh, 4rem);
+  overflow: clip;
+}
+
+.hero__grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: clamp(12px, 1.6vw, 24px);
+  row-gap: clamp(1.5rem, 3.5vh, 2.5rem);
+}
+
+.hero__kicker {
+  grid-column: 1 / -1;
+}
+
+.hero__title {
+  grid-column: 1 / -1;
+}
+
+.hero__title .line {
+  display: block;
+  overflow: clip;
+  /* Room for Cyrillic descenders (д, ц, у, р) inside the mask. */
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+}
+
+.hero__title .line > span {
+  display: block;
+}
+
+.hero__title .line:nth-child(2) {
+  padding-left: clamp(0px, 8vw, 9rem);
+}
+
+.hero__deck {
+  grid-column: 7 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  margin-top: clamp(0.5rem, 2vh, 1.5rem);
+}
+
+.hero__stage {
+  position: relative;
+  margin-top: clamp(3rem, 9vh, 6.5rem);
+  display: grid;
+  justify-items: end;
+}
+
+.hero__laptop {
+  width: min(100%, 1180px);
+}
+
+.hero__phone {
+  position: absolute;
+  left: var(--gutter);
+  bottom: -2%;
+  width: clamp(120px, 17%, 230px);
+}
+
+.hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 0;
+  font-size: 1rem;
+  color: var(--ink-2);
+}
+
+@media (min-width: 768px) {
+  .hero__meta li:not(:last-child)::after {
+    content: "·";
+    padding-inline: 0.6em;
+  }
+}
+
+/* The short deck is for phones only. */
+.hero__lead-short {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .hero__deck {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Phones: the headline across the width, one line of deck, and the devices already in the first
+   screen, side by side, the phone over the laptop's right edge only. */
+@media (max-width: 767px) {
+  .hero__title .line:nth-child(2) {
+    padding-left: 0;
+  }
+
+  /* Macedonian's longest line is shorter than English's, so it fills the width at a larger size. */
+  .hero__title:lang(mk) {
+    font-size: clamp(2.5rem, min(14.4vw, 19svh), 12.5rem);
+  }
+
+  .hero__lead,
+  .hero__meta {
+    display: none;
+  }
+
+  .hero__lead-short {
+    display: block;
+  }
+
+  .hero__stage {
+    justify-items: start;
+  }
+
+  .hero__laptop {
+    width: 82%;
+  }
+
+  /* Hung from the laptop's top edge, not stood on its base: the phone is the taller of the two,
+     and from the base it would reach up into the links above. */
+  .hero__phone {
+    left: auto;
+    right: var(--gutter);
+    top: -6%;
+    bottom: auto;
+    width: 31%;
+  }
+}
+
+/* The entrance runs in CSS so it starts at first paint, without waiting for any script. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero__title .line > span {
+    animation: v2-rise 1.15s var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * 90ms + 60ms);
+  }
+
+  .hero__kicker,
+  .hero__deck {
+    animation: v2-fade 0.9s var(--ease-out) both;
+    animation-delay: 0.42s;
+  }
+
+  .hero__stage {
+    animation: v2-stage 1.4s var(--ease-out) both;
+    animation-delay: 0.3s;
+  }
+}
+
+/* Once the entrance has played (or the first scroll finished it), the motion layer owns these. */
+.is-entered .hero__title .line > span,
+.is-entered .hero__kicker,
+.is-entered .hero__deck,
+.is-entered .hero__stage {
+  animation: none;
+}
+
+@keyframes v2-rise {
+  from {
+    transform: translate3d(0, 108%, 0);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes v2-fade {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes v2-stage {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 56px, 0) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------- The pinned class scene (motion only) ----------
+   With the motion layer the hero is exactly one screen tall and gets pinned; its start layout is
+   the normal flow above, its end layout is .hero__end below. The motion layer measures both and
+   moves the layers between them: the headline, the stage, the laptop, the phone and the stack's
+   cards, a few at a time. Without motion (or with Reduce Motion) none of this shows and the hero
+   stays as it is. */
+
+.hero__end {
+  display: none;
+}
+
+/* Only on screens at least 520px tall: shorter ones (a phone on its side, a page zoomed to 200 %)
+   keep the static hero, so nothing in it is ever cut off by the pin. */
+@media (min-height: 520px) {
+  .motion .hero {
+    height: 100svh;
+    padding-bottom: 0;
+  }
+}
+
+@media (max-height: 519px) {
+  .motion .hero__end {
+    display: none;
+  }
+}
+
+/* Three layers in one stacking context: the laptop behind, the stack in the middle, the flying
+   phone in front. The stage itself never moves, so it makes no context of its own. */
+.motion .hero__laptop {
+  z-index: 1;
+}
+
+.motion .hero__phone {
+  z-index: 3;
+}
+
+/* The last frame: the caption and the count across the top, the teacher's laptop filling the
+   left below them, and the class's stack of phones filling the right, top to bottom. */
+.motion .hero__end {
+  /* The stack is the front phone (2.09 widths tall) plus 28 edges of 0.03 widths: 2.93 widths. */
+  --card-w: min(22vw, calc((93svh - var(--nav-h)) / 2.93));
+  position: absolute;
+  inset: calc(var(--nav-h) + 3.5svh) var(--gutter) 3.5svh;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
+  column-gap: 4vw;
+  row-gap: 2svh;
+  max-width: calc(1440px - 2 * var(--gutter));
+  margin-inline: auto;
+  pointer-events: none;
+}
+
+/* An empty box at the end place of the headline; its font size is the headline's end size. */
+.hero__title-end {
+  grid-area: 1 / 1;
+  align-self: start;
+  height: 1px;
+  font-family: var(--display);
+  font-size: clamp(2.25rem, 6.6vw, 7.5rem);
+}
+
+.hero__count {
+  grid-area: 1 / 1;
+  align-self: start;
+  justify-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15em;
+  font-family: var(--display);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 0.9;
+  text-align: right;
+  color: var(--ink);
+  opacity: 0;
+}
+
+.hero__count b {
+  font-size: clamp(2.75rem, 7.5vw, 7.5rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero__count span {
+  font-size: clamp(1rem, 1.6vw, 1.6rem);
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--ink-2);
+}
+
+/* Where the laptop lands: filling the left under the caption, with its own proportions. Its
+   height is what is left under the caption row (about 18svh plus the nav). */
+.hero__desk {
+  grid-area: 2 / 1;
+  align-self: end;
+  justify-self: start;
+  width: min(100%, calc((93svh - var(--nav-h) - min(6.6vw, 7.5rem) * 1.84 - 2svh) * 1.6));
+  aspect-ratio: 1.6;
+}
+
+/* The stack: every card and the front place sit at the bottom; the motion layer deals the cards
+   up behind the front, each a step higher, narrower and paler than the one before. */
+.stack {
+  grid-area: 1 / 2 / 3 / 3;
+  align-self: end;
+  position: relative;
+  width: var(--card-w);
+  height: calc(var(--card-w) * (2.09 + 28 * 0.03));
+  opacity: 0;
+}
+
+.stack__card,
+.stack__front {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  aspect-ratio: 9 / 18.8;
+  border-radius: 14% / 6.6%;
+}
+
+/* A paper-white rim parts each edge from the next, like the pages of a book; the cards pale with
+   depth, so the stack stays quiet until it lights. */
+.stack__card {
+  background: color-mix(in oklch, var(--blue) calc(78% - var(--k) * 1.4%), var(--paper));
+  box-shadow: inset 0 0 0 max(1.5px, 0.8%) var(--paper);
+}
+
+/* The card's student has answered. */
+.stack__card b {
+  position: absolute;
+  inset: max(1.5px, 0.8%);
+  border-radius: inherit;
+  background: var(--yellow);
+  opacity: 0;
+}
+
+/* Phones: the caption and the count on top; below, the laptop across most of the width and the
+   stack standing in front of its right side, like phones on the desk. */
+@media (max-width: 899px) {
+  .motion .hero__end {
+    --card-w: min(40vw, calc((93svh - var(--nav-h) - 110px) / 2.93));
+    column-gap: 16px;
+    row-gap: 1.6svh;
+  }
+
+  .hero__title-end {
+    font-size: clamp(1.9rem, 8.2vw, 3.25rem);
+  }
+
+  .hero__count {
+    grid-area: 1 / 2;
+  }
+
+  .hero__count b {
+    font-size: clamp(2.75rem, 13vw, 5rem);
+  }
+
+  .hero__count span {
+    font-size: 1rem;
+  }
+
+  .hero__desk {
+    grid-area: 2 / 1 / 3 / 3;
+    width: 82%;
+  }
+
+  .stack {
+    grid-area: 2 / 2;
+  }
+}
+
+/* Phones: the laptop has left by the last frame, so the class takes it: the caption and the count
+   on top, the stack centred under them. Every third phone of the class is shown, so each edge is
+   wide enough to read as a phone; the count still goes to 29. */
+@media (max-width: 767px) {
+  .motion .hero__end {
+    /* The front phone (2.09 widths tall) plus 9 edges of 0.065 widths: 2.675 widths. */
+    --card-w: min(46vw, calc((93svh - var(--nav-h) - 104px) / 2.675));
+  }
+
+  .hero__desk {
+    display: none;
+  }
+
+  .stack {
+    grid-area: 2 / 1 / 3 / 3;
+    justify-self: center;
+    height: calc(var(--card-w) * (2.09 + 9 * 0.065));
+  }
+
+  .stack__card:not(:nth-child(3n)) {
+    display: none;
+  }
+}
+
+/* Revealed by the motion layer; the guard in the document head adds .motion. */
+.motion [data-reveal] {
+  opacity: 0;
+}
+
+/* ---------- The teacher chapter (act 2) ---------- */
+
+.chapter {
+  position: relative;
+  background: var(--ground-top);
+  color: var(--on-teal);
+}
+
+.chapter :focus-visible {
+  outline-color: var(--yellow);
+}
+
+.chapter .chev {
+  color: var(--on-teal);
+}
+
+.scene {
+  position: relative;
+  padding-block: var(--scene-y);
+}
+
+/* The nav's links land a chapter (and the booking) under the bar, which then takes its colour;
+   their tall top padding keeps the first line clear of it. */
+.chapter,
+.book {
+  scroll-margin-top: calc(var(--nav-h) * -1);
+}
+
+.opener {
+  padding-top: calc(var(--scene-y) * 1.2);
+}
+
+.opener .wrap {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.25rem, 3vh, 2rem);
+}
+
+/* The teacher's laptop, sized so it fills the screen once it has grown in. */
+.opener__stage {
+  display: grid;
+  justify-items: center;
+  margin-top: clamp(3rem, 9vh, 6rem);
+}
+
+.opener__laptop {
+  width: min(100%, calc((100svh - 150px) * 1.58));
+  transform-origin: 50% 0;
+}
+
+.opener__body {
+  margin-left: auto;
+  margin-right: clamp(0px, 8vw, 10rem);
+  color: var(--on-teal-2);
+}
+
+/* A scene's number and its line, full width above the copy and the device: a chapter opening,
+   not a feature row. */
+.scene__head {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.25rem, 3vh, 2rem);
+  margin-bottom: clamp(2.5rem, 8vh, 5.5rem);
+}
+
+.split__grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: clamp(12px, 1.6vw, 24px);
+  align-items: center;
+}
+
+.split__copy {
+  grid-column: 1 / span 5;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.split__media {
+  grid-column: 7 / -1;
+}
+
+.split--flip .split__copy {
+  grid-column: 8 / -1;
+  grid-row: 1;
+}
+
+.split--flip .split__media {
+  grid-column: 1 / span 6;
+  grid-row: 1;
+}
+
+.split .body {
+  color: var(--on-teal-2);
+}
+
+.refine {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.refine__label {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.refine ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.refine li {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--line-teal);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+@media (max-width: 899px) {
+  .split__copy,
+  .split--flip .split__copy {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .split__media,
+  .split--flip .split__media {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-top: clamp(2.5rem, 7vh, 4rem);
+  }
+}
+
+/* The climax: the room darkens like a projector is on. */
+.live {
+  background: linear-gradient(180deg, var(--ground-top) 0%, var(--deep) 18%, var(--deep) 82%, var(--ground-top) 100%);
+}
+
+.live .wrap {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.25rem, 3vh, 2rem);
+}
+
+.live__lead {
+  color: var(--on-teal-2);
+}
+
+/* The part the motion layer pins: the beat's caption over the board and the laptop. */
+/* As wide as the screen's height allows (the stage is about 0.56 of its width tall), so the
+   whole lesson is in view while it plays; the caption lines up with the board. */
+.live__pin {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.25rem, 3.5vh, 2.25rem);
+  width: 100%;
+  max-width: calc((100svh - 210px) / 0.56);
+  margin: clamp(1.5rem, 5vh, 3.5rem) auto 0;
+}
+
+/* Without motion the four beats are a list; with it they share one place and take turns. */
+.live__steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px clamp(16px, 3vw, 48px);
+}
+
+.live__steps li {
+  display: flex;
+  gap: 0.75em;
+  font-family: var(--display);
+  font-size: clamp(1.15rem, 1.8vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+.live__steps li span {
+  color: var(--yellow);
+  font-variant-numeric: tabular-nums;
+}
+
+.motion .live__steps {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.motion .live__steps li {
+  grid-area: 1 / 1;
+}
+
+/* The board fills the stage and the teacher's laptop stands in front of its bottom right. */
+.live__stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: end;
+}
+
+.live__board {
+  grid-column: 1 / 12;
+  grid-row: 1;
+}
+
+/* Offset with a margin, not a transform, so the motion layer measures it where it is. */
+.live__laptop {
+  grid-column: 8 / -1;
+  grid-row: 1;
+  z-index: 2;
+  margin-bottom: -4%;
+}
+
+/* The question on its way from the laptop to the board. Placed and sized by the motion layer. */
+.flycard {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.08;
+  color: var(--on-teal);
+  transform-origin: 0 0;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.flycard__bg {
+  position: absolute;
+  inset: -0.45em -0.6em;
+  border-radius: 0.45em;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 2px var(--yellow);
+}
+
+.flycard__text {
+  position: relative;
+}
+
+.live__copy {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px clamp(16px, 3vw, 48px);
+  max-width: 980px;
+  margin-top: clamp(3rem, 9vh, 6rem);
+}
+
+@media (max-width: 899px) {
+  .live__steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .live__pin {
+    max-width: none;
+  }
+
+  .live__board {
+    grid-column: 1 / -1;
+  }
+
+  .live__laptop {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin: 4% 0 0;
+  }
+
+  .live__copy {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- The student chapter (the student app's blue) ---------- */
+
+/* White and a pale blue on the blue; yellow stays for what is picked and won (as small text it
+   would fall under 4.5:1 here). */
+.chapter--student {
+  background: linear-gradient(180deg, var(--blue) 0%, var(--blue-deep) 100%);
+}
+
+.chapter--student .kicker--on-teal,
+.chapter--student .index span {
+  color: var(--on-teal);
+}
+
+.chapter--student :is(.index, .note, .split .body, .opener__body, .answer__lead) {
+  color: var(--on-blue-2);
+}
+
+.scan__media {
+  display: grid;
+  justify-items: center;
+}
+
+.scan__phone {
+  width: min(100%, 300px);
+}
+
+.answer .wrap {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.25rem, 3vh, 2rem);
+}
+
+/* The pinned part: the beat's caption beside the phone, which is as tall as the screen allows. */
+.answer__pin {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(1.5rem, 5vw, 5rem);
+  margin-top: clamp(1.5rem, 5vh, 3.5rem);
+}
+
+.answer__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.answer__steps li {
+  display: flex;
+  gap: 0.75em;
+  font-family: var(--display);
+  font-size: clamp(1.25rem, 2.4vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.answer__steps li span {
+  color: var(--yellow);
+  font-variant-numeric: tabular-nums;
+}
+
+.motion .answer__steps {
+  display: grid;
+}
+
+.motion .answer__steps li {
+  grid-area: 1 / 1;
+}
+
+.answer__phone {
+  width: min(78vw, 380px, calc((100svh - 200px) / 2.09));
+}
+
+@media (max-width: 899px) {
+  .answer__pin {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+
+  .answer__steps {
+    justify-self: stretch;
+  }
+
+  .answer__phone {
+    width: min(78vw, calc((100svh - 260px) / 2.09));
+  }
+}
+
+/* ---------- The director's chapter (back on paper) ---------- */
+
+.chapter--director {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.chapter--director :focus-visible {
+  outline-color: var(--deep);
+}
+
+.chapter--director .chev {
+  color: var(--deep);
+}
+
+.chapter--director :is(.opener__body, .report__lead) {
+  color: var(--ink-2);
+}
+
+.kicker--deep {
+  color: var(--deep);
+}
+
+.report__lead {
+  max-width: 40ch;
+}
+
+/* Both pages side by side, as tall as the screen allows; on phones, one above the other. */
+.report__stage {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(16px, 2.6vw, 40px);
+  width: min(100%, calc((100svh - var(--nav-h) - 96px) / 1.414 * 2 + 40px));
+  margin: 0 auto;
+}
+
+@media (max-width: 767px) {
+  .report__stage {
+    grid-template-columns: minmax(0, 1fr);
+    width: min(100%, 460px);
+  }
+}
+
+/* Page two starts tucked behind page one. */
+.report__stage [data-sheet="1"] {
+  z-index: 1;
+}
+
+.motion .report__stage .sheet {
+  will-change: transform;
+}
+
+.notes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(24px, 3vw, 48px);
+  margin-top: clamp(3rem, 9vh, 6rem);
+}
+
+.notes li {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-2);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.notes__title {
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+/* Kept and never kept, in display type at the size of a scene's line. */
+.ledger {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: clamp(12px, 1.6vw, 24px);
+  row-gap: clamp(3rem, 8vh, 5rem);
+}
+
+.ledger__col {
+  grid-column: span 6;
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2.4vh, 1.5rem);
+}
+
+.ledger__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.ledger__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.14em;
+  font-family: var(--display);
+  /* Sized by its column, so the longest struck word stays on one line. */
+  font-size: clamp(1.75rem, 9.8cqi, 4.75rem);
+  font-weight: 800;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  color: var(--deep);
+}
+
+.ledger__col--never .ledger__list {
+  color: var(--ink-2);
+}
+
+.ledger__list span {
+  position: relative;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* Drawn across from the left by the motion layer: a transform, no layout. */
+.ledger__strike {
+  position: absolute;
+  left: -0.06em;
+  right: -0.06em;
+  top: 52%;
+  height: 0.085em;
+  border-radius: 999px;
+  background: var(--ink);
+  transform-origin: 0 50%;
+}
+
+@media (max-width: 767px) {
+  .ledger__col {
+    grid-column: 1 / -1;
+  }
+}
+
+.sees {
+  margin-top: clamp(4.5rem, 13vh, 8.5rem);
+}
+
+.sees__title {
+  margin-bottom: clamp(1.5rem, 4vh, 2.5rem);
+  font-family: var(--display);
+  font-size: clamp(1.75rem, 3vw, 2.75rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.sees dl {
+  margin: 0;
+}
+
+.sees dl > div {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: clamp(12px, 1.6vw, 24px);
+  padding-block: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.sees dl > div:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.sees dt {
+  grid-column: 1 / span 4;
+  font-family: var(--display);
+  font-size: clamp(1.125rem, 1.6vw, 1.5rem);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.sees dd {
+  grid-column: 5 / -1;
+  margin: 0;
+  color: var(--ink-2);
+}
+
+@media (max-width: 767px) {
+  .sees dt,
+  .sees dd {
+    grid-column: 1 / -1;
+  }
+
+  .sees dd {
+    margin-top: 4px;
+  }
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(12px, 1.6vw, 24px);
+  margin-top: clamp(4.5rem, 13vh, 8.5rem);
+}
+
+.facts li {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: clamp(24px, 2.4vw, 36px);
+  border-radius: 28px;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.facts svg {
+  margin-bottom: 8px;
+  color: var(--deep);
+}
+
+.facts h3 {
+  font-family: var(--display);
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+@media (max-width: 1099px) {
+  .notes,
+  .facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 599px) {
+  .notes,
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.data__foot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: clamp(3rem, 8vh, 5rem);
+}
+
+.data__foot .body {
+  color: var(--ink-2);
+}
+
+/* ---------- Results and booking ---------- */
+
+.book__copy {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.25rem, 3vh, 2rem);
+}
+
+.results .body {
+  color: var(--ink-2);
+}
+
+/* The ending: the page's one field of yellow, the brand's "do this now", with the headline at hero
+   size in dark ink (6.5:1 on this yellow). */
+.book {
+  background: var(--yellow);
+  color: var(--shadow);
+  padding-block: clamp(6rem, 16vh, 12rem);
+}
+
+.book ::selection {
+  background: var(--deep);
+  color: var(--paper);
+}
+
+.book__grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: clamp(12px, 1.6vw, 24px);
+  row-gap: clamp(2.5rem, 7vh, 4.5rem);
+}
+
+.book__title {
+  grid-column: 1 / -1;
+  max-width: 11em;
+}
+
+.book__copy {
+  grid-column: 7 / -1;
+}
+
+.book__copy .lead,
+.book .note--ink {
+  color: var(--shadow);
+}
+
+.book .chev {
+  color: var(--deep);
+}
+
+@media (max-width: 899px) {
+  .book__copy {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Above the language row: what TeacherAid is, in one plain paragraph, and every page. */
+.foot__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 24px clamp(32px, 6vw, 96px);
+  padding-block: 8px 24px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.foot__about {
+  max-width: 60ch;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.foot .foot__pages ul {
+  flex-direction: column;
+  gap: 0;
+}
+
+.foot__pages a[aria-current="page"] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+@media (max-width: 767px) {
+  .foot__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.foot {
+  padding-block: 32px calc(32px + env(safe-area-inset-bottom));
+  background: var(--paper-2);
+  border-top: 1px solid var(--line);
+  color: var(--ink-2);
+  font-size: 1rem;
+}
+
+.foot__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 32px;
+}
+
+.foot ul {
+  display: flex;
+  gap: 8px 24px;
+}
+
+.foot a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  text-decoration: none;
+}
+
+.foot a[aria-current="page"] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ---------- Devices ---------- */
+
+/* The laptop: graphite bezel in an aluminium lid, an aluminium base wider than the lid. */
+/* The base is wider than the lid; the figure's side padding keeps it inside its column. */
+.laptop {
+  position: relative;
+  padding-inline: 5%;
+}
+
+.laptop__lid {
+  position: relative;
+  padding: 1.9% 1.9% 2.4%;
+  border-radius: 2.4% / 3.6%;
+  background: var(--graphite);
+  box-shadow:
+    0 0 0 max(1px, 0.18vw) var(--alu-2),
+    inset 0 0 0 1px oklch(100% 0 0 / 0.06);
+}
+
+.laptop__screen,
+.board__screen,
+.phone__screen {
+  position: relative;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.laptop__screen {
+  aspect-ratio: 16 / 10;
+  border-radius: 0.5%;
+  background: var(--deep);
+}
+
+.laptop__base {
+  position: relative;
+  height: 0;
+  padding-bottom: 3.2%;
+  margin: 0 -5.6%;
+  border-radius: 0 0 46% 46% / 0 0 100% 100%;
+  background: linear-gradient(180deg, var(--alu-1) 0%, var(--alu-1) 30%, var(--alu-2) 100%);
+}
+
+/* The thumb groove in the base. */
+.laptop__base::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 14%;
+  height: 34%;
+  transform: translateX(-50%);
+  border-radius: 0 0 999px 999px;
+  background: var(--alu-2);
+}
+
+/* A painted contact shadow: a gradient, not a blur filter. */
+.laptop__base::after {
+  content: "";
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  top: 70%;
+  height: 260%;
+  z-index: -1;
+  background: radial-gradient(50% 50% at 50% 30%, oklch(20% 0.03 220 / 0.28), transparent 70%);
+}
+
+.board__frame {
+  padding: 1.1%;
+  border-radius: 1.4% / 2.4%;
+  background: var(--graphite);
+  box-shadow:
+    0 0 0 1px oklch(100% 0 0 / 0.1),
+    0 40px 80px -40px oklch(10% 0.03 220 / 0.7);
+}
+
+.board__screen {
+  aspect-ratio: 16 / 9;
+  border-radius: 0.4%;
+  background: var(--ground-top);
+}
+
+.phone__body {
+  padding: 3.4%;
+  border-radius: 14% / 6.6%;
+  background: var(--graphite);
+  box-shadow:
+    0 0 0 max(1px, 0.12vw) var(--alu-2),
+    0 30px 60px -30px oklch(15% 0.03 220 / 0.55);
+}
+
+.phone__screen {
+  aspect-ratio: 9 / 19.5;
+  border-radius: 11% / 5.2%;
+  background: var(--blue);
+}
+
+.phone__island {
+  position: absolute;
+  top: 2.4%;
+  left: 50%;
+  z-index: 2;
+  width: 30%;
+  height: 3.6%;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: var(--graphite);
+}
+
+/* ---------- Captures of the real apps ---------- */
+
+/* A teacher capture fills the laptop's 16:10 screen exactly. */
+.laptop__screen > .shot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+/* A student capture: the status bar's strip in the app's top colour, the capture under it
+   (390x798 under a 47px bar on the phone's 390x845 screen). */
+.phone-shot {
+  position: absolute;
+  inset: 0;
+  background: var(--top, var(--blue));
+}
+
+.phone-shot > .shot {
+  position: absolute;
+  top: 5.56%;
+  left: 0;
+  width: 100%;
+  height: auto;
+}
+
+.phone__time {
+  position: absolute;
+  top: 2.9%;
+  left: 10%;
+  z-index: 3;
+  font: 600 4.3cqw/1 var(--text);
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+/* Without motion the answer phone shows its verdict capture, and the scan phone the lesson it
+   opened (the last capture, on top). */
+html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
+  visibility: hidden;
+}
+
+/* Where the student's thumb lands on "Б x = 5" in the question capture. */
+.answer__tap {
+  position: absolute;
+  left: 50%;
+  top: 74.7%;
+  z-index: 2;
+  width: 20cqw;
+  height: 20cqw;
+  margin: -10cqw 0 0 -10cqw;
+  border-radius: 50%;
+  background: oklch(100% 0 0 / 0.6);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------- Drawn screens, for what the apps have not built yet (cqw: they scale with their
+   device) ---------- */
+
+.scr {
+  position: absolute;
+  inset: 0;
+  font-family: var(--text);
+  color: var(--on-teal);
+  line-height: 1.3;
+}
+
+.scr-tag {
+  position: absolute;
+  right: 2.5cqw;
+  bottom: 2.5cqw;
+  padding: 0.5cqw 1.2cqw;
+  border-radius: 999px;
+  background: oklch(100% 0 0 / 0.14);
+  color: var(--on-teal);
+  font-size: 1.3cqw;
+  font-weight: 600;
+}
+
+/* On screens with a sidebar the tag sits in the sidebar, clear of the content. */
+.scr--console .scr-tag {
+  right: auto;
+  left: 1.6cqw;
+}
+
+.scr-btn {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.scr-btn--yellow {
+  background: var(--yellow);
+  color: var(--shadow);
+}
+
+.scr-btn--ghost {
+  box-shadow: inset 0 0 0 0.12cqw oklch(100% 0 0 / 0.5);
+}
+
+/* Teacher console: the Today screen. */
+.scr--console {
+  display: grid;
+  grid-template-columns: 19cqw 1fr;
+  background: linear-gradient(180deg, var(--ground-top), var(--ground));
+}
+
+.scr-side {
+  display: flex;
+  flex-direction: column;
+  gap: 3cqw;
+  padding: 2.6cqw 1.6cqw;
+  background: var(--deep);
+}
+
+.scr-side__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.9cqw;
+  padding-inline: 1cqw;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.6cqw;
+}
+
+.scr-side__brand svg {
+  width: 2.2cqw;
+  height: 2.2cqw;
+}
+
+.scr-side ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6cqw;
+}
+
+.scr-side li {
+  display: flex;
+  align-items: center;
+  gap: 1cqw;
+  padding: 1.1cqw 1cqw;
+  border-radius: 1cqw;
+  font-size: 1.45cqw;
+  font-weight: 500;
+  color: var(--on-teal-2);
+}
+
+.scr-side li.is-on {
+  background: var(--panel);
+  color: var(--on-teal);
+}
+
+.scr-dot {
+  width: 1.5cqw;
+  height: 1.5cqw;
+  border-radius: 0.4cqw;
+  box-shadow: inset 0 0 0 0.16cqw currentColor;
+}
+
+.is-on .scr-dot {
+  background: var(--yellow);
+  box-shadow: none;
+}
+
+
+.scr-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6cqw;
+  padding: 3.4cqw 3.6cqw;
+}
+
+.scr-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1cqw;
+}
+
+.scr-head .scr-btn {
+  padding: 1.2cqw 2.2cqw;
+  font-size: 1.45cqw;
+}
+
+.scr-head .scr-h3 {
+  font-family: var(--display);
+  font-size: 4cqw;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* The class view on the board: the join screen, then the question layer. */
+.scr--board {
+  background: linear-gradient(180deg, var(--ground-top), var(--ground));
+}
+
+.scr-board__lobby,
+.scr-board__q {
+  position: absolute;
+  inset: 0;
+  padding: 3.6cqw 4.4cqw;
+}
+
+/* The finished state is the question; the motion layer starts on the join screen. Content keeps
+   to the top half on the right, clear of the laptop in front. */
+.scr-board__lobby {
+  display: flex;
+  align-items: flex-start;
+  gap: 5cqw;
+  padding-top: 5cqw;
+  opacity: 0;
+}
+
+.scr-qr {
+  flex: none;
+  width: 24cqw;
+  padding: 1.4cqw;
+  border-radius: 1.6cqw;
+  background: #fff;
+}
+
+.scr-qr svg {
+  display: block;
+  width: 100%;
+}
+
+.scr-lobby {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6cqw;
+}
+
+.scr-lobby__scan {
+  max-width: 24ch;
+  font-size: 2.1cqw;
+  font-weight: 600;
+  color: var(--on-teal-2);
+}
+
+.scr-lobby__code {
+  font-family: var(--display);
+  font-size: 6.5cqw;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.scr-lobby__joined {
+  font-size: 2cqw;
+  color: var(--on-teal-2);
+}
+
+.scr-lobby__joined b {
+  font-family: var(--display);
+  font-size: 3.4cqw;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--yellow);
+}
+
+.scr-board__q {
+  display: grid;
+  /* The left column ends near the board's middle, so the laptop never covers an answer. */
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  column-gap: 4cqw;
+  row-gap: 2.2cqw;
+}
+
+.scr-board__top {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  gap: 2.4cqw;
+  font-size: 1.5cqw;
+  font-weight: 600;
+  color: var(--on-teal-2);
+}
+
+.scr-board__side {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1.6cqw;
+  text-align: right;
+}
+
+.scr-timer {
+  display: grid;
+  place-items: center;
+  width: 8cqw;
+  height: 8cqw;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 0.5cqw var(--yellow);
+  color: var(--on-teal);
+  font-family: var(--display);
+  font-size: 3.2cqw;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.scr-board__count {
+  font-size: 1.6cqw;
+  color: var(--on-teal-2);
+}
+
+.scr-board__count b {
+  display: block;
+  font-family: var(--display);
+  font-size: 5cqw;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--on-teal);
+  font-variant-numeric: tabular-nums;
+}
+
+.scr-board__question {
+  grid-column: 1;
+  max-width: 30ch;
+  font-family: var(--display);
+  font-size: 3.6cqw;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.08;
+}
+
+.scr-bars {
+  grid-column: 1;
+  align-self: end;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.1cqw;
+}
+
+.scr-bars li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1.4cqw;
+  padding: 1.3cqw 1.8cqw;
+  border-radius: 1.4cqw;
+  background: var(--panel);
+  overflow: hidden;
+  font-size: 1.7cqw;
+  font-weight: 600;
+}
+
+/* The share of the class: a scaled layer, filled with a transform. */
+.scr-bars__fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform: scaleX(var(--share, 0));
+  background: oklch(100% 0 0 / 0.1);
+}
+
+.scr-bars li.is-right .scr-bars__fill {
+  background: oklch(100% 0 0 / 0.2);
+}
+
+/* The right answer, revealed: a yellow ring (yellow tints over teal turn olive). */
+.scr-bars__ring {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 0.28cqw var(--yellow);
+  pointer-events: none;
+}
+
+.scr-bars__key {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 3.2cqw;
+  height: 3.2cqw;
+  border-radius: 0.8cqw;
+  background: oklch(100% 0 0 / 0.14);
+  font-family: var(--display);
+  font-weight: 800;
+}
+
+.is-right .scr-bars__key {
+  background: var(--yellow);
+  color: var(--shadow);
+}
+
+.scr-bars__label {
+  position: relative;
+  z-index: 1;
+}
+
+.scr-bars__pct {
+  position: relative;
+  z-index: 1;
+  margin-left: auto;
+  font-family: var(--display);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Shared bits of the teacher screens. */
+:where(.scr) :where(p, ol, ul) {
+  margin: 0;
+}
+
+.scr .scr-h4 {
+  font-size: 1.35cqw;
+  font-weight: 600;
+  color: var(--on-teal-2);
+}
+
+
+
+
+.scr-sub {
+  display: block;
+  margin-top: 0.6cqw;
+  font-size: 1.3cqw;
+  color: var(--on-teal-2);
+}
+
+/* A row's share, filled with a transform. */
+.scr-meter {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform: scaleX(var(--share, 0));
+  background: oklch(100% 0 0 / 0.1);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* The live console. */
+.scr--live {
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, var(--ground-top), var(--ground));
+}
+
+.scr--live .scr-btn {
+  padding: 0.9cqw 1.8cqw;
+  font-size: 1.3cqw;
+}
+
+.scr-live__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.8cqw 3cqw;
+  background: var(--deep);
+  font-size: 1.5cqw;
+  color: var(--on-teal-2);
+}
+
+.scr-live__bar b {
+  color: var(--on-teal);
+}
+
+/* The teacher app's End red, a shade deeper so white text on it passes 4.5:1. */
+.scr--live .scr-btn--end {
+  background: #d61f1c;
+  color: #fff;
+  font-weight: 700;
+}
+
+.scr-live__body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28%;
+  gap: 2.4cqw;
+  padding: 2.6cqw 3cqw;
+}
+
+.scr-live__qs {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1cqw;
+}
+
+.scr-live__qs li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.6cqw;
+  padding: 1.5cqw 1.8cqw;
+  border-radius: 1.2cqw;
+  background: var(--panel);
+  font-size: 1.45cqw;
+}
+
+.scr-live__qs li:not(.is-current) {
+  color: var(--on-teal-2);
+}
+
+.scr-live__qs li.is-current {
+  box-shadow: inset 0 0 0 0.2cqw oklch(100% 0 0 / 0.35);
+}
+
+/* Send, then Sent: two labels in one place. The finished state is Sent. */
+.scr-send {
+  display: grid;
+}
+
+.scr-send > span {
+  grid-area: 1 / 1;
+  text-align: center;
+}
+
+.scr-send [data-send-label] {
+  opacity: 0;
+}
+
+.scr-live__side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.8cqw;
+}
+
+.scr-live__side p {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3cqw;
+  font-size: 1.3cqw;
+  color: var(--on-teal-2);
+}
+
+.scr-live__side b {
+  font-family: var(--display);
+  font-size: 3.8cqw;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--on-teal);
+}
+
+.scr-reveal {
+  position: relative;
+  justify-content: center;
+}
+
+.scr-reveal i {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 0.24cqw var(--yellow);
+}
+
+/* After End. */
+.scr-end__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.1cqw;
+}
+
+.scr-end__stats span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3cqw;
+  padding: 1.6cqw 2cqw;
+  border-radius: 1.4cqw;
+  background: var(--panel);
+  font-size: 1.3cqw;
+  color: var(--on-teal-2);
+}
+
+.scr-end__stats b {
+  font-family: var(--display);
+  font-size: 4cqw;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--on-teal);
+}
+
+.scr-end__missed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8cqw;
+}
+
+.scr-end__missed ol,
+.scr-res__cols ol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8cqw;
+}
+
+.scr-end__missed li,
+.scr-res__cols li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2cqw;
+  padding: 1.25cqw 1.6cqw;
+  border-radius: 1.2cqw;
+  background: var(--panel);
+  overflow: hidden;
+  font-size: 1.35cqw;
+}
+
+.scr-end__missed li > span:not(.scr-meter),
+.scr-end__missed b,
+.scr-res__cols li > span:not(.scr-meter),
+.scr-res__cols b {
+  position: relative;
+}
+
+.scr-end__missed b,
+.scr-res__cols b {
+  flex: none;
+  font-weight: 700;
+}
+
+.scr-end__practice {
+  align-self: flex-start;
+  padding: 0.9cqw 1.8cqw;
+  font-size: 1.3cqw;
+}
+
+/* One class's page. */
+.scr-res__chart {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2cqw;
+  padding: 1.6cqw 2cqw;
+  border-radius: 1.4cqw;
+  background: var(--panel);
+}
+
+.scr-res__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 1cqw;
+  height: 9cqw;
+}
+
+.scr-res__bars i {
+  flex: 1;
+  height: 100%;
+  border-radius: 0.5cqw 0.5cqw 0 0;
+  background: oklch(100% 0 0 / 0.32);
+  transform-origin: center bottom;
+  transform: scaleY(var(--v, 1));
+}
+
+.scr-res__cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.6cqw;
+}
+
+.scr-res__cols > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8cqw;
+}
+
+.scr-res__cols ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8cqw;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* The director's monthly report: two A4 sheets of white paper, type in cqw of the sheet. */
+.sheet {
+  position: relative;
+  aspect-ratio: 1 / 1.414;
+  overflow: hidden;
+  container-type: inline-size;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow:
+    0 0 0 1px oklch(23% 0.035 220 / 0.07),
+    0 2px 4px oklch(23% 0.035 220 / 0.05),
+    0 24px 56px -16px oklch(23% 0.035 220 / 0.24);
+}
+
+.sheet__in {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2.6cqw;
+  padding: 6.6cqw 7.5cqw 6cqw;
+  font-family: var(--text);
+  font-size: 3cqw;
+  line-height: 1.3;
+}
+
+.sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2cqw;
+  padding-bottom: 3cqw;
+  border-bottom: 0.25cqw solid var(--line);
+  font-size: 2.6cqw;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.sheet__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 1.4cqw;
+  font-family: var(--display);
+  font-size: 3.2cqw;
+  font-weight: 700;
+  color: var(--deep);
+}
+
+.sheet__brand svg {
+  width: 4.4cqw;
+  height: 4.4cqw;
+}
+
+.sheet__page {
+  padding: 0.8cqw 2.2cqw;
+  border-radius: 999px;
+  background: var(--paper-2);
+  white-space: nowrap;
+}
+
+/* Page two's tab is yellow: the page that stays with the director. */
+.sheet--private .sheet__page {
+  background: var(--yellow);
+  color: var(--shadow);
+}
+
+.sheet__title {
+  margin-top: 1.4cqw;
+  font-family: var(--display);
+  font-size: 7.4cqw;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.sheet__school {
+  margin-top: -1.8cqw;
+  color: var(--ink-2);
+}
+
+.sheet__summary {
+  padding: 2.6cqw 3.2cqw;
+  border-radius: 2cqw;
+  background: var(--paper-2);
+  font-size: 3.1cqw;
+  line-height: 1.4;
+}
+
+.sheet__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.8cqw 4cqw;
+}
+
+/* The label over the number, the change from last month beside it. */
+.sheet__stat {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 0.6cqw 2cqw;
+}
+
+.sheet__stat .sheet__label {
+  grid-column: 1 / -1;
+}
+
+.sheet__label {
+  font-size: 2.6cqw;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.sheet__n {
+  font-family: var(--display);
+  font-size: 7.6cqw;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--deep);
+}
+
+.sheet__n small {
+  font-family: var(--text);
+  font-size: 3cqw;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--ink-2);
+}
+
+.sheet__delta {
+  font-size: 2.6cqw;
+  font-weight: 700;
+  color: oklch(46% 0.1 170);
+}
+
+.sheet__trend {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6cqw;
+}
+
+.sheet__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.6cqw;
+  height: 9cqw;
+}
+
+.sheet__bars i {
+  flex: 1;
+  height: 100%;
+  border-radius: 0.8cqw 0.8cqw 0 0;
+  background: var(--line);
+  transform-origin: center bottom;
+  transform: scaleY(var(--v, 1));
+}
+
+.sheet__bars i.is-now {
+  background: var(--ground);
+}
+
+.sheet__cols {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 4cqw;
+}
+
+.sheet__cols ol {
+  display: flex;
+  flex-direction: column;
+  gap: 1cqw;
+  margin-top: 1.4cqw;
+  font-weight: 500;
+  counter-reset: rank;
+}
+
+.sheet__cols li {
+  display: flex;
+  gap: 1.6cqw;
+  counter-increment: rank;
+}
+
+.sheet__cols li::before {
+  content: counter(rank) ".";
+  min-width: 2.6cqw;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.sheet__foot {
+  margin-top: auto;
+  padding-top: 2.6cqw;
+  border-top: 0.25cqw solid var(--line);
+  font-size: 2.6cqw;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.sheet__foot--private {
+  color: var(--shadow);
+}
+
+.sheet__tag {
+  right: 7.5cqw;
+  bottom: 6.2cqw;
+  padding: 0.6cqw 2cqw;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-size: 2.4cqw;
+}
+
+.sheet__key {
+  display: flex;
+  gap: 4cqw;
+  font-size: 2.6cqw;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.sheet__key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 1.2cqw;
+}
+
+.sheet__key span::before {
+  content: "";
+  width: 2.4cqw;
+  height: 2.4cqw;
+  border-radius: 0.6cqw;
+  background: var(--line);
+}
+
+.sheet__key .is-you::before {
+  background: var(--deep);
+}
+
+.sheet__compare {
+  display: flex;
+  flex-direction: column;
+  gap: 5cqw;
+  margin-top: 2cqw;
+}
+
+.sheet__pair {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4cqw;
+}
+
+.sheet__meter {
+  display: grid;
+  grid-template-columns: 1fr 13cqw;
+  align-items: center;
+  gap: 2cqw;
+}
+
+.sheet__meter i {
+  height: 5cqw;
+  border-radius: 1cqw;
+  background: var(--line);
+  transform-origin: left center;
+  transform: scaleX(var(--v, 1));
+}
+
+.sheet__meter.is-you i {
+  background: var(--deep);
+}
+
+.sheet__meter b {
+  font-family: var(--display);
+  font-size: 3.6cqw;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.sheet__meter.is-you b {
+  color: var(--deep);
+}
+
+.sheet__note {
+  font-size: 2.6cqw;
+  color: var(--ink-2);
+}
+
+/* ---------- Not found ---------- */
+
+.lost {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(1.25rem, 3vh, 2rem);
+  min-height: 100svh;
+  padding-block: var(--scene-y);
+}
+
+.lost__en {
+  color: var(--ink-2);
+}
+
+/* ---------- Reading pages (FAQ, comparison, about) ----------
+   The home page's type and colours around plain text: one column at a readable measure, question
+   headings, no motion. */
+
+.article__head {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2.4vh, 1.5rem);
+  padding-top: calc(var(--nav-h) + clamp(2.5rem, 8vh, 6rem));
+  padding-bottom: clamp(2.5rem, 7vh, 5rem);
+  border-bottom: 1px solid var(--line);
+}
+
+.article__title {
+  max-width: 14em;
+}
+
+.article__lead {
+  max-width: 44ch;
+  color: var(--ink-2);
+}
+
+.crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 0;
+  font-size: 1rem;
+  color: var(--ink-2);
+}
+
+.crumbs li + li::before {
+  content: "/";
+  margin-inline: 0.6em;
+  color: var(--line);
+}
+
+.crumbs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-block: -12px;
+  text-underline-offset: 0.2em;
+}
+
+.article__body {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(3rem, 8vh, 5rem);
+  padding-block: clamp(3rem, 8vh, 5.5rem) clamp(4rem, 12vh, 8rem);
+  max-width: calc(46rem + 2 * var(--gutter));
+  margin-inline: 0;
+}
+
+.article__section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  scroll-margin-top: calc(var(--nav-h) + 16px);
+}
+
+.article__section h2 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(1.9rem, 3.6vw, 3rem);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.article__section p,
+.article__list li {
+  max-width: 62ch;
+  text-wrap: pretty;
+}
+
+.article__section a {
+  color: var(--deep);
+  text-underline-offset: 0.2em;
+}
+
+.article__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.article__list li {
+  position: relative;
+  padding-left: 1.5em;
+}
+
+.article__list li::before {
+  content: "";
+  position: absolute;
+  left: 0.15em;
+  top: 0.68em;
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 50%;
+  background: var(--yellow-deep);
+}
+
+.qa {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.qa h3 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(1.25rem, 1.8vw, 1.5rem);
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+.article__table {
+  overflow-x: auto;
+  margin-inline: calc(-1 * var(--gutter));
+  padding-inline: var(--gutter);
+}
+
+.article__table table {
+  width: 100%;
+  min-width: 40rem;
+  border-collapse: collapse;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.article__table caption {
+  text-align: left;
+  font-weight: 600;
+  color: var(--ink-2);
+  padding-bottom: 0.75rem;
+}
+
+.article__table th,
+.article__table td {
+  padding: 0.85rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line);
+}
+
+.article__table thead th {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.article__table thead th:first-of-type,
+.article__table tbody td:first-of-type {
+  background: var(--paper-2);
+}
+
+.article__table tbody th {
+  font-weight: 600;
+  color: var(--ink-2);
+  width: 22%;
+}
+
+.article__table .note {
+  padding-top: 0.75rem;
+}
+
+.article__sources ol {
+  list-style: decimal;
+  padding-left: 1.25em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 1rem;
+}

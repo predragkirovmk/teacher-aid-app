@@ -1,17 +1,17 @@
 "use client";
 
 import { CheckIcon } from "@phosphor-icons/react";
-import { CLOCKS, currentLesson, demoTime } from "@/lib/app/clock";
-import { formatTime, useRealNow } from "@/lib/app/derived";
+import { CLOCKS, currentLesson, demoTime, useDemoClock, useRealNow } from "@/lib/app/demo";
+import { formatTime } from "@/lib/app/format";
 import { useT } from "@/lib/app/i18n";
-import { actions, useApp } from "@/lib/app/store";
+import { subjectLabel } from "@/lib/app/subjects";
 
 const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
 /** The demo-time choices, each with the moment it stands for this week (which follows the shift). */
 export function ClockOptions({ onDone }: { onDone?: () => void }) {
   const { t } = useT();
-  const { clock } = useApp();
+  const { clock, setClock } = useDemoClock();
   const real = useRealNow();
 
   const detail = (c: (typeof CLOCKS)[number]) => {
@@ -19,7 +19,7 @@ export function ClockOptions({ onDone }: { onDone?: () => void }) {
     if (real === null) return " ";
     const ms = demoTime(c, real);
     const lesson = c === "during" || c === "midday" ? currentLesson(ms) : undefined;
-    return `${t(`dayLong.${WEEKDAYS[new Date(ms).getDay()]}`)} ${formatTime(ms)}${lesson ? `, ${t(`subj.${lesson.subject}`)}` : ""}`;
+    return `${t(`dayLong.${WEEKDAYS[new Date(ms).getDay()]}`)} ${formatTime(ms)}${lesson ? `, ${subjectLabel(t, lesson.subject, lesson.subject)}` : ""}`;
   };
 
   return (
@@ -31,7 +31,7 @@ export function ClockOptions({ onDone }: { onDone?: () => void }) {
           role="radio"
           aria-checked={clock === c}
           onClick={() => {
-            actions.setClock(c);
+            setClock(c);
             onDone?.();
           }}
         >

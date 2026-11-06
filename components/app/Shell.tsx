@@ -1,36 +1,59 @@
 "use client";
 
-import { BellSimpleIcon, CheckIcon, ExportIcon, HouseSimpleIcon, PlusSquareIcon, ScanIcon, UserIcon, type Icon } from "@phosphor-icons/react";
+import { BellSimpleIcon, CheckIcon, HouseSimpleIcon, ScanIcon, UserIcon, type Icon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useNotifs } from "@/lib/app/derived";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { NOTIFICATIONS_PAGE } from "@/lib/app/api/config";
+import { invalidate } from "@/lib/app/api/query";
+import { useAuth, useNotifications, useSettings } from "@/lib/app/api/hooks";
 import { useT } from "@/lib/app/i18n";
-import { actions, useApp } from "@/lib/app/store";
-import type { Locale } from "@/lib/app/data";
+import { useAsk, usePush } from "@/lib/app/push";
+import { isOpenPath, needsNotice, noticeWaits, noticeWasUpdated } from "@/lib/app/privacy";
+import { welcomeUrl } from "@/lib/app/signin";
+import type { Locale } from "@/lib/app/api/types";
 import { ClockOptions } from "./ClockOptions";
+import { ConnectionPill } from "./ConnectionPill";
+import { NoticeScreen } from "./NoticeScreen";
+import { OutboxRunner } from "./OutboxRunner";
 import { Pager } from "./Pager";
+import { IosInstallSteps, PushAskSheet, PushHelpSheet } from "./PushSheets";
+import { PushRunner } from "./PushRunner";
+import { StudentStream } from "./StudentStream";
+import { SignedElsewhere, Splash, Unreachable } from "./SessionScreens";
 import { UIContext, type ConfirmOptions } from "./ui";
 
 const NO_TABS = ["/app/scan", "/app/welcome"];
+/** How long after landing on a calm screen the ask about notifications appears: the result is read first. */
+const ASK_DELAY_MS = 1200;
+
+const noop = () => () => {};
 
 export function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { signedIn, locale } = useApp();
-  const { t } = useT();
+  const { status, reason, me } = useAuth();
+  const { t, locale } = useT();
+  // False while the server renders and the first client render hydrates it, when the saved session is not known yet.
+  const hydrated = useSyncExternalStore(noop, () => true, () => false);
   // Remember the path an overlay was opened on, so navigating closes it without an effect.
   const [langAt, setLangAt] = useState<string | null>(null);
   const [clockAt, setClockAt] = useState<string | null>(null);
   const [confirmState, setConfirmState] = useState<{ at: string; options: ConfirmOptions } | null>(null);
-  const [installState, setInstallState] = useState<{ at: string; how: "ios" | "manual" } | null>(null);
+  const [installState, setInstallState] = useState<{ at: string; how: "ios" | "manual"; push: boolean } | null>(null);
+  const [pushHelpAt, setPushHelpAt] = useState<string | null>(null);
+  const [askAt, setAskAt] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [toastOut, setToastOut] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lang = langAt === pathname;
   const clockOpen = clockAt === pathname;
   const confirmOptions = confirmState?.at === pathname ? confirmState.options : null;
-  const installHow = installState?.at === pathname ? installState.how : null;
+  const install = installState?.at === pathname ? installState : null;
+  const pushHelp = pushHelpAt === pathname;
+  const askOpen = askAt === pathname;
+  const push = usePush();
+  const ask = useAsk(pathname);
 
   // Time-boxed UI is hard for some people, so the toast stays long and a tap dismisses it.
   const dismissToast = useCallback(() => {
@@ -57,7 +80,8 @@ export function Shell({ children }: { children: ReactNode }) {
       openLang: () => setLangAt(pathname),
       confirm: (options: ConfirmOptions) => setConfirmState({ at: pathname, options }),
       toast,
-      openInstall: (how: "ios" | "manual") => setInstallState({ at: pathname, how }),
+      openInstall: (how: "ios" | "manual", reason?: "push") => setInstallState({ at: pathname, how, push: reason === "push" }),
+      openPushHelp: () => setPushHelpAt(pathname),
       openClock: () => setClockAt(pathname),
     }),
     [toast, pathname],
@@ -67,21 +91,78 @@ export function Shell({ children }: { children: ReactNode }) {
     document.documentElement.lang = locale;
   }, [locale]);
 
-  // Logged out: show nothing behind the welcome screen, and carry the screen that was asked for
-  // (a check-in link, say) through it, so Continue lands there instead of on Home.
-  const gated = !signedIn && pathname !== "/app/welcome";
+  // A lesson or a practice set has just finished and the student is on a calm screen: after a beat, ask once about notifications.
+  const { eligible, shown } = ask;
   useEffect(() => {
-    if (gated) router.replace(`/app/welcome?next=${encodeURIComponent(pathname)}`);
-  }, [gated, pathname, router]);
+    if (!eligible) return;
+    const timer = setTimeout(() => {
+      shown();
+      setAskAt(pathname);
+    }, ASK_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [eligible, shown, pathname]);
 
-  const showTabs =
-    !gated && !NO_TABS.includes(pathname) && !pathname.startsWith("/app/checkin") && !pathname.startsWith("/app/play");
+  // The route guard. Every screen but the welcome screen, the privacy notice and the terms is shown only to a signed-in
+  // student: until the session is known there is the launch picture, and a signed-out student is sent to sign in (carrying
+  // the screen that was asked for, a check-in link say, so signing in continues to it) without any signed-in screen being
+  // drawn first. Signing out by choice carries nothing: the next student starts at Home. A signed-in student who has not seen
+  // this version of the privacy notice (a first sign-in, or the notice changed) sees it before anything else, except in the
+  // middle of a lesson or a practice set, which it waits for; the check-in link comes after it, so no attendance is
+  // recorded before the student has been told.
+  const onOpen = isOpenPath(pathname);
+  const view = onOpen
+    ? "screen"
+    : !hydrated || status === "loading"
+      ? "splash"
+      : status === "signedIn"
+        ? me.data && needsNotice(me.data) && !noticeWaits(pathname)
+          ? "notice"
+          : "screen"
+        : status === "error"
+          ? "unreachable"
+          : reason === "signed_in_elsewhere"
+            ? "elsewhere"
+            : "redirect";
+  useEffect(() => {
+    if (view === "redirect") router.replace(reason === "signed_out" ? welcomeUrl() : welcomeUrl(pathname));
+  }, [view, reason, pathname, router]);
+
+  // A page the browser brings back from its cache (Back after signing out) is as old as when it was left.
+  useEffect(() => {
+    const show = (e: PageTransitionEvent) => e.persisted && invalidate("me");
+    window.addEventListener("pageshow", show);
+    return () => window.removeEventListener("pageshow", show);
+  }, []);
+
+  // One set at a time is a screen of its own, like the quiz; the list of sets is an ordinary screen.
+  const inPractice = pathname.startsWith("/app/practice/");
+  // The notice and the terms can be read without signing in; the tab bar is only for a student who is.
+  const showTabs = view === "screen" && !NO_TABS.includes(pathname) && !(onOpen && status !== "signedIn") && !pathname.startsWith("/app/checkin") && !pathname.startsWith("/app/play") && !inPractice;
+  const content =
+    view === "screen" ? (
+      children
+    ) : view === "notice" && me.data ? (
+      <NoticeScreen updated={noticeWasUpdated(me.data)} />
+    ) : view === "elsewhere" ? (
+      <SignedElsewhere onSignIn={() => router.replace(welcomeUrl(pathname))} />
+    ) : view === "unreachable" ? (
+      <Unreachable error={me.error} onRetry={me.refetch} />
+    ) : (
+      <Splash />
+    );
+
+  // The quiz draws the connection itself, as a strip in its own layout.
+  const inQuiz = view === "screen" && (pathname.startsWith("/app/play") || pathname.startsWith("/app/checkin") || inPractice);
 
   return (
     <UIContext.Provider value={ui}>
+      <OutboxRunner meId={status === "signedIn" ? me.data?.id : undefined} />
+      <StudentStream meId={status === "signedIn" ? me.data?.id : undefined} />
+      <PushRunner student={status === "signedIn" && me.data ? { id: me.data.id, notificationsOn: me.data.settings.notificationsOn } : undefined} />
       <div className="stage">
         <div className="phone">
-          <Pager pathname={pathname}>{gated ? null : children}</Pager>
+          <Pager pathname={pathname}>{content}</Pager>
+          {!inQuiz && <ConnectionPill variant="float" />}
           {showTabs && (
             <>
               <div className="edge" aria-hidden="true" />
@@ -104,10 +185,12 @@ export function Shell({ children }: { children: ReactNode }) {
             </Sheet>
           )}
           {confirmOptions && (
-            <Sheet label={confirmOptions.title} onClose={() => setConfirmState(null)}>
+            // A sheet that was left behind by a screen it belonged to must not close the next question that opens (its exit timer outlives it).
+            <Sheet label={confirmOptions.title} onClose={() => setConfirmState((s) => (s === confirmState ? null : s))}>
               {(close) => (
                 <>
                   <p className="sheet__title">{confirmOptions.title}</p>
+                  {confirmOptions.body && <p className="t-body steps__note">{confirmOptions.body}</p>}
                   <button
                     className="btn btn--ghost btn--block"
                     onClick={() => {
@@ -124,28 +207,28 @@ export function Shell({ children }: { children: ReactNode }) {
               )}
             </Sheet>
           )}
-          {installHow && (
+          {install && (
             <Sheet label={t("install.title")} onClose={() => setInstallState(null)}>
               {(close) => (
                 <>
                   <p className="sheet__title">{t("install.title")}</p>
-                  {installHow === "ios" ? (
-                    <>
-                      <ol className="steps">
-                        <InstallStep icon={ExportIcon} text={t("install.ios.share")} />
-                        <InstallStep icon={PlusSquareIcon} text={t("install.ios.add")} />
-                        <InstallStep icon={CheckIcon} text={t("install.ios.confirm")} />
-                      </ol>
-                      <p className="t-cap steps__note">{t("install.ios.safari")}</p>
-                    </>
-                  ) : (
-                    <p className="t-body steps__note">{t("install.other")}</p>
-                  )}
+                  {install.how === "ios" ? <IosInstallSteps /> : <p className="t-body steps__note">{t("install.other")}</p>}
+                  {install.push && <p className="t-body steps__note">{t("install.pushNote")}</p>}
                   <button className="btn btn--primary btn--block" onClick={close}>
                     {t("install.ok")}
                   </button>
                 </>
               )}
+            </Sheet>
+          )}
+          {pushHelp && (
+            <Sheet label={t("push.help.title")} onClose={() => setPushHelpAt(null)}>
+              {(close) => <PushHelpSheet close={close} />}
+            </Sheet>
+          )}
+          {askOpen && (
+            <Sheet label={t("push.ask.title")} onClose={() => setAskAt(null)}>
+              {(close) => <PushAskSheet kind={ask.kind} close={close} turnOn={push.turnOn} />}
             </Sheet>
           )}
           {/* A live region that is always present announces the toast; one that appears together
@@ -166,10 +249,20 @@ export function Shell({ children }: { children: ReactNode }) {
 
 function Dock({ pathname }: { pathname: string }) {
   const { t } = useT();
-  const unread = useNotifs().filter((n) => n.unread).length;
+  const feed = useNotifications().data;
+  const count = (feed ?? []).filter((n) => n.readAt === null).length;
+  // A feed of a full page that is all unread may have more behind it: say "30+" rather than a number that is too low.
+  const shownCount = count >= NOTIFICATIONS_PAGE ? `${NOTIFICATIONS_PAGE}+` : count;
   // Keep the last non-zero count so the badge can shrink away showing it, instead of vanishing.
-  const [lastCount, setLastCount] = useState(unread);
-  if (unread > 0 && unread !== lastCount) setLastCount(unread);
+  const [lastCount, setLastCount] = useState(shownCount);
+  if (count > 0 && shownCount !== lastCount) setLastCount(shownCount);
+  // A new alert while the app is open is said out loud once, politely. The first load is not news.
+  const [seen, setSeen] = useState<number | null>(feed === undefined ? null : count);
+  const [arrived, setArrived] = useState("");
+  if (feed !== undefined && seen !== count) {
+    setSeen(count);
+    if (seen !== null && count > seen) setArrived(t("notif.arrived", { n: shownCount }));
+  }
 
   const tab = (href: string, label: string, Icon: Icon, active: boolean, badge?: number) => (
     // Switching tabs replaces the history entry, so Back leaves the section instead of replaying tabs.
@@ -184,7 +277,7 @@ function Dock({ pathname }: { pathname: string }) {
               {lastCount}
             </span>
           </span>
-          {badge > 0 && <span className="sr">{t("notif.unreadCount", { n: badge })}</span>}
+          {badge > 0 && <span className="sr">{t("notif.unreadCount", { n: shownCount })}</span>}
         </>
       )}
     </Link>
@@ -193,22 +286,25 @@ function Dock({ pathname }: { pathname: string }) {
   const index = pathname === "/app" ? 0 : pathname.startsWith("/app/notifications") ? 1 : pathname === "/app/profile" ? 2 : -1;
 
   return (
-    <div className="dock">
-      <nav className="tabbar glass" aria-label={t("nav.main")}>
+    <nav className="dock" aria-label={t("nav.main")}>
+      <span className="sr" role="status">
+        {arrived}
+      </span>
+      <div className="tabbar glass">
         <span
           className="tab-ind"
           aria-hidden="true"
           style={{ transform: `translateX(${Math.max(index, 0) * 100}%)`, opacity: index < 0 ? 0 : 1 }}
         />
         {tab("/app", t("nav.home"), HouseSimpleIcon, pathname === "/app")}
-        {tab("/app/notifications", t("nav.alerts"), BellSimpleIcon, pathname.startsWith("/app/notifications"), unread)}
+        {tab("/app/notifications", t("nav.alerts"), BellSimpleIcon, pathname.startsWith("/app/notifications"), count)}
         {tab("/app/profile", t("nav.profile"), UserIcon, pathname === "/app/profile")}
-      </nav>
+      </div>
       {/* The scan is an action, not a section, so it sits beside the tab bar instead of in it. */}
       <Link href="/app/scan" className="scan-fab" aria-label={t("nav.scan")}>
         <ScanIcon size={32} aria-hidden="true" />
       </Link>
-    </div>
+    </nav>
   );
 }
 
@@ -270,7 +366,8 @@ export function Sheet({
         behind.push(sib);
       }
     }
-    sheet?.querySelector<HTMLElement>("button:not(.sheet__handle)")?.focus();
+    // A sheet that is about typing says where focus goes (data-autofocus); otherwise its first button.
+    (sheet?.querySelector<HTMLElement>("[data-autofocus]") ?? sheet?.querySelector<HTMLElement>("button:not(.sheet__handle)"))?.focus();
     const key = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
     window.addEventListener("keydown", key);
     return () => {
@@ -356,19 +453,9 @@ export function Sheet({
   );
 }
 
-function InstallStep({ icon: Icon, text }: { icon: Icon; text: string }) {
-  return (
-    <li>
-      <span className="item__icon">
-        <Icon size={22} aria-hidden="true" />
-      </span>
-      {text}
-    </li>
-  );
-}
-
 function LangOptions({ onDone }: { onDone: () => void }) {
   const { t, locale } = useT();
+  const { setLocale } = useSettings();
   const opts: { id: Locale; label: string; code: string }[] = [
     { id: "en", label: "English", code: "EN" },
     { id: "mk", label: "Македонски", code: "МК" },
@@ -382,7 +469,7 @@ function LangOptions({ onDone }: { onDone: () => void }) {
           aria-checked={locale === o.id}
           className="opt"
           onClick={() => {
-            actions.setLocale(o.id);
+            setLocale(o.id);
             onDone();
           }}
         >

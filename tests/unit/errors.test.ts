@@ -1,68 +1,141 @@
-import { describe, expect, test } from "vitest";
-import { ApiError, codeForStatus, isApiError, parseErrorResponse, toApiError } from "@/lib/teacher/api/errors";
+import { describe, expect, it } from "vitest";
+import {
+  API_ERROR_CODES,
+  ApiError,
+  CLIENT_ERROR_CODES,
+  SERVER_ERROR_CODES,
+  isApiError,
+  isApiErrorCode,
+  parseErrorResponse,
+  toApiError,
+} from "@/lib/app/api/errors";
 
-const response = (status: number, body: unknown, headers: Record<string, string> = {}) =>
-  new Response(typeof body === "string" ? body : JSON.stringify(body), { status, headers });
+const reply = (status: number, body?: unknown, raw?: string, headers?: Record<string, string>) =>
+  new Response(raw ?? (body === undefined ? null : JSON.stringify(body)), { status, headers });
 
-describe("reading an error response (spec 11)", () => {
-  test("takes the code from the envelope", async () => {
-    const error = await parseErrorResponse(response(410, { error: { code: "session_ended", message: "The lesson has ended" } }));
-    expect(error).toBeInstanceOf(ApiError);
-    expect(error.code).toBe("session_ended");
-    expect(error.status).toBe(410);
-    expect(error.message).toBe("The lesson has ended");
-  });
-
-  test("reads a bare code too", async () => {
-    expect((await parseErrorResponse(response(409, { code: "limit_reached" }))).code).toBe("limit_reached");
-  });
-
-  test("a code it does not know falls back to the one the status implies", async () => {
-    expect((await parseErrorResponse(response(404, { error: { code: "no_such_thing" } }))).code).toBe("not_found");
-    expect((await parseErrorResponse(response(503, { error: { code: "overloaded" } }))).code).toBe("server_error");
-    expect((await parseErrorResponse(response(422, { error: { code: "bad_shape" } }))).code).toBe("validation_failed");
-  });
-
-  test("a body that is not JSON leaves the status to decide", async () => {
-    expect((await parseErrorResponse(response(401, "<html>nope</html>"))).code).toBe("unauthenticated");
-    expect((await parseErrorResponse(response(500, ""))).code).toBe("server_error");
-  });
-
-  test("reads Retry-After in seconds, and only that form", async () => {
-    expect((await parseErrorResponse(response(429, { error: { code: "rate_limited" } }, { "Retry-After": "42" }))).retryAfter).toBe(42);
-    expect((await parseErrorResponse(response(429, { error: { code: "rate_limited" } }, { "Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT" }))).retryAfter).toBeNull();
-    expect((await parseErrorResponse(response(429, { error: { code: "rate_limited" } }))).retryAfter).toBeNull();
-  });
-
-  test("reads why a validation failed, when the server says", async () => {
-    const error = await parseErrorResponse(response(422, { error: { code: "validation_failed", reason: "no_text" } }));
-    expect(error.reason).toBe("no_text");
-    expect((await parseErrorResponse(response(422, { error: { code: "validation_failed", reason: "something else" } }))).reason).toBeNull();
-  });
-
-  test("the teacher codes of this app come through", async () => {
-    for (const code of ["generation_failed", "session_open", "invalid_state", "question_open"] as const) {
-      expect((await parseErrorResponse(response(409, { error: { code } }))).code).toBe(code);
+describe("error codes", () => {
+  it("lists the six codes spec 11 names", () => {
+    for (const code of ["token_expired", "not_enrolled", "session_ended", "already_answered", "limit_reached", "signed_in_elsewhere"]) {
+      expect(SERVER_ERROR_CODES).toContain(code);
     }
+  });
+
+  it("lists the codes sign-in needs", () => {
+    for (const code of ["unknown_email", "sign_in_failed", "rate_limited", "unauthenticated", "signed_in_elsewhere"]) {
+      expect(SERVER_ERROR_CODES).toContain(code);
+    }
+  });
+
+  it("keeps server and client codes apart and unique", () => {
+    expect(new Set(API_ERROR_CODES).size).toBe(SERVER_ERROR_CODES.length + CLIENT_ERROR_CODES.length);
+    expect(API_ERROR_CODES.length).toBe(SERVER_ERROR_CODES.length + CLIENT_ERROR_CODES.length);
+  });
+
+  it("recognises a code and nothing else", () => {
+    expect(isApiErrorCode("token_expired")).toBe(true);
+    expect(isApiErrorCode("network")).toBe(true);
+    expect(isApiErrorCode("TOKEN_EXPIRED")).toBe(false);
+    expect(isApiErrorCode(404)).toBe(false);
+    expect(isApiErrorCode(undefined)).toBe(false);
   });
 });
 
-describe("statuses and plain errors", () => {
-  test("a status stands for a code", () => {
-    expect(codeForStatus(401)).toBe("unauthenticated");
-    expect(codeForStatus(404)).toBe("not_found");
-    expect(codeForStatus(400)).toBe("validation_failed");
-    expect(codeForStatus(429)).toBe("rate_limited");
-    expect(codeForStatus(500)).toBe("server_error");
-    expect(codeForStatus(418)).toBe("unknown");
+describe("ApiError", () => {
+  it("carries the code, the status and falls back to the code as its message", () => {
+    const e = new ApiError("rate_limited", { status: 429 });
+    expect(e).toBeInstanceOf(Error);
+    expect(e.name).toBe("ApiError");
+    expect(e.code).toBe("rate_limited");
+    expect(e.status).toBe(429);
+    expect(e.message).toBe("rate_limited");
   });
 
-  test("anything thrown becomes an ApiError a screen can read", () => {
-    const wrapped = toApiError(new TypeError("fetch failed"));
+  it("has no status unless a response gave one", () => {
+    expect(new ApiError("network").status).toBeNull();
+    expect(new ApiError("network").retryAfter).toBeNull();
+  });
+
+  it("toApiError keeps an ApiError and wraps anything else as unknown", () => {
+    const e = new ApiError("not_found");
+    expect(toApiError(e)).toBe(e);
+    const wrapped = toApiError(new TypeError("boom"));
     expect(isApiError(wrapped)).toBe(true);
     expect(wrapped.code).toBe("unknown");
-    expect(wrapped.message).toBe("fetch failed");
-    const same = new ApiError("network");
-    expect(toApiError(same)).toBe(same);
+    expect(wrapped.message).toBe("boom");
+    expect(wrapped.cause).toBeInstanceOf(TypeError);
+    expect(toApiError("a string").code).toBe("unknown");
+    expect(toApiError(null).code).toBe("unknown");
+  });
+});
+
+describe("parseErrorResponse", () => {
+  it("reads the proposed envelope", async () => {
+    const e = await parseErrorResponse(reply(410, { error: { code: "token_expired", message: "gone" } }));
+    expect(e.code).toBe("token_expired");
+    expect(e.message).toBe("gone");
+    expect(e.status).toBe(410);
+  });
+
+  it("reads a bare code too", async () => {
+    const e = await parseErrorResponse(reply(403, { code: "not_enrolled" }));
+    expect(e.code).toBe("not_enrolled");
+    expect(e.status).toBe(403);
+  });
+
+  it("falls back to what the status implies when the server sends a code this build does not know", async () => {
+    expect((await parseErrorResponse(reply(409, { error: { code: "brand_new_code" } }))).code).toBe("validation_failed");
+    expect((await parseErrorResponse(reply(503, { error: { code: "brand_new_code" } }))).code).toBe("server_error");
+  });
+
+  it.each([
+    [400, "validation_failed"],
+    [401, "unauthenticated"],
+    [404, "not_found"],
+    [409, "validation_failed"],
+    [422, "validation_failed"],
+    [429, "rate_limited"],
+    [500, "server_error"],
+    [502, "server_error"],
+    [418, "unknown"],
+    [403, "unknown"],
+  ])("maps a bare %i to %s", async (status, code) => {
+    expect((await parseErrorResponse(reply(status))).code).toBe(code);
+  });
+
+  it("reads how long to wait from Retry-After, in seconds", async () => {
+    const e = await parseErrorResponse(reply(429, { error: { code: "rate_limited" } }, undefined, { "Retry-After": "45" }));
+    expect(e).toMatchObject({ code: "rate_limited", status: 429, retryAfter: 45 });
+    expect((await parseErrorResponse(reply(429, undefined, undefined, { "Retry-After": "1.2" }))).retryAfter).toBe(2);
+  });
+
+  it("ignores a Retry-After it cannot count in seconds", async () => {
+    for (const value of ["Wed, 21 Oct 2026 07:28:00 GMT", "0", "-5", ""]) {
+      expect((await parseErrorResponse(reply(429, undefined, undefined, { "Retry-After": value }))).retryAfter, value).toBeNull();
+    }
+    expect((await parseErrorResponse(reply(429))).retryAfter).toBeNull();
+  });
+
+  it("reads the sign-in refusals as they come", async () => {
+    expect((await parseErrorResponse(reply(404, { error: { code: "unknown_email" } }))).code).toBe("unknown_email");
+    expect((await parseErrorResponse(reply(400, { error: { code: "sign_in_failed" } }))).code).toBe("sign_in_failed");
+    expect((await parseErrorResponse(reply(401, { error: { code: "signed_in_elsewhere" } }))).code).toBe("signed_in_elsewhere");
+  });
+
+  it("survives a body that is not JSON", async () => {
+    const e = await parseErrorResponse(reply(502, undefined, "<html>Bad gateway</html>"));
+    expect(e.code).toBe("server_error");
+    expect(e.status).toBe(502);
+  });
+
+  it("survives odd shapes", async () => {
+    expect((await parseErrorResponse(reply(404, "just a string"))).code).toBe("not_found");
+    expect((await parseErrorResponse(reply(404, null, "null"))).code).toBe("not_found");
+    expect((await parseErrorResponse(reply(404, { error: "oops" }))).code).toBe("not_found");
+    expect((await parseErrorResponse(reply(404, { error: { code: 7 } }))).code).toBe("not_found");
+  });
+
+  it("ignores a message that is not text", async () => {
+    const e = await parseErrorResponse(reply(404, { error: { code: "not_found", message: { nested: true } } }));
+    expect(e.message).toBe("not_found");
   });
 });

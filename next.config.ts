@@ -24,21 +24,36 @@ const policy = ({ img, connect }: { img: string; connect: string }) =>
     ...(isDev || e2e ? [] : ["upgrade-insecure-requests"]),
   ].join("; ");
 
+// The API, when an app runs in live mode (NEXT_PUBLIC_API_MODE=live): its origin may be fetched from
+// and may serve pictures. Empty in mock mode, which needs no server.
+const apiOrigin = (() => {
+  try {
+    return process.env.NEXT_PUBLIC_API_URL ? new URL(process.env.NEXT_PUBLIC_API_URL).origin : "";
+  } catch {
+    return "";
+  }
+})();
+
 // No third-party origins anywhere: fonts are self-hosted by next/font, the demo's QR codes are
-// inline SVG, and Redis is only called from the server.
-const csp = policy({ img: "'self' blob: data:", connect: "'self'" });
+// inline SVG, and Redis is only called from the server. The one exception is the API above.
+const csp = policy({
+  img: `'self' blob: data:${apiOrigin ? ` ${apiOrigin}` : ""}`,
+  connect: `'self'${apiOrigin ? ` ${apiOrigin}` : ""}`,
+});
 
 // The teacher app's own policy, stricter than the rest. Its pictures (FR-LES-19) are served by the API in live mode, whose origin is the
 // only one added, to `img-src` for the pictures and to `connect-src` for the calls (spec 11.4). In mock mode the demo keeps a picture in the
 // browser and serves it as a `data:` address, so that alone is allowed, and nothing else: no `blob:`, and none of it in a live build.
 const live = process.env.NEXT_PUBLIC_API_MODE === "live";
-const apiOrigin = live && process.env.NEXT_PUBLIC_API_URL ? new URL(process.env.NEXT_PUBLIC_API_URL).origin : null;
+const teacherApiOrigin = live ? apiOrigin : "";
 const teacherCsp = policy({
-  img: ["'self'", live ? apiOrigin : "data:"].filter(Boolean).join(" "),
-  connect: ["'self'", apiOrigin].filter(Boolean).join(" "),
+  img: ["'self'", live ? teacherApiOrigin : "data:"].filter(Boolean).join(" "),
+  connect: ["'self'", teacherApiOrigin].filter(Boolean).join(" "),
 });
 
 const nextConfig: NextConfig = {
+  // The live-mode smoke test builds beside the mock build, which would otherwise share .next.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   env: {
     // The teacher app's data source: "mock" (the default, a demo school in the browser) or "live" (the API). Stating the
     // default here lets a build inline it, so the adapter that is not used is left out of the bundle.

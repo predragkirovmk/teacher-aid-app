@@ -1,52 +1,37 @@
 "use client";
 
-import { QrCodeIcon, XIcon } from "@phosphor-icons/react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import { JoinFailureScreen } from "@/components/app/quiz/JoinFailure";
 import { Play } from "@/components/app/quiz/Play";
-import { subjectByCode } from "@/lib/app/data";
-import { useT } from "@/lib/app/i18n";
-import { leave } from "@/lib/app/nav";
-import { QUIZZES } from "@/lib/app/quiz";
-import { useQT } from "@/lib/app/quiz-copy";
+import { toApiError } from "@/lib/app/api/errors";
+import { useAuth, useCourse, useJoinSession } from "@/lib/app/api/hooks";
+import type { JoinedSession } from "@/lib/app/api/types";
 
-/** The live quiz a class QR opens: /app/play/<class code>. */
+/** A code that came out of a link may be percent-encoded, and a hand-edited one may not decode at all. */
+const decode = (code: string) => {
+  try {
+    return decodeURIComponent(code);
+  } catch {
+    return code;
+  }
+};
+
+/** The live quiz a class QR opens: /app/play/<class code>. Joining the session is the check-in. */
 export default function PlayPage() {
-  const { code } = useParams<{ code: string }>();
-  const subject = subjectByCode(decodeURIComponent(code));
-  const quiz = subject && QUIZZES[subject.id];
-  if (!subject || !quiz) return <NotRecognized />;
-  return <Play key={subject.id} subject={subject} quiz={quiz} />;
+  const params = useParams<{ code: string }>();
+  const code = decode(params.code);
+  const signedIn = useAuth().status === "signedIn";
+  const join = useJoinSession(code, signedIn);
+  if (join.status === "failed") return <JoinFailureScreen code={join.error.code} onRetry={join.retry} />;
+  if (join.status === "joining") return <main className="screen screen--bare q" />;
+  return <Joined key={join.join.session.id} join={join.join} retry={join.retry} />;
 }
 
-function NotRecognized() {
-  const router = useRouter();
-  const { t } = useT();
-  const { t: qt } = useQT();
-  return (
-    <main className="screen screen--bare q">
-      <div className="q__col">
-        <header className="q-top">
-          <button className="round" aria-label={t("close")} onClick={() => leave(router)}>
-            <XIcon size={24} aria-hidden="true" />
-          </button>
-        </header>
-        <div className="q-body q-body--center" role="alert">
-          <span className="q-badge q-badge--no">
-            <QrCodeIcon size={52} color="var(--yellow)" aria-hidden="true" />
-          </span>
-          <h1 className="q-hero" style={{ fontSize: "var(--fs-title1)" }}>
-            {qt("q.unknown.title")}
-          </h1>
-          <p className="t-body muted" style={{ margin: 0 }}>
-            {qt("q.unknown.body")}
-          </p>
-        </div>
-        <div className="q-foot">
-          <button className="btn btn--primary btn--block" onClick={() => router.replace("/app/scan")}>
-            {qt("q.unknown.cta")}
-          </button>
-        </div>
-      </div>
-    </main>
-  );
+function Joined({ join, retry }: { join: JoinedSession; retry: () => void }) {
+  const course = useCourse(join.session.courseId);
+  if (course.status === "error") return <JoinFailureScreen code={toApiError(course.error).code} onRetry={retry} />;
+  if (course.data === undefined) return <main className="screen screen--bare q" />;
+  // A session of a course the student's list does not have: nothing the app can draw.
+  if (course.data === null) return <JoinFailureScreen code="not_found" onRetry={retry} />;
+  return <Play course={course.data} join={join} />;
 }

@@ -1,113 +1,141 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
-import type { TeacherApi } from "@/lib/teacher/api/client";
-import { ApiError } from "@/lib/teacher/api/errors";
-import { endSession, getSessionEnd, noteFailure, noteSignedIn, resetSession, subscribeSessionEnd, watchSession } from "@/lib/teacher/api/session";
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ApiClient, SettledPromise } from "@/lib/app/api/client";
+import { ApiError } from "@/lib/app/api/errors";
+import { endSession, getSessionEnd, noteFailure, onSessionEnd, startSession, subscribeSessionEnd, watchSession } from "@/lib/app/api/session";
 
-beforeEach(() => resetSession());
+beforeEach(() => startSession());
+afterEach(() => startSession());
 
-/** A stand-in adapter whose calls answer as told. */
-const adapter = (answers: Partial<Record<keyof TeacherApi, () => Promise<unknown>>>) =>
-  new Proxy({} as Record<string, unknown>, {
-    ownKeys: () => Object.keys(answers),
-    getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }),
-    get: (_, key: string) => answers[key as keyof TeacherApi] ?? (() => Promise.resolve(undefined)),
-  }) as unknown as TeacherApi;
-
-const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
-const refused = () => Promise.reject(new ApiError("unauthenticated", { status: 401 }));
-
-describe("a session that ends", () => {
-  test("a refusal on a first visit is not the end of a session: nobody was signed in to be signed out", () => {
-    noteFailure(new ApiError("unauthenticated"));
+describe("why a session ended", () => {
+  it("starts with no reason", () => {
     expect(getSessionEnd()).toBeNull();
   });
 
-  test("once a teacher has been seen signed in, a refusal on any call is the end of their session", () => {
-    noteSignedIn();
-    noteFailure(new ApiError("unauthenticated"));
-    expect(getSessionEnd()).toBe("expired");
-  });
-
-  test("no other failure ends it: offline, a server error, a refused upload", () => {
-    noteSignedIn();
-    for (const code of ["network", "server_error", "validation_failed", "not_found", "rate_limited", "generation_failed"] as const) noteFailure(new ApiError(code));
-    noteFailure(new Error("boom"));
-    noteFailure(null);
+  it("tells whoever listens, once per change", () => {
+    const heard = vi.fn();
+    const stop = subscribeSessionEnd(heard);
+    endSession("unauthenticated");
+    endSession("unauthenticated");
+    expect(heard).toHaveBeenCalledTimes(1);
+    startSession();
+    expect(heard).toHaveBeenCalledTimes(2);
     expect(getSessionEnd()).toBeNull();
-  });
-
-  test("the teacher's own sign-out wins over a guess that the session ran out, whichever comes first", () => {
-    noteSignedIn();
-    endSession("signed_out");
-    noteFailure(new ApiError("unauthenticated"));
-    expect(getSessionEnd()).toBe("signed_out");
-    resetSession();
-    noteSignedIn();
-    noteFailure(new ApiError("unauthenticated"));
-    expect(getSessionEnd()).toBe("expired");
-    endSession("signed_out");
-    expect(getSessionEnd()).toBe("signed_out");
-  });
-
-  test("whoever listens is told, once per change", () => {
-    const heard: (string | null)[] = [];
-    const stop = subscribeSessionEnd(() => heard.push(getSessionEnd()));
-    noteSignedIn();
-    noteFailure(new ApiError("unauthenticated"));
-    noteFailure(new ApiError("unauthenticated")); // already over: not news
-    expect(heard).toEqual(["expired"]);
     stop();
     endSession("signed_out");
-    expect(heard).toEqual(["expired"]);
+    expect(heard).toHaveBeenCalledTimes(2);
+  });
+
+  it("lets the stronger reason win: another device, then the student's own sign-out, then a plain refusal", () => {
+    endSession("unauthenticated");
+    endSession("signed_out");
+    expect(getSessionEnd()).toBe("signed_out");
+    endSession("unauthenticated");
+    expect(getSessionEnd()).toBe("signed_out");
+    endSession("signed_in_elsewhere");
+    expect(getSessionEnd()).toBe("signed_in_elsewhere");
+    endSession("signed_out");
+    expect(getSessionEnd()).toBe("signed_in_elsewhere");
+  });
+
+  it("calls what forgets the student's data each time the reason changes, and not after it is removed", () => {
+    const forget = vi.fn();
+    const stop = onSessionEnd(forget);
+    endSession("unauthenticated");
+    endSession("signed_out");
+    expect(forget.mock.calls).toEqual([["unauthenticated"], ["signed_out"]]);
+    stop();
+    endSession("signed_in_elsewhere");
+    expect(forget).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("a failed call", () => {
+  it("ends the session when its code says so", () => {
+    noteFailure(new ApiError("signed_in_elsewhere", { status: 401 }));
+    expect(getSessionEnd()).toBe("signed_in_elsewhere");
+  });
+
+  it("ends it on unauthenticated", () => {
+    noteFailure(new ApiError("unauthenticated", { status: 401 }));
+    expect(getSessionEnd()).toBe("unauthenticated");
+  });
+
+  it.each(["token_expired", "not_enrolled", "rate_limited", "network", "server_error", "unknown_email", "sign_in_failed"] as const)(
+    "does not end it on %s",
+    (code) => {
+      noteFailure(new ApiError(code));
+      expect(getSessionEnd()).toBeNull();
+    },
+  );
+
+  it("ignores what is not an ApiError", () => {
+    noteFailure(new Error("boom"));
+    noteFailure("signed_in_elsewhere");
+    expect(getSessionEnd()).toBeNull();
+  });
+
+  it("is ignored when it was asked before the student signed in again", () => {
+    noteFailure(new ApiError("unauthenticated"), -1);
+    expect(getSessionEnd()).toBeNull();
   });
 });
 
 describe("watching every call", () => {
-  test("a call that is refused ends the session once a teacher has been seen, and the caller still gets the refusal", async () => {
-    const api = watchSession(adapter({ getMe: () => Promise.resolve({ id: "t" }), listLessons: refused }));
-    await api.getMe();
+  const settled = <T,>(v: T): SettledPromise<T> => Object.assign(Promise.resolve(v), { settled: { ok: true as const, value: v } });
+  const failed = <T,>(e: unknown): SettledPromise<T> => {
+    const p = Object.assign(Promise.reject(e), { settled: { ok: false as const, error: e } });
+    p.catch(() => {});
+    return p as SettledPromise<T>;
+  };
+  const adapter = {
+    getMe: vi.fn(),
+    listCourses: vi.fn(),
+    startSignIn: vi.fn(),
+    signOut: vi.fn(),
+    subscribe: vi.fn(() => () => {}),
+  };
+  const client = watchSession(adapter as unknown as ApiClient);
+  const flush = () => new Promise((r) => setTimeout(r, 0));
+
+  it("ends the session when any call is told so", async () => {
+    adapter.listCourses.mockReturnValue(failed(new ApiError("signed_in_elsewhere")));
+    await expect(client.listCourses()).rejects.toMatchObject({ code: "signed_in_elsewhere" });
     await flush();
-    await expect(api.listLessons()).rejects.toMatchObject({ code: "unauthenticated" });
-    await flush();
-    expect(getSessionEnd()).toBe("expired");
+    expect(getSessionEnd()).toBe("signed_in_elsewhere");
   });
 
-  test("GET /me refused on a first visit is only an answer: there is no session to end", async () => {
-    const api = watchSession(adapter({ getMe: refused }));
-    await expect(api.getMe()).rejects.toMatchObject({ code: "unauthenticated" });
+  it("hands back the adapter's own promise, with its settled mark", () => {
+    const p = settled("me");
+    adapter.getMe.mockReturnValue(p);
+    expect(client.getMe()).toBe(p);
+  });
+
+  it("passes the arguments through", () => {
+    adapter.listCourses.mockReturnValue(settled([]));
+    void client.listCourses();
+    expect(adapter.listCourses).toHaveBeenCalledWith();
+  });
+
+  it("leaves sign-in and sign-out alone: a refusal there is about the attempt", async () => {
+    adapter.startSignIn.mockReturnValue(failed(new ApiError("unauthenticated")));
+    adapter.signOut.mockReturnValue(failed(new ApiError("unauthenticated")));
+    await expect(client.startSignIn({ provider: "google" })).rejects.toBeDefined();
+    await expect(client.signOut()).rejects.toBeDefined();
     await flush();
     expect(getSessionEnd()).toBeNull();
   });
 
-  test("a call that works says the teacher was signed in only when it is GET /me", async () => {
-    const api = watchSession(adapter({ listCourses: () => Promise.resolve([]), listLessons: refused }));
-    await api.listCourses();
-    await flush();
-    await expect(api.listLessons()).rejects.toBeDefined();
-    await flush();
-    expect(getSessionEnd()).toBeNull();
-  });
-
-  test("signing in and out, and listening, are not watched: a refusal there is about the attempt", async () => {
-    const api = watchSession(adapter({ getMe: () => Promise.resolve({}), startSignIn: refused, signOut: refused }));
-    await api.getMe();
-    await flush();
-    await expect(api.startSignIn({ provider: "google" })).rejects.toBeDefined();
-    await expect(api.signOut()).rejects.toBeDefined();
+  it("does not let a call that was in flight before a new sign-in end the new session", async () => {
+    let fail!: (e: unknown) => void;
+    adapter.getMe.mockReturnValue(
+      Object.assign(new Promise((_, reject) => (fail = reject)), { settled: undefined }),
+    );
+    const pending = client.getMe().catch(() => {});
+    startSession();
+    fail(new ApiError("unauthenticated"));
+    await pending;
     await flush();
     expect(getSessionEnd()).toBeNull();
-  });
-
-  test("the promise a call returns is the adapter's own, so a settled answer stays settled", () => {
-    const settled = Object.assign(Promise.resolve("x"), { settled: { ok: true as const, value: "x" } });
-    const api = watchSession(adapter({ listCourses: () => settled }));
-    expect(api.listCourses()).toBe(settled);
-  });
-
-  test("arguments go through unchanged", async () => {
-    const getLesson = vi.fn(() => Promise.resolve({}));
-    const api = watchSession(adapter({ getLesson }));
-    await api.getLesson("l-1");
-    expect(getLesson).toHaveBeenCalledWith("l-1");
   });
 });

@@ -1,1 +1,1 @@
-TeacherAid. Every class starts with a question.
+TeacherAid: "The whole class answers." over a laptop with the teacher app.

@@ -332,6 +332,26 @@ button.card:active {
   transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
+/* A pointer on a desktop window (the phone frame) gets the same answer as a press, without the scale. */
+@media (hover: hover) and (pointer: fine) {
+  .btn--primary:not(:disabled, [aria-disabled="true"]):hover {
+    background: var(--yellow-soft);
+  }
+  .btn--ghost:not(:disabled):hover,
+  .round:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  .btn--plain:hover {
+    color: var(--text);
+  }
+  a.item:hover,
+  button.item:hover,
+  a.card:hover,
+  .q-opt:not(:disabled):hover {
+    background: var(--card-press);
+  }
+}
+
 /* ---- search ---- */
 .search {
   position: relative;
@@ -738,6 +758,14 @@ button.item:active {
 }
 
 /* ---- scanner ---- */
+.top__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-title1);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
 .scan {
   position: absolute;
   inset: 0;
@@ -961,6 +989,21 @@ button.item:active {
   transform: translateX(24px);
   background: var(--ink);
 }
+/* The way to write to TeacherAid, under the questions: the only support there is besides them. */
+.faq-contact {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.faq-contact p {
+  margin: 0;
+  max-width: 34ch;
+}
+.faq-contact__address {
+  text-align: center;
+  user-select: all;
+}
 details.faq {
   padding: 0 20px;
 }
@@ -1000,14 +1043,151 @@ details.faq p {
 .sub {
   margin: 4px 0 24px;
 }
-.welcome {
+/* ---- sign-in (the welcome screen) and the screens that tell a student their session ended ---- */
+.signin {
   min-height: 100%;
   display: flex;
   flex-direction: column;
+  gap: clamp(32px, 9dvh, 72px);
+}
+.signin__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+}
+.signin__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.signin__form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.signin__intro {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.signin__title {
+  font-size: var(--fs-display);
+}
+.signin__sub {
+  margin: 0;
+  max-width: 34ch;
+}
+.signin__problem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius-item);
+  background: var(--card);
+  animation: signin-err var(--spring-snappy-dur) var(--spring-snappy) backwards;
+}
+.signin__problem svg {
+  flex: none;
+  margin-top: 1px;
+}
+.signin__problem-title,
+.signin__problem-body {
+  margin: 0;
+}
+.signin__problem-title {
+  font-weight: 650;
+  margin-bottom: 4px;
+}
+.signin__problem-body {
+  font-size: var(--fs-callout);
+  max-width: 34ch;
+}
+.signin__providers {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* The provider buttons keep each provider's own look (a white button, its mark and its words), not the app's yellow. */
+.provider {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 24px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid;
+  font-weight: 600;
+  font-size: var(--fs-body);
+  transition:
+    transform var(--spring-press-dur) var(--spring-press),
+    background var(--spring-press-dur) var(--spring-press),
+    opacity 150ms;
+}
+.provider svg {
+  flex: none;
+}
+.provider--google {
+  color: #1f1f1f;
+  border-color: #747775;
+}
+.provider--microsoft {
+  color: #5e5e5e;
+  border-color: #8c8c8c;
+}
+.provider:active {
+  transform: scale(0.97);
+  background: #f0f0f0;
+  transition-duration: 100ms;
+  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+.provider:disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+.signin__safe {
+  margin: -8px 0 0;
+  max-width: 34ch;
+}
+.demo-sheet__title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.signin--center {
+  justify-content: center;
+  align-items: flex-start;
   gap: 16px;
+}
+.signin__badge {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(7, 22, 47, 0.3);
+  margin-bottom: 8px;
+}
+.signin__cta {
+  margin-top: 16px;
+}
+@keyframes signin-err {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+/* The launch picture: the mark on the blue ground, where the shell has no screen to show yet. */
+.splash {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--yellow);
 }
 .pill {
   display: inline-flex;
@@ -1723,6 +1903,53 @@ button.pill {
     transform: translateY(-4px) scale(0.98);
   }
 }
+/* The connection, said quietly: offline, reconnecting, back, and answers saved for later. Floats like a
+   toast but takes no taps, so nothing under it is ever blocked. */
+.net-pill {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  top: calc(env(safe-area-inset-top) + 16px);
+  transform: translateX(-50%);
+  max-width: 88%;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-label);
+  line-height: 1.35;
+  font-weight: 600;
+  pointer-events: none;
+  transition:
+    opacity var(--spring-snappy-dur) var(--spring-snappy),
+    transform var(--spring-snappy-dur) var(--spring-snappy);
+  @starting-style {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px);
+  }
+}
+.net-pill svg {
+  flex: none;
+}
+.net-pill__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.net-pill__saved {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-2);
+}
+@media (prefers-reduced-motion: reduce) {
+  .net-pill {
+    @starting-style {
+      transform: translateX(-50%);
+    }
+  }
+}
 .toast--out {
   opacity: 0;
   transform: translateX(-50%) translateY(-8px);
@@ -1805,6 +2032,11 @@ button.pill {
       opacity: 0;
     }
   }
+  @keyframes signin-err {
+    from {
+      opacity: 0;
+    }
+  }
   @keyframes unlock-pop {
     from {
       opacity: 0;
@@ -1812,6 +2044,9 @@ button.pill {
   }
   .unlock::after {
     animation: none;
+  }
+  details.faq::details-content {
+    transition: none;
   }
   .tab-ind {
     transition: opacity 160ms;
@@ -1835,4 +2070,20 @@ button.pill {
     left: max(12px, calc(50% - 272px));
     right: max(12px, calc(50% - 272px));
   }
+}
+
+/* ---- notifications ---- */
+/* An alert that arrives while the list is open slides in once (the keyframes fade instead when motion is reduced). */
+.item--fresh {
+  animation: rise var(--spring-smooth-dur) var(--spring-smooth) both;
+}
+/* Something that cannot be pressed right now says so by dimming; it keeps its place in the layout. */
+.btn:disabled,
+.switch:disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+/* The switch for a state the phone cannot reach (no push at all) is the only one that stays dimmed for good. */
+.switch[aria-disabled="true"] {
+  opacity: 0.55;
 }

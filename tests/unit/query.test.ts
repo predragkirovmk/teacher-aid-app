@@ -1,256 +1,379 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
-import { ApiError } from "@/lib/teacher/api/errors";
-import type { SettledPromise } from "@/lib/teacher/api/client";
+// @vitest-environment jsdom
+import { act, createElement } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "@/lib/app/api/errors";
+import type { SettledPromise } from "@/lib/app/api/client";
+import type { Query } from "@/lib/app/api/query";
 
-// The cache reads the adapter from client.ts, which builds the demo school in the browser; the tests give it their own.
-vi.mock("@/lib/teacher/api/client", () => ({ api: { subscribe: () => () => {} }, serverApi: null }));
+// The cache reads the adapter from ./index; give it one the tests can drive.
+const fake = vi.hoisted(() => {
+  const listeners = new Set<() => void>();
+  return {
+    listeners,
+    client: {
+      subscribe(l: () => void) {
+        listeners.add(l);
+        return () => listeners.delete(l);
+      },
+    },
+    emit: () => listeners.forEach((l) => l()),
+  };
+});
+vi.mock("@/lib/app/api/index", () => ({ client: fake.client, serverClient: null }));
 
-const { invalidate, resetQueries, seed, Slot, slotFor } = await import("@/lib/teacher/api/query");
+const reported = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/app/report", () => ({ reportError: reported }));
 
-/** A call that is still on its way: it answers when the test says so. */
-function pending<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (error: unknown) => void;
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-  return { promise, resolve, reject };
-}
+const { change, invalidate, mapQuery, resetQueries, seed, useQuery } = await import("@/lib/app/api/query");
 
-/** What the mock adapter returns for a read: already settled, so the first render can have the data. */
-const settled = <T>(value: T): SettledPromise<T> => Object.assign(Promise.resolve(value), { settled: { ok: true as const, value } });
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-/** Let the promises that have settled run their continuations. */
-const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+// ---- helpers ------------------------------------------------------------------------------------
+
+/** What the mock adapter returns: a promise that already says how it settled. */
+const now = <T>(value: T): SettledPromise<T> => {
+  const p = Promise.resolve(value) as SettledPromise<T>;
+  p.settled = { ok: true, value };
+  return p;
+};
+const nowFail = <T>(error: unknown): SettledPromise<T> => {
+  const p = Promise.reject(error) as SettledPromise<T>;
+  p.settled = { ok: false, error };
+  p.catch(() => {});
+  return p;
+};
 
 let n = 0;
-let key: string;
-beforeEach(() => {
-  key = `test-${++n}`;
+const key = (name: string) => `${name}:${++n}`;
+
+const roots: Root[] = [];
+function mount<T>(k: string, load: () => Promise<T>, enabled = true) {
+  const seen: Query<T>[] = [];
+  const Probe = () => {
+    seen.push(useQuery(k, load, enabled));
+    return null;
+  };
+  const root = createRoot(document.createElement("div"));
+  roots.push(root);
+  act(() => root.render(createElement(Probe)));
+  return {
+    seen,
+    last: () => seen[seen.length - 1],
+    unmount: () => act(() => root.unmount()),
+  };
+}
+
+const flush = () => act(async () => {});
+
+beforeEach(() => reported.mockClear());
+afterEach(() => {
+  roots.splice(0).forEach((r) => act(() => r.unmount()));
+  vi.useRealTimers();
 });
+
+// ---- tests ---------------------------------------------------------------------------------------
 
 describe("reading", () => {
-  test("an adapter that answers at once gives the data in the same read", () => {
-    const slot = new Slot(key, () => settled(["a", "b"]));
-    expect(slot.read().data).toEqual(["a", "b"]);
+  it("shows an answer in the very first render when the client answers at once", () => {
+    const m = mount(key("sync"), () => now("hello"));
+    expect(m.seen[0]).toMatchObject({ status: "ready", data: "hello", error: null });
   });
 
-  test("a slow adapter is asked once, however often the screen reads while it waits", async () => {
-    const call = pending<string>();
-    const load = vi.fn(() => call.promise);
-    const slot = new Slot(key, load);
-    expect(slot.read().data).toBeUndefined();
-    slot.read();
-    slot.read();
-    expect(load).toHaveBeenCalledTimes(1);
-    call.resolve("ready");
+  it("is loading until a slow client answers, then ready", async () => {
+    let resolve!: (v: string) => void;
+    const m = mount(key("slow"), () => new Promise<string>((r) => (resolve = r)));
+    expect(m.last()).toMatchObject({ status: "loading", data: undefined });
+    resolve("late");
     await flush();
-    expect(slot.read().data).toBe("ready");
-    expect(load).toHaveBeenCalledTimes(1);
+    expect(m.last()).toMatchObject({ status: "ready", data: "late" });
   });
 
-  test("the server render has nothing to show when there is no demo school to ask", () => {
-    const slot = new Slot(key, () => settled("x"));
-    expect(slot.readServer().data).toBeUndefined();
+  it("turns a failure into an error state with the code", async () => {
+    const sync = mount(key("fail-sync"), () => nowFail(new ApiError("not_found")));
+    expect(sync.last()).toMatchObject({ status: "error", data: undefined });
+    expect(sync.last().error?.code).toBe("not_found");
+
+    const slow = mount(key("fail-slow"), () => Promise.reject(new ApiError("server_error", { status: 500 })));
+    await flush();
+    expect(slow.last().status).toBe("error");
+    expect(slow.last().error).toMatchObject({ code: "server_error", status: 500 });
+  });
+
+  it("wraps something that is not an ApiError as unknown", async () => {
+    const m = mount(key("odd"), () => Promise.reject(new TypeError("x")));
+    await flush();
+    expect(m.last().error?.code).toBe("unknown");
+  });
+
+  it("treats a load that throws as a failure", () => {
+    const m = mount(key("throws"), () => {
+      throw new ApiError("rate_limited");
+    });
+    expect(m.last()).toMatchObject({ status: "error" });
+    expect(m.last().error?.code).toBe("rate_limited");
+  });
+
+  it("asks nothing while disabled", () => {
+    const load = vi.fn(() => now(1));
+    const m = mount(key("off"), load, false);
+    expect(load).not.toHaveBeenCalled();
+    expect(m.last()).toMatchObject({ status: "loading", data: undefined });
+  });
+
+  it("shares one slot between screens that ask for the same key", () => {
+    const k = key("shared");
+    const load = vi.fn(() => now({ v: 1 }));
+    const a = mount(k, load);
+    const b = mount(k, load);
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(b.last().data).toBe(a.last().data);
   });
 });
 
-describe("a change somewhere else", () => {
-  test("a slot nobody is reading asks again on the next read, once, not once per read", async () => {
-    const first = pending<string>();
-    const second = pending<string>();
-    const load = vi.fn<() => Promise<string>>().mockReturnValueOnce(first.promise).mockReturnValue(second.promise);
-    const slot = new Slot(key, load);
-    slot.read();
-    first.resolve("old");
-    await flush();
+describe("refreshing when the client says something changed", () => {
+  it("loads again and shows the new answer", () => {
+    let v = 1;
+    const m = mount(key("refresh"), () => now({ v }));
+    expect(m.last().data).toEqual({ v: 1 });
+    v = 2;
+    act(() => fake.emit());
+    expect(m.last().data).toEqual({ v: 2 });
+  });
 
-    slot.refresh(); // nobody is listening: it only notes that its answer may be old
+  it("keeps the same data object, and does not render again, when the answer is the same", () => {
+    const m = mount(key("same"), () => now({ list: [1, 2, 3] }));
+    const before = m.last();
+    const renders = m.seen.length;
+    act(() => fake.emit());
+    expect(m.last().data).toBe(before.data);
+    expect(m.seen.length).toBe(renders);
+  });
+
+  it("keeps the answer on screen while a slower refresh is on its way", async () => {
+    let v = 1;
+    let resolve!: (x: { v: number }) => void;
+    let slow = false;
+    const m = mount(key("hold"), () => (slow ? new Promise<{ v: number }>((r) => (resolve = r)) : now({ v })));
+    slow = true;
+    act(() => fake.emit());
+    expect(m.last()).toMatchObject({ status: "ready", data: { v: 1 } });
+    v = 2;
+    resolve({ v });
+    await flush();
+    expect(m.last().data).toEqual({ v: 2 });
+  });
+
+  it("keeps the old data when a refresh fails, and carries the failure along", () => {
+    let fail = false;
+    const m = mount(key("keep"), () => (fail ? nowFail<string>(new ApiError("server_error")) : now("good")));
+    fail = true;
+    act(() => fake.emit());
+    expect(m.last()).toMatchObject({ status: "ready", data: "good" });
+    expect(m.last().error?.code).toBe("server_error");
+    fail = false;
+    act(() => fake.emit());
+    expect(m.last()).toMatchObject({ status: "ready", data: "good", error: null });
+  });
+
+  it("lets only the newest of two overlapping asks win", async () => {
+    const resolvers: ((v: string) => void)[] = [];
+    let first = true;
+    const m = mount(key("race"), () => {
+      if (first) {
+        first = false;
+        return now("start");
+      }
+      return new Promise<string>((r) => resolvers.push(r));
+    });
+    act(() => fake.emit()); // ask 2
+    act(() => fake.emit()); // ask 3
+    resolvers[1]("newest");
+    await flush();
+    resolvers[0]("older");
+    await flush();
+    expect(m.last().data).toBe("newest");
+  });
+
+  it("refetch() asks again on demand", () => {
+    let v = 1;
+    const m = mount(key("refetch"), () => now(v));
+    v = 5;
+    act(() => m.last().refetch());
+    expect(m.last().data).toBe(5);
+  });
+});
+
+describe("stale slots", () => {
+  it("marks a slot nobody reads as stale and loads it when it is next read", () => {
+    let v = 1;
+    const load = vi.fn(() => now({ v }));
+    const k = key("stale");
+    const first = mount(k, load);
+    first.unmount();
+    v = 2;
+    act(() => fake.emit()); // nobody is reading: no request now
     expect(load).toHaveBeenCalledTimes(1);
-    slot.read();
-    slot.read();
-    slot.read();
+    const again = mount(k, load);
     expect(load).toHaveBeenCalledTimes(2);
-    second.resolve("new");
-    await flush();
-    expect(slot.read().data).toBe("new");
-    expect(load).toHaveBeenCalledTimes(2);
+    expect(again.seen[0].data).toEqual({ v: 2 });
   });
 
-  test("a slot someone is reading loads again at once, and the old answer stays until the new one lands", async () => {
-    const first = pending<string>();
-    const second = pending<string>();
-    const load = vi.fn<() => Promise<string>>().mockReturnValueOnce(first.promise).mockReturnValue(second.promise);
-    const slot = new Slot(key, load);
-    const heard = vi.fn();
-    slot.subscribe(heard);
-    slot.read();
-    first.resolve("old");
-    await flush();
-    heard.mockClear();
-
-    slot.refresh();
-    expect(load).toHaveBeenCalledTimes(2);
-    expect(slot.entry.data).toBe("old");
-    second.resolve("new");
-    await flush();
-    expect(slot.entry.data).toBe("new");
-    expect(heard).toHaveBeenCalledTimes(1);
-  });
-
-  test("a slot that was never read does not ask until it is", () => {
-    const load = vi.fn(() => settled("x"));
-    const slot = new Slot(key, load);
-    slot.refresh();
+  it("does not ask for a slot that was never read", () => {
+    const load = vi.fn(() => now(1));
+    // a slot exists only once a hook has asked for it, so emitting with none mounted is harmless
+    act(() => fake.emit());
     expect(load).not.toHaveBeenCalled();
   });
 
-  test("invalidate names slots by their key, or by the start of it before a colon, and leaves the rest", () => {
-    const loads = { all: vi.fn(() => settled(1)), one: vi.fn(() => settled(2)), lookalike: vi.fn(() => settled(3)), other: vi.fn(() => settled(4)) };
-    const slots = [
-      slotFor(`${key}`, loads.all),
-      slotFor(`${key}:l1`, loads.one),
-      slotFor(`${key}x`, loads.lookalike),
-      slotFor(`other-${key}`, loads.other),
-    ];
-    for (const slot of slots) {
-      slot.subscribe(() => {});
-      slot.read();
-    }
-    Object.values(loads).forEach((l) => l.mockClear());
-
-    invalidate(key);
-    expect(loads.all).toHaveBeenCalledTimes(1);
-    expect(loads.one).toHaveBeenCalledTimes(1);
-    expect(loads.lookalike).not.toHaveBeenCalled();
-    expect(loads.other).not.toHaveBeenCalled();
-  });
-});
-
-describe("races", () => {
-  test("the newest ask wins, even when an older one lands after it", async () => {
-    const older = pending<string>();
-    const newer = pending<string>();
-    const load = vi.fn<() => Promise<string>>().mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise);
-    const slot = new Slot(key, load);
-    void slot.fetch(true);
-    void slot.fetch(true);
-    newer.resolve("newer");
+  it("asks once, not twice, when a slow client's slot is first mounted", async () => {
+    const load = vi.fn(() => new Promise<string>(() => {}));
+    mount(key("once"), load);
     await flush();
-    older.resolve("older");
-    await flush();
-    expect(slot.entry.data).toBe("newer");
+    expect(load).toHaveBeenCalledTimes(1);
   });
 
-  test("an answer put in by the caller cancels one still on its way", async () => {
-    const call = pending<string>();
-    const slot = new Slot(key, () => call.promise);
-    void slot.fetch(true);
-    slot.put("saved");
-    call.resolve("before the save");
+  it("asks again when a slow client's slot comes back after more than 30 seconds, not before", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const load = vi.fn(() => Promise.resolve("slow"));
+    const k = key("fresh");
+    const a = mount(k, load);
     await flush();
-    expect(slot.entry.data).toBe("saved");
-  });
+    a.unmount();
 
-  test("putting an answer in tells the screens that read the slot", () => {
-    const slot = new Slot(key, () => settled("x"));
-    const heard = vi.fn();
-    slot.subscribe(heard);
-    slot.put("saved");
-    expect(heard).toHaveBeenCalledTimes(1);
-    expect(slot.entry.data).toBe("saved");
-  });
-
-  test("seed puts the answer of a change into the slot of that key", () => {
-    const slot = slotFor(key, () => settled("x"));
-    slot.read();
-    seed(key, "from the change");
-    expect(slot.entry.data).toBe("from the change");
-    expect(() => seed(`${key}-never-read`, "nobody asked")).not.toThrow();
-  });
-});
-
-describe("failures", () => {
-  test("a failed refresh keeps the answer that was on screen and carries the error", async () => {
-    const load = vi.fn<() => Promise<string>>().mockReturnValueOnce(Promise.resolve("on screen")).mockRejectedValueOnce(new ApiError("network"));
-    const slot = new Slot(key, load);
-    slot.read();
+    vi.setSystemTime(Date.now() + 29_000);
+    const b = mount(k, load);
     await flush();
-    expect(await slot.fetch(true)).toMatchObject({ code: "network" });
-    expect(slot.entry.data).toBe("on screen");
-    expect(slot.entry.error?.code).toBe("network");
-  });
+    expect(load).toHaveBeenCalledTimes(1);
+    b.unmount();
 
-  test("the next good answer clears the error", async () => {
-    const load = vi
-      .fn<() => Promise<string>>()
-      .mockRejectedValueOnce(new ApiError("server_error"))
-      .mockResolvedValueOnce("fine");
-    const slot = new Slot(key, load);
-    slot.read();
+    vi.setSystemTime(Date.now() + 5_000); // 34 s since it last loaded
+    const c = mount(k, load);
     await flush();
-    expect(slot.entry.data).toBeUndefined();
-    expect(slot.entry.error?.code).toBe("server_error");
-    expect(await slot.fetch(true)).toBeNull();
-    expect(slot.entry).toEqual({ data: "fine", error: null });
-  });
-
-  test("something that is not an ApiError is read as an unknown failure", async () => {
-    const slot = new Slot(key, () => Promise.reject(new TypeError("boom")));
-    slot.read();
-    await flush();
-    expect(slot.entry.error?.code).toBe("unknown");
-  });
-
-  test("the same answer again keeps the object screens already hold, and tells nobody", async () => {
-    const load = vi.fn(() => Promise.resolve({ items: [1, 2, 3] }));
-    const slot = new Slot(key, load);
-    const heard = vi.fn();
-    slot.subscribe(heard);
-    slot.read();
-    await flush();
-    const held = slot.entry;
-    heard.mockClear();
-    await slot.fetch(true);
-    expect(slot.entry).toBe(held);
-    expect(heard).not.toHaveBeenCalled();
-  });
-});
-
-describe("a different teacher", () => {
-  test("a reset drops the answer, so the next teacher never sees the last one's, and asks again on the next read", async () => {
-    const load = vi.fn<() => Promise<string>>().mockResolvedValueOnce("first teacher's").mockResolvedValue("second teacher's");
-    const slot = slotFor(key, load);
-    slot.read();
-    await flush();
-    expect(slot.read().data).toBe("first teacher's");
-
-    resetQueries();
-    expect(slot.entry.data).toBeUndefined();
-    slot.read();
-    await flush();
-    expect(slot.read().data).toBe("second teacher's");
     expect(load).toHaveBeenCalledTimes(2);
+    expect(c.last().data).toBe("slow");
   });
 
-  test("tells the screens that are showing it, so they stop", () => {
-    const slot = slotFor(key, () => settled("x"));
-    slot.read();
-    let told = 0;
-    const stop = slot.subscribe(() => told++);
-    resetQueries();
-    stop();
-    expect(told).toBe(1);
+  it("does not age out an adapter that answers at once", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const load = vi.fn(() => now("fast"));
+    const k = key("fast");
+    const a = mount(k, load);
+    a.unmount();
+    vi.setSystemTime(Date.now() + 120_000);
+    mount(k, load);
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("invalidate, reset, seed, change", () => {
+  it("invalidates by key or prefix, but not a key that only starts with the same letters", () => {
+    const counts = { a: 0, b: 0, c: 0 };
+    mount("results", () => now(++counts.a));
+    mount("results:math", () => now(++counts.b));
+    mount("resultsX", () => now(++counts.c));
+    invalidate("results");
+    act(() => {});
+    expect(counts).toEqual({ a: 2, b: 2, c: 1 });
+    invalidate("results:math");
+    expect(counts).toEqual({ a: 2, b: 3, c: 1 });
   });
 
-  test("an answer that was still on its way when the teacher changed is not taken for the new one's", async () => {
-    const late = pending<string>();
-    const slot = slotFor(key, () => late.promise);
-    slot.read();
-    resetQueries();
-    late.resolve("the last teacher's");
+  it("invalidates everything with no prefix", () => {
+    let a = 0;
+    let b = 0;
+    mount(key("all-a"), () => now(++a));
+    mount(key("all-b"), () => now(++b));
+    const before = [a, b];
+    invalidate();
+    expect([a - before[0], b - before[1]]).toEqual([1, 1]);
+  });
+
+  it("drops every answer on reset, so one student's data is never shown to the next", async () => {
+    let who = "Marko";
+    const m = mount(key("who"), () => now(who));
+    expect(m.last().data).toBe("Marko");
+    who = "Ana";
+    act(() => resetQueries());
     await flush();
-    expect(slot.entry.data).toBeUndefined();
+    expect(m.last().data).toBe("Ana");
+  });
+
+  it("puts an answer straight into a slot without asking", () => {
+    const k = key("seed");
+    const load = vi.fn(() => now("asked"));
+    const m = mount(k, load);
+    act(() => seed(k, "seeded"));
+    expect(m.last().data).toBe("seeded");
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores a seed for a key nobody has asked for", () => {
+    expect(() => seed(key("nobody"), 1)).not.toThrow();
+  });
+
+  it("makes a change, then refreshes what it touched", async () => {
+    let v = 1;
+    const k = key("touch");
+    const m = mount(k, () => now(v));
+    const result = await act(() =>
+      change(
+        async () => {
+          v = 2;
+          return "done";
+        },
+        [k],
+      ),
+    );
+    expect(result).toBe("done");
+    expect(m.last().data).toBe(2);
+  });
+
+  it("does not refresh when the change fails", async () => {
+    const load = vi.fn(() => now(1));
+    const k = key("untouched");
+    mount(k, load);
+    await expect(change(() => Promise.reject(new ApiError("not_found")), [k])).rejects.toMatchObject({ code: "not_found" });
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("mapQuery", () => {
+  it("turns the data, and passes loading and error through", () => {
+    const base = { status: "ready", data: 2, error: null, refetch: () => {} } satisfies Query<number>;
+    expect(mapQuery(base, (x) => x * 10)).toMatchObject({ status: "ready", data: 20 });
+    const loading: Query<number> = { ...base, status: "loading", data: undefined };
+    const fn = vi.fn();
+    expect(mapQuery(loading, fn).data).toBeUndefined();
+    expect(fn).not.toHaveBeenCalled();
+  });
+});
+
+describe("error reporting", () => {
+  it("reports an unexpected failure with its key and code, and nothing personal", async () => {
+    const k = key("report");
+    mount(k, () => Promise.reject(new ApiError("server_error", { status: 500, message: "stack trace with a name in it" })));
+    await flush();
+    expect(reported).toHaveBeenCalledTimes(1);
+    const [error, context] = reported.mock.calls[0];
+    expect(error).toMatchObject({ code: "server_error" });
+    expect(context).toEqual({ where: "query", key: k, code: "server_error", status: 500 });
+  });
+
+  it("reports a malformed response", async () => {
+    mount(key("bad"), () => Promise.reject(new ApiError("invalid_response")));
+    await flush();
+    expect(reported).toHaveBeenCalledOnce();
+  });
+
+  it.each(["unauthenticated", "signed_in_elsewhere", "network"] as const)("does not report %s, which is part of normal use", async (code) => {
+    mount(key("quiet"), () => Promise.reject(new ApiError(code)));
+    await flush();
+    expect(reported).not.toHaveBeenCalled();
+  });
+
+  it("does not report a success", () => {
+    mount(key("fine"), () => now(1));
+    expect(reported).not.toHaveBeenCalled();
   });
 });

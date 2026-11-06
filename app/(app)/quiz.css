@@ -121,7 +121,7 @@
   gap: 8px;
   padding: 8px 16px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
   font-size: var(--fs-callout);
   font-weight: 650;
   font-variant-numeric: tabular-nums;
@@ -358,7 +358,7 @@
   flex: none;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
   font-family: var(--font-display);
   font-weight: 700;
   font-size: var(--fs-body);
@@ -582,7 +582,7 @@
 }
 .q-row--me {
   z-index: 1;
-  background: linear-gradient(rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.14)), var(--card);
+  background: linear-gradient(rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.08)), var(--card);
 }
 .q-row__rank {
   width: 1.5rem;
@@ -617,6 +617,358 @@
 }
 .q-row--drop {
   animation: q-drop var(--spring-bouncy-dur) var(--spring-bouncy) 520ms backwards;
+}
+
+/* ---- the session around the question: late note, lost connection, a question the app cannot show ---- */
+/* A strip above the header, in the flow so it never covers the question; the answers are anchored to
+   the bottom and do not move when it comes or goes. */
+.q-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: var(--fs-label);
+  line-height: 1.35;
+  font-weight: 600;
+  animation: q-rise var(--spring-smooth-dur) var(--spring-smooth) backwards;
+}
+.q-note svg {
+  flex: none;
+}
+/* Where the student's own answer has got to, under the card that holds it. A send that is quick never
+   shows "Sending": that line only appears if it is still going after most of a second. */
+.q-delivery {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0 4px;
+  min-height: 24px;
+  font-size: var(--fs-label);
+  line-height: 1.35;
+  font-weight: 600;
+  animation: q-rise var(--spring-snappy-dur) var(--spring-snappy) backwards;
+}
+.q-delivery svg {
+  flex: none;
+}
+.q-delivery[data-status="sending"] {
+  opacity: 0;
+  animation: q-delivery-wait 1ms linear 700ms forwards;
+}
+@keyframes q-delivery-wait {
+  to {
+    opacity: 1;
+  }
+}
+.q-late-text {
+  margin: 8px 0 0;
+  max-width: 22rem;
+}
+.q-hero--fail {
+  font-size: var(--fs-title1);
+}
+.q-fail__body {
+  margin: 0;
+  max-width: 24rem;
+}
+.q-locked--none {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--line);
+  color: #fff;
+  box-shadow: none;
+}
+.q-wait {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+}
+
+/* ---- the lesson is over ---- */
+.q-ended {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 24px;
+  margin-top: 24px;
+}
+.q-ended__rank {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.q-rank--small {
+  font-size: 4.5rem;
+}
+.q-ended .q-total {
+  margin-top: 0;
+}
+
+/* ---- a numeric answer ----
+ * The whole form sits right under the question, in the top half: the phone's keypad rises over the
+ * bottom of the screen, and the lock button must stay above it. Typing animates nothing (it happens
+ * hundreds of times a lesson); what is wrong is said in words, under the field, with a line that rises
+ * in once. */
+/* A numeric question is read with the keypad up, over most of the screen: its prompt is a size smaller and starts higher. */
+.q-ask--num {
+  gap: 0;
+  padding-top: 16px;
+}
+.q-question--num {
+  font-size: var(--fs-title);
+  line-height: 1.25;
+}
+.n-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+.n-label {
+  padding-left: 4px;
+}
+.n-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+.n-minus {
+  flex: none;
+  width: 4rem;
+  min-height: 4rem;
+  border-radius: 20px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition:
+    transform var(--spring-press-dur) var(--spring-press),
+    background var(--spring-press-dur) var(--spring-press);
+}
+.n-minus:active {
+  transform: scale(0.94);
+  background: var(--card-press);
+  transition-duration: 100ms;
+  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+.n-box {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 4rem;
+  padding: 0 20px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+/* The focus ring is instant: a field that is tapped into or tabbed to is not an event worth animating. */
+.n-box:focus-within,
+.n-box[data-invalid="true"] {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px #fff;
+}
+.n-input {
+  flex: 1;
+  min-width: 0;
+  height: 3.875rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  outline: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-title1);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.n-unit {
+  font-family: var(--font-display);
+  font-size: var(--fs-title3);
+  font-weight: 650;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.n-slot {
+  /* Two lines of caption: the longest problem fits without pushing the button down. */
+  min-height: 2.75rem;
+}
+.n-hint {
+  margin: 0;
+  padding-left: 4px;
+}
+.n-err {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 0 4px;
+  font-size: var(--fs-label);
+  line-height: 1.35;
+  font-weight: 600;
+  animation: q-rise var(--spring-snappy-dur) var(--spring-snappy) backwards;
+}
+.n-err svg {
+  flex: none;
+}
+.n-lock {
+  margin-top: 8px;
+}
+.q-correct__note {
+  margin: 0;
+  color: var(--ink);
+  opacity: 0.8;
+}
+.q-badge--sm {
+  width: 5rem;
+  height: 5rem;
+}
+.q-badge--yes.q-badge--sm {
+  box-shadow: 0 0 0 10px rgba(255, 200, 61, 0.16);
+}
+
+/* ---- a question to the teacher, and the one line about leaving the quiz ---- */
+/* The way in is a plain button under the status line: the third level, so it never competes with an answer. */
+.q-askbtn {
+  margin-top: 4px;
+}
+/* Said once, in the lobby or between questions: part of the page, not a dialog, and quiet. */
+.q-fair {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 4px 0 0;
+  max-width: 24rem;
+  text-align: left;
+  font-size: var(--fs-label);
+  line-height: 1.4;
+  color: var(--text-2);
+}
+.q-fair svg {
+  flex: none;
+  margin-top: 1px;
+}
+.ask {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 4px 4px;
+}
+.ask__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 4px;
+}
+.ask__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  font-weight: 700;
+  line-height: 1.2;
+}
+.ask__left {
+  margin: 0;
+}
+/* Who sees the sender, in words and at body size, above the box and not under it: it is read before anything is typed. */
+.ask__honest {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: var(--fs-callout);
+  line-height: 1.4;
+  font-weight: 600;
+}
+.ask__honest svg {
+  flex: none;
+  margin-top: 1px;
+}
+.ask__result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 12px;
+  text-align: center;
+  animation: q-rise var(--spring-snappy-dur) var(--spring-snappy) backwards;
+}
+.ask__mark {
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+}
+.ask__rt {
+  margin: 8px 0 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-title1);
+  font-weight: 700;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+.ask__note {
+  margin: 0;
+  max-width: 22rem;
+  text-wrap: pretty;
+}
+
+.ask__field {
+  width: 100%;
+  min-height: 6rem;
+  resize: none;
+  border-radius: 20px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  font-family: var(--font);
+  font-size: var(--fs-body);
+  line-height: 1.4;
+  color: #fff;
+  outline: 0;
+}
+.ask__field::placeholder {
+  color: var(--text-2);
+  opacity: 0.85;
+}
+.ask__field:focus,
+.ask__field[aria-invalid="true"] {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px #fff;
+}
+.ask__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0 4px;
+}
+.ask__meta p {
+  margin: 0;
+  flex: 1;
+}
+.ask__count {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: var(--fs-label);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+}
+.ask__count[data-full="true"] {
+  color: #fff;
 }
 
 /* ---- profile editor ---- */
@@ -869,7 +1221,7 @@
   animation-timing-function: var(--spring-smooth);
 }
 
-/* Reduced motion: stages and badges fade in place, rank rows and the timer beat stay still, and the
+/* Reduced motion: stages and badges fade in place, the check and the cross appear instead of drawing, rank rows and the timer beat stay still, and the
    confetti is gone. The timer ring still drains; it is the time left, not decoration. */
 @media (prefers-reduced-motion: reduce) {
   @keyframes q-rise {
@@ -883,6 +1235,11 @@
     }
   }
   @keyframes q-face {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes q-draw {
     from {
       opacity: 0;
     }
@@ -920,7 +1277,12 @@
 @media (forced-colors: active) {
   .q-opt,
   .q-tf__btn,
-  .q-locked {
+  .q-locked,
+  .ask__honest,
+  .ask__mark,
+  .n-box,
+  .n-minus,
+  .ask__field {
     border: 1px solid ButtonText;
   }
   .q-steps i {

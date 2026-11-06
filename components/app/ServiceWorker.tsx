@@ -1,38 +1,16 @@
 "use client";
 
 import { useEffect } from "react";
-import { CLASS_SUBJECTS, NOTIFS, SUBJECTS } from "@/lib/app/data";
+import { APP_ROUTES } from "@/lib/app/offline-cache";
 // Loaded with every screen so the browser's install offer is caught whenever it comes.
 import "@/lib/app/install";
-
-/** Every screen, so the offline worker (public/app-sw.js) can cache them all on the first visit. */
-const ROUTES = [
-  "/app",
-  "/app/scan",
-  "/app/notifications",
-  "/app/profile",
-  "/app/attendance",
-  "/app/summary",
-  "/app/leaderboard",
-  "/app/schedule",
-  "/app/settings",
-  "/app/documents",
-  "/app/achievements",
-  "/app/faq",
-  "/app/welcome",
-  "/app/qr-kit",
-  "/app/subjects",
-  ...SUBJECTS.map((s) => `/app/subject/${s.id}`),
-  ...CLASS_SUBJECTS.flatMap((s) => [`/app/play/${s.code}`, `/app/checkin/${s.code}`]),
-  ...NOTIFS.map((n) => `/app/notifications/${n.id}`),
-];
 
 /** The build running in this page (next.config.ts). */
 const BUILD = process.env.NEXT_PUBLIC_APP_BUILD;
 /** Set once a build's warm-up has been asked for in this session. */
 const WARMED = `teacheraid-sw-warmed-${BUILD}`;
 /** Screens where a reload would throw away a quiz or a scan in progress. */
-const BUSY = ["/app/play", "/app/scan", "/app/checkin"];
+const BUSY = ["/app/play", "/app/scan", "/app/checkin", "/app/practice/"];
 
 /**
  * A page resumed from memory, or served from the offline cache on a slow network, keeps running
@@ -74,7 +52,7 @@ export function ServiceWorker() {
       } catch {
         // no storage: warm up on every load
       }
-      registration.active?.postMessage({ type: "warm", routes: ROUTES });
+      registration.active?.postMessage({ type: "warm", routes: APP_ROUTES });
     });
   }, []);
 

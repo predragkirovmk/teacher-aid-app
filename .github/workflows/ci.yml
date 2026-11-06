@@ -4,25 +4,27 @@ on:
   push:
   pull_request:
 
-# A newer push to the same branch makes the older run pointless.
+# A newer push to the same branch makes the run for the older one pointless.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 env:
+  # Next reports usage to Vercel; a CI run has nothing to add.
   NEXT_TELEMETRY_DISABLED: "1"
 
 jobs:
-  check:
+  verify:
+    name: Lint, types, unit tests, build
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
-      # The pnpm version comes from "packageManager" in package.json.
+      # No version given: pnpm/action-setup reads it from "packageManager" in package.json.
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
@@ -32,34 +34,61 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm lint
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
 
-      # LayoutProps and PageProps are global types that Next writes into .next/types; a fresh checkout has none until
-      # they are generated, so tsc would fail on every layout and page.
-      - name: Typecheck
-        run: |
-          pnpm exec next typegen
-          pnpm exec tsc --noEmit
+  e2e:
+    name: End-to-end (${{ matrix.mode }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # `mock` is both apps as the demo runs them (the student and the teacher projects share one build);
+        # `live` is a second build of the student app against tests/fake-api. They
+        # run side by side so the second build does not add to the wall time.
+        mode: [mock, live]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
 
-      - name: Build
-        run: pnpm build
+      - run: pnpm install --frozen-lockfile
 
-      - name: Unit tests
-        run: pnpm test
+      - name: Read the Playwright version
+        id: playwright
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
 
-      # The end-to-end tests build the app again with NEXT_PUBLIC_E2E=1 (see playwright.config.ts) and run Chromium over http.
-      - name: Install the browser
+      - name: Cache the Playwright browser
+        id: browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install Chromium and its system libraries
+        if: steps.browsers.outputs.cache-hit != 'true'
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: End-to-end tests
-        run: pnpm test:e2e
+      - name: Install the system libraries only
+        if: steps.browsers.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
 
-      - name: Keep the traces of a failed run
+      # Each script builds the app itself (playwright.config.ts) and starts it with the fake API if needed.
+      - name: Run the end-to-end tests
+        run: pnpm ${{ matrix.mode == 'live' && 'test:e2e:live' || 'test:e2e' }}
+
+      - name: Keep the report of a failed run
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-traces
-          path: test-results/
-          if-no-files-found: ignore
+          name: playwright-${{ matrix.mode }}
+          path: |
+            playwright-report
+            test-results
           retention-days: 7

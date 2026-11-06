@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback } from "react";
-import type { Locale } from "./data";
-import { useApp } from "./store";
+import type { ApiErrorCode } from "./api/errors";
+import type { Locale } from "./api/types";
+import { errorKey, useT } from "./i18n";
+import { useLocale } from "./locale";
 
 /** Text for the live quiz and the profile editor, kept apart from i18n.ts while that file is in flux. */
 const en = {
@@ -53,9 +55,78 @@ const en = {
   "q.last": "That was the last question",
   "q.lastNote": "The teacher closes the quiz. Your points are saved.",
   "q.home": "Back to Home",
-  "q.unknown.title": "Code not recognized",
-  "q.unknown.body": "This is not your class QR, or the code has expired. Scan the code on the board now.",
-  "q.unknown.cta": "Scan again",
+  "q.fail.expired.title": "That code has expired",
+  "q.fail.expired.body": "The code on the screen changes every 30 seconds. Scan the new one, or ask your teacher to show it again.",
+  "q.fail.class.title": "This isn't your lesson",
+  "q.fail.class.body": "Your account isn't on the list for this lesson. Check that you're scanning the code for your own lesson. If you think this is a mistake, tell your teacher.",
+  "q.fail.ended.title": "This lesson has ended",
+  "q.fail.ended.body": "The teacher has closed this quiz, so you can't join any more. If you were in the room, tell your teacher.",
+  "q.fail.network.title": "No connection",
+  "q.fail.network.body": "We couldn't reach TeacherAid, so nothing has been recorded yet. Check your internet and try again.",
+  "q.fail.unknown.title": "Code not recognized",
+  "q.fail.unknown.body": "We don't know this code. Check it, or scan the code on the board.",
+  "q.fail.scan": "Scan again",
+  "q.fail.scanOther": "Scan another code",
+  "q.fail.retry": "Try again",
+  "q.load.title": "We can't open the quiz",
+  "q.connecting": "Connecting to the lesson…",
+  "net.offline": "You're offline",
+  "net.reconnecting": "Reconnecting…",
+  "net.back": "Back online",
+  "net.saved.one": "1 answer saved, will send when you're back online",
+  "net.saved.many": "{n} answers saved, will send when you're back online",
+  "net.askSaved.one": "1 question saved, will send when you're back online",
+  "net.askSaved.many": "{n} questions saved, will send when you're back online",
+  "net.savedMix": "{n} saved, will send when you're back online",
+  "ask.entry": "Ask your teacher",
+  "ask.title": "A question for your teacher",
+  "ask.honest": "Your classmates won't see who asked. Your teacher sees your name.",
+  "ask.label": "Your question",
+  "ask.placeholder": "Your question…",
+  "ask.left.one": "1 question left this lesson",
+  "ask.left.many": "{n} questions left this lesson",
+  "ask.send": "Send question",
+  "ask.err.empty": "Write your question before you send it.",
+  "ask.countAria": "{n} of {max} characters",
+  "ask.sent": "Sent",
+  "ask.sentNote": "Your teacher sees your name. Your classmates don't.",
+  "ask.another": "Ask another",
+  "ask.done": "Done",
+  "ask.again": "Write it again",
+  "ask.paused": "A question just started. What you were writing is saved.",
+  "ask.limit.title": "No more questions",
+  "ask.limit.body": "You've used all yours for this lesson. You can still ask out loud.",
+  "ask.ended.title": "The lesson has ended",
+  "ask.ended.body": "We can't take a question now. You can still ask your teacher in person.",
+  "ask.failed.title": "That question didn't go through",
+  "ask.failed.body": "Try writing it again.",
+  "fair.note": "If you leave the quiz while a question is open, your teacher sees that you were away, but not where you went. Nothing is blocked.",
+  "ans.saving": "Sending…",
+  "ans.saved": "Saved, will send when you're back online",
+  "ans.sent": "Sent",
+  "ans.tooLate": "Your answer arrived too late",
+  "ans.ended": "The lesson ended before your answer arrived",
+  "q.late.note": "You're marked late. You can still answer the open question and all the ones to come.",
+  "q.savedWait": "The result comes once your answer arrives.",
+  "q.checking": "Checking the answers…",
+  "q.tooLate": "Your answer arrived too late.",
+  "q.waitReveal": "Your teacher will show the right answer on the screen.",
+  "q.skipped": "This question was skipped and doesn't count.",
+  "n.label": "Your answer",
+  "n.hint": "A comma or a point both work.",
+  "n.hintUnit": "In {unit}. A comma or a point both work.",
+  "n.minus": "Minus sign",
+  "n.lock": "Lock in answer",
+  "n.err.empty": "Type a number before you lock it in.",
+  "n.err.nan": "That isn't a number. Use digits and one comma or point.",
+  "n.err.negative": "This answer can't be negative. Take the minus out.",
+  "n.yours": "Your answer: {text}",
+  "n.correctValue": "Correct value",
+  "n.tolerance": "Within ± {tol} of this counts as right.",
+  "n.exactValue": "The exact value is {text}.",
+  "q.ended.title": "Quiz finished",
+  "q.ended.right": "{right} of {total} right",
+  "q.ended.summary": "See your summary",
   "q.pts": "{n} pts",
 
   "p.title": "Profile",
@@ -70,12 +141,13 @@ const en = {
   "p.name": "Display name",
   "p.nameHint": "Your classmates see this in the quiz.",
   "p.seen": "Your classmates see this name in the quiz",
-  "p.class": "Class",
-  "p.school": "School",
-  "p.fromSchool": "From your school account, not changed here",
-  "p.fromSchoolEdit": "Class and school come from your school account.",
+  "p.class": "Class or group",
+  "p.school": "School or university",
+  "p.fromSchool": "From your school or university account, not changed here",
+  "p.fromSchoolEdit": "Your class or group, and your school or university, come from your account.",
   "p.err.empty": "Enter a name.",
   "p.err.short": "The name needs at least 2 characters.",
+  "p.err.long": "The name can have at most 24 characters.",
   "p.err.chars": "Use letters, spaces and hyphens only.",
   "p.saved": "Profile saved",
   "p.discard": "Discard your changes?",
@@ -133,9 +205,78 @@ const mk: Record<Key, string> = {
   "q.last": "Тоа беше последното прашање",
   "q.lastNote": "Наставникот го затвора квизот. Поените се зачувани.",
   "q.home": "Назад на почетна",
-  "q.unknown.title": "Кодот не е препознаен",
-  "q.unknown.body": "Ова не е QR кодот на часот, или кодот истекол. Скенирај го кодот што е на таблата сега.",
-  "q.unknown.cta": "Скенирај пак",
+  "q.fail.expired.title": "Кодот истече",
+  "q.fail.expired.body": "Кодот на екранот се менува на секои 30 секунди. Скенирај го новиот или замоли го наставникот да го покаже повторно.",
+  "q.fail.class.title": "Ова не е твојот час",
+  "q.fail.class.body": "Твојата сметка не е на списокот за овој час. Провери дали го скенираш кодот од твојот час. Ако мислиш дека е грешка, кажи му на наставникот.",
+  "q.fail.ended.title": "Часот заврши",
+  "q.fail.ended.body": "Наставникот го затвори квизот, па не можеш повеќе да влезеш. Ако си бил во училница, кажи му на наставникот.",
+  "q.fail.network.title": "Нема врска",
+  "q.fail.network.body": "Не можевме да стигнеме до TeacherAid, па сѐ уште ништо не е запишано. Провери го интернетот и обиди се повторно.",
+  "q.fail.unknown.title": "Кодот не е препознаен",
+  "q.fail.unknown.body": "Не го знаеме овој код. Провери го или скенирај го кодот од таблата.",
+  "q.fail.scan": "Скенирај пак",
+  "q.fail.scanOther": "Скенирај друг код",
+  "q.fail.retry": "Обиди се повторно",
+  "q.load.title": "Не можеме да го отвориме квизот",
+  "q.connecting": "Се поврзуваме со часот…",
+  "net.offline": "Немаш интернет",
+  "net.reconnecting": "Се поврзуваме повторно…",
+  "net.back": "Врската се врати",
+  "net.saved.one": "1 одговор е зачуван, ќе се испрати кога ќе се вратиш онлајн",
+  "net.saved.many": "{n} одговори се зачувани, ќе се испратат кога ќе се вратиш онлајн",
+  "net.askSaved.one": "1 прашање е зачувано, ќе се испрати кога ќе се вратиш онлајн",
+  "net.askSaved.many": "{n} прашања се зачувани, ќе се испратат кога ќе се вратиш онлајн",
+  "net.savedMix": "{n} се зачувани, ќе се испратат кога ќе се вратиш онлајн",
+  "ask.entry": "Прашај го наставникот",
+  "ask.title": "Прашање до наставникот",
+  "ask.honest": "Соучениците нема да видат кој прашал. Наставникот го гледа твоето име.",
+  "ask.label": "Твоето прашање",
+  "ask.placeholder": "Твоето прашање…",
+  "ask.left.one": "Уште 1 прашање во овој час",
+  "ask.left.many": "Уште {n} прашања во овој час",
+  "ask.send": "Испрати го прашањето",
+  "ask.err.empty": "Напиши го прашањето пред да го испратиш.",
+  "ask.countAria": "{n} од {max} знаци",
+  "ask.sent": "Испратено",
+  "ask.sentNote": "Наставникот го гледа твоето име. Соучениците не.",
+  "ask.another": "Постави уште едно",
+  "ask.done": "Готово",
+  "ask.again": "Напиши повторно",
+  "ask.paused": "Почна прашање. Она што го пишуваше е зачувано.",
+  "ask.limit.title": "Нема повеќе прашања",
+  "ask.limit.body": "Ги искористи сите свои за овој час. Можеш да прашаш и гласно.",
+  "ask.ended.title": "Часот заврши",
+  "ask.ended.body": "Не можеме да примиме прашање сега. Можеш да го прашаш наставникот лично.",
+  "ask.failed.title": "Прашањето не замина",
+  "ask.failed.body": "Обиди се да го напишеш повторно.",
+  "fair.note": "Ако излезеш од квизот додека трае прашање, наставникот гледа дека те нема, но не и каде си отишол. Ништо не се блокира.",
+  "ans.saving": "Се испраќа…",
+  "ans.saved": "Зачувано, ќе се испрати кога ќе се вратиш онлајн",
+  "ans.sent": "Испратено",
+  "ans.tooLate": "Твојот одговор стигна предоцна",
+  "ans.ended": "Часот заврши пред да стигне твојот одговор",
+  "q.late.note": "Означен си како задоцнет. Можеш да одговараш на отвореното прашање и на сите што следат.",
+  "q.savedWait": "Резултатот стига штом пристигне твојот одговор.",
+  "q.checking": "Ги проверуваме одговорите…",
+  "q.tooLate": "Твојот одговор стигна предоцна.",
+  "q.waitReveal": "Наставникот ќе го покаже точниот одговор на екранот.",
+  "q.skipped": "Ова прашање е прескокнато и не се брои.",
+  "n.label": "Твој одговор",
+  "n.hint": "Може и запирка и точка.",
+  "n.hintUnit": "Во {unit}. Може и запирка и точка.",
+  "n.minus": "Знак минус",
+  "n.lock": "Заклучи го одговорот",
+  "n.err.empty": "Впиши број пред да го заклучиш.",
+  "n.err.nan": "Тоа не е број. Користи цифри и една запирка или точка.",
+  "n.err.negative": "Овој одговор не може да биде негативен. Избриши го минусот.",
+  "n.yours": "Твој одговор: {text}",
+  "n.correctValue": "Точна вредност",
+  "n.tolerance": "Точно е и ако си до ± {tol} од вредноста.",
+  "n.exactValue": "Точната вредност е {text}.",
+  "q.ended.title": "Квизот заврши",
+  "q.ended.right": "{right} од {total} точни",
+  "q.ended.summary": "Види го прегледот",
   "q.pts": "{n} поени",
 
   "p.title": "Профил",
@@ -150,12 +291,13 @@ const mk: Record<Key, string> = {
   "p.name": "Прикажано име",
   "p.nameHint": "Ова го гледаат соучениците во квизот.",
   "p.seen": "Ова име го гледаат соучениците во квизот",
-  "p.class": "Клас",
-  "p.school": "Училиште",
-  "p.fromSchool": "Од училишната сметка, не се менува тука",
-  "p.fromSchoolEdit": "Класот и училиштето доаѓаат од училишната сметка.",
+  "p.class": "Клас или група",
+  "p.school": "Училиште или факултет",
+  "p.fromSchool": "Од сметката од училиштето или факултетот, не се менува тука",
+  "p.fromSchoolEdit": "Класот или групата и училиштето или факултетот доаѓаат од твојата сметка.",
   "p.err.empty": "Внеси име.",
   "p.err.short": "Името треба да има најмалку 2 знаци.",
+  "p.err.long": "Името може да има најмногу 24 знаци.",
   "p.err.chars": "Користи само букви, празни места и цртичка.",
   "p.saved": "Профилот е зачуван",
   "p.discard": "Да ги отфрлиш промените?",
@@ -163,12 +305,12 @@ const mk: Record<Key, string> = {
   "p.keep": "Продолжи",
 };
 
-const dictionaries: Record<Locale, Record<Key, string>> = { en, mk };
+export const dictionaries: Record<Locale, Record<Key, string>> = { en, mk };
 
 export type QKey = Key;
 
 export function useQT() {
-  const { locale } = useApp();
+  const locale = useLocale();
   const t = useCallback(
     (key: Key, vars?: Record<string, string | number>) => {
       let out = dictionaries[locale][key];
@@ -178,4 +320,56 @@ export function useQT() {
     [locale],
   );
   return { t, locale };
+}
+
+export type JoinFailure = {
+  /** Which picture the screen draws. */
+  kind: "expired" | "class" | "ended" | "offline" | "unknown" | "generic";
+  title: string;
+  body: string;
+  /** What the main button says, and what it does: scan again, go home, or ask the API again. */
+  cta: string;
+  action: "scan" | "home" | "retry";
+  /** A quieter way out, when the main button is not the only sensible one. */
+  secondary?: { label: string; action: "scan" | "home" };
+};
+
+/**
+ * What a student is told when a join fails: each reason the API gives has a screen of its own with
+ * the one thing worth doing next (EC-JOIN-01, EC-JOIN-02, EC-JOIN-07).
+ */
+export function useJoinFailureCopy() {
+  const { t } = useQT();
+  const { t: tt } = useT();
+  return (code?: ApiErrorCode): JoinFailure => {
+    switch (code) {
+      case "token_expired":
+        return { kind: "expired", title: t("q.fail.expired.title"), body: t("q.fail.expired.body"), cta: t("q.fail.scan"), action: "scan" };
+      case "not_enrolled":
+        return {
+          kind: "class",
+          title: t("q.fail.class.title"),
+          body: t("q.fail.class.body"),
+          cta: t("q.home"),
+          action: "home",
+          secondary: { label: t("q.fail.scanOther"), action: "scan" },
+        };
+      case "session_ended":
+        return { kind: "ended", title: t("q.fail.ended.title"), body: t("q.fail.ended.body"), cta: t("q.home"), action: "home" };
+      case "network":
+        return {
+          kind: "offline",
+          title: t("q.fail.network.title"),
+          body: t("q.fail.network.body"),
+          cta: t("q.fail.retry"),
+          action: "retry",
+          secondary: { label: t("q.home"), action: "home" },
+        };
+      case undefined:
+      case "not_found":
+        return { kind: "unknown", title: t("q.fail.unknown.title"), body: t("q.fail.unknown.body"), cta: t("q.fail.scan"), action: "scan" };
+      default:
+        return { kind: "generic", title: tt("error.title"), body: tt(errorKey(code)), cta: t("q.fail.retry"), action: "retry", secondary: { label: t("q.home"), action: "home" } };
+    }
+  };
 }

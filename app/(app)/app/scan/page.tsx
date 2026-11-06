@@ -1,11 +1,14 @@
 "use client";
 
-import { CameraIcon, ImageIcon, QrCodeIcon, WarningIcon, XIcon } from "@phosphor-icons/react";
+import { CameraIcon, ImageIcon, WarningIcon, XIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { FAILURE_ICON } from "@/components/app/quiz/JoinFailure";
+import { startJoin } from "@/lib/app/api/hooks";
+import { toApiError, type ApiErrorCode } from "@/lib/app/api/errors";
 import { useT } from "@/lib/app/i18n";
 import { leave } from "@/lib/app/nav";
-import { useQT } from "@/lib/app/quiz-copy";
+import { useJoinFailureCopy, useQT } from "@/lib/app/quiz-copy";
 import { decodeCanvas, decodeImageFile, interpretCode, type ScanResult } from "@/lib/app/scan";
 
 type Phase = "starting" | "scanning" | "denied" | "unavailable" | "error" | "stopped";
@@ -28,7 +31,6 @@ const pageVisible = () => document.visibilityState === "visible";
 
 export default function Scan() {
   const { t } = useT();
-  const { t: qt } = useQT();
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -45,8 +47,8 @@ export default function Scan() {
   const [camPhase, setPhase] = useState<Phase>("starting");
   const phase: Phase | "insecure" = insecure ? "insecure" : camPhase;
   const [attempt, setAttempt] = useState(0);
-  /** A code that is not a class QR; a class QR leaves for the quiz instead. */
-  const [result, setResult] = useState<ScanResult | null>(null);
+  /** A code that did not open a quiz and why; a class QR that works leaves for the quiz instead. */
+  const [result, setResult] = useState<{ scan: ScanResult; code?: ApiErrorCode } | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
   const lockTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -55,18 +57,26 @@ export default function Scan() {
     if (handled.current) return;
     handled.current = true;
     const scan = interpretCode(raw);
-    if (scan.kind === "class") navigator.vibrate?.(60);
     // The frame tightens for a beat so the scan reads as caught, then the quiz opens. Joining the
     // quiz records the check-in. Replace, so Back from the quiz skips the camera.
     const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     setLocked(true);
-    lockTimer.current = setTimeout(
-      () => {
-        if (scan.kind === "class") return router.replace(`/app/play/${scan.subject.code}`);
+    const beat = new Promise<void>((resolve) => {
+      lockTimer.current = setTimeout(resolve, calm ? 0 : 240);
+    });
+    const miss = (code?: ApiErrorCode) =>
+      beat.then(() => {
         setLocked(false);
-        setResult(scan);
+        setResult({ scan, code });
+      });
+    if (scan.kind === "other") return void miss();
+    // The API says whether the code opens a session; the quiz screen carries on from the answer.
+    startJoin(scan.code).then(
+      () => {
+        navigator.vibrate?.(60);
+        return beat.then(() => router.replace(`/app/play/${scan.code}`));
       },
-      calm ? 0 : 240,
+      (e) => miss(toApiError(e).code),
     );
   }, [router]);
 
@@ -256,26 +266,30 @@ export default function Scan() {
         </div>
       )}
 
-      {result && (
-        <section className="scan-miss glass" role="alert">
-          <span className="scan-miss__badge" aria-hidden="true">
-            <QrCodeIcon size={32} color="var(--yellow)" />
-          </span>
-          <h2 className="scan-miss__title">{qt("q.unknown.title")}</h2>
-          <p className="scan-miss__body">{qt("q.unknown.body")}</p>
-          <button
-            className="btn btn--primary btn--block"
-            autoFocus
-            onClick={() => {
-              setNote(null);
-              setPhase("starting");
-              setResult(null);
-            }}
-          >
-            {qt("q.unknown.cta")}
-          </button>
-        </section>
-      )}
+      {result && <Miss code={result.code} onAgain={() => {
+        setNote(null);
+        setPhase("starting");
+        setResult(null);
+      }} />}
     </main>
+  );
+}
+
+/** A code that did not open a quiz, said where the camera was: the reason, and a way to scan again. */
+function Miss({ code, onAgain }: { code?: ApiErrorCode; onAgain: () => void }) {
+  const failure = useJoinFailureCopy()(code);
+  const { t } = useQT();
+  const Icon = FAILURE_ICON[failure.kind];
+  return (
+    <section className="scan-miss glass" role="alert">
+      <span className="scan-miss__badge" aria-hidden="true">
+        <Icon size={32} color="var(--yellow)" />
+      </span>
+      <h2 className="scan-miss__title">{failure.title}</h2>
+      <p className="scan-miss__body">{failure.body}</p>
+      <button className="btn btn--primary btn--block" autoFocus onClick={onAgain}>
+        {t("q.fail.scan")}
+      </button>
+    </section>
   );
 }

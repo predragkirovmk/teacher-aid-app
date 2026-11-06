@@ -12,9 +12,12 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
 
 # next.js
 /.next/
+/.next-live/
 /out/
 
 # production
@@ -49,3 +52,10 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /blob-report/
+
+# SEO/GEO skill runtimes (created by scripts/seo-skills-setup.sh)
+/.claude/skills/*/.venv/
+/.claude/skills/*/.venv.*/
+/.claude/skills/seo/ms-playwright/
+/.claude/skills/seo/runtime-state.json
+__pycache__/

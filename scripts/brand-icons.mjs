@@ -66,6 +66,9 @@ png("public/app-icons/icon-192.png", 192, 192, art(192, 192, 112.5, { radius: 42
 png("public/app-icons/icon-512.png", 512, 512, art(512, 512, 300, { radius: 114.53 }));
 png("public/app-icons/icon-maskable-512.png", 512, 512, art(512, 512, 236));
 
+// The small mark in the status bar of an Android phone beside a notification: white on transparent, because only its shape is used.
+png("public/app-icons/badge-96.png", 96, 96, art(96, 96, 76, { ground: null, logo: WHITE }));
+
 // iPhone launch screens: the logo at a quarter of the width.
 for (const f of readdirSync("public/app-launch")) {
   const m = f.match(/^launch-(\d+)x(\d+)\.png$/);
