@@ -87,3 +87,21 @@ test.describe("the live lesson", () => {
 });
 
 void panel; void teach; void T0;
+
+test.describe("reduced motion", () => {
+  test.use({ reducedMotion: "reduce" });
+  test("nothing animates or eases: the drawer, the dialogs, the waiting dots and the switches all stand still", async ({ page }) => {
+    await page.goto("/teacher/classes/course-ii-4");
+    await page.waitForLoadState("load");
+    const moving = await page.evaluate(() =>
+      [...document.querySelectorAll("*")]
+        .filter((e) => {
+          const cs = getComputedStyle(e);
+          const longest = (v: string) => Math.max(...v.split(",").map((d) => parseFloat(d) * (d.trim().endsWith("ms") ? 1 : 1000)));
+          return longest(cs.transitionDuration) > 1 || longest(cs.animationDuration) > 1;
+        })
+        .map((e) => e.className?.toString().split(" ")[0]),
+    );
+    expect(moving).toEqual([]);
+  });
+});

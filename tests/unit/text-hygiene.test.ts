@@ -43,7 +43,7 @@ describe("the strings of the app", () => {
   }
 
   test("the English strings hold no Cyrillic letter, except where Macedonian is the point", () => {
-    const allowed = new Set(["lang.mk", "signin.lang.mk", "help.projector.win.2", "att.hint", "att.copied"]);
+    const allowed = new Set(["lang.mk", "signin.lang.mk", "help.projector.win.2", "att.hint.school", "att.hint.uni", "att.copied"]);
     for (const [key, text] of entries("en")) {
       if (allowed.has(key)) continue;
       expect(CYRILLIC.test(text), `en ${key}: ${text}`).toBe(false);
