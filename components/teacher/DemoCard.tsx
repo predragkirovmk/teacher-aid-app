@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowCounterClockwiseIcon, BroadcastIcon, CheckCircleIcon, XCircleIcon } from "@phosphor-icons/react";
+import { ArrowCounterClockwiseIcon, BroadcastIcon, CheckCircleIcon } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { demo } from "@/lib/teacher/api/client";
 import { useOpenSession } from "@/lib/teacher/api/hooks";
@@ -69,25 +69,29 @@ export function DemoCard() {
   );
 }
 
-/** One button that turns "a lesson is running" on, or, while one is, off. */
+/**
+ * One button that shows a lesson that is running, for trying Today with one. It has no button to close it: a lesson is closed by End, from its page,
+ * the band on Today or the reminder on any page, the same as a real one.
+ */
 function DemoRun({ onDone }: { onDone: (message: Key) => void }) {
   const { t } = useT();
   const running = useOpenSession().data?.session != null;
   return (
     <div className="demo__run">
-      <p>{t("demo.run.hint")}</p>
-      <button
-        type="button"
-        className="btn btn--secondary"
-        onClick={() => {
-          if (running) demo?.closeRunning();
-          else demo?.simulateRunning();
-          onDone(running ? "demo.close.done" : "demo.run.done");
-        }}
-      >
-        {running ? <XCircleIcon size={24} aria-hidden="true" /> : <BroadcastIcon size={24} aria-hidden="true" />}
-        {running ? t("demo.close") : t("demo.run")}
-      </button>
+      <p>{t(running ? "demo.run.running" : "demo.run.hint")}</p>
+      {!running && (
+        <button
+          type="button"
+          className="btn btn--secondary"
+          onClick={() => {
+            demo?.simulateRunning();
+            onDone("demo.run.done");
+          }}
+        >
+          <BroadcastIcon size={24} aria-hidden="true" />
+          {t("demo.run")}
+        </button>
+      )}
     </div>
   );
 }

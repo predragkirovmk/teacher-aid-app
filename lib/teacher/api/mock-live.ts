@@ -2,6 +2,7 @@ import { hasJoined, recentNames, TOKEN_ROTATE_MS } from "../live";
 import { hashSeed, rng } from "./mock-data";
 import type { MockMark } from "./mock-state";
 import { currentQuestion } from "../questions";
+import { missedOfQuestions } from "../review";
 import type { ChannelEvent, ClassViewSnapshot, ConsoleQuestion, ConsoleSnapshot, ConsoleStudent, JoinToken, PublicQuestion, QuestionStatus, TeacherChannel } from "./types";
 
 /**
@@ -191,7 +192,11 @@ export function classViewOf(c: ConsoleSnapshot): ClassViewSnapshot {
         : null,
     skipped: shown?.status === "skipped",
     board: c.board,
-    review: null,
+    // The most-missed questions and the questions the class wrote, text only: this snapshot is the projector's and no student reads it (BR-ANON-06).
+    review:
+      c.session.state === "review"
+        ? { most_missed: missedOfQuestions(c.questions, c.session.lesson.title), anon_questions: c.anon_questions.map(({ id, text }) => ({ id, text })) }
+        : null,
   };
 }
 
@@ -205,6 +210,15 @@ export function eventsBetween(prev: ConsoleSnapshot, next: ConsoleSnapshot, chan
   const at = { channel, server_now: next.server_now };
   const out: ChannelEvent[] = [];
   if (next.session.state !== prev.session.state) out.push({ type: "state.changed", state: next.session.state, ...at });
+  // The review's text goes to the projector's channel and the console's, and to no channel a student reads (BR-ANON-06, AC-ANON-09).
+  if (CLASS_CHANNELS(channel) && next.session.state === "review" && prev.session.state !== "review") {
+    out.push({
+      type: "review.ready",
+      most_missed: missedOfQuestions(next.questions, next.session.lesson.title),
+      anon_questions: next.anon_questions.map(({ id, text }) => ({ id, text })),
+      ...at,
+    });
+  }
 
   const was = prev.students.filter(hasJoined).length;
   const now = next.students.filter(hasJoined).length;

@@ -147,6 +147,8 @@ export type LessonSummary = {
   copied_from: { lesson_id: Id; owner_name: string } | null;
   created_at: IsoTime;
   updated_at: IsoTime;
+  /** PROPOSED: the latest session of this lesson that has ended, so a held lesson leads to its end page; null when it has none. */
+  last_session_id: Id | null;
 };
 
 /** GET /lessons/{id}: the current version's content. */
@@ -400,9 +402,19 @@ export type MissedQuestion = {
   prompt: string;
   kind: QuestionKind;
   topic: string;
-  /** Wrong or unanswered, among the students who joined. */
+  /** Wrong or unanswered, among the students the question was put to (one who joined after it was sent is left out, BR-PRA-07). */
   missed: number;
   joined: number;
+  /**
+   * PROPOSED, the four fields below: the review says the right answer and why (FR-REV-01), on the projector too, and the spec's shape has
+   * none of it. `correct_answer` is in the encoding of 3.2 (the option's index, "true" or "false", the number).
+   */
+  correct_answer: string;
+  explanation: string | null;
+  /** The choices of a multiple-choice question, so the answer can be said in words; null for the other kinds. */
+  options: string[] | null;
+  /** The unit of a numeric answer. */
+  unit: string | null;
 };
 
 /** What the class view shows in review: no names anywhere (BR-PRIV-01). */

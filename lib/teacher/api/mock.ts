@@ -9,8 +9,10 @@ import {
   TYPED_TEXT_MIN_CHARS,
 } from "../lessons";
 import { browserImageEnv, checkImage, downscaleImage, UnreadableImage, type ImageEnv } from "../images";
+import { tallyOf } from "../attendance";
 import { NO_DEVICE_REASONS, nextState } from "../live";
-import { QUESTIONS_MAX } from "../scoring";
+import { missedOfQuestions, rankMissed } from "../review";
+import { countMissed, QUESTIONS_MAX, selectPracticeQuestions } from "../scoring";
 import type { SchoolType } from "../store";
 import type { CallOptions, ChannelStatus, DemoControls, SettledPromise, TeacherApi, Unsubscribe } from "./client";
 import { isProvider } from "../signin";
@@ -30,11 +32,15 @@ import { GENERATE_MS, latestUnsaved, REFINE_MS, startJob, statusOf, toSummary, t
 import { classViewOf, consoleStudents, eventsBetween, hasJoinedAt, planClass, tokenAt, type SimInput } from "./mock-live";
 import { anonQuestions, DEMO_NUDGE_AFTER_MS, nudgeAt, showQuestions, withQuestions, type PlayInput, type QuestionRun } from "./mock-questions";
 import { adhocQuestion } from "./mock-adhoc";
+import { endedFrom, practiceResultsAt } from "./mock-end";
 import { demoProviderUrl, isOffline } from "./mock-session";
 import { overlayOf, withOverlay, type DemoDraft, type DemoRun, type DemoSession, type MockState, type Overlay, type Persona } from "./mock-state";
 import type {
+  AnonQuestionItem,
+  AttendanceRow,
   AttendanceTally,
   ChannelEvent,
+  ClassViewSnapshot,
   ConsoleSnapshot,
   CourseDashboard,
   CourseSummary,
@@ -48,10 +54,12 @@ import type {
   LessonSummary,
   LibraryItem,
   Me,
+  MissedQuestion,
   NoDeviceRequest,
   OpenSession,
   PracticeResults,
   PracticeSetSummary,
+  SessionReview,
   AdhocRequest,
   Question,
   SessionRef,
@@ -80,8 +88,8 @@ import type {
  *
  * The live lesson (the console, the class view, realtime) is played from the clock alone (mock-live.ts): the class that joins, who is
  * late, who loses the connection and the code are worked out from when the lesson began and what time it is, so two windows agree and a
- * reload finds the lesson where it was. What is still not built (firing questions, ending) answers `not_implemented`. A teacher has one
- * open lesson at a time; ending it is step 10's, so until then the demo closes it from Settings (`MockDemo`).
+ * reload finds the lesson where it was. A teacher has one open lesson at a time; End (mock-end.ts) writes the register, keeps what the class missed and
+ * what it wrote, and the lesson is then read from that record, with its practice set done over time by the same clock.
  */
 
 /** What the mock reads and writes: the saved state, the demo school the app is on, the clock. */
@@ -99,8 +107,8 @@ export type MockSource = {
   subscribe(listener: () => void): Unsubscribe;
 };
 
-/** What only the mock can do, for the demo's Settings: show a lesson that is running, and close it. */
-export type MockDemo = Pick<DemoControls, "simulateRunning" | "closeRunning">;
+/** What only the mock can do, for the demo's Settings: show a lesson that is running. It is closed by End, like any other. */
+export type MockDemo = Pick<DemoControls, "simulateRunning">;
 
 /** A source that keeps everything in memory: the server render's, and the tests'. */
 export function memorySource(
@@ -155,8 +163,6 @@ const run = <T>(fn: () => T): SettledPromise<T> => {
     return fail(toApiError(e));
   }
 };
-
-const notImplemented = <T>(): SettledPromise<T> => fail(new ApiError("not_implemented"));
 
 const iso = (ms: number) => new Date(ms).toISOString();
 const notFound = () => new ApiError("not_found", { status: 404 });
@@ -280,6 +286,7 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
         version: 1,
         times_run: 0,
         last_run_at: null,
+        last_session_id: null,
         copied_from: null,
         created_at: iso(created),
         updated_at: iso(created),
@@ -291,20 +298,20 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
     });
   };
 
-  /** How often and when a lesson was run, from the history. */
-  const withRuns = (world: World, lesson: Lesson): Lesson => {
-    const runs = world.courses.flatMap((course) => course.sessions).filter((s) => s.lesson_id === lesson.id);
-    return {
-      ...lesson,
-      times_run: runs.length,
-      last_run_at: runs.length ? iso(Math.max(...runs.map((s) => s.ended_at))) : null,
-    };
+  /** How often and when a lesson was run, from the history and from the lessons ended in the demo, and the latest of them for the way back to its end page. */
+  const withRuns = (c: Ctx, lesson: Lesson): Lesson => {
+    const runs = [
+      ...c.world.courses.flatMap((course) => course.sessions).filter((s) => s.lesson_id === lesson.id).map((s) => ({ id: s.id, at: s.ended_at })),
+      ...c.overlay.ended.filter((e) => e.lesson.id === lesson.id).map((e) => ({ id: e.id, at: Date.parse(e.ended_at) })),
+    ];
+    const latest = runs.reduce<(typeof runs)[number] | null>((best, r) => (best === null || r.at >= best.at ? r : best), null);
+    return { ...lesson, times_run: runs.length, last_run_at: latest ? iso(latest.at) : null, last_session_id: latest ? latest.id : null };
   };
 
   const lessonsOf = (c: Ctx): Lesson[] => {
     const changed = new Set(c.overlay.lessons.map((l) => l.id));
     const kept = seededLessons(c).filter((l) => !c.overlay.deleted.includes(l.id) && !changed.has(l.id));
-    return [...kept, ...c.overlay.lessons].map((l) => withRuns(c.world, l)).sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    return [...kept, ...c.overlay.lessons].map((l) => withRuns(c, l)).sort((a, b) => b.updated_at.localeCompare(a.updated_at));
   };
 
   const summary = (l: Lesson): LessonSummary => ({
@@ -316,6 +323,7 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
     version: l.version,
     times_run: l.times_run,
     last_run_at: l.last_run_at,
+    last_session_id: l.last_session_id,
     copied_from: l.copied_from,
     created_at: l.created_at,
     updated_at: l.updated_at,
@@ -339,6 +347,7 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
       version: 1,
       times_run: 0,
       last_run_at: null,
+      last_session_id: null,
       copied_from: null,
       created_at: saved,
       updated_at: saved,
@@ -372,14 +381,15 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
   // ---- Courses and the dashboard ----
 
   const courseSummary = (c: Ctx, course: SeedCourse): CourseSummary => {
-    const last = course.sessions.length ? Math.max(...course.sessions.map((s) => s.ended_at)) : null;
+    const finished = [...course.sessions.map((s) => s.ended_at), ...c.overlay.ended.filter((e) => e.course_id === course.course_id).map((e) => Date.parse(e.ended_at))];
+    const last = finished.length ? Math.max(...finished) : null;
     return {
       id: course.course_id,
       subject: course.def.subject,
       class: { id: course.class_id, name: course.def.name, year: course.def.year },
       student_count: course.students.length,
       speed_bonus_on: c.overlay.speed_bonus[course.course_id] ?? true,
-      lessons_run: course.sessions.length,
+      lessons_run: finished.length,
       last_session_at: last === null ? null : iso(last),
     };
   };
@@ -631,6 +641,141 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
     return q;
   };
 
+  // ---- Lessons that have ended ----
+
+  /**
+   * A lesson that has ended, as the review, the end page and the practice set read it: one the teacher ended in the demo (frozen when End was pressed), or one of
+   * the school's history. `practice` is the set that was sent for it, with who has done it at `now`, or null when none was sent.
+   */
+  type EndedView = {
+    session: SessionRef;
+    class_name: string;
+    subject_name: string;
+    attendance: AttendanceRow[];
+    most_missed: MissedQuestion[];
+    anon_questions: AnonQuestionItem[];
+    practice: ((now: number) => PracticeResults) | null;
+    course: SeedCourse;
+  };
+
+  const endedRef = (e: { id: string; course_id: string; lesson: SessionRef["lesson"]; started_at: string; ended_at: string }): SessionRef => ({
+    id: e.id,
+    course_id: e.course_id,
+    lesson: e.lesson,
+    state: "ended",
+    started_at: e.started_at,
+    ended_at: e.ended_at,
+  });
+
+  const endedOf = (c: Ctx, sessionId: Id): EndedView | null => {
+    const frozen = c.overlay.ended.find((e) => e.id === sessionId);
+    if (frozen) {
+      const course = c.world.courses.find((x) => x.course_id === frozen.course_id);
+      if (!course) return null;
+      const session = endedRef(frozen);
+      const record = c.overlay.practice[sessionId];
+      return {
+        session,
+        class_name: course.def.name,
+        subject_name: course.def.subject.name,
+        attendance: frozen.attendance,
+        most_missed: frozen.most_missed,
+        anon_questions: frozen.anon_questions,
+        practice: record
+          ? (now) => ({
+              practice_set: { id: record.id, session_id: sessionId, course_id: course.course_id, created_at: record.created_at, question_count: record.question_ids.length },
+              students: practiceResultsAt(record, frozen.attendance, now),
+            })
+          : null,
+        course,
+      };
+    }
+    for (const course of c.world.courses) {
+      const seeded = course.sessions.find((x) => x.id === sessionId);
+      if (!seeded) continue;
+      const names = new Map(course.students.map((st) => [st.id, st.full_name]));
+      const attendance: AttendanceRow[] = seeded.marks.map((m) => ({
+        student_id: m.student_id,
+        full_name: names.get(m.student_id) ?? "",
+        status: m.status,
+        joined_at: m.joined_at === null ? null : iso(m.joined_at),
+        no_device_reason: m.reason,
+        marked_by: m.marked_by,
+      }));
+      const right = new Set(seeded.answers.filter((a) => a.correct).map((a) => `${a.student_id}/${a.question_id}`));
+      const missed = seeded.questions
+        .map((sq, order): MissedQuestion | null => {
+          if (sq.skipped) return null;
+          const { missed: wrong, joined } = countMissed(sq.fired_at, seeded.marks.map((m) => ({ joined_at: m.joined_at, right: right.has(`${m.student_id}/${sq.id}`) })));
+          const q = sq.question;
+          return {
+            session_question_id: sq.id,
+            order,
+            prompt: q.prompt,
+            kind: q.kind,
+            topic: q.topic.trim() || seeded.lesson_title,
+            missed: wrong,
+            joined,
+            correct_answer: q.correct,
+            explanation: q.explanation,
+            options: q.kind === "multiple_choice" ? q.options : null,
+            unit: q.kind === "numeric" ? q.unit : null,
+          };
+        })
+        .filter((m): m is MissedQuestion => m !== null);
+      const p = seeded.practice;
+      const record = c.overlay.practice[sessionId];
+      return {
+        session: endedRef({ id: seeded.id, course_id: seeded.course_id, lesson: { id: seeded.lesson_id, title: seeded.lesson_title, version: 1 }, started_at: iso(seeded.started_at), ended_at: iso(seeded.ended_at) }),
+        class_name: course.def.name,
+        subject_name: course.def.subject.name,
+        attendance,
+        most_missed: rankMissed(missed),
+        anon_questions: seeded.anon.map((a) => ({
+          id: a.id,
+          text: a.text,
+          sender: { id: a.sender_id, name: names.get(a.sender_id) ?? "" },
+          created_at: iso(a.created_at),
+          answered_at: a.answered_at === null ? null : iso(a.answered_at),
+        })),
+        practice: p
+          ? () => ({
+              practice_set: practiceSummary(course, seeded, p),
+              students: p.results.map((r) => ({ student_id: r.student_id, full_name: names.get(r.student_id) ?? "", score: r.score, completed_at: r.completed_at === null ? null : iso(r.completed_at) })),
+            })
+          : record
+            ? (now) => ({
+                practice_set: { id: record.id, session_id: sessionId, course_id: course.course_id, created_at: record.created_at, question_count: record.question_ids.length },
+                students: practiceResultsAt(record, attendance, now),
+              })
+            : null,
+        course,
+      };
+    }
+    return null;
+  };
+
+  /** The projector's snapshot of a lesson that has ended: it says the lesson is over and holds nothing a name could leak through. */
+  const endedClassView = (c: Ctx, e: EndedView): ClassViewSnapshot => ({
+    server_now: iso(c.now),
+    session: {
+      id: e.session.id,
+      state: "ended",
+      lesson_title: e.session.lesson.title,
+      class_name: e.class_name,
+      subject_name: e.subject_name,
+      joined_count: e.attendance.filter((a) => a.status === "present" || a.status === "late").length,
+      recent: [],
+    },
+    join: null,
+    question: null,
+    progress: null,
+    reveal: null,
+    skipped: false,
+    board: [],
+    review: null,
+  });
+
   /** The stream of a lesson: what changed since it last looked (mock-live.ts), as often as the tick, and at once when another window changed it. */
   const stream = (channel: TeacherChannel, sessionId: Id, onEvent: (e: ChannelEvent) => void, onStatus?: (s: ChannelStatus) => void): Unsubscribe => {
     let previous: ConsoleSnapshot | null = null;
@@ -664,6 +809,8 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
         return;
       }
       if (next && previous) for (const event of eventsBetween(previous, next, channel)) onEvent(event);
+      // The lesson was open and is not any more: it ended (here or in another window), and the screens that were showing it are told once.
+      else if (!next && previous && endedOf(ctx(), sessionId)) onEvent({ type: "state.changed", state: "ended", channel, server_now: iso(source.now()) });
       previous = next;
     };
     onStatus?.("connecting");
@@ -957,6 +1104,7 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
           version: 1,
           times_run: 0,
           last_run_at: null,
+          last_session_id: null,
           copied_from: null,
           created_at: iso(c.now),
           updated_at: iso(c.now),
@@ -1021,6 +1169,7 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
           version: current.version + 1,
           times_run: current.times_run,
           last_run_at: current.last_run_at,
+          last_session_id: current.last_session_id,
           copied_from: current.copied_from,
           created_at: current.created_at,
           updated_at: iso(c.now),
@@ -1032,7 +1181,7 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
           lessons: [...c.overlay.lessons.filter((l) => l.id !== lessonId), next],
           drafts: draft ? c.overlay.drafts.map((d) => (d.id === draft.id ? { ...d, consumed_at: iso(c.now) } : d)) : c.overlay.drafts,
         });
-        return withRuns(c.world, next);
+        return withRuns(c, next);
       }),
     deleteLesson: (lessonId) =>
       run(() => {
@@ -1064,6 +1213,7 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
           version: 1,
           times_run: 0,
           last_run_at: null,
+          last_session_id: null,
           copied_from: { lesson_id: original.id, owner_name: c.world.def.colleagues[entry.colleague].name },
           created_at: iso(c.now),
           updated_at: iso(c.now),
@@ -1110,6 +1260,8 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
       }),
     getClassView: (sessionId) =>
       run(() => {
+        const ended = endedOf(ctx(), sessionId);
+        if (ended) return endedClassView(ctx(), ended);
         const { c, s, course } = liveOf(sessionId);
         return classViewOf(consoleOf(c, s, course));
       }),
@@ -1120,6 +1272,8 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
         if (request?.to !== "teaching" && request?.to !== "review") throw invalid();
         // Forward only, one state at a time, and nothing moves a lesson that has ended (4.1).
         if (nextState(s.state) !== request.to) throw new ApiError("invalid_state", { status: 409 });
+        // The review is not for a lesson with a question still open: it is shown or skipped first (4.2).
+        if (request.to === "review" && consoleOf(c, s, course).questions.some((q) => q.status === "open")) throw new ApiError("question_open", { status: 409 });
         const next: DemoSession = { ...s, state: request.to, teaching_at: request.to === "teaching" ? iso(c.now) : s.teaching_at };
         save(c, { ...c.overlay, session: next });
         return consoleOf(c, next, course);
@@ -1207,29 +1361,53 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
         save(c, { ...c.overlay, session: next });
         return { ...item, answered_at: answered ? iso(c.now) : null };
       }),
-    endSession: () => notImplemented(),
-    getReview: () => notImplemented(),
-    createPracticeSet: () => notImplemented(),
+    endSession: (sessionId) =>
+      run(() => {
+        if (isOffline()) throw new ApiError("network");
+        // A window that ends a lesson another window has already ended is told so, and nothing happens (EC-SES-09).
+        if (endedOf(ctx(), sessionId)) throw new ApiError("invalid_state", { status: 409 });
+        const { c, s, course } = liveOf(sessionId);
+        const ended = endedFrom(consoleOf(c, s, course), iso(c.now));
+        save(c, { ...c.overlay, session: null, ended: [...c.overlay.ended, ended] });
+        return { server_now: iso(c.now), session: endedRef(ended), attendance: ended.attendance, tally: tallyOf(ended.attendance), most_missed: ended.most_missed };
+      }),
+    getReview: (sessionId) =>
+      run((): SessionReview => {
+        const c = ctx();
+        const ended = endedOf(c, sessionId);
+        if (ended) return { server_now: iso(c.now), session: ended.session, most_missed: ended.most_missed, anon_questions: ended.anon_questions, attendance: ended.attendance };
+        const { s, course } = liveOf(sessionId);
+        // The review belongs to the end of the lesson: before the lesson reaches it there is nothing to read.
+        if (s.state !== "review") throw new ApiError("invalid_state", { status: 409 });
+        const snapshot = consoleOf(c, s, course);
+        return { server_now: iso(c.now), session: snapshot.session, most_missed: missedOfQuestions(snapshot.questions, s.lesson.title), anon_questions: snapshot.anon_questions, attendance: null };
+      }),
+    createPracticeSet: (sessionId) =>
+      run(() => {
+        if (isOffline()) throw new ApiError("network");
+        const c = ctx();
+        const ended = endedOf(c, sessionId);
+        // Only after End (F-12).
+        if (!ended) {
+          liveOf(sessionId);
+          throw new ApiError("invalid_state", { status: 409 });
+        }
+        // One set per session: asking again gives the one that was made.
+        const made = ended.practice?.(c.now);
+        if (made) return { practice_set: made.practice_set };
+        const picked = selectPracticeQuestions(ended.most_missed.map((m) => ({ id: m.session_question_id, order: m.order, skipped: false, joined: m.joined, missed: m.missed })));
+        if (picked.length === 0) return { practice_set: null };
+        const record = { id: `pr-${sessionId}`, created_at: iso(c.now), question_ids: picked };
+        save(c, { ...c.overlay, practice: { ...c.overlay.practice, [sessionId]: record } });
+        return { practice_set: { id: record.id, session_id: sessionId, course_id: ended.session.course_id, created_at: record.created_at, question_count: picked.length } };
+      }),
     getPracticeResults: (sessionId) =>
       run(() => {
         const c = ctx();
-        for (const course of c.world.courses) {
-          const session = course.sessions.find((s) => s.id === sessionId);
-          if (!session?.practice) continue;
-          const names = new Map(course.students.map((s) => [s.id, s.full_name]));
-          const p = session.practice;
-          const results: PracticeResults = {
-            practice_set: practiceSummary(course, session, p),
-            students: p.results.map((r) => ({
-              student_id: r.student_id,
-              full_name: names.get(r.student_id) ?? "",
-              score: r.score,
-              completed_at: r.completed_at === null ? null : iso(r.completed_at),
-            })),
-          };
-          return results;
-        }
-        throw notFound();
+        const ended = endedOf(c, sessionId);
+        const results = ended?.practice?.(c.now);
+        if (!results) throw notFound();
+        return results;
       }),
 
     openChannel: (channel, { onEvent, onStatus }) => stream(channel, channel.split(".")[1], onEvent, onStatus),
@@ -1263,10 +1441,6 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
         anon_answered: {},
       };
       save(c, { ...c.overlay, counter: c.overlay.counter + 1, session });
-    },
-    closeRunning: () => {
-      const c = ctx();
-      if (c.overlay.session) save(c, { ...c.overlay, session: null });
     },
   };
 

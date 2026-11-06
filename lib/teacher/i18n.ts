@@ -396,8 +396,7 @@ const en = {
   "demo.run": "Pretend a lesson is running",
   "demo.run.hint": "Shows how Today looks while a lesson is running, without going through the start window.",
   "demo.run.done": "Done. Today now shows a lesson that is running.",
-  "demo.close": "Close the demo lesson",
-  "demo.close.done": "Done. The demo lesson is closed.",
+  "demo.run.running": "A lesson is running. Close it with “End the lesson”, on its page or on Today, as you would a real one.",
 
   "help.title": "Help",
   "help.what": "Answers to the most common questions.",
@@ -1183,8 +1182,7 @@ const mk: Record<Key, Entry> = {
   "demo.run": "Симулирај час во тек",
   "demo.run.hint": "Покажува како изгледа Денес додека трае час, без да минувате низ прозорецот за почеток.",
   "demo.run.done": "Готово. На Денес сега се гледа час во тек.",
-  "demo.close": "Затвори го демо часот",
-  "demo.close.done": "Готово. Демо часот е затворен.",
+  "demo.run.running": "Еден час е во тек. Затворете го со „Заврши го часот“, на неговата страница или на Денес, како вистински час.",
 
   "help.title": "Помош",
   "help.what": "Одговори на најчестите прашања.",

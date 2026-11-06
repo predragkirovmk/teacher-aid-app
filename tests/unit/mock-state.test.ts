@@ -13,6 +13,7 @@ const lesson = (patch: Partial<Lesson> = {}): Lesson => {
   const questions = bankQuestions(bank, "l-n1");
   return {
     id: "l-n1",
+    last_session_id: null,
     title: bank.title,
     subject: { id: "math", name: "Математика" },
     year: 3,

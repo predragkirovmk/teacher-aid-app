@@ -3,6 +3,7 @@ import type { LessonSummary } from "@/lib/teacher/api/types";
 import { preparedLessons, shownOnToday, TODAY_LESSONS_MAX } from "@/lib/teacher/today";
 
 const lesson = (id: string, updated: string, times_run = 0): LessonSummary => ({
+  last_session_id: null,
   id,
   title: `Лекција ${id}`,
   subject: { id: "math", name: "Математика" },

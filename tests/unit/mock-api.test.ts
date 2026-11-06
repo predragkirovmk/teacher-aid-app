@@ -882,13 +882,10 @@ describe("the live lesson", () => {
 });
 
 describe("what is not built yet", () => {
-  test("ending, the review and the practice set answer not_implemented", async () => {
-    const calls: Promise<unknown>[] = [
-      api.endSession("s"),
-      api.getReview("s"),
-      api.createPracticeSet("s"),
-    ];
-    for (const call of calls) expect((await rejection(call)).code).toBe("not_implemented");
+  test("a lesson that is not the teacher's is not found, ended or reviewed", async () => {
+    for (const call of [api.endSession("s"), api.getReview("s"), api.createPracticeSet("s"), api.getPracticeResults("s")]) {
+      expect((await rejection(call)).code).toBe("not_found");
+    }
   });
 
   test("who did a practice set is read from the history", async () => {
@@ -1023,9 +1020,9 @@ describe("starting a lesson", () => {
     const [course] = await api.listCourses();
     expect((await rejection(mock.api.createSession({ lesson_id: lesson.id, course_id: course.id }))).code).toBe("session_open");
 
-    mock.demo.closeRunning();
+    await mock.api.endSession(id);
     expect((await mock.api.getOpenSession()).session).toBeNull();
-    // Closed, it is a lesson that can be started again.
+    // Ended, it is a lesson that can be started again.
     expect((await mock.api.createSession({ lesson_id: lesson.id, course_id: course.id })).session.state).toBe("lobby");
   });
 

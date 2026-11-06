@@ -1,7 +1,7 @@
 import { isDraftQuestion, isObject, isText, isValidContent, isValidQuestion } from "../lessons";
 import { NO_DEVICE_REASONS } from "../live";
 import type { SchoolType } from "../store";
-import type { DraftQuestion, Lesson, NoDeviceReason, Question, Refinement, SessionState, SourceKind, Subject } from "./types";
+import type { AnonQuestionItem, AttendanceRow, DraftQuestion, Lesson, MissedQuestion, NoDeviceReason, Question, Refinement, SessionState, SourceKind, Subject } from "./types";
 
 /**
  * What the mock adapter keeps in the browser. The demo school and its history are worked out from a
@@ -59,7 +59,7 @@ export type MockMark = { student_id: string; reason: NoDeviceReason; at: string 
 /**
  * The lesson the teacher is running in the demo. A teacher has one open lesson at a time. The class that joins is not kept: it is worked
  * out from these and the clock (mock-live.ts), so only what the teacher did is saved: when the lesson began, when it was moved on from
- * the lobby, and who was marked present without a phone. Ending it is step 10's, so until then the demo closes it from Settings.
+ * the lobby, and who was marked present without a phone. Ending it moves it to `Overlay.ended`.
  */
 export type DemoSession = {
   id: string;
@@ -82,6 +82,26 @@ export type DemoSession = {
 /** What happened to one question of the lesson: the session question's id and the times, ISO 8601. */
 export type DemoRun = { id: string; fired_at: string | null; skipped_at: string | null; revealed_at: string | null };
 
+/**
+ * A lesson the teacher ended in the demo, as it was at that moment: the register, the questions the class missed (the only ones the review
+ * and the practice set are made of), and the questions the class wrote. Frozen when End is pressed, because the class that was played from the clock
+ * stops with the lesson.
+ */
+export type EndedSession = {
+  id: string;
+  course_id: string;
+  lesson: { id: string; title: string; version: number };
+  started_at: string;
+  ended_at: string;
+  attendance: AttendanceRow[];
+  /** Worst first; a question nobody missed, one skipped and one never sent are not here. */
+  most_missed: MissedQuestion[];
+  anon_questions: AnonQuestionItem[];
+};
+
+/** A practice set the teacher sent in the demo: when, and which questions (their session question ids, in lesson order). */
+export type PracticeRecord = { id: string; created_at: string; question_ids: string[] };
+
 export type Overlay = {
   first_run_done: boolean;
   /** The speed bonus switch, by course id. */
@@ -94,6 +114,10 @@ export type Overlay = {
   sources: DemoSource[];
   /** The open lesson, if there is one. */
   session: DemoSession | null;
+  /** The lessons ended in the demo, oldest first. */
+  ended: EndedSession[];
+  /** The practice sets sent in the demo, by session id. */
+  practice: Record<string, PracticeRecord>;
   /** A school where no colleague has saved a lesson yet: the library is empty. Only a test or a screenshot sets it. */
   library_empty: boolean;
   /** Counts the ids handed out, so they never repeat. */
@@ -126,6 +150,8 @@ export const emptyOverlay = (persona: Persona = "veteran"): Overlay => ({
   drafts: [],
   sources: [],
   session: null,
+  ended: [],
+  practice: {},
   library_empty: false,
   counter: 0,
 });
@@ -258,6 +284,25 @@ function sessionOf(saved: unknown): DemoSession | null {
   return isDemoSession(filled) && filled.state !== "ended" ? filled : null;
 }
 
+const isEnded = (v: unknown): v is EndedSession =>
+  isObject(v) &&
+  isText(v.id) &&
+  isText(v.course_id) &&
+  isObject(v.lesson) &&
+  isText(v.lesson.id) &&
+  isText(v.lesson.title) &&
+  isIso(v.started_at) &&
+  isIso(v.ended_at) &&
+  Array.isArray(v.attendance) &&
+  v.attendance.every((a) => isObject(a) && isText(a.student_id) && isText(a.full_name)) &&
+  Array.isArray(v.most_missed) &&
+  v.most_missed.every((m) => isObject(m) && isText(m.session_question_id) && isText(m.prompt)) &&
+  Array.isArray(v.anon_questions) &&
+  v.anon_questions.every((a) => isObject(a) && isText(a.id) && isText(a.text));
+
+const isPracticeRecord = (v: unknown): v is PracticeRecord =>
+  isObject(v) && isText(v.id) && isIso(v.created_at) && Array.isArray(v.question_ids) && v.question_ids.every(isText);
+
 function sanitizeOverlay(saved: unknown, persona: Persona = "veteran"): Overlay {
   const s = isObject(saved) ? saved : {};
   const base = emptyOverlay(persona);
@@ -272,6 +317,8 @@ function sanitizeOverlay(saved: unknown, persona: Persona = "veteran"): Overlay 
     // A source saved before jobs had a count of runs has had none.
     sources: Array.isArray(s.sources) ? s.sources.map((x) => (isObject(x) && x.runs === undefined ? { ...x, runs: 0 } : x)).filter(isSource) : base.sources,
     session: sessionOf(s.session) ?? base.session,
+    ended: Array.isArray(s.ended) ? s.ended.filter(isEnded) : base.ended,
+    practice: isObject(s.practice) ? Object.fromEntries(Object.entries(s.practice).filter((e): e is [string, PracticeRecord] => isPracticeRecord(e[1]))) : base.practice,
     library_empty: typeof s.library_empty === "boolean" ? s.library_empty : base.library_empty,
     counter: isCount(s.counter) ? s.counter : base.counter,
   };

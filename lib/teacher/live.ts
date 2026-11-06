@@ -274,7 +274,13 @@ export function applyClassEvent(snapshot: ClassViewSnapshot, event: ChannelEvent
   const asked = snapshot.question;
   switch (event.type) {
     case "state.changed":
+      // The lesson ended: the projector keeps nothing of it (no ranking, no review, no code) beyond the words that it is over.
+      if (event.state === "ended" && snapshot.session.state !== "ended") {
+        return { ...snapshot, session: { ...snapshot.session, state: "ended", recent: [] }, join: null, question: null, progress: null, reveal: null, skipped: false, board: [], review: null };
+      }
       return stateRank(event.state) > stateRank(snapshot.session.state) ? { ...snapshot, session: { ...snapshot.session, state: event.state } } : snapshot;
+    case "review.ready":
+      return { ...snapshot, review: { most_missed: event.most_missed, anon_questions: event.anon_questions } };
     case "join_token.rotated":
       return { ...snapshot, join: { token: event.token, short_code: event.short_code, valid_to: event.valid_to } };
     case "joined.count":

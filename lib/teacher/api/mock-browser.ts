@@ -136,10 +136,6 @@ export function createBrowserMock(): { api: TeacherApi; demo: DemoControls } {
         mock.demo.simulateRunning();
         source.changed();
       },
-      closeRunning: () => {
-        mock.demo.closeRunning();
-        source.changed();
-      },
     },
   };
 }

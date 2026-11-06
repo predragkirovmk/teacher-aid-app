@@ -126,3 +126,15 @@ export function selectPracticeQuestions(candidates: PracticeCandidate[]): Id[] {
     .sort((a, b) => a.order - b.order)
     .map((c) => c.id);
 }
+
+/** One student's result on one question: when they joined (null: never) and whether they answered it rightly. */
+export type StudentResult = { joined_at: number | null; right: boolean };
+
+/**
+ * BR-PRA-07 (the OPEN-08 reading): how many missed a question, among how many it was put to. A student who had not joined when it was sent
+ * (`fired_at` before `joined_at`, or never) is left out of both numbers, so a late joiner is neither "missed" nor in the share's denominator.
+ */
+export function countMissed(firedAt: number, results: readonly StudentResult[]): { missed: number; joined: number } {
+  const put = results.filter((r) => r.joined_at !== null && r.joined_at <= firedAt);
+  return { missed: put.filter((r) => !r.right).length, joined: put.length };
+}

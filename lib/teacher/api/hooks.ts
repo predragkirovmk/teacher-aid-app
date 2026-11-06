@@ -23,6 +23,10 @@ import {
 } from "./types";
 import type {
   AdhocRequest,
+  EndResult,
+  PracticeResults,
+  PracticeSetResult,
+  SessionReview,
   CourseDashboard,
   CoursePatch,
   CourseSummary,
@@ -278,9 +282,49 @@ export const skipQuestion = (sessionId: Id, sqId: Id): Promise<ConsoleSnapshot> 
 /** A quick question made on the spot, sent at once (FR-POP-04). */
 export const fireAdhoc = (sessionId: Id, request: AdhocRequest): Promise<ConsoleSnapshot> => control(sessionId, (a) => a.fireAdhoc(sessionId, request));
 
-/** Mark a student's question answered aloud, or take that back (FR-ANON-10). The console is read again for it. */
+/** Mark a student's question answered aloud, or take that back (FR-ANON-10). The console and the review are read again for it. */
 export async function setAnonAnswered(sessionId: Id, anonId: Id, answered: boolean): Promise<void> {
-  await change((a) => a.markAnonAnswered(sessionId, anonId, answered), [`console:${sessionId}`]);
+  await change((a) => a.markAnonAnswered(sessionId, anonId, answered), [`console:${sessionId}`, `review:${sessionId}`]);
+}
+
+/** The review of a lesson (FR-REV-03), and, once it has ended, its whole register. `enabled` waits until the lesson has reached the review. */
+export const useReview = (sessionId: Id, enabled = true): Query<SessionReview> => useQuery(`review:${sessionId}`, (a) => a.getReview(sessionId), enabled);
+
+/** The practice set of a lesson and who has done it (FR-PRA-10); `not_found` while none has been sent. It looks again every 30 seconds while the page is open. */
+export function usePracticeResults(sessionId: Id): Query<PracticeResults> {
+  const query = useQuery(`practice:${sessionId}`, (a) => a.getPracticeResults(sessionId));
+  const { refetch } = query;
+  useEffect(() => {
+    const timer = setInterval(refetch, 30_000);
+    return () => clearInterval(timer);
+  }, [refetch]);
+  return query;
+}
+
+/**
+ * End the lesson (F-10). On success the lesson is no longer the open one: the band and the reminder go, a console still showing it is told it ended, and the
+ * review is read afresh. A lesson another window already ended is `invalid_state`: it is as good as ended, the screens look again, and the answer is null.
+ */
+export async function endLesson(sessionId: Id): Promise<EndResult | null> {
+  try {
+    const result = await change((a) => a.endSession(sessionId));
+    seed("open-session", { server_now: result.server_now, session: null });
+    invalidate("console", "review", "class-view", "lessons", "courses");
+    return result;
+  } catch (e) {
+    if (toApiError(e).code === "invalid_state") {
+      invalidate("open-session", "console", "review", "class-view");
+      return null;
+    }
+    throw e;
+  }
+}
+
+/** Make the practice set (F-12). `practice_set` is null when nothing was missed (EC-PRA-07). */
+export async function sendPracticeSet(sessionId: Id): Promise<PracticeSetResult> {
+  const result = await change((a) => a.createPracticeSet(sessionId));
+  invalidate(`practice:${sessionId}`);
+  return result;
 }
 
 // ---- Who is signed in -----------------------------------------------------------------------------

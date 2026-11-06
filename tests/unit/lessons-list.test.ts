@@ -10,6 +10,7 @@ const PHYSICS: Subject = { id: "physics", name: "Физика" };
 const ART: Subject = { id: "art", name: "Ликовно" };
 
 const lesson = (id: string, updated: string, extra: Partial<LessonSummary> = {}): LessonSummary => ({
+  last_session_id: null,
   id,
   title: `Лекција ${id}`,
   subject: MATH,
