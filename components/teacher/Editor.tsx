@@ -146,6 +146,12 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
     if (content !== start.current) saver.current?.edit(content);
   }, [content]);
 
+  // What Save reads after it has waited for the draft: the screen as it is then, not as it was at the tap.
+  const latest = useRef({ content, raw });
+  useEffect(() => {
+    latest.current = { content, raw };
+  }, [content, raw]);
+
   // What a screen reader is told about saving: once that it is saved, and when it is not, never for every key.
   const spoken = useRef<Spoken>(null);
   useEffect(() => {
@@ -310,8 +316,9 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
       setSaving(false);
       return;
     }
-    const found = contentProblems(content, raw);
-    const lesson = found.length === 0 ? lessonOf(content, raw) : null;
+    const now = latest.current;
+    const found = contentProblems(now.content, now.raw);
+    const lesson = found.length === 0 ? lessonOf(now.content, now.raw) : null;
     if (!lesson) {
       setShowProblems(true);
       setSaving(false);
