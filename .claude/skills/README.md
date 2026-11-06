@@ -1,7 +1,8 @@
-# Vendored SEO and GEO skills
+# Vendored skills
 
-Two third-party Claude Code skill packs live here so that every Claude session on this repo
-(on a laptop or in the cloud) has `/seo` and `/geo` without installing anything.
+Third-party Claude Code skills live here so that every Claude session on this repo (on a
+laptop or in the cloud) has them without installing anything: the SEO and GEO packs below, and
+`/lemo-opuscar` for films ([its own section](#lemo-opuscar-films-made-in-code)).
 
 | Pack | Version | Skills | Licence |
 |---|---|---|---|
@@ -45,3 +46,29 @@ The full verdict, and what was built from it, is in the TeacherAid brain at
 
 Re-run `scripts/vendor-seo-skills.sh` against fresh clones of both repos, at the tag you want.
 Then review the diff.
+
+## Lemo-Opuscar: films made in code
+
+| Skill | Version | Licence |
+|---|---|---|
+| [lemo-opuscar](https://github.com/lemomo-ai/lemo-opuscar) | main at `bebbbe1` (2026-11-01) | MIT, `lemo-opuscar/LICENSE` |
+
+Directs and renders a short film (voice, music, animation, mix) in one of the library's 66
+styles. It is a copy of upstream `plugin/skills/lemo-opuscar/`, unchanged, plus the repo's
+`LICENSE`. It is the same skill the upstream plugin installs (`lemo-opuscar@lemolab`), but
+here it is called as `/lemo-opuscar`.
+
+- **The library is not vendored.** On first use the skill clones it (about 30 MB, sparse) into
+  `~/lemo-opuscar` and updates it on later runs. A cloud session downloads it again each time.
+- **Packages.** `sh .claude/skills/lemo-opuscar/scripts/setup.sh deps` installs the Node
+  packages, a headless Chromium and a Python venv, all inside `~/lemo-opuscar`. It takes a few
+  minutes the first time.
+- **System tools it needs:** Node 20+, Python 3.11+ (or uv) and **ffmpeg 7+**. The cloud
+  container ships ffmpeg 6.1, which is too old. Install a static ffmpeg 7 build before the first
+  render.
+- **Where films go.** Each film is a `<name>/` folder in the directory the session started
+  from. Don't commit film folders or renders to this repo. Move a finished film to wherever
+  pitch material lives.
+
+To update it, copy `plugin/skills/lemo-opuscar/` from a fresh clone over this folder, bump the
+commit above, and review the diff.
