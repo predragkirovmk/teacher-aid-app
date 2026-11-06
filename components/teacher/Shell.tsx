@@ -153,7 +153,7 @@ function Frame({ children }: { children: ReactNode }) {
         {reminder && <OpenLesson session={reminder} where="top" />}
       </header>
 
-      <div
+      <aside
         id="sidebar"
         ref={drawer}
         className="sidebar"
@@ -188,7 +188,7 @@ function Frame({ children }: { children: ReactNode }) {
             </li>
           </ul>
         </nav>
-      </div>
+      </aside>
       <div className="scrim" data-open={open} aria-hidden="true" onClick={() => setOpenAt(null)} />
 
       <main id="main" className="main" tabIndex={-1} inert={open}>

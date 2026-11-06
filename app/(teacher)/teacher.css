@@ -3282,7 +3282,7 @@ button {
 }
 .cvq__n {
   margin: 0;
-  font-size: max(1.5rem, calc(3.6 * var(--u)));
+  font-size: max(1.5rem, calc(4.2 * var(--u)));
   font-weight: 600;
 }
 .cvq__prompt {
@@ -3444,7 +3444,7 @@ button {
   line-height: 1;
 }
 .cvq__unitword {
-  font-size: max(1.5rem, calc(3.8 * var(--u)));
+  font-size: max(1.5rem, calc(4.4 * var(--u)));
   font-weight: 600;
 }
 .cvq__bar {
@@ -3648,7 +3648,7 @@ button {
   padding: calc(1.2 * var(--u)) calc(2 * var(--u));
   border-radius: calc(2 * var(--u));
   background: var(--deep);
-  font-size: max(1.375rem, calc(3.4 * var(--u)));
+  font-size: max(1.5rem, calc(3.8 * var(--u)));
   line-height: 1.3;
 }
 
