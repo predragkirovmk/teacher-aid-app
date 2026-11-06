@@ -232,9 +232,13 @@ test.describe("the projector", () => {
   test("warns that the projector must show only the projector screen, and the steps are on the Help page", async ({ page, context }) => {
     await start(page, context);
     await expect(page.getByText(/Проекторот мора да го прикажува само екранот за проектор/)).toBeVisible();
-    await page.getByRole("link", { name: "Како да го наместам?" }).click();
-    await expect(page).toHaveURL(/\/teacher\/help#projector$/);
-    const item = page.locator("details#projector");
+    // Help opens in a window of its own from a running lesson, so the console is never left.
+    const opened = context.waitForEvent("page");
+    await page.getByRole("link", { name: /Како да го наместам/ }).click();
+    const help = await opened;
+    await expect(help).toHaveURL(/\/teacher\/help#projector$/);
+    await expect(page).toHaveURL(/\/teacher\/live\//);
+    const item = help.locator("details#projector");
     await expect(item).toHaveAttribute("open", "");
     await expect(item.getByRole("heading", { name: "Windows" })).toBeVisible();
     await expect(item.getByText("Win+P")).toBeVisible();
@@ -426,7 +430,7 @@ test.describe("starting the lesson, and teaching", () => {
     await expect(page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]")).toContainText("Чекаме ученици");
   });
 
-  test("moves to teaching: the state line says so, there is no yellow button, the questions are listed to read with one honest line, and nothing says anything about ending", async ({ page, context }) => {
+  test("moves to teaching: the state line says so, the panel for the question now has the one yellow button, the questions are listed, and nothing says anything about ending", async ({ page, context }) => {
     await start(page, context);
     await at(context, 30, page);
     await page.getByRole("button", { name: "Почни го часот" }).click();
@@ -435,12 +439,12 @@ test.describe("starting the lesson, and teaching", () => {
     await expect(now).toContainText("Предавање");
     await expect(now).toContainText("Сега");
     await expect(page.getByRole("listitem").filter({ hasText: "Чекаме ученици" })).toContainText("завршено");
-    await expect(yellow(page)).toHaveCount(0);
+    await expect(yellow(page)).toHaveCount(1);
+    await expect(yellow(page)).toHaveText("Испрати го прашањето");
     await expect(page.getByRole("button", { name: "Почни го часот" })).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Прашањата на овој час" })).toBeVisible();
-    await expect(page.getByText("Испраќањето на прашања до Вашите ученици доаѓа во следната верзија.")).toBeVisible();
-    await expect(page.locator(".question").first()).toContainText("Прашање 1 од");
-    await expect(page.locator(".option__correct").first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Прашањето сега" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Прашања на часот" })).toBeVisible();
+    await expect(page.locator(".qitem").first()).toContainText("Прашање 1 од");
     await expect(page.getByRole("button", { name: /Заврши|Крај/ })).toHaveCount(0);
     // The joined list is still there, and keeps working.
     await expect(page.getByRole("heading", { name: "Кој се приклучи" })).toBeVisible();
@@ -511,7 +515,7 @@ test.describe("coming back", () => {
     await page.getByRole("button", { name: "Да, почни го часот" }).click();
     await page.reload();
     await expect(page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]")).toContainText("Предавање");
-    await expect(page.getByRole("heading", { name: "Прашањата на овој час" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Прашањето сега" })).toBeVisible();
   });
 
   test("a reload of the class view brings it back, with the same count and the same QR", async ({ page, context }) => {
@@ -631,8 +635,10 @@ test.describe("words", () => {
     await expect(projector.getByText(/^\d+ joined$|^1 joined$/)).toBeVisible();
     await expect(projector.getByText(/code changes|Code/i)).toHaveCount(1); // only "QR code" in the line that says to scan
     await expect(projector.getByRole("button", { name: "Full screen" })).toBeVisible();
-    await page.getByRole("link", { name: "How do I set that up?" }).click();
-    await expect(page.locator("details#projector").getByText("Press the Windows key and P together (Win+P).")).toBeVisible();
+    const opened = context.waitForEvent("page");
+    await page.getByRole("link", { name: /How do I set that up/ }).click();
+    const help = await opened;
+    await expect(help.locator("details#projector").getByText("Press the Windows key and P together (Win+P).")).toBeVisible();
   });
 
   test("at a faculty the console says students and group, and the line of states says it too", async ({ page, context }) => {
