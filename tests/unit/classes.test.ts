@@ -5,12 +5,12 @@ import type { CourseDashboard, CourseSummary, DashboardTopic } from "@/lib/teach
 import {
   attendanceByStudent,
   averageAttendance,
+  averageRight,
   focusByStudent,
   lessonRows,
   lessonsWithoutPractice,
   orderCourses,
   practiceRows,
-  resultBand,
   summaryOf,
   topicShare,
   weakestFirst,
@@ -108,10 +108,16 @@ describe("the summary, the lessons and the rest", () => {
     expect(s.lessons).toBe(10);
     expect(s.attendance).not.toBeNull();
     expect(s.weakest).toEqual(weakestFirst(d.topics)[0]);
+    expect(s.right).toBe(averageRight(d));
   });
 
-  test("the words for a result never judge", () => {
-    expect([0.9, 0.7, 0.69, 0.5, 0.49, 0.1].map(resultBand)).toEqual(["most", "most", "half", "half", "fewer", "fewer"]);
+  test("the share right is all the right answers over all the answers asked; none before a question", async () => {
+    const d = await first();
+    const right = d.topics.reduce((n, t) => n + t.right, 0);
+    const total = d.topics.reduce((n, t) => n + t.total, 0);
+    expect(averageRight(d)).toBeCloseTo(right / total, 10);
+    expect(averageRight({ topics: [] })).toBeNull();
+    expect(averageRight({ topics: [{ topic: "А", right: 0, total: 0, by_student: [] }] })).toBeNull();
   });
 
   test("a lesson row says who took part and the share right", async () => {

@@ -4190,22 +4190,53 @@ button {
   gap: var(--sp-2);
   justify-items: start;
 }
+.cres .card > p {
+  max-width: 46rem;
+}
 .cres__sec {
   scroll-margin-top: var(--sp-3);
 }
 .cres__sec:focus {
   outline: none;
 }
-.cres__sum .att__counts {
-  max-width: 30rem;
+/* The three figures of the summary: each a number and what it counts, in words. */
+.cres__tiles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--sp-1);
 }
+.cres__tiles li {
+  display: grid;
+  align-content: start;
+  gap: 0.25rem;
+  padding: var(--sp-2);
+  border-radius: var(--r-m);
+  background: var(--deep);
+}
+.cres__tiles strong {
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.cres__tiles span {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  line-height: 1.3;
+}
+/* One quiet line of links, not a row of buttons. */
 .cres__jump {
   width: 100%;
-}
-.cres__jump-title {
-  margin: 0 0 var(--sp-1);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--sp-2);
+  font-size: var(--fs-body);
   font-weight: 700;
-  color: var(--text);
 }
 .cres__jump ul {
   list-style: none;
@@ -4213,18 +4244,112 @@ button {
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-1) var(--sp-2);
+  gap: 0 var(--sp-3);
 }
+.cres__jump a,
+.cres__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: var(--tap-small);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+/* A table sizes to its container, so it can turn into short stacked rows when the room is narrow (a small window, or the page at 200%). */
 .cres__scroll {
   width: 100%;
-  overflow-x: auto;
+  container-type: inline-size;
+}
+.cres__table {
+  font-size: var(--fs-button);
 }
 .cres__table td,
 .cres__table th {
   vertical-align: top;
 }
 .cres__table thead th {
+  font-size: var(--fs-body);
+  font-weight: 700;
+}
+.cres__table tbody th {
+  font-weight: 600;
+}
+.cres__table tbody td,
+.cres__table tbody th {
+  padding-block: 0.75rem;
+}
+/* The name takes the room it needs; the numbers have plenty. */
+.cres__name {
+  display: block;
   white-space: nowrap;
+}
+.cres__table .cres__note {
+  max-width: 18rem;
+}
+.cres__table td:not(:first-child) {
+  font-variant-numeric: tabular-nums;
+}
+.cres__open {
+  text-align: right;
+  white-space: nowrap;
+}
+/* In a row the link sits on the line of the text beside it; its padding keeps the target tall. */
+.cres__open .cres__link {
+  min-height: 0;
+  padding-block: 0.5rem;
+  margin-block: -0.5rem;
+}
+@container (max-width: 42rem) {
+  .cres__table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .cres__table,
+  .cres__table tbody {
+    display: block;
+  }
+  .cres__table tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem var(--sp-3);
+    padding: 0.75rem 0;
+    border-top: 1px solid var(--line);
+  }
+  .cres__table th,
+  .cres__table td {
+    display: block;
+    padding: 0 !important;
+    border: 0 !important;
+    text-align: left;
+  }
+  .cres__table tbody th {
+    flex: 1 0 100%;
+  }
+  .cres__table .cres__title {
+    flex: 1 0 100%;
+    order: 1;
+  }
+  .cres__table td[data-label]::before {
+    content: attr(data-label) ": ";
+    font-weight: 400;
+    color: var(--text-2);
+  }
+  .cres__table td[data-label] {
+    order: 2;
+  }
+  .cres__table .cres__open {
+    margin-left: auto;
+    order: 3;
+  }
+  .cres__table .cres__note {
+    display: inline;
+    margin-left: 0.5rem;
+  }
 }
 .cres__note {
   display: block;
@@ -4233,10 +4358,14 @@ button {
   font-weight: 400;
   color: var(--text-2);
 }
+.cres__meta,
+.cres__list .cres__note {
+  font-size: var(--fs-body);
+  color: var(--text-2);
+}
 .cres__topics,
 .cres__asked,
-.cres__sets,
-.cres__history {
+.cres__sets {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -4260,7 +4389,7 @@ button {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem 1rem;
+  gap: 0.25rem 1rem;
   font-size: var(--fs-lead);
 }
 .cres__tag {
@@ -4270,11 +4399,18 @@ button {
   font-size: var(--fs-small);
   font-weight: 700;
 }
+.cres__topic-share {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem var(--sp-2);
+}
 /* The length is the share right; the colour is the same for every topic. */
 .cres__bar {
   display: block;
+  flex: 0 1 16rem;
+  min-width: 8rem;
   height: 0.75rem;
-  max-width: 28rem;
   border-radius: var(--r-pill);
   background: var(--deep);
   overflow: hidden;
@@ -4288,47 +4424,108 @@ button {
   font-size: var(--fs-lead);
   color: var(--text) !important;
 }
-.cres__sets h3,
-.cres__history h3 {
+.cres__sets h3 {
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--fs-h3);
   line-height: var(--lh-tight);
 }
-.cres__history li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-1) var(--sp-3);
-  padding: var(--sp-2) 0;
-  border-top: 1px solid var(--line);
-}
-.cres__history li p {
-  margin: 0;
-}
 .cres__who {
   width: 100%;
 }
 .cres__who summary {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  gap: 0.5rem;
   min-height: var(--tap-small);
   font-weight: 700;
   text-decoration: underline;
+  text-underline-offset: 0.2em;
   cursor: pointer;
+  list-style: none;
+}
+.cres__who summary::-webkit-details-marker {
+  display: none;
+}
+.cres__who summary svg {
+  transition: transform 150ms ease-out;
+}
+.cres__who[open] summary svg {
+  transform: rotate(180deg);
 }
 .cres__list li {
   align-items: flex-start;
 }
-.cres__setting {
-  margin: 0;
+/* One control for one choice: the setting's name and its state in words on one row, the switch at the end. */
+.cres__switch {
+  width: 100%;
+  max-width: 46rem;
+  min-height: 4.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-m);
+  background: var(--deep);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.cres__switch-name {
   font-family: var(--font-display);
   font-size: var(--fs-h3);
+  font-weight: 700;
 }
-.cres__state {
+.cres__switch-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-lead);
+}
+.cres__track {
+  display: inline-flex;
+  align-items: center;
+  width: 4rem;
+  height: 2.25rem;
+  padding: 0.25rem;
+  border: 2px solid var(--text);
+  border-radius: var(--r-pill);
+  background: transparent;
+  transition: background-color 150ms ease-out;
+}
+.cres__track[data-on="true"] {
+  background: var(--text);
+  justify-content: flex-end;
+}
+.cres__thumb {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--text);
+  color: var(--ink);
+}
+.cres__track[data-on="true"] .cres__thumb {
+  background: var(--deep);
+  color: var(--text);
+}
+.cres__saved {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: var(--fs-lead);
+  min-height: 1.75rem;
+  margin: 0;
+  font-weight: 700;
+}
+.cres__saved:empty {
+  min-height: 0;
+  margin-top: calc(var(--sp-2) * -1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cres__who summary svg,
+  .cres__track {
+    transition: none;
+  }
 }

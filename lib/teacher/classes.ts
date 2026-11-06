@@ -15,8 +15,8 @@ import type {
  * same figures. Pure. Every list here is in the order the page shows it.
  */
 
-/** A list longer than this shows its first rows and "Прикажи ги сите (N)". */
-export const SHOW_FIRST = 10;
+/** A list longer than this shows its first rows and "Прикажи ги сите (N)". Five: ten rows of one list is a screen of the page and more. */
+export const SHOW_FIRST = 5;
 
 const collator = new Intl.Collator("mk", { sensitivity: "base", numeric: true });
 
@@ -106,30 +106,27 @@ export function averageAttendance(d: Pick<CourseDashboard, "sessions" | "attenda
   return rows.filter((a) => a.status !== "absent").length / rows.length;
 }
 
-export type Summary = { lessons: number; attendance: number | null; weakest: DashboardTopic | null };
+/** The share of all the answers the class was asked for that were right, 0 to 1; null before any question was answered. */
+export function averageRight(d: Pick<CourseDashboard, "topics">): number | null {
+  const total = d.topics.reduce((n, t) => n + t.total, 0);
+  return total > 0 ? d.topics.reduce((n, t) => n + t.right, 0) / total : null;
+}
+
+export type Summary = { lessons: number; attendance: number | null; right: number | null; weakest: DashboardTopic | null };
 
 export function summaryOf(d: CourseDashboard): Summary {
-  return { lessons: d.sessions.length, attendance: averageAttendance(d), weakest: weakestFirst(d.topics)[0] ?? null };
+  return { lessons: d.sessions.length, attendance: averageAttendance(d), right: averageRight(d), weakest: weakestFirst(d.topics)[0] ?? null };
 }
 
 // ---- Lessons over time ------------------------------------------------------------------------------
-
-/** How the right answers of a lesson are put in words. The words never judge: a low share is "less than half", not "bad". */
-export type ResultBand = "most" | "half" | "fewer";
-
-export function resultBand(share: number): ResultBand {
-  const p = percent(share);
-  return p >= 70 ? "most" : p >= 50 ? "half" : "fewer";
-}
 
 export type LessonRow = {
   session: DashboardSession;
   /** Students who were there with a phone: they took part. */
   took_part: number;
   enrolled: number;
+  /** Whole percent of the answers given that were right. */
   right: number;
-  answered: number;
-  band: ResultBand;
 };
 
 /** The lessons held, newest first as the API sends them. */
@@ -139,8 +136,6 @@ export function lessonRows(sessions: readonly DashboardSession[]): LessonRow[] {
     took_part: session.tally.present + session.tally.late,
     enrolled: session.tally.total,
     right: percent(session.right_rate),
-    answered: percent(session.participation),
-    band: resultBand(session.right_rate),
   }));
 }
 
