@@ -70,7 +70,9 @@ async function page(event, url) {
     // A classroom connection that hangs is worse than none: after a few seconds take the cached page and let the
     // network finish into the cache.
     const timeout = new Promise((resolve) => setTimeout(() => resolve(cached), NETWORK_WAIT));
-    return Promise.race([network.catch(() => cached), timeout]);
+    // A server that answers with an error is no better than none: the kept page opens instead.
+    const answer = network.then((res) => (res.status >= 500 ? cached : res)).catch(() => cached);
+    return Promise.race([answer, timeout]);
   }
   try {
     return await network;
@@ -94,16 +96,22 @@ async function warm(routes) {
   const pages = await caches.open(PAGES);
   const statics = await caches.open(STATIC);
   const used = new Set(ASSETS);
+  // False once a page could not be read: what it uses is then unknown, so nothing is dropped as left behind.
+  let complete = true;
 
   await pool(routes, 4, async (path) => {
     try {
       const res = await fetch(path, { cache: "no-store" });
-      if (!res.ok || res.redirected) return;
+      if (!res.ok || res.redirected) {
+        complete = false;
+        return;
+      }
       const html = await res.clone().text();
       await pages.put(path, res);
       for (const ref of html.matchAll(/\/_next\/static\/[^"'\s)\\]+/g)) used.add(keyOf(ref[0]));
     } catch {
       // offline or a failed route: keep what is cached
+      complete = false;
     }
   });
 
@@ -127,6 +135,8 @@ async function warm(routes) {
     }
   });
 
+  // A warm-up that missed a page learns nothing about a new deploy: the next complete one does the clearing.
+  if (!complete) return;
   const key = [...used].sort().join("\n");
   const meta = await caches.open(META);
   const previous = await meta.match(BUILD_KEY);
