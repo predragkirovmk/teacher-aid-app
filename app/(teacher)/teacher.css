@@ -3811,7 +3811,6 @@ button {
     transition-delay: 0s;
   }
 }
-}
 
 /* Windows high-contrast: fills are dropped, so the edges of cards, the chosen row and the one main
    button are drawn as lines. The yellow button gets a thicker edge than the others. */
