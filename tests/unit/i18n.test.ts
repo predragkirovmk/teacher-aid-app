@@ -22,7 +22,7 @@ describe("the dictionaries", () => {
     const known = new Set([
       "students", "classes", "teacher", "name", "seconds", "provider", "n", "total",
       "weekday", "day", "month", "when", "time", "roman", "title", "course", "subject", "tolerance", "class",
-      "days", "min", "max", "count", "option", "size", "alt", "label", "what", "answer", "prompt", "letter", "unit", "percent", "missed", "joined", "done", "score", "lesson", "topic", "right", "times", "people", "date",
+      "days", "min", "max", "count", "option", "size", "alt", "label", "what", "answer", "prompt", "letter", "unit", "percent", "missed", "joined", "done", "score", "lesson", "topic", "right", "times", "people", "date", "m",
     ]);
     for (const locale of ["mk", "en"] as const) {
       for (const key of keys) {
