@@ -201,6 +201,13 @@ The app is dark teal only (no light mode).
   that fit.
 - Step 12 (owner, 2026-11-06): after the code review, a last pass over the whole app with
   ui-ux-pro-max (layout and type only) and impeccable, as the final check before the hand-over.
+- Step 12, done (2026-11-06): 12a accessibility (an axe check over every screen), 200% zoom, the
+  projector (ranking, QR), words, text hygiene (a test), EN and the faculty wording, and an offline
+  worker for /teacher that keeps no data; 12b code review (seven fixes: reconnect snapshots, the
+  join-code check, answered marks on skip, autosave retry, save after flush, the worker's warm-up,
+  dead code); the planner's review-animations (approve); the owner's final ui-ux-pro-max and
+  impeccable pass. Left: at 1024x768 the projector lobby breaks "QR-/кодот". No API change, so the
+  brain stays at 2.13.
 - Later (not v1 unless the owner asks): per-option counts on `most_missed[]` would let the review
   show the step 9 bars.
 - Step 12: the projector check looks at the ranking beside the bars at 1024x768, its smallest text.
