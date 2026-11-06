@@ -242,7 +242,8 @@ test.describe("the results of a class with a season", () => {
     await expect(bonus).toBeChecked();
     await expect(bonus).toContainText("Вклучен");
     await expect(page.locator("#settings").getByRole("radio")).toHaveCount(0);
-    await expect(page.locator("#settings").getByRole("button")).toHaveCount(1);
+    await expect(page.locator("#settings").getByRole("switch")).toHaveCount(1);
+    await expect(page.locator("#settings").getByRole("button")).toHaveCount(0);
     await expect(page.locator("#settings")).toContainText("Ученик што одговара побрзо добива неколку поени повеќе.");
     await bonus.click();
     await expect(page.getByTestId("speed-saved")).toHaveText("Зачувано. Бонусот е исклучен.");
