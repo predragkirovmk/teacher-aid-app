@@ -87,7 +87,7 @@ test.describe("the teacher", () => {
     await page.goto("/teacher");
     const me = page.getByRole("link", { name: "Марија Петровска, поставки" });
     await expect(me).toBeVisible();
-    await expect(me).toContainText("МП");
+    await expect(me.locator(".me__badge")).toHaveAttribute("data-initials", "МП");
     await expect(page.getByText(/^(Добро утро|Добар ден|Добра вечер), Марија$/)).toBeVisible();
   });
 
@@ -96,7 +96,7 @@ test.describe("the teacher", () => {
     await page.getByRole("radio", { name: "English" }).check();
     await expect(title(page)).toHaveText("Settings");
     const me = page.getByRole("link", { name: "Marija Petrovska, settings" });
-    await expect(me).toContainText("MP");
+    await expect(me.locator(".me__badge")).toHaveAttribute("data-initials", "MP");
     await expect(page.getByText("Marija Petrovska, teacher")).toBeVisible();
     await mainMenu(page).getByRole("link", { name: "Today" }).click();
     await expect(page.getByText(/^Good (morning|afternoon|evening), Marija$/)).toBeVisible();
