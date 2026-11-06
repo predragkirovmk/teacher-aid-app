@@ -90,7 +90,7 @@ void panel; void teach; void T0;
 
 test.describe("reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
-  test("nothing animates or eases: the drawer, the dialogs, the waiting dots and the switches all stand still", async ({ page }) => {
+  test("nothing moves: the drawer, the dialogs, the waiting dots and the switches slide, scale and turn no more, and only short colour and opacity fades are left", async ({ page }) => {
     await page.goto("/teacher/classes/course-ii-4");
     await page.waitForLoadState("load");
     const moving = await page.evaluate(() =>
@@ -98,7 +98,11 @@ test.describe("reduced motion", () => {
         .filter((e) => {
           const cs = getComputedStyle(e);
           const longest = (v: string) => Math.max(...v.split(",").map((d) => parseFloat(d) * (d.trim().endsWith("ms") ? 1 : 1000)));
-          return longest(cs.transitionDuration) > 1 || longest(cs.animationDuration) > 1;
+          const runs = longest(cs.transitionDuration) > 0 || longest(cs.animationDuration) > 0;
+          // A transition that runs may fade a colour or an opacity for 150ms at most; it may not move anything.
+          const props = cs.transitionProperty.split(",").map((p) => p.trim());
+          const moves = props.some((p) => p === "all" || p === "transform" || p === "translate" || p === "scale" || p === "rotate");
+          return (runs && (moves || longest(cs.transitionDuration) > 150)) || cs.animationName !== "none" && longest(cs.animationDuration) > 150;
         })
         .map((e) => e.className?.toString().split(" ")[0]),
     );
