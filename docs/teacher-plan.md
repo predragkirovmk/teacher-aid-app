@@ -175,6 +175,23 @@ The app is dark teal only (no light mode).
 - Step 10 (planner, 2026-11-06, against OPEN-14): a quick question counts like any other question
   of the session: in most-missed, in the practice set under BR-PRA-01, its topic the lesson's
   title. A skipped one counts nowhere.
+- Step 10, built and reviewed (2026-11-06): after the last question the yellow moves the lesson
+  to the review; an early move is a quiet link that asks first. The review is one panel, "Сега на
+  проекторот", like the teaching panel: what the projector shows now (one most-missed question a
+  screen, worst five, then the anonymous questions three a screen), "Следно на проекторот" in
+  yellow, "Претходно" quiet, the list below with that item marked; the place is kept in the browser
+  under the session and both windows agree after a reload. End always asks ("Не, часот останува
+  отворен" yellow with the focus, "Да, заврши го часот" outlined) and is in the reminder beside the
+  way back. The end page lives at the console's address: the attendance list by surname in the
+  Macedonian alphabet, copy (one line a student, `attendanceLine`, OPEN-06) and print (the list
+  only), the most-missed questions, the practice set (outlined; nothing to send says so at once).
+  A held lesson links to its last end page. Settings lost "Затвори го демо часот".
+- Step 11: the end page's short practice completion is the model for the class results' practice
+  section; the attendance statuses and their words come from the same place as the end page's.
+  The spec says one screen per course (a class and a subject, FR-DASH-01, FR-DASH-05): the
+  "Класови" page lists the teacher's courses (`GET /teacher/courses`) and each opens its results.
+- Later (not v1 unless the owner asks): per-option counts on `most_missed[]` would let the review
+  show the step 9 bars.
 - Step 12: the projector check looks at the ranking beside the bars at 1024x768, its smallest text.
   The planner runs review-animations itself (agents cannot start that skill) over all the motion.
 
