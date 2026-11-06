@@ -45,9 +45,8 @@ export function PageHeader({
       </div>
       {teacher && (
         <Link href="/teacher/settings" className="me" aria-label={t("user.link", { name: teacher.full })}>
-          <span className="me__badge" aria-hidden="true">
-            {teacher.initials}
-          </span>
+          {/* The initials are drawn by the style sheet, so the name the link has is the name that can be read on it. */}
+          <span className="me__badge" aria-hidden="true" data-initials={teacher.initials} />
           {teacher.full}
         </Link>
       )}

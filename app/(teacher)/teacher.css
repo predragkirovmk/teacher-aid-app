@@ -523,6 +523,9 @@ button {
   font-size: var(--fs-small);
   font-weight: 700;
 }
+.me__badge::before {
+  content: attr(data-initials);
+}
 @media (hover: hover) {
   .me:hover {
     background: var(--deep);

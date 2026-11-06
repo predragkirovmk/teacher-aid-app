@@ -91,7 +91,7 @@ function Qr({ token, label }: { token: string; label: string }) {
   );
   return (
     <div className="cv__qr" role="img" aria-label={label}>
-      {origin && <QRCodeSVG value={joinUrl(origin, token)} level="M" marginSize={2} fgColor="#0a2e37" bgColor="#ffffff" />}
+      {origin && <QRCodeSVG aria-hidden="true" value={joinUrl(origin, token)} level="M" marginSize={2} fgColor="#0a2e37" bgColor="#ffffff" />}
     </div>
   );
 }
