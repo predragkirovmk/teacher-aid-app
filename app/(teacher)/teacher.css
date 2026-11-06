@@ -4046,7 +4046,7 @@ button {
   padding: 0;
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
   gap: var(--sp-1);
 }
 .att__counts li {
