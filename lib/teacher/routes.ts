@@ -87,3 +87,20 @@ export const showsOpenLesson = (pathname: string, sessionId: Id): boolean => pat
 /** The classes, and the results of one of them. */
 export const CLASSES = "/teacher/classes";
 export const classUrl = (courseId: Id): string => `${CLASSES}/${encodeURIComponent(courseId)}`;
+
+/**
+ * The screens the offline worker keeps so the installed app opens with no signal (public/teacher-sw.js). Only pages that are
+ * the same for everybody: a lesson, a class view and the end page are never in the list, so nothing with a student's name
+ * is ever stored.
+ */
+export const SHELL_ROUTES: readonly string[] = [
+  TODAY,
+  LESSONS,
+  NEW_LESSON,
+  "/teacher/classes",
+  LIBRARY,
+  SETTINGS,
+  "/teacher/help",
+  "/teacher/sign-in",
+  GUIDE,
+];

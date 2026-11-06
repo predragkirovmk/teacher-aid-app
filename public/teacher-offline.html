@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="mk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#124554">
+<title>TeacherAid</title>
+<link rel="icon" href="/teacher-icons/icon.svg" type="image/svg+xml">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px; background: linear-gradient(#155869, #32878C); color: #fff; font: 20px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { width: 100%; max-width: 560px; padding: 32px; border-radius: 16px; background: #145667; }
+  img { display: block; width: 56px; height: 56px; margin-bottom: 24px; }
+  h1 { margin: 0 0 16px; font-size: 32px; line-height: 1.2; }
+  p { margin: 0 0 24px; }
+  button { min-height: 56px; padding: 0 32px; border: 0; border-radius: 12px; background: #FFC83E; color: #0A2E37; font: 700 20px/1 system-ui, -apple-system, "Segoe UI", sans-serif; cursor: pointer; }
+  button:focus-visible { outline: 3px solid #FFC83E; outline-offset: 2px; box-shadow: 0 0 0 5px #0A2E37; }
+  [hidden] { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <img src="/teacher-icons/icon-192.png" alt="" width="56" height="56">
+  <div data-lang="mk">
+    <h1>Нема интернет</h1>
+    <p>Нема интернет. Часот и лекциите бараат интернет; обидете се повторно кога ќе се поврзете.</p>
+    <button type="button">Обиди се повторно</button>
+  </div>
+  <div data-lang="en" hidden>
+    <h1>No internet</h1>
+    <p>No internet. Lessons and lesson time need the internet; try again when you are connected.</p>
+    <button type="button">Try again</button>
+  </div>
+</main>
+<script>
+  (function () {
+    var locale = "mk";
+    try { locale = JSON.parse(localStorage.getItem("teacheraid-teacher-v1") || "{}").locale === "en" ? "en" : "mk"; } catch (e) {}
+    document.documentElement.lang = locale;
+    var blocks = document.querySelectorAll("[data-lang]");
+    for (var i = 0; i < blocks.length; i++) blocks[i].hidden = blocks[i].getAttribute("data-lang") !== locale;
+    var buttons = document.querySelectorAll("button");
+    for (var j = 0; j < buttons.length; j++) buttons[j].addEventListener("click", function () { location.href = "/teacher"; });
+    var visible = document.querySelector("[data-lang]:not([hidden]) button");
+    if (visible) visible.focus();
+  })();
+</script>
+</body>
+</html>

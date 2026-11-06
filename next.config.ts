@@ -98,6 +98,11 @@ const nextConfig: NextConfig = {
         source: "/app-sw.js",
         headers: [{ key: "Cache-Control", value: "no-cache" }],
       },
+      {
+        // The same for the teacher app's worker, and for the page it shows offline.
+        source: "/teacher-:file(sw.js|offline.html)",
+        headers: [{ key: "Cache-Control", value: "no-cache" }],
+      },
     ];
   },
 };

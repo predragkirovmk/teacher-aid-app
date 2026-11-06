@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Golos_Text } from "next/font/google";
 import type { ReactNode } from "react";
 import { Gate } from "@/components/teacher/Gate";
+import { ServiceWorker } from "@/components/teacher/ServiceWorker";
 import "./teacher.css";
 
 const golos = Golos_Text({
@@ -33,6 +34,7 @@ export default function TeacherRootLayout({ children }: { children: ReactNode })
     // The store (lib/teacher/store.ts) sets lang to the teacher's choice once the page is live.
     <html lang="mk" className={golos.variable} suppressHydrationWarning>
       <body>
+        <ServiceWorker />
         <Gate>{children}</Gate>
       </body>
     </html>
