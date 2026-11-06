@@ -175,6 +175,7 @@ function Attendance({ rows, course, lesson, day }: { rows: AttendanceRow[]; cour
         </p>
       )}
       <table className="att__table">
+        <caption className="sr">{t("att.title")}</caption>
         <thead>
           <tr>
             <th scope="col">{t("att.col.name")}</th>
