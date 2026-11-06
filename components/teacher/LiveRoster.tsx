@@ -68,7 +68,7 @@ function AnswerLine({ state }: { state: AnswerState }) {
   const { t } = useT();
   const AnswerIcon = ANSWER_ICONS[state];
   return (
-    <span className="person__detail person__answer" data-answer={state}>
+    <span className="person__answer" data-answer={state}>
       <AnswerIcon size={20} weight={state === "answered" ? "fill" : "regular"} aria-hidden="true" />
       {t(ANSWER_WORDS[state])}
     </span>
@@ -117,30 +117,35 @@ export function LiveRoster({ sessionId, students }: { sessionId: string; student
   const row = (s: ConsoleStudent) => {
     const state = studentState(s);
     const StateIcon = STATE_ICONS[state];
+    // A row is one line: the name, then what is worth saying. Who is here says nothing more (the group says it); a time is said only where it tells something (a
+    // student who came late), and while a question is open the answer takes the place of "here", for that is what the teacher is looking for.
+    const answering = s.answer_state && s.answer_state !== "offline" && (state === "joined" || state === "late") ? s.answer_state : null;
     const detail =
       state === "no_device" && s.no_device_reason
         ? t(REASON_WORDS[s.no_device_reason])
-        : s.joined_at && (state === "joined" || state === "late" || state === "offline")
-          ? t(s.attendance === "late" ? "live.student.late.at" : "live.student.at", { time: clockTime(Date.parse(s.joined_at)) })
+        : state === "late" && s.joined_at
+          ? t("live.student.at", { time: clockTime(Date.parse(s.joined_at)) })
           : null;
     return (
-      <li key={s.id} className="person" data-state={state}>
+      <li key={s.id} className="person" data-state={state} data-answer={answering ?? undefined}>
         <span className="person__name">{name(s)}</span>
         <span className="person__state">
-          <StateIcon size={24} weight={state === "joined" ? "fill" : "regular"} aria-hidden="true" />
-          <span>
-            <span className="person__word">{t(STATE_WORDS[state])}</span>
-            {detail && <span className="person__detail">{detail}</span>}
-            {/* While a question is open, each student who is here also says whether they have answered: an icon and a word. */}
-            {s.answer_state && s.answer_state !== "offline" && <AnswerLine state={s.answer_state} />}
-            {/* A student who left the app during a question: said quietly, in an icon and words, never in red (FR-FOC). */}
-            {s.focus_flags > 0 && (
-              <span className="person__detail person__focus" data-testid="focus">
-                <ArrowSquareOutIcon size={20} aria-hidden="true" />
-                {t(s.focus_flags === 1 ? "q.focus.one" : "q.focus", { n: s.focus_flags })}
-              </span>
-            )}
-          </span>
+          {!(answering && state === "joined") && (
+            <span className="person__what">
+              <StateIcon size={24} weight={state === "joined" ? "fill" : "regular"} aria-hidden="true" />
+              <span className="person__word">{t(STATE_WORDS[state])}</span>
+              {detail && <span className="person__detail">{detail}</span>}
+            </span>
+          )}
+          {/* While a question is open, each student who is here also says whether they have answered: an icon and a word. */}
+          {answering && <AnswerLine state={answering} />}
+          {/* A student who left the app during a question: said quietly, in an icon and words, never in red (FR-FOC). */}
+          {s.focus_flags > 0 && (
+            <span className="person__detail person__focus" data-testid="focus">
+              <ArrowSquareOutIcon size={20} aria-hidden="true" />
+              {t(s.focus_flags === 1 ? "q.focus.one" : "q.focus", { n: s.focus_flags })}
+            </span>
+          )}
         </span>
         {state === "not_yet" && canMarkNoDevice(s) && (
           <button

@@ -158,6 +158,12 @@ export function promptSize(length: number): "xl" | "l" | "m" {
   return length <= 80 ? "xl" : length <= 160 ? "l" : "m";
 }
 
+/** How long the longest answer is, for the size of the options and bars: the longer it is, the smaller, so four long answers still share one screen. */
+export function optionFit(labels: readonly string[]): "a" | "b" | "c" {
+  const longest = labels.reduce((n, l) => Math.max(n, l.length), 0);
+  return longest <= 24 ? "a" : longest <= 40 ? "b" : "c";
+}
+
 // ---- The quick question (FR-POP-04, FR-POP-07) --------------------------------------------------------------
 
 export const ADHOC_PROMPT_MAX = 200;

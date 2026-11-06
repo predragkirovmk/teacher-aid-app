@@ -6,7 +6,7 @@ import type { ClassViewSnapshot, LeaderboardRow, PublicQuestion } from "@/lib/te
 import { useServerNow } from "@/lib/teacher/clock";
 import { isOne, personName } from "@/lib/teacher/format";
 import { useT, type Key } from "@/lib/teacher/i18n";
-import { barRows, numericSummary, optionLetter, promptSize, secondsLeft, shareLeft, topOfBoard } from "@/lib/teacher/questions";
+import { barRows, numericSummary, optionFit, optionLetter, promptSize, secondsLeft, shareLeft, topOfBoard } from "@/lib/teacher/questions";
 
 /**
  * What the projector shows of a question, for a whole room that reads it from the back on a weak projector: the prompt as large as it can be (smaller
@@ -56,7 +56,7 @@ function Choices({ q }: { q: PublicQuestion }) {
   }
   const labels = q.kind === "true_false" ? [t("cv.true"), t("cv.false")] : (q.options ?? []);
   return (
-    <ol className="cvq__options" data-kind={q.kind}>
+    <ol className="cvq__options" data-kind={q.kind} data-count={labels.length} data-fit={optionFit(labels)}>
       {labels.map((label, i) => (
         <li key={i} className="cvq__option" data-testid="cv-option">
           {q.kind === "multiple_choice" && <span className="cvq__letter">{optionLetter(i)}</span>}
@@ -91,7 +91,7 @@ export function OpenQuestion({ snapshot, q }: { snapshot: ClassViewSnapshot; q: 
           <span className="cvq__unitword">{t(isOne(left, locale) ? "cv.seconds.one" : "cv.seconds")}</span>
         </p>
         <div className="cvq__bar" aria-hidden="true">
-          <div className="cvq__fill" style={{ width: `${Math.round(share * 100)}%` }} />
+          <div className="cvq__fill" style={{ transform: `scaleX(${share.toFixed(3)})` }} />
         </div>
         <p className="cvq__progress" data-testid="cv-progress">
           {t(isOne(answered, locale) ? "cv.progress.one" : "cv.progress", { n: answered, total: joined })}
@@ -108,7 +108,7 @@ export function ClosedQuestion({ snapshot, q }: { snapshot: ClassViewSnapshot; q
   return (
     <section className="cvq cvq--closed" aria-label={q.prompt}>
       <Heading q={q} />
-      <Prompt q={q} small />
+      <Prompt q={q} />
       <p className="cvq__done" role="status">
         <CircleDashedIcon size="1.2em" aria-hidden="true" />
         {t("cv.closed")}
@@ -129,7 +129,7 @@ export function SkippedQuestion({ q }: { q: PublicQuestion }) {
         <MinusCircleIcon size="1.2em" aria-hidden="true" />
         {t("cv.skipped")}
       </p>
-      <Prompt q={q} small />
+      <Prompt q={q} />
     </section>
   );
 }
@@ -183,6 +183,7 @@ export function RevealedQuestion({ snapshot, q }: { snapshot: ClassViewSnapshot;
   const numeric = q.kind === "numeric";
   const rows = numeric ? [] : barRows(q.kind, q.options?.length ?? 0, reveal.counts, reveal.correct_answer);
   const labelOf = (key: string, i: number) => (q.kind === "true_false" ? t(BAR_TEXT[key as "true" | "false"]) : (q.options?.[i] ?? ""));
+  const fit = optionFit(rows.map((r, i) => labelOf(r.key, i)));
   const summary = numericSummary(reveal.counts);
   const tile = (key: Key, n: number, icon: ReactNode) => (
     <li className="cvq__tile" key={key}>
@@ -193,11 +194,11 @@ export function RevealedQuestion({ snapshot, q }: { snapshot: ClassViewSnapshot;
   );
   const hasBoard = topOfBoard(snapshot.board).length > 0;
   return (
-    <section className="cvq cvq--revealed" aria-label={q.prompt} data-board={hasBoard}>
+    <section className="cvq cvq--revealed" aria-label={q.prompt} data-board={hasBoard} data-fit={fit}>
       <Heading q={q} />
+      <Prompt q={q} small />
       <div className="cvq__reveal">
         <div className="cvq__text">
-          <Prompt q={q} small />
           {numeric ? (
             <>
               <p className="cvq__bignumber" data-testid="cv-answer">
@@ -213,13 +214,15 @@ export function RevealedQuestion({ snapshot, q }: { snapshot: ClassViewSnapshot;
               </ul>
             </>
           ) : (
-            <ol className="cvq__bars">
+            <ol className="cvq__bars" data-count={rows.length}>
               {rows.map((r, i) => (
-                <li key={r.key} className="cvq__barrow" data-right={r.right} data-testid="cv-bar">
+                <li key={r.key} className="cvq__barrow" data-right={r.right} data-kind={q.kind} data-fit={fit} data-testid="cv-bar">
                   <span className="cvq__barhead">
                     {q.kind === "multiple_choice" && <span className="cvq__letter">{optionLetter(i)}</span>}
-                    <span className="cvq__label">{labelOf(r.key, i)}</span>
-                    {r.right && <RightMark />}
+                    <span className="cvq__answer">
+                      <span className="cvq__label">{labelOf(r.key, i)}</span>
+                      {r.right && <RightMark />}
+                    </span>
                     <span className="cvq__barcount" data-testid="cv-count">
                       {t("cv.count", { n: r.count, percent: r.percent })}
                     </span>

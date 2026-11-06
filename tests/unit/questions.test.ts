@@ -18,6 +18,7 @@ import {
   optionLetter,
   panelStep,
   projectedScreen,
+  optionFit,
   promptSize,
   secondsLeft,
   shareLeft,
@@ -195,6 +196,15 @@ describe("what the projector shows", () => {
   });
   test("a prompt gets smaller the longer it is, in three sizes", () => {
     expect([10, 80, 81, 160, 161, 400].map(promptSize)).toEqual(["xl", "xl", "l", "l", "m", "m"]);
+  });
+
+  test("the options' size follows the longest answer, so four long answers still share one screen", () => {
+    expect(optionFit([])).toBe("a");
+    expect(optionFit(["600 денари", "650 денари"])).toBe("a");
+    expect(optionFit(["x".repeat(24)])).toBe("a");
+    expect(optionFit(["x".repeat(25), "кратко"])).toBe("b");
+    expect(optionFit(["x".repeat(40)])).toBe("b");
+    expect(optionFit(["x".repeat(41)])).toBe("c");
   });
 });
 

@@ -461,7 +461,7 @@ test.describe("starting the lesson, and teaching", () => {
     const lateOnes = PLANS.filter((p) => simulate(p, { started_at: T0, teaching_at: T0 + 20_000, now: T0 + 100_000 }).late).length;
     expect(lateOnes).toBeGreaterThanOrEqual(1);
     await expect(late).toHaveCount(lateOnes);
-    await expect(late.first().locator(".person__detail")).toHaveText(/^Се приклучи доцна, во \d\d:\d\d$/);
+    await expect(late.first().locator(".person__detail")).toHaveText(/^во \d\d:\d\d$/);
     await expect(count(page)).toHaveText(`${joinedAt(100, 20)} од 26 се приклучија`);
     // The ones who joined in the lobby are marked as having been on time: no word of "late" on them.
     expect(await page.locator(".person[data-state=joined]").count()).toBe(joinedAt(100, 20) - lateOnes - (await page.locator(".person[data-state=offline]").count()));

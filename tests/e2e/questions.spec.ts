@@ -199,6 +199,18 @@ test.describe("skipping", () => {
     await expect(page.locator(".qitem[data-status=skipped]")).toHaveCount(2);
   });
 
+  test("a skipped question stays readable: not struck through, set back by its ground, and said in words", async ({ page, context }) => {
+    await teach(page, context);
+    await skipInPanel(page).click();
+    await page.getByRole("button", { name: "Да, прескокни го" }).click();
+    const item = listItem(page, 1);
+    await expect(item).toContainText("Прескокнато");
+    expect(await item.locator(".qitem__prompt").evaluate((el) => getComputedStyle(el).textDecorationLine)).toBe("none");
+    // Not as bright as the others' ground, but the same words in a colour that is still 7:1 and more.
+    expect(await item.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(await listItem(page, 2).evaluate((el) => getComputedStyle(el).backgroundColor));
+    expect(await item.locator(".qitem__prompt").evaluate((el) => Number(getComputedStyle(el).opacity))).toBe(1);
+  });
+
   test("an open question is skipped: the projector says it does not count, nobody scores, and the next may be sent", async ({ page, context }) => {
     const projector = await teach(page, context);
     await send(page).click();
@@ -222,6 +234,20 @@ test.describe("skipping", () => {
     await page.getByRole("button", { name: "Да, прескокни го" }).click();
     await expect(listItem(page, 1)).toContainText("Прескокнато");
     await expect(yellow(page)).toHaveText("Испрати го прашањето");
+  });
+});
+
+test.describe("the note above the list", () => {
+  test("is a quiet line of plain weight, there only while another question cannot be sent", async ({ page, context }) => {
+    await teach(page, context);
+    const note = page.locator(".qlist__wait");
+    await expect(note).toHaveCount(0);
+    await send(page).click();
+    await expect(note).toBeVisible();
+    expect(await note.evaluate((el) => [getComputedStyle(el).fontWeight, getComputedStyle(el).fontSize])).toEqual(["400", "18px"]);
+    await go(context, TEACHING_AT + 31);
+    await reveal(page).click();
+    await expect(note).toHaveCount(0);
   });
 });
 
@@ -311,12 +337,41 @@ test.describe("the quick question", () => {
       const dialog = await open(page);
       await dialog.getByRole("radio", { name: "Понудени одговори" }).check();
       const box = (await dialog.boundingBox())!;
-      expect(box.y + box.height).toBeLessThanOrEqual(size.height);
+      // Room above and below, so it reads as a window over the page, not as the page.
+      expect(box.y).toBeGreaterThanOrEqual(32);
+      expect(size.height - (box.y + box.height)).toBeGreaterThanOrEqual(32);
+      // The main button says its words on one line, and the buttons are in view without scrolling the page.
+      const main = dialog.getByRole("button", { name: "Испрати го веднаш" });
+      expect((await main.boundingBox())!.height).toBeLessThan(64);
+      await expect(main).toBeInViewport({ ratio: 1 });
       await dialog.getByRole("button", { name: "Откажи" }).click();
       await expect(dialog).toBeHidden();
     }
     await expect(page.locator(".qitem")).toHaveCount(6);
     await expect(yellow(page)).toHaveText("Испрати го прашањето");
+  });
+});
+
+test.describe("the roster while a question is open", () => {
+  test("each student who is here is one line: the name and the answer, no time repeated, and 26 students are not a column of cards", async ({ page, context }) => {
+    await teach(page, context);
+    await send(page).click();
+    await go(context, TEACHING_AT + 12);
+    await expect(page.locator(".person__answer").first()).toBeVisible();
+    const here = page.locator(".roster__group").nth(1).locator(".person");
+    // The name and the answer share a line; what is longer (a student who came late, who left the app) goes on one line below, so no row is more than two.
+    const heights = await here.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
+    expect(heights.length).toBeGreaterThan(10);
+    for (const h of heights) expect(h).toBeLessThanOrEqual(72);
+    const plain = await here.evaluateAll((els) => els.filter((el) => (el as HTMLElement).dataset.state === "joined" && !el.querySelector(".person__focus")).map((el) => el.getBoundingClientRect().height));
+    // Most rows are one line: the middle one is no taller than a button's height.
+    expect([...plain].sort((a, b) => a - b)[Math.floor(plain.length / 2)]).toBeLessThanOrEqual(56);
+    // The answer is an icon and words, and nobody's "joined at" time is said.
+    await expect(here.locator(".person__answer svg").first()).toBeVisible();
+    // A time is said only for a student who came late.
+    expect(await here.evaluateAll((els) => els.filter((el) => (el as HTMLElement).dataset.state === "joined").map((el) => (el as HTMLElement).innerText))).not.toContainEqual(expect.stringMatching(/\d\d:\d\d/));
+    const list = (await page.locator(".roster__group").nth(1).boundingBox())!;
+    expect(list.height).toBeLessThan(26 * 60);
   });
 });
 
@@ -506,6 +561,128 @@ test.describe("the projector shows no private thing", () => {
     await expect(page.getByTestId("anon")).not.toHaveCount(0);
     for (const text of await page.getByTestId("anon").locator(".inbox__text").allInnerTexts()) expect(await projector.content()).not.toContain(text);
     await expect(projector.getByText("Анонимни")).toHaveCount(0);
+  });
+});
+
+test.describe("the projector uses the window", () => {
+  const SIZES = [{ width: 1920, height: 1080 }, { width: 1280, height: 720 }, { width: 1024, height: 768 }];
+  const LONG_PROMPT = "Која од следниве тврдења најточно го опишува односот меѓу површината на кругот и неговиот радиус кога радиусот ќе се удвои, а сите други услови остануваат исти во задачата?";
+  const LONG_OPTIONS = [
+    "Површината се зголемува точно два пати од почетната",
+    "Површината се зголемува точно четири пати од почетната",
+    "Површината останува иста бидејќи формулата е константна",
+    "Површината се зголемува осум пати од почетната вредност",
+  ];
+
+  /** The rectangles of the elements, as the page has them. */
+  const boxes = (page: import("@playwright/test").Page, selector: string) =>
+    page.locator(selector).evaluateAll((els) => els.map((el) => {
+      const r = el.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
+    }));
+  const overlap = (a: { top: number; bottom: number; left: number; right: number }, b: { top: number; bottom: number; left: number; right: number }) =>
+    a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+
+  test("a long question with four long answers: open, closed and shown, nothing is cut, nothing collides, and the content reaches the foot of the window", async ({ page, context }) => {
+    const projector = await teach(page, context);
+    await page.getByRole("button", { name: "Брзо прашање" }).click();
+    const dialog = page.getByRole("dialog", { name: "Брзо прашање" });
+    await dialog.getByRole("radio", { name: "Понудени одговори" }).check();
+    await dialog.getByLabel("Прашањето").fill(LONG_PROMPT);
+    for (const [i, o] of LONG_OPTIONS.entries()) await dialog.getByLabel(`Одговор ${"ABCD"[i]}`, { exact: true }).fill(o);
+    await dialog.getByRole("radio", { name: "Одговорот B е точниот" }).check();
+    await dialog.getByRole("button", { name: "Испрати го веднаш" }).click();
+    await expect(projector.getByTestId("cv-option")).toHaveCount(4);
+
+    const fits = async (label: string, foot: string) => {
+      for (const size of SIZES) {
+        await projector.setViewportSize(size);
+        const where = `${label} ${size.width}x${size.height}`;
+        expect(await projector.evaluate(() => [document.documentElement.scrollWidth - innerWidth, document.documentElement.scrollHeight - innerHeight]), where).toEqual([0, 0]);
+        // Everything inside the question is inside the window.
+        const outside = await projector.evaluate(() => [...document.querySelectorAll(".cvq *")].filter((el) => {
+          const r = el.getBoundingClientRect();
+          return r.width > 0 && (r.bottom > innerHeight + 1 || r.right > innerWidth + 1 || r.left < -1);
+        }).length);
+        expect(outside, where).toBe(0);
+        // The content ends at the lower part of the window: it is not a block at the top with the rest empty.
+        const [end] = await boxes(projector, foot);
+        expect(end.bottom / size.height, where).toBeGreaterThanOrEqual(0.85);
+        // No two rows of answers touch each other.
+        const rows = await boxes(projector, ".cvq__option, .cvq__barrow");
+        for (let i = 1; i < rows.length; i++) expect(rows[i].top, where).toBeGreaterThanOrEqual(rows[i - 1].bottom - 1);
+      }
+    };
+    await fits("open", ".cvq__foot");
+    await go(context, TEACHING_AT + 26);
+    await expect(projector.getByText("Времето истече")).toBeVisible();
+    await fits("closed", ".cvq__progress");
+    await reveal(page).click();
+    await expect(projector.getByTestId("cv-bar")).toHaveCount(4);
+    await fits("shown", ".cvq__reveal");
+
+    // At the reveal the pill sits under the words of the right answer, clear of the words and of the count, and the answer is named by the pill's words as well as its mark.
+    for (const size of SIZES) {
+      await projector.setViewportSize(size);
+      const right = projector.getByTestId("cv-bar").nth(1);
+      await expect(right.getByTestId("cv-right")).toHaveText("Точен одговор");
+      const [pill] = await boxes(projector, ".cvq__barrow[data-right=true] [data-testid=cv-right]");
+      const [label] = await boxes(projector, ".cvq__barrow[data-right=true] .cvq__label");
+      const [count] = await boxes(projector, ".cvq__barrow[data-right=true] .cvq__barcount");
+      expect(overlap(pill, label), `pill and words ${size.width}`).toBe(false);
+      expect(overlap(pill, count), `pill and count ${size.width}`).toBe(false);
+      expect(pill.top, `${size.width}`).toBeGreaterThanOrEqual(label.bottom - 1);
+      // The count is on the right of its row and the words are not squeezed below a readable width.
+      expect(label.right - label.left, `${size.width}`).toBeGreaterThan(200);
+    }
+  });
+
+  test("everything that must be read is full white: nothing on the projector's question is dimmed", async ({ page, context }) => {
+    const projector = await teach(page, context);
+    await send(page).click();
+    const dimmed = () =>
+      projector.evaluate(() =>
+        [...document.querySelectorAll("main *")]
+          .filter((el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent?.trim()) && !el.closest(".sr, .cvq__rightmark, .cvq__letter"))
+          .filter((el) => getComputedStyle(el).color !== "rgb(255, 255, 255)" || Number(getComputedStyle(el).opacity) < 1)
+          .map((el) => `${el.className}: ${getComputedStyle(el).color}`),
+      );
+    expect(await dimmed()).toEqual([]);
+    await go(context, TEACHING_AT + 31);
+    await reveal(page).click();
+    await expect(projector.getByTestId("cv-board")).toBeVisible();
+    expect(await dimmed()).toEqual([]);
+  });
+
+  test("with Reduce Motion the shrinking bar is not drawn and the seconds and the count remain; otherwise it shrinks by transform, not width", async ({ page, context }) => {
+    const projector = await teach(page, context);
+    await send(page).click();
+    await go(context, TEACHING_AT + 12);
+    await expect(projector.getByTestId("cv-seconds")).toContainText("18");
+    expect(await projector.locator(".cvq__fill").evaluate((el) => [getComputedStyle(el).transitionProperty, el.getAttribute("style")])).toEqual(["transform", "transform: scaleX(0.6);"]);
+    await projector.emulateMedia({ reducedMotion: "reduce" });
+    await expect(projector.locator(".cvq__bar")).toBeHidden();
+    await expect(projector.getByTestId("cv-seconds")).toContainText("18");
+    await expect(projector.getByTestId("cv-progress")).toBeVisible();
+  });
+
+  test("the question on the projector fills the height at all three sizes in every state, with a picture and when skipped", async ({ page, context }) => {
+    const projector = await teach(page, context);
+    await listSend(page, 3).click();
+    const reaches = async (label: string) => {
+      for (const size of SIZES) {
+        await projector.setViewportSize(size);
+        const [q] = await boxes(projector, ".cvq");
+        const content = await projector.evaluate(() => Math.max(...[...document.querySelectorAll(".cvq *")].map((el) => el.getBoundingClientRect().bottom)));
+        expect(content / size.height, `${label} ${size.width}`).toBeGreaterThanOrEqual(0.85);
+        expect(q.bottom / size.height, `${label} ${size.width}`).toBeGreaterThanOrEqual(0.85);
+      }
+    };
+    await reaches("true or false open");
+    await skipInPanel(page).click();
+    await page.getByRole("button", { name: "Да, прескокни го" }).click();
+    await expect(projector.getByTestId("cv-skipped")).toBeVisible();
+    await reaches("skipped");
   });
 });
 

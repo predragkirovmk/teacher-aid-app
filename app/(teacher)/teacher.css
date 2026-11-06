@@ -2449,49 +2449,70 @@ button {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
+/* A student is one line: the name, then what is worth saying (an icon and a word), and a button when there is one. It wraps below the name only when it must. */
 .person {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "name action"
-    "state action";
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem var(--sp-2);
-  min-height: var(--tap);
-  padding: 0.5rem var(--sp-2);
+  gap: 0.125rem var(--sp-2);
+  min-height: 2.75rem;
+  padding: 0.375rem var(--sp-2);
   border-radius: var(--r-m);
   background: var(--deep);
 }
 .person__name {
-  grid-area: name;
+  flex: 1 1 11rem;
   min-width: 0;
   font-weight: 700;
   overflow-wrap: anywhere;
 }
+/* The parts of what is said about a student are items of the row itself, so the answer stays beside the name and what is longer (when a student came late, that they left the app) goes on a line of its own below. */
 .person__state {
-  grid-area: state;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
+  display: contents;
+}
+.person__what,
+.person__answer,
+.person__focus {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-left: auto;
   color: var(--text-2);
   line-height: 1.3;
 }
-.person__state svg {
+.person__answer {
+  order: 1;
+}
+.person__what {
+  order: 2;
+}
+.person__focus {
+  order: 4;
+  flex-basis: 100%;
+  margin-left: 0;
+}
+.person[data-state="late"] .person__what {
+  order: 3;
+  flex-basis: 100%;
+  margin-left: 0;
+}
+.person__what svg {
   flex: none;
-  margin-top: 0.0625rem;
 }
 .person__word {
   font-weight: 600;
   color: var(--text);
 }
 .person__detail {
-  display: block;
   font-size: var(--fs-small);
 }
+.person__answer {
+  font-weight: 600;
+  color: var(--text);
+}
 .person__action {
-  grid-area: action;
   align-self: center;
 }
 .person__problem {
@@ -2500,12 +2521,6 @@ button {
 /* A student whose connection is lost is worth a look: a white edge besides the icon and the words. */
 .person[data-state="offline"] {
   box-shadow: inset 0 0 0 2px var(--text);
-}
-@container roster (min-width: 40rem) {
-  .person {
-    grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 1.2fr) auto;
-    grid-template-areas: "name state action";
-  }
 }
 
 .live__questions {
@@ -2789,7 +2804,7 @@ button {
 }
 @media (min-width: 70rem) {
   .live__teach {
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
   }
 }
 
@@ -2907,12 +2922,15 @@ button {
 .qlist__head .section__title {
   margin: 0;
 }
+/* One quiet line, only while sending another is not possible: plain weight, no bigger than the list, on the panel colour so it stays readable on the ground. */
 .qlist__wait {
   margin: 0;
-  padding: var(--sp-1) var(--sp-2);
+  padding: 0.5rem var(--sp-2);
   border-radius: var(--r-m);
   background: var(--panel);
-  font-weight: 600;
+  color: var(--text-2);
+  font-size: var(--fs-body);
+  font-weight: 400;
 }
 .qlist__items {
   list-style: none;
@@ -2965,10 +2983,12 @@ button {
   justify-items: center;
   gap: 0.25rem;
 }
+/* A question that was skipped is set back, not struck out: a quieter ground, and "Прескокнато" in words. */
+.qitem[data-status="skipped"] {
+  background: var(--deep);
+}
 .qitem[data-status="skipped"] .qitem__prompt {
   color: var(--text-2);
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
 }
 @media (max-width: 40rem) {
   .qitem {
@@ -2982,12 +3002,6 @@ button {
   }
 }
 
-.person__answer,
-.person__focus {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-}
 
 .inbox {
   display: grid;
@@ -3051,7 +3065,8 @@ button {
 /* The quick question: one short screen. */
 .dialog--adhoc {
   width: min(40rem, calc(100vw - 2rem));
-  max-height: calc(100dvh - 2rem);
+  /* Room above and below, so it reads as a window over the page; what does not fit scrolls inside it, with the buttons kept in view. */
+  max-height: min(calc(100dvh - 5rem), 46rem);
   overflow: auto;
 }
 .dialog--adhoc .dialog__title {
@@ -3093,12 +3108,15 @@ button {
   margin-bottom: var(--sp-2);
 }
 .dialog--adhoc .dialog__actions {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
   margin-top: var(--sp-2);
   position: sticky;
   bottom: calc(-1 * var(--sp-3));
   padding-block: var(--sp-1) 0;
   background: var(--panel);
+}
+.dialog--adhoc .dialog__actions .btn--primary {
+  white-space: nowrap;
 }
 .adhoc__options {
   border: 0;
@@ -3165,19 +3183,32 @@ button {
   }
 }
 
-/* ---- The projector: a question, sized by the height of the window, with a floor that can still be read from the back of a room ---- */
+/*
+ * ---- The projector: a question that fills the window ----
+ * One unit, `--u`, is a hundredth of the height of the window, or 0.56 of a hundredth of its width when the window is squarer than 16:9, so that the same words
+ * take the same number of lines in 1920 x 1080, 1280 x 720 and 1024 x 768. Type is sized in it; the options, bars and ranking are not sized but stretched, to
+ * share what height is left between the question and the countdown, so the content ends at the foot of the window and nothing needs scrolling.
+ * Everything on it is full white: the ground goes up to #155869 here (7.6:1), and a dimmed white would fall below 7:1 on it.
+ */
+.cv {
+  --u: min(1vh, 0.56vw);
+  --text-2: var(--text);
+}
+.cv[data-state="teaching"] {
+  height: 100dvh;
+  min-height: 0;
+}
 .cvq {
   flex: 1;
-  display: grid;
-  align-content: start;
-  gap: 1.4vh;
+  display: flex;
+  flex-direction: column;
+  gap: calc(1.6 * var(--u));
   min-height: 0;
-  padding-top: 1.5vh;
+  padding-top: calc(1 * var(--u));
 }
 .cvq__n {
   margin: 0;
-  color: var(--text-2);
-  font-size: max(1.5rem, 3.4vh);
+  font-size: max(1.5rem, calc(3.6 * var(--u)));
   font-weight: 600;
 }
 .cvq__prompt {
@@ -3189,73 +3220,95 @@ button {
   overflow-wrap: anywhere;
 }
 .cvq__prompt[data-size="xl"] {
-  font-size: max(2.5rem, 6vh);
+  font-size: max(2.5rem, calc(7 * var(--u)));
 }
 .cvq__prompt[data-size="l"] {
-  font-size: max(2.25rem, 5vh);
+  font-size: max(2.25rem, calc(5.6 * var(--u)));
 }
 .cvq__prompt[data-size="m"] {
-  font-size: max(2rem, 4.2vh);
+  font-size: max(2rem, calc(4.6 * var(--u)));
 }
 .cvq__prompt[data-size="s"] {
-  font-size: max(1.75rem, 3.6vh);
-  color: var(--text-2);
+  font-size: max(1.75rem, calc(4.4 * var(--u)));
   font-weight: 700;
 }
 .cvq__body {
+  flex: 1;
+  min-height: 0;
   display: grid;
-  gap: 3vh 4vw;
-  align-items: start;
+  grid-template-rows: minmax(0, 1fr);
+  gap: calc(3 * var(--u)) 4vw;
 }
 .cvq__body[data-picture="true"] {
   grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
 }
 .cvq__text {
-  display: grid;
-  gap: 1.8vh;
+  display: flex;
+  flex-direction: column;
+  gap: calc(1.8 * var(--u));
   min-width: 0;
+  min-height: 0;
 }
 .cvq__figure {
   margin: 0;
+  min-height: 0;
   display: grid;
   place-items: center;
-  border-radius: 2vh;
+  border-radius: calc(2 * var(--u));
   background: var(--deep);
   overflow: hidden;
 }
 .cvq__figure img {
   display: block;
   width: 100%;
-  max-height: 46vh;
+  height: 100%;
+  min-height: 0;
   object-fit: contain;
 }
+/* The options share the height that is left, up to a most for two or three (a tall bar of two words is not easier to read); each one centres its words. */
 .cvq__options {
   list-style: none;
   margin: 0;
   padding: 0;
+  flex: 1;
+  min-height: 0;
   display: grid;
-  gap: 1.5vh;
+  grid-auto-rows: minmax(0, 1fr);
+  gap: calc(1.5 * var(--u));
+}
+.cvq__options[data-count="2"] {
+  max-height: 44vh;
+}
+.cvq__options[data-count="3"] {
+  max-height: 58vh;
 }
 .cvq__option {
   display: flex;
   align-items: center;
-  gap: 2vh;
-  min-height: 7vh;
-  padding: 0.6vh 2.4vh;
-  border-radius: 2vh;
+  gap: calc(2 * var(--u));
+  min-height: 0;
+  padding: 0 calc(2.4 * var(--u));
+  border-radius: calc(2 * var(--u));
   background: var(--deep);
-  font-size: max(1.75rem, 4.2vh);
+  font-size: max(1.5rem, calc(5.4 * var(--u)));
   font-weight: 700;
   line-height: 1.15;
 }
+.cvq__options[data-fit="b"] .cvq__option {
+  font-size: max(1.5rem, calc(4.6 * var(--u)));
+}
+.cvq__options[data-fit="c"] .cvq__option {
+  font-size: max(1.5rem, calc(4 * var(--u)));
+}
 .cvq__options[data-kind="true_false"] {
   grid-auto-flow: column;
-  grid-auto-columns: 1fr;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-rows: auto;
+  max-height: 40vh;
 }
 .cvq__options[data-kind="true_false"] .cvq__option {
   justify-content: center;
-  min-height: 12vh;
-  font-size: max(2.25rem, 6vh);
+  font-size: max(2.25rem, calc(9 * var(--u)));
 }
 .cvq__letter {
   flex: none;
@@ -3274,151 +3327,192 @@ button {
   overflow-wrap: anywhere;
 }
 .cvq__number {
+  flex: 1;
   display: grid;
-  gap: 1vh;
+  align-content: center;
+  justify-items: start;
+  gap: calc(2 * var(--u));
 }
 .cvq__numeric {
   margin: 0;
   display: inline-block;
-  padding: 2vh 3vh;
-  border-radius: 2vh;
+  padding: calc(3 * var(--u)) calc(4 * var(--u));
+  border-radius: calc(2 * var(--u));
   background: var(--deep);
-  font-size: max(2rem, 5.6vh);
+  font-size: max(2rem, calc(8 * var(--u)));
   font-weight: 800;
 }
 .cvq__unit {
   margin: 0;
-  font-size: max(1.75rem, 4.4vh);
+  font-size: max(1.75rem, calc(5.6 * var(--u)));
   font-weight: 600;
-  color: var(--text-2);
 }
 .cvq__foot {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 3vh 3vw;
-  margin-top: 1vh;
+  gap: calc(3 * var(--u)) 3vw;
+  margin-top: calc(1 * var(--u));
 }
 .cvq__seconds {
   margin: 0;
   display: flex;
   align-items: baseline;
-  gap: 1.5vh;
+  gap: calc(1.5 * var(--u));
 }
 .cvq__num {
   min-width: 1.6ch;
   text-align: right;
   font-family: var(--font-display);
-  font-size: max(4rem, 11vh);
+  font-size: max(4rem, calc(13 * var(--u)));
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 .cvq__unitword {
-  font-size: max(1.5rem, 3.4vh);
+  font-size: max(1.5rem, calc(3.8 * var(--u)));
   font-weight: 600;
-  color: var(--text-2);
 }
 .cvq__bar {
-  height: 3vh;
+  height: calc(3.6 * var(--u));
   min-height: 1.25rem;
   border-radius: 999px;
   background: var(--deep);
   overflow: hidden;
 }
+/* The bar shrinks by transform (the compositor's own work), once for each tick of the clock. */
 .cvq__fill {
+  width: 100%;
   height: 100%;
   border-radius: 999px;
   background: var(--text);
-  transition: width 250ms linear;
+  transform-origin: left center;
+  transition: transform 250ms linear;
 }
 .cvq__progress {
   margin: 0;
-  font-size: max(1.75rem, 4.2vh);
+  font-size: max(1.75rem, calc(4.6 * var(--u)));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+/* Time is up, or the question does not count: the question stays where it was, and the one thing to say fills the rest. */
 .cvq__done {
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 2vh;
+  justify-content: center;
+  gap: calc(2.4 * var(--u));
   font-family: var(--font-display);
-  font-size: max(3rem, 10vh);
+  font-size: max(3rem, calc(14 * var(--u)));
   font-weight: 800;
   line-height: 1.1;
+  text-align: center;
 }
 .cvq--closed,
 .cvq--skipped {
-  align-content: center;
-  justify-items: center;
-  text-align: center;
+  align-items: stretch;
 }
 .cvq--closed .cvq__done,
 .cvq--skipped .cvq__done {
-  justify-content: center;
-}
-.cvq__progress--big {
-  font-size: max(2rem, 6vh);
+  flex: 1;
+  align-items: flex-end;
 }
 .cvq--skipped .cvq__done {
-  font-size: max(3rem, 9vh);
+  font-size: max(3rem, calc(12 * var(--u)));
+}
+.cvq--closed .cvq__progress--big,
+.cvq--skipped .cvq__prompt {
+  flex: 1;
+  text-align: center;
+}
+.cvq__progress--big {
+  font-size: max(2rem, calc(8 * var(--u)));
 }
 
-/* The answer shown: the bars on the left, the ranking beside them. */
+/* The answer shown: the question across the top, the bars on the left and the ranking beside them, both as high as the window lets them be. */
 .cvq__reveal {
+  flex: 1;
+  min-height: 0;
   display: grid;
-  gap: 3vh 4vw;
-  align-items: start;
+  grid-template-rows: minmax(0, 1fr);
+  gap: calc(3 * var(--u)) 4vw;
 }
 .cvq--revealed[data-board="true"] .cvq__reveal {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+}
+.cvq--revealed[data-board="true"][data-fit="c"] .cvq__reveal {
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+}
+.cvq--revealed[data-fit="c"] .cvb__row {
+  font-size: max(1.25rem, calc(3.4 * var(--u)));
+}
+.cvq--revealed[data-fit="c"] .cvb__title {
+  font-size: max(1.5rem, calc(4 * var(--u)));
 }
 .cvq__bars {
   list-style: none;
   margin: 0;
   padding: 0;
+  flex: 1;
+  min-height: 0;
   display: grid;
-  gap: 1vh;
+  grid-auto-rows: minmax(min-content, 1fr);
+  gap: calc(1.2 * var(--u));
+}
+.cvq__bars[data-count="2"] {
+  max-height: 46vh;
 }
 .cvq__barrow {
   display: grid;
-  gap: 0.6vh;
-  padding: 0.5vh 2vh;
-  border: 0.5vh solid transparent;
-  border-radius: 2vh;
+  align-content: center;
+  gap: calc(0.8 * var(--u));
+  min-height: 0;
+  padding: calc(0.8 * var(--u)) calc(2 * var(--u));
+  border: calc(0.5 * var(--u)) solid transparent;
+  border-radius: calc(2 * var(--u));
   background: var(--deep);
 }
 .cvq__barrow[data-right="true"] {
   border-color: var(--text);
   background: var(--shadow);
 }
+/* The letter, the answer with its mark under it, and the count: three columns, so the mark never lands between the words and the number. */
 .cvq__barhead {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.5vh 2vh;
-  font-size: max(1.375rem, 3.2vh);
+  gap: calc(1.6 * var(--u));
+  font-size: max(1.375rem, calc(3.8 * var(--u)));
   font-weight: 700;
+  line-height: 1.15;
 }
-.cvq__barhead .cvq__label {
-  flex: 1 1 8ch;
+.cvq__barrow[data-kind="true_false"] .cvq__barhead {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.cvq__barrow[data-fit="c"] .cvq__barhead {
+  font-size: max(1.375rem, calc(3.2 * var(--u)));
+}
+.cvq__answer {
+  display: grid;
+  justify-items: start;
+  gap: calc(0.6 * var(--u));
+  min-width: 0;
 }
 .cvq__rightmark {
   display: inline-flex;
   align-items: center;
-  gap: 1vh;
-  padding: 0.3vh 1.6vh;
+  gap: calc(1 * var(--u));
+  padding: calc(0.2 * var(--u)) calc(1.6 * var(--u));
   border-radius: 999px;
   background: var(--text);
   color: var(--ink);
-  font-size: max(1.25rem, 3vh);
+  font-size: max(1.25rem, calc(3 * var(--u)));
   font-weight: 800;
   white-space: nowrap;
 }
 .cvq__track {
   display: block;
-  height: 2vh;
+  height: calc(1.8 * var(--u));
   min-height: 0.875rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.18);
@@ -3431,18 +3525,16 @@ button {
   background: var(--text);
 }
 .cvq__barcount {
-  margin-left: auto;
-  font-size: max(1.375rem, 3.2vh);
-  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .cvq__bignumber {
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 2vh;
+  gap: calc(2 * var(--u));
   font-family: var(--font-display);
-  font-size: max(2.5rem, 8vh);
+  font-size: max(2.5rem, calc(9 * var(--u)));
   font-weight: 800;
   line-height: 1.1;
 }
@@ -3450,18 +3542,22 @@ button {
   list-style: none;
   margin: 0;
   padding: 0;
+  flex: 1;
+  min-height: 0;
+  max-height: 40vh;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 2vh;
+  gap: calc(2 * var(--u));
 }
 .cvq__tile {
   display: grid;
+  align-content: center;
   justify-items: center;
-  gap: 0.5vh;
-  padding: 2vh 1vh;
-  border-radius: 2vh;
+  gap: calc(0.5 * var(--u));
+  padding: calc(1 * var(--u));
+  border-radius: calc(2 * var(--u));
   background: var(--deep);
-  font-size: max(2rem, 6vh);
+  font-size: max(2rem, calc(8 * var(--u)));
   text-align: center;
 }
 .cvq__tilenum {
@@ -3470,46 +3566,51 @@ button {
   line-height: 1;
 }
 .cvq__tileword {
-  font-size: max(1.5rem, 3.4vh);
+  font-size: max(1.5rem, calc(3.8 * var(--u)));
   font-weight: 700;
-  color: var(--text-2);
 }
 .cvq__why {
   margin: 0;
-  padding: 1vh 2vh;
-  border-radius: 2vh;
+  padding: calc(1.2 * var(--u)) calc(2 * var(--u));
+  border-radius: calc(2 * var(--u));
   background: var(--deep);
-  font-size: max(1.375rem, 3.1vh);
+  font-size: max(1.375rem, calc(3.4 * var(--u)));
   line-height: 1.3;
 }
 
-/* The ranking: the first places, big. */
+/* The ranking: the first places, big, in the height of the window. */
 .cvb {
-  display: grid;
-  gap: 2vh;
-  padding: 2.4vh;
-  border-radius: 3vh;
+  display: flex;
+  flex-direction: column;
+  gap: calc(2 * var(--u));
+  min-height: 0;
+  padding: calc(2.4 * var(--u));
+  border-radius: calc(3 * var(--u));
   background: var(--deep);
 }
 .cvb__title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: max(1.75rem, 4.4vh);
+  font-size: max(1.75rem, calc(4.8 * var(--u)));
   font-weight: 800;
 }
 .cvb__list {
   list-style: none;
   margin: 0;
   padding: 0;
+  flex: 1;
+  min-height: 0;
   display: grid;
-  gap: 1vh;
+  grid-auto-rows: minmax(min-content, 1fr);
+  align-content: stretch;
+  gap: calc(0.6 * var(--u));
 }
 .cvb__row {
   display: grid;
   grid-template-columns: 1.1em minmax(0, 1fr) auto;
   align-items: center;
-  gap: 1.4vh;
-  font-size: max(1.375rem, 3.3vh);
+  gap: calc(1.4 * var(--u));
+  font-size: max(1.375rem, calc(4.2 * var(--u)));
   font-weight: 700;
 }
 .cvb__rank {
@@ -3524,23 +3625,24 @@ button {
 .cvb__points {
   font-size: max(1.25rem, 0.85em);
   font-variant-numeric: tabular-nums;
-  color: var(--text-2);
   white-space: nowrap;
 }
+/* Between questions: the ranking down the left of the window, as high as it, and the corner with the QR at the right. */
 .cv__between {
   flex: 1;
-  display: grid;
-  place-items: center;
-  padding-bottom: 36vh;
+  min-height: 0;
+  display: flex;
+  padding-bottom: calc(1 * var(--u));
 }
 .cvb--between {
-  width: min(100%, 60rem);
+  flex: 0 1 min(100%, 56rem);
+  max-width: 62%;
 }
 .cvb--between .cvb__row {
-  font-size: max(2rem, 6.2vh);
+  font-size: max(2rem, calc(6.4 * var(--u)));
 }
 .cvb--between .cvb__title {
-  font-size: max(2rem, 5.4vh);
+  font-size: max(2rem, calc(6 * var(--u)));
 }
 @media (max-aspect-ratio: 1/1) {
   .cvq__body[data-picture="true"],
