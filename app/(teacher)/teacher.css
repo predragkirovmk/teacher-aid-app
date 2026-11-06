@@ -222,7 +222,7 @@ button {
   border-radius: 2px;
   background: var(--text);
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .nav__item:hover:not([aria-current="page"]) {
     background: rgba(255, 255, 255, 0.1);
   }
@@ -526,7 +526,7 @@ button {
 .me__badge::before {
   content: attr(data-initials);
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .me:hover {
     background: var(--deep);
   }
@@ -634,7 +634,7 @@ button {
 .btn--danger:active {
   background: #b81513;
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .btn--danger:hover {
     background: #d11d1a;
   }
@@ -652,7 +652,7 @@ button {
   padding: var(--sp-1) var(--sp-3);
   font-size: var(--fs-body);
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .btn--primary:hover {
     background: color-mix(in srgb, var(--yellow) 86%, white);
   }
@@ -708,7 +708,7 @@ button {
   outline-offset: 2px;
   box-shadow: 0 0 0 2px var(--shadow);
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .choice[data-checked="false"]:hover {
     background: var(--shadow);
   }
@@ -946,7 +946,7 @@ button {
   color: var(--ink);
   font-weight: 700;
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .pill[aria-pressed="false"]:hover {
     background: var(--shadow);
   }
@@ -1053,7 +1053,7 @@ button {
   opacity: 0.55;
   cursor: default;
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .provider:hover:not(:disabled) {
     background: #f1f1f1;
   }
@@ -1159,7 +1159,7 @@ button {
   text-decoration: underline;
   text-underline-offset: 0.2em;
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .btn--quiet:hover {
     background: rgba(255, 255, 255, 0.1);
   }
@@ -3758,6 +3758,15 @@ button {
   }
 }
 
+/*
+  Reduce Motion takes away movement, not feedback: nothing slides, scales or turns, while the short
+  colour and opacity fades (150ms) still run, which is gentler than none.
+*/
+@keyframes pop-fade {
+  from {
+    opacity: 0;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .waiting__dots span {
     animation: none;
@@ -3765,12 +3774,43 @@ button {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    transition-delay: 0s !important;
     scroll-behavior: auto !important;
   }
+  .dialog[open],
+  .note-box {
+    animation-name: pop-fade;
+  }
+  .btn,
+  .provider {
+    transition: background-color var(--dur) var(--ease);
+  }
+  .btn:active,
+  .provider:active {
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) and (max-width: 63.9375rem) {
+  .sidebar {
+    transform: none;
+    opacity: 0;
+    transition:
+      opacity var(--dur) var(--ease),
+      visibility 0s linear var(--dur);
+  }
+  .sidebar[data-open="true"] {
+    opacity: 1;
+    transition-delay: 0s;
+  }
+  .scrim {
+    transition:
+      opacity var(--dur) var(--ease),
+      visibility 0s linear var(--dur);
+  }
+  .scrim[data-open="true"] {
+    transition-delay: 0s;
+  }
+}
 }
 
 /* Windows high-contrast: fills are dropped, so the edges of cards, the chosen row and the one main
