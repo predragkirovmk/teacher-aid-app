@@ -448,7 +448,7 @@ test.describe("a teacher with no lessons", () => {
 
   test("is told so in one card, whose yellow button prepares the first", async ({ page }) => {
     await seed(page, { first_run_done: true }, "/teacher/lessons", "novice");
-    await expect(page.getByRole("heading", { level: 2, name: "Сè уште немате лекции" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Сѐ уште немате лекции" })).toBeVisible();
     await expect(page.getByText("Подгответе ја првата лекција. Кога ќе биде готова, ќе ја најдете тука.")).toBeVisible();
     await expect(yellow(page)).toHaveCount(1);
     await expect(page.getByRole("link", { name: "Подготви лекција" })).toHaveClass(/btn--primary/);
@@ -1130,7 +1130,7 @@ test.describe("the library", () => {
 
   test("an empty library is one honest card, with nothing to press", async ({ page }) => {
     await seed(page, { library_empty: true }, "/teacher/library");
-    await expect(page.getByRole("heading", { level: 2, name: "Сè уште нема лекции од колегите" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Сѐ уште нема лекции од колегите" })).toBeVisible();
     await expect(page.getByText("Кога колегите од Вашето училиште ќе зачуваат лекции, ќе се појават тука и ќе можете да ги копирате.")).toBeVisible();
     await expect(page.locator(".lessons")).toHaveCount(0);
     await expect(page.getByRole("radiogroup")).toHaveCount(0);

@@ -314,7 +314,7 @@ test.describe("End", () => {
     await endButton(page).click();
     await context.setOffline(true);
     await question(page).getByRole("button", { name: "Да, заврши го часот" }).click();
-    await expect(question(page).getByRole("alert")).toContainText("Не успеавме да го завршиме часот. Тој е сè уште отворен и ништо не е изгубено.");
+    await expect(question(page).getByRole("alert")).toContainText("Не успеавме да го завршиме часот. Тој е сѐ уште отворен и ништо не е изгубено.");
     await expect(page.locator(".states__item[aria-current=step]")).toContainText("Чекаме ученици");
     await context.setOffline(false);
     await question(page).getByRole("button", { name: "Да, заврши го часот" }).click();

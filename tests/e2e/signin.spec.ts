@@ -803,7 +803,7 @@ test.describe("when signing out cannot reach the server", () => {
     const dialog = page.getByRole("alertdialog", { name: "Дали сакате да се одјавите?" });
     await context.setOffline(true);
     await dialog.getByRole("button", { name: "Да, одјави ме" }).click();
-    await expect(dialog.getByRole("alert")).toContainText("Не успеавме да Ве одјавиме. Сè уште сте најавени. Нема врска со интернет.");
+    await expect(dialog.getByRole("alert")).toContainText("Не успеавме да Ве одјавиме. Сѐ уште сте најавени. Нема врска со интернет.");
     await expect(page).toHaveURL(/\/teacher\/help$/);
     expect(await sessionOf(page)).toBe("veteran");
 

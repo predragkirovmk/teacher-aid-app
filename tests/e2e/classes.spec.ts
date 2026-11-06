@@ -78,7 +78,7 @@ test.describe("the list of classes", () => {
   test("a teacher with no class is told who gives them", async ({ page }) => {
     await seed(page, { courses_empty: true }, "/teacher/classes");
     const empty = page.getByTestId("classes-empty");
-    await expect(empty).toContainText("Сè уште немате класови");
+    await expect(empty).toContainText("Сѐ уште немате класови");
     await expect(empty).toContainText("Класовите Ви ги доделува администраторот на училиштето.");
   });
 });

@@ -396,7 +396,7 @@ test.describe("the wait", () => {
     await expect(page).toHaveURL(/\/teacher\/lessons\/new/);
     await expect(go(page)).toBeFocused();
     // The focus lands on a button that says nothing of what happened, so the form says it, aloud only.
-    await expect(page.getByRole("status").filter({ hasText: "Откажано. Сè што внесовте е сочувано." })).toHaveCount(1);
+    await expect(page.getByRole("status").filter({ hasText: "Откажано. Сѐ што внесовте е сочувано." })).toHaveCount(1);
     await expect(page.getByRole("radio", { name: /^II година/ })).toBeChecked();
     await expect(page.getByRole("radio", { name: /^Неколку реченици/ })).toBeChecked();
     await expect(textbox(page)).toHaveValue(TYPED);
@@ -477,7 +477,7 @@ test.describe("the wait", () => {
     await go(page).click();
     await expect(page).toHaveURL(DRAFT_URL);
     await expect(alerts(page)).toContainText("Не успеавме да ги напишеме прашањата", { timeout: 20_000 });
-    await expect(alerts(page)).toContainText("Вашиот материјал и сè што внесовте се сочувани.");
+    await expect(alerts(page)).toContainText("Вашиот материјал и сѐ што внесовте се сочувани.");
     await expect(retry(page)).toHaveClass(/btn--primary/);
     await expect(retry(page)).toBeFocused();
     await expect(yellow(page)).toHaveCount(1);
@@ -493,7 +493,7 @@ test.describe("the wait", () => {
     await expect(textbox(page)).toHaveValue(`${TYPED} [fail]`);
     await expect(page.getByRole("radio", { name: /^II година/ })).toBeChecked();
     await expect(go(page)).toBeFocused();
-    await expect(page.getByRole("status").filter({ hasText: "Сè што внесовте е сочувано." })).toHaveCount(1);
+    await expect(page.getByRole("status").filter({ hasText: "Сѐ што внесовте е сочувано." })).toHaveCount(1);
     // The failed draft is gone.
     expect((await demo(page)).drafts).toHaveLength(0);
   });
@@ -551,7 +551,7 @@ test.describe("the wait", () => {
     await expect(phase(page, "Го читаме документот")).toBeVisible();
     await context.setOffline(true);
     await expect(alerts(page)).toContainText("Нема врска со интернет");
-    await expect(alerts(page)).toContainText("Сè што внесовте е сочувано.");
+    await expect(alerts(page)).toContainText("Сѐ што внесовте е сочувано.");
     await expect(retry(page)).toBeVisible();
     // Trying with no connection fails at once, the same way.
     await retry(page).click();
@@ -580,7 +580,7 @@ test.describe("the wait", () => {
     expect(card.y + card.height - (before.y + before.height)).toBeLessThanOrEqual(34);
 
     await page.clock.runFor(21_000);
-    const line = page.getByText("Сè уште работиме на тоа.");
+    const line = page.getByText("Сѐ уште работиме на тоа.");
     await expect(line).toBeVisible();
     const after = (await cancel(page).boundingBox())!;
     expect(after.y).toBe(before.y);
@@ -594,12 +594,12 @@ test.describe("the wait", () => {
     await typeSentences(page, `${TYPED} [slow]`);
     await go(page).click();
     await openDraftUnderFakeClock(page);
-    await expect(page.getByText("Сè уште работиме на тоа.")).toHaveCount(0);
+    await expect(page.getByText("Сѐ уште работиме на тоа.")).toHaveCount(0);
 
     await page.clock.runFor(21_000);
-    await expect(page.getByText("Сè уште работиме на тоа. Благодариме за трпението.")).toBeVisible();
+    await expect(page.getByText("Сѐ уште работиме на тоа. Благодариме за трпението.")).toBeVisible();
     // Said once, in a region that was there before it.
-    await expect(page.getByRole("status").filter({ hasText: "Сè уште работиме" })).toHaveCount(1);
+    await expect(page.getByRole("status").filter({ hasText: "Сѐ уште работиме" })).toHaveCount(1);
 
     // Past the limit of the draft (BR-LES-09) the next look at it finds it failed.
     await page.clock.runFor(165_000);
