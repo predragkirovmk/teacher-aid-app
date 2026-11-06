@@ -57,7 +57,7 @@ export function ReviewPanel({ snapshot }: { snapshot: ConsoleSnapshot }) {
   }
   if (!review.data) return <LoadProblem title={t("live.error.title")} error={review.error} onRetry={review.refetch} />;
 
-  const { most_missed: missed, anon_questions: anon } = review.data;
+  const { most_missed: missed } = review.data;
   const shown = missed.slice(0, REVIEW_MISSED_MAX);
   const screen = screens[here];
   const labels = { true: t("q.adhoc.true"), false: t("q.adhoc.false") };

@@ -389,6 +389,13 @@ test.describe("the end page", () => {
     await page.emulateMedia({ media: "print" });
     await expect(page.locator(".att-print__title")).toBeVisible();
     await expect(page.locator(".att-print .att__actions")).toBeHidden();
+    // Only the heading, the class, the lesson and the day above the list: no counts, no buttons.
+    await expect(page.locator(".att-print .att__counts")).toBeHidden();
+    await expect(page.locator(".att-print__title")).toContainText("II-4");
+    await expect(page.locator(".att-print__title")).toContainText("Проценти и пропорции");
+    await expect(page.locator(".att-print__title")).toContainText(/\d{4}/);
+    await expect(page.locator(".att-print h2")).toHaveCSS("color", "rgb(0, 0, 0)");
+    await expect(page.locator(".endpage__missed")).toBeHidden();
     await expect(page.locator(".att-print")).toHaveCSS("color", "rgb(0, 0, 0)");
     await expect(page.locator(".att-print")).toHaveCSS("background-color", "rgb(255, 255, 255)");
     expect(await page.locator(".sidebar").evaluate((el) => getComputedStyle(el).visibility)).toBe("hidden");

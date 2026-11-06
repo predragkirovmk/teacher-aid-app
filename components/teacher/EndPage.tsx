@@ -56,6 +56,7 @@ export function EndPage({ sessionId }: { sessionId: string }) {
         subtitle={data ? `${course ? `${courseLabel(course.subject.name, course.class.name)}: ` : ""}${data.session.lesson.title}` : undefined}
         back={TODAY}
         backLabel={t("back.today")}
+        compact
       />
       <div className="content live endpage">
         {review.status === "loading" && (
@@ -82,8 +83,13 @@ export function EndPage({ sessionId }: { sessionId: string }) {
         {review.status === "error" && !gone && <LoadProblem title={t("live.error.title")} error={review.error} onRetry={review.refetch} />}
         {data && data.attendance && (
           <>
-            <StateLine state="ended" />
-            <Attendance rows={data.attendance} title={`${course ? `${courseLabel(course.subject.name, course.class.name)}, ` : ""}${data.session.lesson.title}`} />
+            <StateLine state="ended" compact />
+            <Attendance
+              rows={data.attendance}
+              course={course ? courseLabel(course.subject.name, course.class.name) : null}
+              lesson={data.session.lesson.title}
+              day={data.session.ended_at ?? data.session.started_at}
+            />
             <Missed missed={data.most_missed} />
             <Practice sessionId={sessionId} noneMissed={data.most_missed.length === 0} />
             <section className="card endpage__way" aria-label={t("endpage.today")}>
@@ -108,7 +114,7 @@ const COUNT_KEY = {
 } as const satisfies Record<AttendanceStatus, string>;
 
 /** The counts, the list in the register's order, and the two things a teacher does with it: copy it, or print it. */
-function Attendance({ rows, title }: { rows: AttendanceRow[]; title: string }) {
+function Attendance({ rows, course, lesson, day }: { rows: AttendanceRow[]; course: string | null; lesson: string; day: string }) {
   const { t, locale } = useT();
   const words = useAttendanceWords();
   const [note, setNote] = useState<"copied" | "failed" | null>(null);
@@ -133,7 +139,12 @@ function Attendance({ rows, title }: { rows: AttendanceRow[]; title: string }) {
   return (
     <section className="card att att-print" aria-labelledby="att-title">
       <h2 id="att-title">{t("att.title")}</h2>
-      <p className="att-print__title">{title}</p>
+      {/* On paper only: the class, the lesson and the day the list belongs to, above it. */}
+      <p className="att-print__title">
+        {course && <span>{course}</span>}
+        <span>{lesson}</span>
+        <span>{new Date(day).toLocaleDateString(locale === "mk" ? "mk-MK" : "en-GB", { day: "numeric", month: "long", year: "numeric" })}</span>
+      </p>
       <p className="att__hint">{t("att.hint")}</p>
       <ul className="att__counts" aria-label={t("att.title")}>
         {ATTENDANCE_STATUSES.map((status) => (

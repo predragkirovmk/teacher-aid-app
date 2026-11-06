@@ -4044,13 +4044,14 @@ button {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2);
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: var(--sp-1);
 }
 .att__counts li {
   display: grid;
-  min-width: 8rem;
+  align-content: start;
   padding: var(--sp-1) var(--sp-2);
   border-radius: var(--r-m);
   background: var(--deep);
@@ -4064,6 +4065,7 @@ button {
 .att__counts span {
   font-size: var(--fs-body);
   font-weight: 600;
+  line-height: 1.25;
 }
 .att__actions {
   display: flex;
@@ -4157,19 +4159,18 @@ button {
   }
   .att-print .att__actions,
   .att-print .att__note,
-  .att-print .att__hint {
+  .att-print .att__hint,
+  .att-print .att__counts {
     display: none;
   }
+  .att-print h2,
   .att-print .att-print__title {
-    display: block;
     margin: 0;
-    font-size: 1.125rem;
     color: #000;
   }
-  .att-print .att__counts li {
-    background: none;
-    border: 1px solid #000;
-    color: #000;
+  .att-print .att-print__title {
+    display: grid;
+    font-size: 1.125rem;
   }
   .att-print .att__table th,
   .att-print .att__table td {
