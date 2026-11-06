@@ -67,7 +67,7 @@ describe("who and what", () => {
     const me = await api.getMe();
     expect(me).toMatchObject({ name: "Марија Петровска", role: "teacher", first_run_done: true, school: { type: "gymnasium" } });
     const courses = await api.listCourses();
-    expect(courses.map((c) => c.class.name)).toEqual(["II-4", "III-5", "IV-1", "I-2"]);
+    expect(courses.map((c) => c.class.name)).toEqual(["II-4", "III-5", "IV-1", "IV-2"]);
     expect(courses.map((c) => c.student_count)).toEqual([26, 24, 28, 25]);
     expect(courses.map((c) => c.lessons_run)).toEqual([10, 6, 6, 0]);
     expect(courses.every((c) => c.speed_bonus_on)).toBe(true);
@@ -1063,7 +1063,7 @@ describe("the new teacher: invited, signed in for the first time", () => {
   test("has the same classes and rosters, and has run nothing: no history, no points", async () => {
     const { api } = novice();
     const courses = await api.listCourses();
-    expect(courses.map((c) => c.class.name)).toEqual(["II-4", "III-5", "IV-1", "I-2"]);
+    expect(courses.map((c) => c.class.name)).toEqual(["II-4", "III-5", "IV-1", "IV-2"]);
     expect(courses.map((c) => c.student_count)).toEqual([26, 24, 28, 25]);
     expect(courses.every((c) => c.lessons_run === 0 && c.last_session_at === null)).toBe(true);
     const d = await api.getDashboard(courses[0].id);

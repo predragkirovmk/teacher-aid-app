@@ -141,7 +141,7 @@ export const SCHOOLS: Record<SchoolType, SchoolDef> = {
         lessons: ["nizi", "granici", "izvodi", "granici", "izvodi", "trigonometrija"],
       },
       // A class the teacher has been given and has not taught yet.
-      { id: "i-2", name: "I-2", year: 1, subject: MATH, size: 25, hour: 13, lessons: [] },
+      { id: "iv-2", name: "IV-2", year: 4, subject: MATH, size: 25, hour: 13, lessons: [] },
     ],
     colleagues: [
       { id: "t-iliev", name: "Зоран Илиев" },

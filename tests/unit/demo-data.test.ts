@@ -16,7 +16,7 @@ describe("the demo school", () => {
     expect(SCHOOLS.university.teacher.name).toBe("Марија Петровска");
     expect(SCHOOLS.school.school.kind).toBe("gymnasium");
     expect(SCHOOLS.university.school.kind).toBe("faculty");
-    expect(courses("school").map((c) => c.def.name)).toEqual(["II-4", "III-5", "IV-1", "I-2"]);
+    expect(courses("school").map((c) => c.def.name)).toEqual(["II-4", "III-5", "IV-1", "IV-2"]);
     expect(courses("school").every((c) => c.def.subject.name === "Математика")).toBe(true);
     expect(courses("university")).toHaveLength(4);
   });

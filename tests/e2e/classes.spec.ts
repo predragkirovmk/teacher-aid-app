@@ -12,7 +12,7 @@ import { go, next, panel, reveal, send, T0, teach, TEACHING_AT, title, yellow } 
  */
 
 const II4 = "course-ii-4";
-const I2 = "course-i-2";
+const I2 = "course-iv-2";
 
 const dashboardOf = async (courseId: string): Promise<CourseDashboard> => {
   const api = createMockApi(memorySource(freshState(startOfDay(T0)), { now: () => T0 }), { delay: () => Promise.resolve() });
@@ -46,7 +46,7 @@ test.describe("the list of classes", () => {
     await expect(cards.nth(0).getByRole("heading")).toHaveText("II-4 · Математика");
     await expect(cards.nth(1).getByRole("heading")).toHaveText("IV-1 · Математика");
     await expect(cards.nth(2).getByRole("heading")).toHaveText("III-5 · Математика");
-    await expect(cards.nth(3).getByRole("heading")).toHaveText("I-2 · Математика");
+    await expect(cards.nth(3).getByRole("heading")).toHaveText("IV-2 · Математика");
     await expect(cards.nth(0)).toContainText("26 ученици");
     await expect(cards.nth(0)).toContainText("10 одржани часа");
     await expect(cards.nth(0)).toContainText("Последниот час беше пред 3 дена");
@@ -203,7 +203,7 @@ test.describe("the results of a class with a season", () => {
 test.describe("a class with no lesson held", () => {
   test("says so and points to Today; the setting is still there", async ({ page }) => {
     await page.goto(`/teacher/classes/${I2}`);
-    await expect(title(page)).toHaveText("I-2 · Математика");
+    await expect(title(page)).toHaveText("IV-2 · Математика");
     const empty = page.getByTestId("course-empty");
     await expect(empty).toContainText("За овој клас уште нема одржан час");
     await expect(yellow(page)).toHaveCount(1);
