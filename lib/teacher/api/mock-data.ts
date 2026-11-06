@@ -181,7 +181,7 @@ export const SCHOOLS: Record<SchoolType, SchoolDef> = {
         id: "g-3a", name: "Група 3А", year: 3, subject: PROBABILITY, size: 22, hour: 13, midYear: 3,
         lessons: ["kombinatorika", "verojatnost", "kombinatorika", "verojatnost", "verojatnost", "kombinatorika"],
       },
-      { id: "g-1b", name: "Група 1Б", year: 1, subject: { id: "analysis-1", name: "Математичка анализа 1" }, size: 26, hour: 14, lessons: [] },
+      { id: "g-1b", name: "Група 1Б", year: 1, subject: DISCRETE, size: 26, hour: 14, lessons: [] },
     ],
     colleagues: [
       { id: "t-iliev", name: "Зоран Илиев" },

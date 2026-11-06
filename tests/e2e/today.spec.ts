@@ -354,9 +354,9 @@ test.describe("starting a lesson", () => {
     await expect(dialog).toHaveAccessibleName("Со кој клас?");
     await expect(dialog).toContainText("Лекција: Проценти и пропорции");
     const rows = dialog.getByRole("radio");
-    await expect(rows).toHaveCount(3);
-    // The lesson is for the second year, so II-4 is first; the other two keep the order of the API.
-    await expect(dialog.locator(".choice")).toHaveText([/^II-4\s*26 ученици$/, /^III-5\s*24 ученици$/, /^IV-1\s*28 ученици$/]);
+    await expect(rows).toHaveCount(4);
+    // The lesson is for the second year, so II-4 is first; the others keep the order of the API.
+    await expect(dialog.locator(".choice")).toHaveText([/^II-4\s*26 ученици$/, /^III-5\s*24 ученици$/, /^IV-1\s*28 ученици$/, /^IV-2\s*25 ученици$/]);
     for (const radio of await rows.all()) await expect(radio).not.toBeChecked();
     // Large rows, and a window that fits the screen whole.
     for (const row of await dialog.locator(".choice").all()) expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(56);
