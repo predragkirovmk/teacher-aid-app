@@ -698,8 +698,8 @@ test.describe("saving as it goes", () => {
     await menu(page).getByRole("link", { name: "Денес" }).click();
     await expect(leaveDialog(page)).toBeVisible();
     await expect(leaveDialog(page)).toContainText("Последните промени уште не се зачувани.");
-    await expect(leaveDialog(page).getByRole("button", { name: "Остани" })).toBeFocused();
-    await leaveDialog(page).getByRole("button", { name: "Остани" }).click();
+    await expect(leaveDialog(page).getByRole("button", { name: "Не, остани" })).toBeFocused();
+    await leaveDialog(page).getByRole("button", { name: "Не, остани" }).click();
     await context.setOffline(false);
     await saved(page);
     expect((await draftOnDisk(page)).content.title).toBe("Без врска");
@@ -725,7 +725,7 @@ test.describe("saving as it goes", () => {
     await tolerance(page).fill("0,");
     await menu(page).getByRole("link", { name: "Денес" }).click();
     await expect(leaveDialog(page)).toBeVisible();
-    await leaveDialog(page).getByRole("button", { name: "Остани" }).click();
+    await leaveDialog(page).getByRole("button", { name: "Не, остани" }).click();
     await tolerance(page).fill("0,5");
     await menu(page).getByRole("link", { name: "Денес" }).click();
     await expect(leaveDialog(page)).toHaveCount(0);

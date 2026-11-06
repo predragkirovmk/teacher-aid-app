@@ -796,7 +796,7 @@ test.describe("words and zoom", () => {
     await expect(page.getByRole("button", { name: "Send the question", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "The questions of this lesson" })).toBeVisible();
     await expect(listItem(page, 1)).toContainText("Not sent");
-    await expect(page.getByRole("heading", { name: "Questions from the class (0)" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Anonymous questions (0)" })).toBeVisible();
     await page.getByRole("button", { name: "Quick question" }).click();
     await expect(page.getByRole("dialog", { name: "Quick question" }).getByRole("radio", { name: "True or false" })).toBeVisible();
     await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();

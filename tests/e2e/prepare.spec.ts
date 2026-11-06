@@ -646,7 +646,7 @@ test.describe("leaving the form", () => {
     await menu(page).getByRole("link", { name: "Денес" }).click();
     await expect(leaveDialog(page)).toBeVisible();
     await expect(leaveDialog(page)).toContainText("Ако излезете, она што го внесовте се губи.");
-    await expect(leaveDialog(page).getByRole("button", { name: "Остани" })).toBeFocused();
+    await expect(leaveDialog(page).getByRole("button", { name: "Не, остани" })).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(leaveDialog(page)).toBeHidden();
     await expect(phase(page, "Го читаме документот")).toBeVisible();
@@ -665,9 +665,9 @@ test.describe("leaving a form that holds work", () => {
     await expect(dialog).toContainText("Ако излезете, она што го внесовте се губи.");
     // The question about the wait is not the one asked here: nothing is being prepared.
     await expect(dialog).not.toContainText("Прашањата уште се подготвуваат");
-    await expect(dialog.getByRole("button", { name: "Остани" })).toBeFocused();
-    await expect(dialog.getByRole("button", { name: "Остани" })).toHaveClass(/btn--primary/);
-    await dialog.getByRole("button", { name: "Остани" }).click();
+    await expect(dialog.getByRole("button", { name: "Не, остани" })).toBeFocused();
+    await expect(dialog.getByRole("button", { name: "Не, остани" })).toHaveClass(/btn--primary/);
+    await dialog.getByRole("button", { name: "Не, остани" }).click();
     await expect(dialog).toBeHidden();
     await expect(page).toHaveURL(/\/teacher\/lessons\/new/);
     await expect(textbox(page)).toHaveValue(TYPED);
@@ -675,7 +675,7 @@ test.describe("leaving a form that holds work", () => {
     // The page's own Back asks too.
     await page.getByRole("link", { name: "Назад кон Лекции" }).click();
     await expect(dialog).toBeVisible();
-    await dialog.getByRole("button", { name: "Излези" }).click();
+    await dialog.getByRole("button", { name: "Да, излези" }).click();
     await expect(title(page)).toHaveText("Лекции");
   });
 
@@ -691,7 +691,7 @@ test.describe("leaving a form that holds work", () => {
     await emphasis(page).fill("Повеќе примери.");
     await menu(page).getByRole("link", { name: "Денес" }).click();
     await expect(leaveDialog(page)).toBeVisible();
-    await leaveDialog(page).getByRole("button", { name: "Остани" }).click();
+    await leaveDialog(page).getByRole("button", { name: "Не, остани" }).click();
     await emphasis(page).fill("");
     await chooseDocument(page);
     await menu(page).getByRole("link", { name: "Денес" }).click();
