@@ -3717,16 +3717,23 @@ button {
 .cvb--between .cvb__title {
   font-size: max(2rem, calc(6 * var(--u)));
 }
-/* A squarish window (1024 x 768): the width is the short side, so the ranking's type takes more of it, and the bars still fill the height. */
+/* A squarish window (1024 x 768): the width is the short side, so the ranking gets a little more of it and larger type, a name still on one line, and the bars still fill the height. */
 @media (max-aspect-ratio: 4/3) {
+  .cvq--revealed[data-board="true"] .cvq__reveal,
+  .cvq--revealed[data-board="true"][data-fit="c"] .cvq__reveal {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  }
   .cvq--revealed .cvb--side .cvb__row {
-    font-size: max(1.75rem, calc(5.4 * var(--u)));
+    font-size: max(1.625rem, calc(4.7 * var(--u)));
   }
   .cvq--revealed[data-fit="c"] .cvb--side .cvb__row {
-    font-size: max(1.625rem, calc(4.8 * var(--u)));
+    font-size: max(1.5rem, calc(4.4 * var(--u)));
+  }
+  .cvq--revealed .cvb--side .cvb__points {
+    font-size: max(1.25rem, 0.78em);
   }
   .cvq--revealed .cvb--side .cvb__title {
-    font-size: max(2rem, calc(6 * var(--u)));
+    font-size: max(2rem, calc(5.6 * var(--u)));
   }
 }
 @media (max-aspect-ratio: 1/1) {
