@@ -608,16 +608,6 @@ test.describe("signing out", () => {
 
 });
 
-test.describe("the old signed-out address", () => {
-  test.use({ account: null });
-
-  test("leads to the sign-in screen with the same note", async ({ page }) => {
-    await page.goto("/teacher/signed-out");
-    await expect(page).toHaveURL(/\/teacher\/sign-in$/);
-    await expect(note(page)).toHaveText("Успешно се одјавивте.");
-  });
-});
-
 test.describe("what is shown before the answer is known", () => {
   test.use({ account: null });
 

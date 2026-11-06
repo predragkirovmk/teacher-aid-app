@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { TeacherApi } from "@/lib/teacher/api/client";
 import { ApiError } from "@/lib/teacher/api/errors";
-import { endSession, getSessionEnd, noteFailure, noteSignedIn, onSessionEnd, resetSession, subscribeSessionEnd, watchSession } from "@/lib/teacher/api/session";
+import { endSession, getSessionEnd, noteFailure, noteSignedIn, resetSession, subscribeSessionEnd, watchSession } from "@/lib/teacher/api/session";
 
 beforeEach(() => resetSession());
 
@@ -52,15 +52,11 @@ describe("a session that ends", () => {
   test("whoever listens is told, once per change", () => {
     const heard: (string | null)[] = [];
     const stop = subscribeSessionEnd(() => heard.push(getSessionEnd()));
-    const ended: string[] = [];
-    const stopEnd = onSessionEnd((reason) => ended.push(reason));
     noteSignedIn();
     noteFailure(new ApiError("unauthenticated"));
     noteFailure(new ApiError("unauthenticated")); // already over: not news
     expect(heard).toEqual(["expired"]);
-    expect(ended).toEqual(["expired"]);
     stop();
-    stopEnd();
     endSession("signed_out");
     expect(heard).toEqual(["expired"]);
   });

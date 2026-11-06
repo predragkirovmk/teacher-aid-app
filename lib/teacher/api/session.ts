@@ -17,7 +17,6 @@ let end: EndReason | null = null;
 /** Set once `GET /me` has answered with a teacher: from then on a refusal is the end of a session, not the start of a visit. */
 let seen = false;
 const listeners = new Set<() => void>();
-const onEnd = new Set<(reason: EndReason) => void>();
 
 const emit = () => listeners.forEach((l) => l());
 
@@ -33,14 +32,6 @@ export function subscribeSessionEnd(cb: () => void) {
 /** The reason the session is over, or null while it is not. Null on the server render and while hydrating. */
 export const useSessionEnd = () => useSyncExternalStore(subscribeSessionEnd, getSessionEnd, () => null);
 
-/** Run something once when a session ends, to forget what the teacher saw. Returns the way to stop. */
-export function onSessionEnd(cb: (reason: EndReason) => void) {
-  onEnd.add(cb);
-  return () => {
-    onEnd.delete(cb);
-  };
-}
-
 /** The teacher's own choice wins over a guess that the session ran out. */
 const RANK: Record<EndReason, number> = { signed_out: 2, expired: 1 };
 
@@ -48,7 +39,6 @@ const RANK: Record<EndReason, number> = { signed_out: 2, expired: 1 };
 export function endSession(reason: EndReason) {
   if (end !== null && RANK[end] >= RANK[reason]) return;
   end = reason;
-  onEnd.forEach((cb) => cb(reason));
   emit();
 }
 

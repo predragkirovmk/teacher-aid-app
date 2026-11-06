@@ -69,10 +69,9 @@ describe("where a sign-in goes next", () => {
     }
   });
 
-  test("is never the sign-in screen, the guide or the old signed-out address: that would go in circles", () => {
+  test("is never the sign-in screen, or the guide: that would go in circles", () => {
     expect(safeNext(SIGN_IN)).toBeNull();
     expect(safeNext(GUIDE)).toBeNull();
-    expect(safeNext("/teacher/signed-out")).toBeNull();
     // Their sub-paths are not them.
     expect(safeNext("/teacher/sign-in-help")).toBe("/teacher/sign-in-help");
   });

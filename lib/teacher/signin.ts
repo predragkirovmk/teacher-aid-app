@@ -24,8 +24,8 @@ export const providerName = (id: AuthProvider) => PROVIDERS.find((p) => p.id ===
 
 // ---- Where a sign-in goes next -----------------------------------------------------------------
 
-/** Screens a sign-in never continues to: the sign-in itself, the welcome guide (the first run decides about it) and the old signed-out address. */
-const NOT_NEXT = [SIGN_IN, GUIDE, "/teacher/signed-out"];
+/** Screens a sign-in never continues to: the sign-in itself, and the welcome guide (the first run decides about it). */
+const NOT_NEXT = [SIGN_IN, GUIDE];
 
 const SEGMENT = /^[A-Za-z0-9._~%-]+$/;
 
