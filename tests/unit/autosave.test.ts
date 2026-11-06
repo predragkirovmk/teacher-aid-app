@@ -121,6 +121,29 @@ describe("saving as the teacher works", () => {
     expect(t.seen).toEqual(["dirty", "saving", "failed", "saving", "failed", "saving", "saved"]);
   });
 
+  test("a change made while a save is on its way keeps its own short timer when that save fails", async () => {
+    let release: (() => void) | null = null;
+    let fail = true;
+    const t = setup(
+      () =>
+        new Promise<void>((resolve, reject) => {
+          release = () => (fail ? reject(new Error("offline")) : resolve());
+        }),
+    );
+    t.saver.edit("а");
+    await t.advance(SAVE_DELAY_MS);
+    t.saver.edit("аб"); // the first save is still on its way
+    fail = true;
+    (release as unknown as () => void)();
+    for (let i = 0; i < 4; i++) await t.advance(0);
+    fail = false;
+    await t.advance(SAVE_DELAY_MS);
+    (release as unknown as () => void)();
+    for (let i = 0; i < 4; i++) await t.advance(0);
+    expect(t.sent).toEqual(["а", "аб"]);
+    expect(t.saver.status()).toBe("saved");
+  });
+
   test("a change made after a failure is the one that is tried again", async () => {
     let fails = 1;
     const t = setup(async () => {

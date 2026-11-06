@@ -122,7 +122,8 @@ export function createAutosaver<T>(options: {
         // Not sent: it is waiting again, unless a newer value has come since, which is the one that waits.
         waiting = true;
         set("failed");
-        if (!disposed) start(retryAfter);
+        // A newer change has its own, shorter, timer running: that one sends the newest value, so it is not replaced.
+        if (!disposed && timer === null) start(retryAfter);
       },
     );
     return current;
