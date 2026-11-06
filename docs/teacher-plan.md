@@ -161,6 +161,19 @@ The app is dark teal only (no light mode).
   (BR-ANON-06, AC-ANON-07, OPEN-36); the class view gets it from its own channel or snapshot.
 - Step 10: OPEN-08 is read as leaving a late joiner out of both sides of the share for a question
   fired before they joined (BR-PRA-07, INTERPRETATION); the mock follows that.
+- Step 9, built and reviewed (2026-11-06): the panel "Прашањето сега" goes send, open, closed,
+  answer shown, its yellow button always the next step; Skip asks first; the list sends any unsent
+  question out of order, but not while one is open or closed and not yet shown (the list says why);
+  "Брзо прашање" takes the three kinds. The ranking shares the reveal screen beside the bars (the
+  planner keeps it there: the teacher talks over the reveal as long as needed). The projector sizes
+  its type by the window and fills it; all it shows is full white. The roster is one line a student,
+  the time only for a late join. The demo nudge fires after 90 s; the product constant
+  `NUDGE_AFTER_SECONDS` is 480.
+- Step 10: after the last question the panel says "Сите прашања се готови" and offers nothing yet;
+  step 10 gives it the way on (to the review, then End). Between questions the class view says
+  "Часот е во тек".
+- Step 12: the projector check looks at the ranking beside the bars at 1024x768, its smallest text.
+  The planner runs review-animations itself (agents cannot start that skill) over all the motion.
 
 ## Steps (one preview link per step, the owner checks each before the next starts)
 
