@@ -4180,3 +4180,155 @@ button {
     padding: 0.25rem 0.5rem;
   }
 }
+
+/* ---- Class results ---- */
+.cres {
+  gap: var(--sp-3);
+}
+.cres .card {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: start;
+}
+.cres__sec {
+  scroll-margin-top: var(--sp-3);
+}
+.cres__sec:focus {
+  outline: none;
+}
+.cres__sum .att__counts {
+  max-width: 30rem;
+}
+.cres__jump {
+  width: 100%;
+}
+.cres__jump-title {
+  margin: 0 0 var(--sp-1);
+  font-weight: 700;
+  color: var(--text);
+}
+.cres__jump ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-2);
+}
+.cres__scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+.cres__table td,
+.cres__table th {
+  vertical-align: top;
+}
+.cres__table thead th {
+  white-space: nowrap;
+}
+.cres__note {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: var(--fs-small);
+  font-weight: 400;
+  color: var(--text-2);
+}
+.cres__topics,
+.cres__asked,
+.cres__sets,
+.cres__history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+}
+.cres__topics li,
+.cres__asked li,
+.cres__sets li {
+  display: grid;
+  gap: 0.25rem;
+  padding: var(--sp-2) 0;
+  border-top: 1px solid var(--line);
+}
+.cres__topics li p,
+.cres__asked li p,
+.cres__sets li p {
+  margin: 0;
+}
+.cres__topic-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  font-size: var(--fs-lead);
+}
+.cres__tag {
+  padding: 0.125rem 0.75rem;
+  border-radius: var(--r-pill);
+  background: var(--deep);
+  font-size: var(--fs-small);
+  font-weight: 700;
+}
+/* The length is the share right; the colour is the same for every topic. */
+.cres__bar {
+  display: block;
+  height: 0.75rem;
+  max-width: 28rem;
+  border-radius: var(--r-pill);
+  background: var(--deep);
+  overflow: hidden;
+}
+.cres__bar span {
+  display: block;
+  height: 100%;
+  background: var(--text);
+}
+.cres__asked-text {
+  font-size: var(--fs-lead);
+  color: var(--text) !important;
+}
+.cres__sets h3,
+.cres__history h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  line-height: var(--lh-tight);
+}
+.cres__history li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-1) var(--sp-3);
+  padding: var(--sp-2) 0;
+  border-top: 1px solid var(--line);
+}
+.cres__history li p {
+  margin: 0;
+}
+.cres__who {
+  width: 100%;
+}
+.cres__who summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap-small);
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.cres__list li {
+  align-items: flex-start;
+}
+.cres__setting {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+}
+.cres__state {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--fs-lead);
+}

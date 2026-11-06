@@ -47,10 +47,10 @@ describe("school type wording", () => {
   });
 
   test("the school words fill {students}, {classes} and {teacher}", () => {
-    expect(translate("mk", "school", "classes.what")).toContain("класови");
-    expect(translate("mk", "school", "classes.what")).toContain("ученици");
-    expect(translate("mk", "university", "classes.what")).toContain("групи");
-    expect(translate("mk", "university", "classes.what")).toContain("студенти");
+    expect(translate("mk", "school", "start.classes.failed")).toContain("класови");
+    expect(translate("mk", "school", "course.empty.body")).toContain("ученици");
+    expect(translate("mk", "university", "start.classes.failed")).toContain("групи");
+    expect(translate("mk", "university", "course.empty.body")).toContain("студенти");
     expect(translate("mk", "school", "settings.who", { name: "Марија" })).toBe("Марија, наставник");
     expect(translate("mk", "university", "settings.who", { name: "Марија" })).toBe("Марија, професор");
     expect(translate("en", "university", "settings.who", { name: "Marija" })).toBe("Marija, professor");

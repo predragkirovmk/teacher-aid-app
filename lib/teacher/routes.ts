@@ -83,3 +83,7 @@ export const fromOf = (from: string | null): From | undefined => (from === FROM_
  * page carries the reminder in the frame, so the teacher can always get back to the lesson in one press.
  */
 export const showsOpenLesson = (pathname: string, sessionId: Id): boolean => pathname !== TODAY && pathname !== liveUrl(sessionId);
+
+/** The classes, and the results of one of them. */
+export const CLASSES = "/teacher/classes";
+export const classUrl = (courseId: Id): string => `${CLASSES}/${encodeURIComponent(courseId)}`;
