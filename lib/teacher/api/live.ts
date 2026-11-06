@@ -32,11 +32,9 @@ import {
  * navigates to it, so the CSP needs nothing for it (navigation is not `connect-src`). The provider's callback sets the
  * cookie and brings the browser back to `return_to`, a path of this app.
  *
- * Two things must change before it is switched on, and are not done now:
- * - next.config.ts: the CSP's `connect-src` (and `img-src`, for question images) must list the API's origin;
- *   today they allow only 'self'.
- * - the API must allow this origin with credentials (CORS, spec 11.4); the session is an HttpOnly cookie, so
- *   every request goes out with `credentials: "include"` and the app never holds a token.
+ * The API's origin is in the teacher policy's `connect-src` and `img-src` (next.config.ts) when NEXT_PUBLIC_API_MODE is "live". The API must
+ * allow this origin with credentials (CORS, spec 11.4); the session is an HttpOnly cookie, so every request goes out with
+ * `credentials: "include"` and the app never holds a token.
  */
 
 /** Spec 11.4: a request that takes longer than this counts as being offline. */
