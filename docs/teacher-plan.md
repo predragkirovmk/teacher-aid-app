@@ -199,6 +199,8 @@ The app is dark teal only (no light mode).
   read). The empty course's yellow stays "Оди на Денес".
 - Step 12: the attendance table's headers wrap at 1280 ("Присутен/ а"); use plain column words
   that fit.
+- Step 12 (owner, 2026-11-06): after the code review, a last pass over the whole app with
+  ui-ux-pro-max (layout and type only) and impeccable, as the final check before the hand-over.
 - Later (not v1 unless the owner asks): per-option counts on `most_missed[]` would let the review
   show the step 9 bars.
 - Step 12: the projector check looks at the ranking beside the bars at 1024x768, its smallest text.
