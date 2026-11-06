@@ -58,7 +58,12 @@ export function ConfirmDialog({
       role="alertdialog"
       aria-labelledby={heading}
       aria-describedby={body ? description : undefined}
-      onClose={onStay}
+      // Escape asks to close (`cancel`) a task before the dialog has closed (`close`). "Stay" is answered at the first, so the caller's state is in step at once and a
+      // key that opens the question again straight after is a real change; the late `close` on a busy computer is about the dialog that was, and counts only while shut.
+      onCancel={onStay}
+      onClose={(e) => {
+        if (!e.currentTarget.open) onStay();
+      }}
     >
       <h2 id={heading} className="dialog__title">
         {title}

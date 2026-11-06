@@ -1316,6 +1316,8 @@ test.describe("keyboard only", () => {
     await expect(deleteQuestion(page)).toBeHidden();
     await expect(deleteButton(page)).toBeFocused();
     await page.keyboard.press("Enter");
+    // The question has to be open, with the safe answer focused, before the next key: a Tab sent before it opens goes to the page.
+    await expect(deleteQuestion(page).getByRole("button", { name: "Не, задржи ја" })).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(deleteQuestion(page).getByRole("button", { name: "Да, избриши ја" })).toBeFocused();
     await page.keyboard.press("Enter");
