@@ -2699,7 +2699,7 @@ button {
   font-weight: 500;
   line-height: 1.3;
   /* Four lines at most, newest first: a run of very long names never pushes the window past its height. */
-  max-height: calc(4 * 1.3 * max(1.5rem, 4vh));
+  max-height: calc(4 * 1.3 * max(1.5rem, 4vh) + 3 * 0.5vh);
   overflow: hidden;
 }
 /* Said to a screen reader only; kept as big as the rest, so that nothing on the window is under 20px. */
@@ -3717,6 +3717,18 @@ button {
 .cvb--between .cvb__title {
   font-size: max(2rem, calc(6 * var(--u)));
 }
+/* A squarish window (1024 x 768): the width is the short side, so the ranking's type takes more of it, and the bars still fill the height. */
+@media (max-aspect-ratio: 4/3) {
+  .cvq--revealed .cvb--side .cvb__row {
+    font-size: max(1.75rem, calc(5.4 * var(--u)));
+  }
+  .cvq--revealed[data-fit="c"] .cvb--side .cvb__row {
+    font-size: max(1.625rem, calc(4.8 * var(--u)));
+  }
+  .cvq--revealed .cvb--side .cvb__title {
+    font-size: max(2rem, calc(6 * var(--u)));
+  }
+}
 @media (max-aspect-ratio: 1/1) {
   .cvq__body[data-picture="true"],
   .cvq--revealed[data-board="true"] .cvq__reveal {
@@ -4016,8 +4028,10 @@ button {
   display: grid;
   gap: var(--sp-1);
   justify-items: start;
-  padding-top: var(--sp-3);
-  border-top: 2px solid var(--line);
+  padding: var(--sp-3);
+  border-radius: var(--r-l);
+  /* On the panel, not on the ground: the hint is small text, and white on the ground fails at the foot of a long page. */
+  background: var(--panel);
 }
 .live__endhint {
   margin: 0;
