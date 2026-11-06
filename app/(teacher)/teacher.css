@@ -3812,12 +3812,15 @@ button {
   justify-content: center;
   gap: calc(2.4 * var(--u));
 }
+.cvr .cvq__why {
+  font-size: max(1.5rem, calc(4.6 * var(--u)));
+}
 .cvr__answer {
   margin: 0;
   display: flex;
   align-items: center;
   gap: calc(1.6 * var(--u));
-  font-size: max(2rem, calc(6.4 * var(--u)));
+  font-size: max(2rem, calc(7 * var(--u)));
   line-height: 1.15;
 }
 .cvr__answer strong {
@@ -3829,7 +3832,7 @@ button {
 }
 .cvr__count {
   margin: 0;
-  font-size: max(1.75rem, calc(4.6 * var(--u)));
+  font-size: max(1.75rem, calc(5.4 * var(--u)));
   font-weight: 700;
 }
 .cvr--none {
@@ -3868,13 +3871,13 @@ button {
   padding: calc(1.6 * var(--u)) calc(3 * var(--u));
   border-radius: calc(2 * var(--u));
   background: var(--deep);
-  font-size: max(1.75rem, calc(5.2 * var(--u)));
+  font-size: max(1.75rem, calc(7 * var(--u)));
   font-weight: 700;
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
 .cvr__anon[data-count="3"] li {
-  font-size: max(1.625rem, calc(4.4 * var(--u)));
+  font-size: max(1.625rem, calc(5.6 * var(--u)));
 }
 
 /* ---- The review and the end page on the console ---- */

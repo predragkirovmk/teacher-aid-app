@@ -46,34 +46,6 @@ export function ReviewPanel({ snapshot }: { snapshot: ConsoleSnapshot }) {
 
   return (
     <>
-      <section className="card rpanel" aria-labelledby="rev-title">
-        <h2 id="rev-title" className="rpanel__title">
-          {t("rev.title")}
-        </h2>
-        <p className="rpanel__hint">{t("rev.intro")}</p>
-
-        <h3 className="rpanel__sub">{t("rev.missed.title")}</h3>
-        {shown.length === 0 ? (
-          <p className="rpanel__none" data-testid="none-missed">
-            <CheckCircleIcon size={32} weight="fill" aria-hidden="true" />
-            {t("rev.missed.none")}
-          </p>
-        ) : (
-          <ol className="rlist" data-testid="missed-list">
-            {shown.map((m, i) => (
-              <li key={m.session_question_id} className="rlist__item">
-                <p className="rlist__n">{i + 1}</p>
-                <p className="rlist__prompt">{m.prompt}</p>
-                <p className="rlist__answer">
-                  <strong>{t("rev.right")}:</strong> {correctWords(m, labels)}
-                </p>
-                <p className="rlist__count">{t(isOne(m.missed, locale) ? "rev.missed.count.one" : "rev.missed.count", { missed: m.missed, joined: m.joined })}</p>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
-
       {screens.length > 1 && (
         <section className="card rproj" aria-labelledby="rev-proj">
           <h2 id="rev-proj">{t("rev.projector.title")}</h2>
@@ -103,6 +75,34 @@ export function ReviewPanel({ snapshot }: { snapshot: ConsoleSnapshot }) {
           )}
         </section>
       )}
+
+      <section className="card rpanel" aria-labelledby="rev-title">
+        <h2 id="rev-title" className="rpanel__title">
+          {t("rev.title")}
+        </h2>
+        <p className="rpanel__hint">{t("rev.intro")}</p>
+
+        <h3 className="rpanel__sub">{t("rev.missed.title")}</h3>
+        {shown.length === 0 ? (
+          <p className="rpanel__none" data-testid="none-missed">
+            <CheckCircleIcon size={32} weight="fill" aria-hidden="true" />
+            {t("rev.missed.none")}
+          </p>
+        ) : (
+          <ol className="rlist" data-testid="missed-list">
+            {shown.map((m, i) => (
+              <li key={m.session_question_id} className="rlist__item">
+                <p className="rlist__n">{i + 1}</p>
+                <p className="rlist__prompt">{m.prompt}</p>
+                <p className="rlist__answer">
+                  <strong>{t("rev.right")}:</strong> {correctWords(m, labels)}
+                </p>
+                <p className="rlist__count">{t(isOne(m.missed, locale) ? "rev.missed.count.one" : "rev.missed.count", { missed: m.missed, joined: m.joined })}</p>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
 
       <div className="rpanel__anon">
         <AnonInbox sessionId={sessionId} items={snapshot.anon_questions} />
