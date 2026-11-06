@@ -133,6 +133,11 @@ export type Overlay = {
   practice: Record<string, PracticeRecord>;
   /** A school where no colleague has saved a lesson yet: the library is empty. Only a test or a screenshot sets it. */
   library_empty: boolean;
+  /** A teacher the school has given no class to yet: the list of courses is empty. Only a test or a screenshot sets it. */
+  courses_empty: boolean;
+  /** The next this many reads of a course's results fail with `network`, and each read first waits this many milliseconds. Only a test or a screenshot sets them. */
+  dashboard_failures: number;
+  dashboard_wait_ms: number;
   /** Counts the ids handed out, so they never repeat. */
   counter: number;
 };
@@ -166,6 +171,9 @@ export const emptyOverlay = (persona: Persona = "veteran"): Overlay => ({
   ended: [],
   practice: {},
   library_empty: false,
+  courses_empty: false,
+  dashboard_failures: 0,
+  dashboard_wait_ms: 0,
   counter: 0,
 });
 
@@ -338,6 +346,9 @@ function sanitizeOverlay(saved: unknown, persona: Persona = "veteran"): Overlay 
     ended: Array.isArray(s.ended) ? s.ended.filter(isEnded) : base.ended,
     practice: isObject(s.practice) ? Object.fromEntries(Object.entries(s.practice).filter((e): e is [string, PracticeRecord] => isPracticeRecord(e[1]))) : base.practice,
     library_empty: typeof s.library_empty === "boolean" ? s.library_empty : base.library_empty,
+    courses_empty: typeof s.courses_empty === "boolean" ? s.courses_empty : base.courses_empty,
+    dashboard_failures: isCount(s.dashboard_failures) ? s.dashboard_failures : base.dashboard_failures,
+    dashboard_wait_ms: isCount(s.dashboard_wait_ms) ? s.dashboard_wait_ms : base.dashboard_wait_ms,
     counter: isCount(s.counter) ? s.counter : base.counter,
   };
 }

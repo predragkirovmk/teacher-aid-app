@@ -935,13 +935,27 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
     listCourses: () =>
       run(() => {
         const c = ctx();
-        return c.world.courses.map((course) => courseSummary(c, course));
+        return c.overlay.courses_empty ? [] : c.world.courses.map((course) => courseSummary(c, course));
       }),
-    getDashboard: (courseId) =>
-      run(() => {
+    getDashboard: (courseId) => {
+      const read = () => run(() => {
         const c = ctx();
+        if (c.overlay.courses_empty) throw notFound();
         return dashboardOf(c, findCourse(c, courseId));
-      }),
+      });
+      const { dashboard_wait_ms: wait, dashboard_failures: failures } = ctx().overlay;
+      if (wait === 0 && failures === 0) return read();
+      // A slow or failing server, for a test or a screenshot: a read that waits, and one that fails a set number of times.
+      return (async () => {
+        if (wait > 0) await delay(wait);
+        const c = ctx();
+        if (c.overlay.dashboard_failures > 0) {
+          save(c, { ...c.overlay, dashboard_failures: c.overlay.dashboard_failures - 1 });
+          throw new ApiError("network");
+        }
+        return read();
+      })();
+    },
     updateCourse: (courseId, patch) =>
       run(() => {
         const c = ctx();
