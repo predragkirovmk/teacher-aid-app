@@ -190,6 +190,15 @@ The app is dark teal only (no light mode).
   section; the attendance statuses and their words come from the same place as the end page's.
   The spec says one screen per course (a class and a subject, FR-DASH-01, FR-DASH-05): the
   "Класови" page lists the teacher's courses (`GET /teacher/courses`) and each opens its results.
+- Step 11, built and reviewed (2026-11-06): "Класови" lists the courses, the most recently taught
+  first; an untaught one says so. A course's page opens with three plain tiles (lessons held, the
+  share of students who come, the share of right answers), the weakest topic and one row of in-page
+  links, then who comes, lessons (one result a row, each opening its end page), weak topics,
+  questions, practice, leaving the app and the speed-bonus switch. Lists show five rows first;
+  narrow tables become stacked rows. No text under 16px. FR-DASH-02 is not built (no cross-course
+  read). The empty course's yellow stays "Оди на Денес".
+- Step 12: the attendance table's headers wrap at 1280 ("Присутен/ а"); use plain column words
+  that fit.
 - Later (not v1 unless the owner asks): per-option counts on `most_missed[]` would let the review
   show the step 9 bars.
 - Step 12: the projector check looks at the ranking beside the bars at 1024x768, its smallest text.
