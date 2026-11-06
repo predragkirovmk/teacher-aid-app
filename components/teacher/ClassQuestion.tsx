@@ -162,7 +162,7 @@ export function Board({ rows, className }: { rows: readonly LeaderboardRow[]; cl
 const BAR_TEXT: Record<"true" | "false", Key> = { true: "cv.true", false: "cv.false" };
 
 /** The right answer marked by an icon and the words, never by colour alone, and nothing marked in red for the others. */
-function RightMark() {
+export function RightMark() {
   const { t } = useT();
   return (
     <span className="cvq__rightmark" data-testid="cv-right">

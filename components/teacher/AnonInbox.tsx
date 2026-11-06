@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowCounterClockwiseIcon, CheckCircleIcon, ChatCenteredTextIcon } from "@phosphor-icons/react";
+import { ArrowCounterClockwiseIcon, CheckCircleIcon, ChatCenteredTextIcon, ProjectorScreenIcon } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { setAnonAnswered } from "@/lib/teacher/api/hooks";
 import type { AnonQuestionItem } from "@/lib/teacher/api/types";
@@ -16,7 +16,7 @@ import { Problem } from "./Problem";
  * A new one is announced once, politely, in a line that is read out; it never opens a window. The text is for this screen alone: it goes to no student and,
  * until the review, not to the projector either.
  */
-export function AnonInbox({ sessionId, items }: { sessionId: string; items: readonly AnonQuestionItem[] }) {
+export function AnonInbox({ sessionId, items, onProjector }: { sessionId: string; items: readonly AnonQuestionItem[]; onProjector?: ReadonlySet<string> }) {
   const { t, te, locale } = useT();
   const sorted = sortInbox(items);
   const [problem, setProblem] = useState<{ id: string; error: unknown } | null>(null);
@@ -70,10 +70,16 @@ export function AnonInbox({ sessionId, items }: { sessionId: string; items: read
             const done = item.answered_at !== null;
             const name = personName(item.sender.name, locale);
             return (
-              <li key={item.id} className="inbox__item" data-answered={done} data-testid="anon">
+              <li key={item.id} className="inbox__item" data-answered={done} data-now={onProjector?.has(item.id) || undefined} data-testid="anon">
                 <p className="inbox__who">
                   <strong>{name}</strong>
                   <span>{clockTime(Date.parse(item.created_at))}</span>
+                  {onProjector?.has(item.id) && (
+                    <span className="inbox__on" data-testid="on-projector">
+                      <ProjectorScreenIcon size={24} aria-hidden="true" />
+                      {t("rev.on")}
+                    </span>
+                  )}
                 </p>
                 <p className="inbox__text">{item.text}</p>
                 {done ? (

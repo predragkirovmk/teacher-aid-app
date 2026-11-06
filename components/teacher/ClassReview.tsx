@@ -3,9 +3,10 @@
 import { CheckCircleIcon } from "@phosphor-icons/react";
 import type { ClassViewSnapshot } from "@/lib/teacher/api/types";
 import { useT } from "@/lib/teacher/i18n";
-import { promptSize } from "@/lib/teacher/questions";
+import { optionFit, optionLetter, promptSize } from "@/lib/teacher/questions";
+import { RightMark } from "./ClassQuestion";
 import { useReviewScreenFollower } from "@/lib/teacher/review-screen";
-import { clampScreen, correctWords, reviewScreens } from "@/lib/teacher/review";
+import { clampScreen, correctWords, missedShare, reviewScreens } from "@/lib/teacher/review";
 
 /**
  * The review on the projector (FR-REV-01, FR-REV-02): one screen at a time, which the teacher steps through from the console (`reviewScreens`,
@@ -34,24 +35,41 @@ export function ClassReview({ snapshot }: { snapshot: ClassViewSnapshot }) {
 
   if (screen.kind === "missed") {
     const m = screen.item;
+    const labels = m.kind === "true_false" ? [t("cv.true"), t("cv.false")] : (m.options ?? []);
+    const right = m.kind === "true_false" ? (m.correct_answer === "true" ? 0 : 1) : Number(m.correct_answer);
     return (
       <section className="cvq cvr" aria-live="polite" data-testid="cv-missed">
         <p className="cvq__n">
           {t("cv.review.missed")} · {t("cv.review.n", { n: screen.n, total: screen.of })}
         </p>
-        <h1 className="cvq__prompt" data-size={promptSize(m.prompt.length)} data-testid="cv-prompt">
+        <h1 className="cvq__prompt" data-size={promptSize(m.prompt.length) === "xl" ? "l" : promptSize(m.prompt.length)} data-testid="cv-prompt">
           {m.prompt}
         </h1>
+        {m.kind === "numeric" ? (
+          <div className="cvr__number">
+            <p className="cvq__bignumber" data-testid="cv-answer">
+              <CheckCircleIcon size="1em" weight="fill" aria-hidden="true" />
+              <span>{t("cv.numeric.is", { answer: correctWords(m, { true: t("cv.true"), false: t("cv.false") }) })}</span>
+            </p>
+          </div>
+        ) : (
+          <ol className="cvq__options" data-kind={m.kind} data-count={labels.length} data-fit={optionFit(labels)}>
+            {labels.map((label, i) => (
+              <li key={i} className="cvq__option" data-right={i === right} data-testid={i === right ? "cv-answer" : "cv-option"}>
+                {m.kind === "multiple_choice" && <span className="cvq__letter">{optionLetter(i)}</span>}
+                <span className="cvq__label">{label}</span>
+                {i === right && <RightMark />}
+              </li>
+            ))}
+          </ol>
+        )}
         <div className="cvr__facts">
-          <p className="cvr__answer" data-testid="cv-answer">
-            <CheckCircleIcon size="1.1em" weight="fill" aria-hidden="true" />
-            <span>
-              {t("cv.right")}: <strong>{correctWords(m, { true: t("cv.true"), false: t("cv.false") })}</strong>
-            </span>
-          </p>
           <p className="cvr__count" data-testid="cv-count">
             {t("cv.review.count", { missed: m.missed, joined: m.joined })}
           </p>
+          <span className="cvq__track" aria-hidden="true">
+            <span className="cvq__barfill" style={{ width: `${Math.round(missedShare(m) * 100)}%` }} />
+          </span>
           {m.explanation && (
             <p className="cvq__why" data-testid="cv-why">
               <strong>{t("cv.why")}: </strong>

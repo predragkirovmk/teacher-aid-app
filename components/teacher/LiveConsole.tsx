@@ -2,13 +2,14 @@
 
 import { PlayIcon } from "@phosphor-icons/react";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { advanceSession, useConsole, useFreshCode } from "@/lib/teacher/api/hooks";
 import { isApiError } from "@/lib/teacher/api/errors";
 import type { ConsoleSnapshot } from "@/lib/teacher/api/types";
 import { isOne } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
 import { formatShortCode, missingCount, STUDENTS_CAN_TYPE_CODE } from "@/lib/teacher/live";
+import { forgetReviewScreen } from "@/lib/teacher/review-screen";
 import { courseLabel } from "@/lib/teacher/start";
 import { TODAY } from "@/lib/teacher/signin";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -43,6 +44,10 @@ export function LiveConsole() {
   const reviewing = snapshot?.session.state === "review";
   // A lesson that has ended (this window pressed End, another did, or the page was opened afterwards) is no longer a console: the answer is `ended` or
   // `not_found`, and the page becomes the end page, which reads the lesson from its review. A link to no lesson at all says so there.
+  const state = snapshot?.session.state;
+  useEffect(() => {
+    if (state && state !== "review") forgetReviewScreen(sessionId);
+  }, [state, sessionId]);
   const over = snapshot?.session.state === "ended" || (isApiError(query.error) && query.error.code === "not_found");
   if (over) return <EndPage sessionId={sessionId} />;
 
@@ -53,7 +58,7 @@ export function LiveConsole() {
         subtitle={snapshot ? `${courseLabel(snapshot.session.subject_name, snapshot.session.class_name)}: ${snapshot.session.lesson.title}` : undefined}
         back={TODAY}
         backLabel={t("back.today")}
-        compact={snapshot?.session.state === "teaching"}
+        compact
       />
       <div className="content live">
         {query.status === "loading" && (
@@ -78,17 +83,9 @@ export function LiveConsole() {
                 </p>
               </div>
             )}
-            <StateLine state={snapshot.session.state} compact={teaching} />
+            <StateLine state={snapshot.session.state} compact />
             {reviewing ? (
-              <div className="live__teach">
-                <div className="live__main">
-                  <ReviewPanel snapshot={snapshot} />
-                </div>
-                <div className="live__side">
-                  <ProjectorControl sessionId={snapshot.session.id} />
-                  <MirrorWarning />
-                </div>
-              </div>
+              <ReviewPanel snapshot={snapshot} />
             ) : teaching ? (
               <>
                 {/* The panel first: what is happening to the question now and the one thing to press. Then the questions and what the class writes, beside who is here. */}
@@ -117,8 +114,8 @@ export function LiveConsole() {
                 <LiveRoster sessionId={snapshot.session.id} students={snapshot.students} />
               </div>
             )}
-            <section className="live__end" aria-labelledby="live-end">
-              <h2 id="live-end" className="sr">
+            <section id="live-end-section" className="live__end" aria-labelledby="live-end">
+              <h2 id="live-end" className="sr" tabIndex={-1}>
                 {t("end.button")}
               </h2>
               <EndLesson sessionId={snapshot.session.id} />

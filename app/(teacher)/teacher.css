@@ -3805,35 +3805,37 @@ button {
   justify-content: flex-start;
 }
 .cvr__facts {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: calc(2.4 * var(--u));
+  display: grid;
+  gap: calc(1.4 * var(--u));
 }
 .cvr .cvq__why {
-  font-size: max(1.5rem, calc(4.6 * var(--u)));
+  font-size: max(1.375rem, calc(4.2 * var(--u)));
 }
-.cvr__answer {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: calc(1.6 * var(--u));
-  font-size: max(2rem, calc(7 * var(--u)));
-  line-height: 1.15;
-}
-.cvr__answer strong {
-  font-family: var(--font-display);
-  font-weight: 800;
-}
-.cvr__answer svg {
-  flex: none;
+.cvr .cvq__options[data-kind="true_false"] {
+  max-height: 48vh;
 }
 .cvr__count {
   margin: 0;
-  font-size: max(1.75rem, calc(5.4 * var(--u)));
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: max(1.75rem, calc(6 * var(--u)));
+  font-weight: 800;
+  line-height: 1.1;
+}
+.cvr__number {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  align-content: center;
+}
+.cvr__number .cvq__bignumber {
+  font-size: max(2.5rem, calc(12 * var(--u)));
+}
+.cvq__option .cvq__rightmark {
+  margin-left: auto;
+}
+.cvq__option[data-right="true"] {
+  background: var(--shadow);
+  box-shadow: inset 0 0 0 calc(0.5 * var(--u)) var(--text);
 }
 .cvr--none {
   flex: 1;
@@ -3881,23 +3883,13 @@ button {
 }
 
 /* ---- The review and the end page on the console ---- */
-.rpanel {
+.rpanel__list {
   display: grid;
   gap: var(--sp-2);
   justify-items: start;
-  border: 3px solid var(--yellow);
 }
 .card .rpanel__title {
   font-size: var(--fs-h2);
-}
-.card .rpanel__hint {
-  color: var(--text-2);
-  max-width: var(--measure);
-}
-.card .rpanel__sub {
-  margin: var(--sp-1) 0 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
 }
 .rpanel__none {
   margin: 0;
@@ -3907,6 +3899,38 @@ button {
   font-family: var(--font-display);
   font-size: var(--fs-h2);
   font-weight: 700;
+}
+.rpanel__done {
+  display: grid;
+  gap: var(--sp-1);
+  justify-items: start;
+  padding-top: var(--sp-2);
+  border-top: 2px solid var(--line);
+  width: 100%;
+}
+.card .rpanel__done p {
+  margin: 0;
+}
+.rpanel__anonnow {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-1);
+  width: 100%;
+}
+.rpanel__anonnow li {
+  display: grid;
+  gap: 0.25rem;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-m);
+  background: var(--deep);
+  font-size: var(--fs-lead);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.rpanel__anonnow strong {
+  font-size: var(--fs-body);
 }
 .rlist {
   list-style: none;
@@ -3921,8 +3945,14 @@ button {
   grid-template-columns: 2.5rem minmax(0, 1fr);
   gap: 0.25rem var(--sp-2);
   padding: var(--sp-2);
+  border: 3px solid transparent;
   border-radius: var(--r-m);
   background: var(--deep);
+}
+/* The one on the projector: a white outline and its words, never the colour alone. */
+.rlist__item[data-now="true"] {
+  border-color: var(--text);
+  background: var(--shadow);
 }
 .card .rlist__item p {
   margin: 0;
@@ -3948,12 +3978,23 @@ button {
 .rlist__count {
   font-weight: 700;
 }
-.rproj {
-  display: grid;
-  gap: var(--sp-2);
-  justify-items: start;
+.card .rlist__item .rlist__on,
+.inbox__on {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: var(--fs-body);
+  font-weight: 800;
+  color: var(--text);
 }
-.rproj__now,
+.card .rlist__item .rlist__on {
+  grid-column: 2;
+}
+.rpanel__now {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 .rproj__closed {
   margin: 0;
   display: flex;
@@ -3961,13 +4002,9 @@ button {
   gap: 0.5rem;
   font-weight: 700;
 }
-.rproj__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2);
-}
-.rpanel__anon {
-  display: contents;
+.inbox__item[data-now="true"] {
+  outline: 3px solid var(--text);
+  outline-offset: -3px;
 }
 .qpanel__early {
   margin-top: var(--sp-1);
@@ -4092,6 +4129,8 @@ button {
 }
 .practice__list li {
   display: flex;
+  font-size: var(--fs-lead);
+  font-weight: 600;
   justify-content: space-between;
   gap: var(--sp-2);
   padding: 0.5rem 0;

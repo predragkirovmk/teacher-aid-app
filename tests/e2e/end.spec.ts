@@ -50,7 +50,7 @@ test.describe("from teaching to the review", () => {
     await expect(early(page)).toHaveCount(0);
     await toReview(page).click();
     await expect(page.locator(".states__item[aria-current=step]")).toContainText("Преглед");
-    await expect(page.getByRole("heading", { name: "Преглед", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Сега на проекторот", exact: true })).toBeVisible();
     await expect(projector.getByTestId("cv-missed")).toBeVisible();
   });
 
@@ -102,7 +102,7 @@ test.describe("the review", () => {
     await expect(anon.first().locator("strong")).not.toBeEmpty();
     await anon.first().getByRole("button", { name: /^Означи како одговорено/ }).click();
     await expect(page.locator('[data-testid="anon"][data-answered=true]')).toHaveCount(1);
-    await expect(yellow(page)).toHaveText("Прикажи го следното на проекторот");
+    await expect(yellow(page)).toHaveText("Следно на проекторот");
   });
 
   test("on the projector: one screen at a time which the teacher steps through, the right answer and why, then the questions with no name", async ({ page, context }) => {
@@ -112,13 +112,13 @@ test.describe("the review", () => {
     const first = page.getByTestId("missed-list").locator(".rlist__prompt").first();
     await expect(projector.getByTestId("cv-missed")).toBeVisible();
     await expect(projector.getByTestId("cv-prompt")).toHaveText((await first.innerText()).trim());
-    await expect(projector.getByTestId("cv-answer")).toContainText("Точен одговор:");
+    await expect(projector.getByTestId("cv-answer")).toContainText("Точен одговор");
     await expect(projector.getByTestId("cv-count")).toContainText("погрешија");
     await expect(projector.getByTestId("cv-why")).toBeVisible();
     // The projector sizes by the window and never scrolls.
     expect(await projector.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 1)).toBe(true);
 
-    const nextOnProjector = page.getByRole("button", { name: "Прикажи го следното на проекторот" });
+    const nextOnProjector = page.getByRole("button", { name: "Следно на проекторот" });
     for (let i = 0; i < 4; i++) await nextOnProjector.click();
     await expect(page.getByTestId("screen-now")).toContainText("Се прикажува 5 од");
     await nextOnProjector.click();
@@ -135,15 +135,92 @@ test.describe("the review", () => {
     await expect(yellow(page)).toHaveCount(0);
     await expect(endButton(page)).toBeVisible();
     // Back one.
-    await page.getByRole("button", { name: "Прикажи го претходното" }).click();
+    await page.getByRole("button", { name: "Претходно" }).click();
     await expect(projector.getByTestId("cv-missed")).toBeVisible();
+  });
+
+  test("the console in review: the compact header, the panel first with what the projector shows, the list below with that item marked", async ({ page, context }) => {
+    const projector = await teach(page, context);
+    await ask(page, context, 6);
+    await toReview(page).click();
+    await expect(page.locator(".head")).toHaveClass(/head--compact/);
+    const now = page.locator(".rpanel");
+    const list = page.getByTestId("missed-list");
+    // The panel is above the list, in the first screen, with the yellow button on one line.
+    const box = await now.boundingBox();
+    const listBox = await list.boundingBox();
+    expect(box!.y + box!.height).toBeLessThanOrEqual(listBox!.y);
+    for (const [w, h] of [[1024, 768], [1280, 720], [1440, 900]] as const) {
+      await page.setViewportSize({ width: w, height: h });
+      const next = now.getByRole("button", { name: "Следно на проекторот" });
+      const b = await next.boundingBox();
+      expect(b!.y + b!.height).toBeLessThanOrEqual(h);
+      expect(b!.height).toBeLessThan(80);
+    }
+    await expect(page.getByTestId("screen-now")).toContainText("Се прикажува 1 од 6");
+    const prompt = (await list.locator(".rlist__prompt").first().innerText()).trim();
+    await expect(page.getByTestId("now-prompt")).toHaveText(prompt);
+    await expect(page.getByTestId("now-answer")).toContainText("Точен одговор:");
+    await expect(page.getByTestId("now-count")).toContainText("погрешија");
+    await expect(list.locator("li[aria-current=true]")).toHaveCount(1);
+    await expect(list.locator("li").first()).toHaveAttribute("aria-current", "true");
+    await expect(list.locator("li").first().getByTestId("on-projector")).toHaveText("На проекторот");
+    // Back is a quiet control, and only from the second screen.
+    await expect(now.getByRole("button", { name: "Претходно" })).toHaveCount(0);
+    await now.getByRole("button", { name: "Следно на проекторот" }).click();
+    await expect(list.locator("li").nth(1)).toHaveAttribute("aria-current", "true");
+    await expect(now.getByRole("button", { name: "Претходно" })).toHaveClass(/btn--quiet/);
+    await expect(projector.getByTestId("cv-missed")).toContainText("2 од");
+  });
+
+  test("the anonymous questions on the panel carry the sender's name for the teacher, and the projector none", async ({ page, context }) => {
+    const projector = await teach(page, context);
+    await ask(page, context, 6);
+    await toReview(page).click();
+    for (let i = 0; i < 5; i++) await page.getByRole("button", { name: "Следно на проекторот" }).click();
+    const names = await page.getByTestId("now-anon").locator("strong").allInnerTexts();
+    expect(names.length).toBeGreaterThan(0);
+    for (const n of names) expect(n.trim()).not.toBe("");
+    await expect(page.getByTestId("anon").locator('[data-testid="on-projector"]').first()).toBeVisible();
+    const whole = await projector.locator("main").innerText();
+    for (const n of names) expect(whole).not.toContain(n);
+  });
+
+  test("after the last screen the panel says the review is done and points to End; the focus is not put on End", async ({ page, context }) => {
+    await teach(page, context);
+    await ask(page, context, 6);
+    await toReview(page).click();
+    for (let i = 0; i < 5; i++) await page.getByRole("button", { name: "Следно на проекторот" }).click();
+    await expect(page.getByTestId("review-done")).toContainText("Прегледот е готов");
+    const go = page.getByRole("button", { name: "Оди до „Заврши го часот“" });
+    await go.click();
+    await expect(endButton(page)).toBeInViewport();
+    await expect(endButton(page)).not.toBeFocused();
+  });
+
+  test("the place survives a reload of the console, and a reload of either window leaves both agreeing", async ({ page, context }) => {
+    const projector = await teach(page, context);
+    await ask(page, context, 6);
+    await toReview(page).click();
+    for (let i = 0; i < 2; i++) await page.getByRole("button", { name: "Следно на проекторот" }).click();
+    await expect(projector.getByTestId("cv-missed")).toContainText("3 од");
+    await page.reload();
+    await expect(page.getByTestId("screen-now")).toContainText("Се прикажува 3 од 6");
+    await expect(page.getByTestId("missed-list").locator("li").nth(2)).toHaveAttribute("aria-current", "true");
+    await expect(projector.getByTestId("cv-missed")).toContainText("3 од");
+    await projector.reload();
+    await expect(projector.getByTestId("cv-missed")).toContainText("3 од");
+    // Both at once.
+    await Promise.all([page.reload(), projector.reload()]);
+    await expect(page.getByTestId("screen-now")).toContainText("Се прикажува 3 од 6");
+    await expect(projector.getByTestId("cv-missed")).toContainText("3 од");
   });
 
   test("a projector opened or reloaded in the middle of the review finds the place the console is at", async ({ page, context }) => {
     const projector = await teach(page, context);
     await ask(page, context, 2);
     await reviewEarly(page);
-    await page.getByRole("button", { name: "Прикажи го следното на проекторот" }).click();
+    await page.getByRole("button", { name: "Следно на проекторот" }).click();
     await expect(projector.getByTestId("cv-missed")).toContainText("2 од");
     await projector.reload();
     await expect(projector.getByTestId("cv-missed")).toContainText("2 од");
