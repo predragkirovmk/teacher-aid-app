@@ -144,16 +144,18 @@ function Teaching({ snapshot }: { snapshot: ClassViewSnapshot }) {
   if (question && screen === "skipped") return <SkippedQuestion q={question} />;
   const ranked = topOfBoard(snapshot.board).length > 0;
   return (
-    <>
+    <div className="cv__rest">
       {ranked ? (
         <div className="cv__between">
           <h1 className="sr">{t("cv.between")}</h1>
           <Board rows={snapshot.board} className="cvb--between" />
         </div>
       ) : (
-        <h1 className="cv__big">{t("cv.between")}</h1>
+        <div className="cv__rest-main">
+          <h1 className="cv__big">{t("cv.between")}</h1>
+          <p className="cv__lesson">{session.lesson_title}</p>
+        </div>
       )}
-      {!ranked && <p className="cv__lesson">{session.lesson_title}</p>}
       {join && (
         <aside className="cv__corner">
           <Qr token={join.token} label={t("class.qr.label")} />
@@ -167,6 +169,6 @@ function Teaching({ snapshot }: { snapshot: ClassViewSnapshot }) {
           </div>
         </aside>
       )}
-    </>
+    </div>
   );
 }

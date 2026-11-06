@@ -2681,19 +2681,37 @@ button {
   line-height: 1.1;
   text-wrap: balance;
 }
-/* The bottom margin keeps the title clear of the corner with the QR, which is about 34vh high. */
-.cv__lesson {
-  margin: 0 0 38vh;
+/* Between questions: what there is to say on the left (the lesson, or the ranking as high as the window), and the way in for a late student beside it. */
+.cv__rest {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 4vw;
+}
+.cv__rest-main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 5vh;
   text-align: center;
+}
+.cv__rest-main .cv__big {
+  flex: none;
+  font-size: min(17vh, 8vw);
+}
+.cv__lesson {
+  margin: 0;
   color: var(--text-2);
   font-family: var(--font-display);
-  font-size: max(1.75rem, 4.6vh);
+  font-size: max(1.75rem, 5.4vh);
   font-weight: 600;
 }
 .cv__corner {
-  position: absolute;
-  right: 4vw;
-  bottom: 4vh;
+  flex: none;
+  align-self: center;
   display: flex;
   align-items: center;
   gap: 2vh;
@@ -2702,7 +2720,7 @@ button {
   background: var(--deep);
 }
 .cv__corner .cv__qr {
-  width: 26vh;
+  width: min(38vh, 24vw);
   padding: 1vh;
   border-radius: 1.5vh;
 }
@@ -2790,6 +2808,16 @@ button {
 }
 .states--compact .states__item {
   min-height: 3rem;
+}
+/* At 1024 wide the four steps and "Сега" must still be one line, so the panel is in the first screen. */
+@media (max-width: 69.99rem) {
+  .states--compact {
+    padding-inline: var(--sp-1);
+    gap: 0 var(--sp-1);
+  }
+  .states--compact .states__item {
+    gap: 0.375rem;
+  }
 }
 
 .live__teach {
@@ -3635,8 +3663,7 @@ button {
   padding-bottom: calc(1 * var(--u));
 }
 .cvb--between {
-  flex: 0 1 min(100%, 56rem);
-  max-width: 62%;
+  flex: 1;
 }
 .cvb--between .cvb__row {
   font-size: max(2rem, calc(6.4 * var(--u)));

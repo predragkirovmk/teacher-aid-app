@@ -654,6 +654,19 @@ test.describe("the projector uses the window", () => {
     expect(await dimmed()).toEqual([]);
   });
 
+  test("between questions the lesson and the way in for a late student stand side by side, clear of each other, and fill the window's middle", async ({ page, context }) => {
+    const projector = await teach(page, context);
+    for (const size of SIZES) {
+      await projector.setViewportSize(size);
+      const [title] = await boxes(projector, ".cv__rest-main");
+      const [corner] = await boxes(projector, ".cv__corner");
+      expect(overlap(title, corner), `${size.width}`).toBe(false);
+      expect(corner.right, `${size.width}`).toBeLessThanOrEqual(size.width);
+      expect(corner.bottom - corner.top, `${size.width}`).toBeGreaterThan(size.height * 0.3);
+      expect(await projector.evaluate(() => [document.documentElement.scrollWidth - innerWidth, document.documentElement.scrollHeight - innerHeight])).toEqual([0, 0]);
+    }
+  });
+
   test("with Reduce Motion the shrinking bar is not drawn and the seconds and the count remain; otherwise it shrinks by transform, not width", async ({ page, context }) => {
     const projector = await teach(page, context);
     await send(page).click();
