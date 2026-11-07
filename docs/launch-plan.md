@@ -1,0 +1,110 @@
+# Launch plan: AI lesson generation goes live
+
+2026-11-07. What was checked today on both apps, what was fixed, and the steps that take the teacher app (desktop) and the
+student app (phones) from the demo to the real backend with the AI.
+
+## Where things stand
+
+Checked on `main` at 48dadce (PR #4 merged), in a clean copy:
+
+| Check | Result |
+|---|---|
+| Lint (eslint) | clean |
+| Type check (`next typegen && tsc`) | clean |
+| Unit tests (Vitest) | 1,491 passed, plus 15 new for the teacher live adapter |
+| End-to-end, student app on an iPhone screen and teacher app on a 1280x720 laptop (mock) | 663 passed, 0 failed, 4 skipped on purpose (the typed class code is switched off, OPEN-03) |
+| End-to-end, student app in live mode against the fake API | 84 passed, 0 failed |
+| Teacher app in live mode against a fake AI backend (the first time it has run live) | works: sign-in round trip, Today, typed material, the wait and its polling, the editor, autosave, "Потешки" and its undo, a failure and Retry, Save |
+| CI on `main` | green |
+| Production, teacheraid.education | up; `/`, `/teacher`, `/app`, both manifests and both offline workers answer 200; security headers and CSP in place; no runtime errors in the last 7 days |
+
+Fixed today (branch `launch-check`, not pushed):
+
+- **A long draft could never save in live mode.** Autosave sends the draft with `keepalive`, and browsers refuse a `keepalive`
+  request over 64 KB, failing it as if offline. A teacher who pasted a long review text would see "not saved" for good and
+  Save would fail. The live adapter now drops `keepalive` for a body over 60 KB. The mock never sends a request, so no test
+  could have caught it.
+- **The teacher live adapter had no tests.** It is the only code that will talk to the real lesson API, and nothing ran it.
+  15 tests now pin every lesson-job call, cookies, error reading, timeouts, cancelling and the realtime stream.
+
+Found in the live run (a spec-faithful fake API, the app built with `NEXT_PUBLIC_API_MODE=live`):
+
+- The 64 KB limit is real: in Chrome the same 70 KB draft fails with `keepalive` ("Failed to fetch") and saves without it.
+  After the fix a 70 KB draft autosaves and shows "Промените се зачувани".
+- Refine sends the teacher's last edit first, then the refinement (BR-LES-20), and Save makes the lesson and opens it.
+- The app accepts only an `https:` sign-in address from `POST /auth/start`. Correct, but a local backend over plain http cannot
+  sign in through the button; the developer needs https locally or to call the callback directly.
+- **A draft whose `correct` is a number crashes the draft page** ("Нешто не е во ред", `correct.trim is not a function`). The
+  AI spec's own output schema (3.1) writes the answers as numbers, so a backend that stores the AI's output as it comes would
+  break every draft. See step A3.
+
+## What is not ready (blocks the AI launch)
+
+1. **There is no backend yet.** `teacheraid-backend` holds the handoff documents only. Both apps run on the in-browser mock.
+2. **Production has no live settings.** Vercel has none of `NEXT_PUBLIC_API_MODE`, `NEXT_PUBLIC_API_URL`,
+   `NEXT_PUBLIC_VAPID_PUBLIC_KEY`. They are read at build time, and one build serves both apps, so setting them switches the
+   teacher app, the student app and the public demo to the real API together. The demo the website and the AI guide link
+   to would stop working.
+3. **Where the API lives decides whether phones stay signed in.** The session is a cookie on the API's origin. If the API is
+   on another site (say `teacheraid-api.eu`), the cookie is third-party: Safari blocks those outright, whatever `SameSite`
+   says, so every student on an iPhone would be signed out on each request. Put the API on `api.teacheraid.education`
+   (same site, `SameSite=Lax`, and no CSRF work, FR-AUTH-15). DNS stays at Spaceship; add one record.
+
+## Decisions for you
+
+| Decision | Recommendation |
+|---|---|
+| Keep the public demo once the real app is live? | Yes. Run the real app as a second Vercel project on `app.teacheraid.education` with the live settings, and leave `teacheraid.education/teacher` and `/app` as the demo. Nothing in the code changes. |
+| API address | `api.teacheraid.education` (point 3 above). |
+| AI provider and region (OPEN-17, BR-SEC-01) | Claude, called through the backend only. The first-party Claude API runs inference `global` or `us`, with no EU-only option; for EU-only processing use Claude on Google Vertex AI (`region: "eu"`) or on Amazon Bedrock in an EU region, and confirm the model is offered there when the account is set up. Start with `claude-opus-5-5` ($4 in / $20 out per million tokens) with structured output (`output_config.format`) and the system prompt cached. Measure on real Macedonian lessons before choosing anything cheaper. |
+| Content language (OPEN-32) | Macedonian for v1, with `language` kept a parameter, as the spec says. |
+| A spending cap per teacher | Not for launch; record tokens per school from day one (FR-LES-12) and decide after the first month. |
+
+## Launch steps
+
+### A. Backend (the developer, against `backend-spec-for-agents.md` 2.13 and the AI spec 1.0)
+
+1. Auth for teachers and students: Google and Microsoft, `HttpOnly` cookie on `api.teacheraid.education`, CORS for the app's
+   origin with credentials, `Retry-After` in `Access-Control-Expose-Headers`.
+2. The lesson job: `POST /lessons/sources`, `POST /lessons/generate` (202, `pending`), a worker, `GET /lessons/drafts/{id}`,
+   refine, retry, `DELETE`, `PATCH`, `GET /lessons/drafts`, `POST /lessons`. The rules that matter most on day one:
+   - one retry, then `failed`; never a `ready` draft that fails the schema (AC-LES-03);
+   - a draft pending over 180 s becomes `failed` on the server. The app polls every 2.5 s for as long as a draft is pending
+     and has no limit of its own, so a dead worker would leave teachers on the wait for good;
+   - a second generate for a pending source answers the same draft (AC-LES-04);
+   - nothing about students in the AI request (AC-LES-02, asserted on the serialized request).
+3. Convert the AI's output to the wire shape of spec 11.5 before it is stored. The AI spec's schema (3.1) gives the
+   multiple-choice answer as a number and the numeric answer as a number; the app reads `correct` as a **string** (`"0"`,
+   `"3.5"`) and needs `id` and `order` on every question, `subject` as `{ id, name }` and `source` as `{ kind, file_name }` on
+   the draft. Passing the AI output through unchanged crashes the draft page (checked in the live run). Say this in the AI
+   spec too, so the developer cannot miss it; and the app could check a draft's shape when it reads it and show "we got an
+   answer we don't understand" instead of crashing.
+4. Join tokens only from `[A-Za-z0-9-]` (BR-JOIN-08). The student app's scanner refuses anything else, so a base64 token with
+   `_` or `+` would make every QR scan fail.
+5. The rest of the student endpoints the released student app already uses (sessions, answers, realtime, push), then the
+   teacher's live-lesson endpoints.
+
+### B. Before the first real lesson
+
+1. Merge `launch-check` (the keepalive fix and the adapter tests).
+2. Run the teacher app against the real API on a preview: `NEXT_PUBLIC_API_MODE=live`, `NEXT_PUBLIC_API_URL=https://api.teacheraid.education`.
+   The steps of the smoke run above, by hand: sign in, prepare from typed text, prepare from a PDF and a .docx, wait, edit,
+   each refinement and its undo, a failure and Retry, cancel the wait, save. Then a lesson end to end with two phones.
+3. Generate VAPID keys; the public one goes in `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, the private one stays on the server.
+4. Add the provider to the privacy page's sub-processor list (OPEN-28) once the provider and region are chosen.
+5. DMARC record for teacheraid.education (none yet).
+
+### C. Launch day
+
+1. Create the live Vercel project, set the three variables for Production, deploy, alias `app.teacheraid.education`.
+2. Check `/teacher` and `/app` on it: headers, CSP carries the API origin in `connect-src` and `img-src`, sign-in round trip on a
+   laptop and on an iPhone.
+3. One real lesson prepared from a real plan, checked by a teacher before any class sees it (BR-LES-04).
+4. Watch the API's error rate, the share of drafts that end `failed`, generation time and tokens per school for the first week.
+
+## Also noted (not blockers)
+
+- The old demo's host key falls back to a default written in the code when `HOST_KEY` is empty, and the repository is public.
+  It only guards the old `/host` demo's reset and advance; set `HOST_KEY` in Vercel or retire that demo.
+- When the API answers 409 with no body, the app reads it as `validation_failed`; the spec's 409 is `invalid_state`. Only an
+  API that sends no error body would hit it.
