@@ -1,0 +1,161 @@
+import { getTeacherState, subscribeTeacher } from "../store";
+import type { DemoControls, TeacherApi } from "./client";
+import { createMock, createMockApi, memorySource, type MockSource } from "./mock";
+import { finishSignIn, MOCK_SESSION_KEY, readSession, writeSession, type DemoAccount } from "./mock-session";
+import { adoptState, freshState, MOCK_KEY, readState, serializeState, startOfDay, writeState, type MockState, type Persona } from "./mock-state";
+
+/**
+ * The mock's own seams to the browser: the saved state in localStorage, and the demo school the teacher
+ * has chosen in Settings. Kept apart from the adapter so the adapter can be tested with no browser.
+ */
+
+/** The day the server renders the demo as of. Only what does not depend on the date is rendered on the server (see hooks). */
+export const SERVER_ANCHOR = new Date(2026, 9, 28).getTime();
+/** The moment the server renders it at, fixed like the day, so the render that hydrates it reads the same clock. */
+const SERVER_NOW = SERVER_ANCHOR + 9 * 3_600_000;
+
+/**
+ * The windows of one browser tell each other the moment the demo's data changed, besides the `storage` event the browser sends: the
+ * console moves the lesson on or marks a student and the projected window looks again at once, as the API's realtime stream would
+ * make it. The message carries the saved text itself: a browser may hand the message over before the write is visible to the other
+ * window's own read of localStorage (they can be different processes), and a window that read the old text then would save it back
+ * over the new. Where there is no BroadcastChannel the storage event alone does it, a moment later.
+ */
+const CHANGED = "teacheraid-teacher-mock-changed";
+const changes = (): BroadcastChannel | null => {
+  try {
+    return typeof BroadcastChannel === "undefined" ? null : new BroadcastChannel(CHANGED);
+  } catch {
+    return null;
+  }
+};
+
+const storage = (): Storage | null => {
+  try {
+    return typeof window === "undefined" ? null : window.localStorage;
+  } catch {
+    return null;
+  }
+};
+
+function browserSource(): MockSource & { reset(): void; changed(): void } {
+  let state: MockState | null = null;
+  // Read from the key on every call: the sign-in of the demo's provider page is a full page load that writes it, and another
+  // window may write it too. The listeners are told when another window does.
+  const session = (): Persona | null => readSession(storage());
+  let lastType = getTeacherState().schoolType;
+  const listeners = new Set<() => void>();
+  let watching = false;
+  const notify = () => listeners.forEach((l) => l());
+  // One channel to say it on and to hear it on: a window does not hear its own message, so it never looks twice at its own change.
+  let channel: BroadcastChannel | null | undefined;
+  const talk = () => (channel === undefined ? (channel = changes()) : channel);
+
+  const load = (): MockState => {
+    if (state) return state;
+    const store = storage();
+    state = readState(store, Date.now());
+    // Saved straight away, so a first visit, or a save that could not be read, keeps the day it starts on and the demo's
+    // history does not slide from one day to the next. A good save is written back only when something damaged was left out of
+    // it: a read never saves what it has read over a newer save that has not reached this window yet.
+    let saved: string | null = null;
+    try {
+      saved = store?.getItem(MOCK_KEY) ?? null;
+    } catch {
+      // ignore
+    }
+    if (saved !== serializeState(state)) writeState(store, state);
+    return state;
+  };
+
+  return {
+    state: load,
+    commit: (next) => {
+      state = next;
+      writeState(storage(), next);
+      talk()?.postMessage(serializeState(next));
+    },
+    schoolType: () => getTeacherState().schoolType,
+    session,
+    setSession: (next) => {
+      writeSession(storage(), next);
+      notify();
+    },
+    now: Date.now,
+    subscribe: (listener) => {
+      if (!watching) {
+        watching = true;
+        // Another window may change the demo's data (or clear it) while this one is open.
+        const heard = talk();
+        window.addEventListener("storage", (e) => {
+          // The session key too: signing out in another window ends this one's session as well, as a cookie would.
+          if (e.key !== MOCK_KEY && e.key !== MOCK_SESSION_KEY && e.key !== null) return;
+          // Where the channel works it has said it already, with the text itself, and this event (which may come later than a newer
+          // message) must not put the older state back.
+          if (heard && e.key === MOCK_KEY && e.newValue !== null) return;
+          state = null;
+          notify();
+        });
+        // The same, said at once by the window that made the change, with what it saved.
+        if (heard) {
+          heard.onmessage = (e: MessageEvent<unknown>) => {
+            state = typeof e.data === "string" ? adoptState(e.data, Date.now()) : null;
+            notify();
+          };
+        }
+        // The demo switch in Settings picks the other school.
+        subscribeTeacher(() => {
+          const type = getTeacherState().schoolType;
+          if (type === lastType) return;
+          lastType = type;
+          notify();
+        });
+      }
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    reset: () => {
+      state = freshState(startOfDay(Date.now()));
+      writeState(storage(), state);
+      notify();
+    },
+    // The demo's controls change the data themselves; this tells the screens to look again.
+    changed: notify,
+  };
+}
+
+/** The adapter the browser runs, and the demo's own controls. */
+export function createBrowserMock(): { api: TeacherApi; demo: DemoControls } {
+  const source = browserSource();
+  const mock = createMock(source);
+  return {
+    api: mock.api,
+    demo: {
+      reset: source.reset,
+      simulateRunning: () => {
+        mock.demo.simulateRunning();
+        source.changed();
+      },
+    },
+  };
+}
+
+/**
+ * The adapter the server render reads: a fresh demo school as of a fixed day, never saved, and nobody signed in. The server
+ * cannot know who is signed in (the browser's session is not sent to it), so what the server draws, and the render that
+ * hydrates it, is the waiting screen of a page that needs a teacher, and nothing protected is ever in the markup.
+ */
+export function createServerMock(): TeacherApi {
+  return createMockApi(memorySource(freshState(SERVER_ANCHOR), { now: () => SERVER_NOW, persona: null }));
+}
+
+/**
+ * The demo's provider page returning, as `GET /auth/callback/{provider}` does: signs the chosen account in, if it is on the
+ * list, and gives the path the browser goes to next. The caller loads that path as a new page, so the whole app starts again
+ * knowing the session, as it does when the real callback redirects back.
+ */
+export function completeDemoSignIn(account: Exclude<DemoAccount, "offline">, returnTo: string): string {
+  const { persona, location } = finishSignIn(account, returnTo, getTeacherState().schoolType);
+  if (persona) writeSession(storage(), persona);
+  return location;
+}

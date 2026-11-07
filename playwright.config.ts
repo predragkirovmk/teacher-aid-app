@@ -2,9 +2,11 @@ import { readFileSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Smoke tests of the student app on an iPhone-size touch screen.
+ * Smoke tests of both apps. The student app (/app) runs on an iPhone-size touch screen, the teacher app
+ * (/teacher) on a 1280x720 desktop Chrome.
  *
- *   pnpm test:e2e         builds the app in mock mode (the default) and runs tests/e2e/mock
+ *   pnpm test:e2e         builds the app in mock mode (the default) and runs tests/e2e/mock (project "mock")
+ *                         and tests/e2e/teacher (project "teacher") against that one build
  *   pnpm test:e2e:live    builds it in live mode against tests/fake-api and runs tests/e2e/live
  *   BASE_URL=https://... pnpm test:e2e     runs the mock tests against an already deployed build
  *   E2E_SKIP_BUILD=1 pnpm test:e2e         reuses the build already in .next (or .next-live)
@@ -30,7 +32,8 @@ const buildEnv: Record<string, string> = live
 
 const app = {
   command: `${skipBuild ? "" : "pnpm exec next build && "}pnpm exec next start -p ${port}`,
-  url: `http://localhost:${port}/app/build`,
+  // The home page is served by the same build and is the one URL both apps rely on.
+  url: `http://localhost:${port}/`,
   env: buildEnv,
   reuseExistingServer: !ci,
   timeout: 300_000,
@@ -66,6 +69,20 @@ export default defineConfig({
   },
   projects: [
     { name: "mock", testDir: "tests/e2e/mock" },
+    {
+      name: "teacher",
+      testDir: "tests/e2e/teacher",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1280, height: 720 },
+        timezoneId: "Europe/Skopje",
+        // The offline spec registers the teacher worker; the student tests block workers globally.
+        serviceWorkers: "allow",
+        // On a developer's computer the Chrome that is already installed is used, so nothing has to be downloaded;
+        // CI installs Playwright's own Chromium.
+        channel: ci ? undefined : "chrome",
+      },
+    },
     // The live tests share one fake server and its state, so they run in order, in one worker.
     { name: "live", testDir: "tests/e2e/live", fullyParallel: false },
   ],

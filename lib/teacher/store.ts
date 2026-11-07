@@ -1,0 +1,118 @@
+"use client";
+
+import { useSyncExternalStore } from "react";
+
+export type Locale = "mk" | "en";
+/** A secondary school says "ученици" and "клас"; a university says "студенти" and "група". */
+export type SchoolType = "school" | "university";
+
+export type TeacherState = {
+  locale: Locale;
+  /**
+   * How the app words the institution. The school decides it (`me.school.type`); this is the last one seen, kept so the
+   * words are right from the first paint. In the demo it is also the switch in Settings that picks which demo school the
+   * mock adapter serves.
+   */
+  schoolType: SchoolType;
+  /** Whether `schoolType` was ever learned (from the school, or chosen in the demo). Until then the sign-in screen says "institution". */
+  schoolSeen: boolean;
+};
+
+const KEY = "teacheraid-teacher-v1";
+
+const DEFAULT: TeacherState = { locale: "mk", schoolType: "school", schoolSeen: false };
+
+const LOCALES: readonly Locale[] = ["mk", "en"];
+const SCHOOL_TYPES: readonly SchoolType[] = ["school", "university"];
+
+/** Rebuild the state field by field, so a save from an older build never crashes a screen. */
+export function sanitizeTeacherState(saved: unknown): TeacherState {
+  const s = saved && typeof saved === "object" ? (saved as Record<string, unknown>) : {};
+  return {
+    locale: LOCALES.includes(s.locale as Locale) ? (s.locale as Locale) : DEFAULT.locale,
+    schoolType: SCHOOL_TYPES.includes(s.schoolType as SchoolType) ? (s.schoolType as SchoolType) : DEFAULT.schoolType,
+    schoolSeen: s.schoolSeen === true && SCHOOL_TYPES.includes(s.schoolType as SchoolType),
+  };
+}
+
+let state: TeacherState = DEFAULT;
+let loaded = false;
+const listeners = new Set<() => void>();
+
+function load() {
+  if (loaded || typeof window === "undefined") return;
+  loaded = true;
+  try {
+    const raw = window.localStorage.getItem(KEY);
+    state = raw ? sanitizeTeacherState(JSON.parse(raw)) : DEFAULT;
+  } catch {
+    // Blocked storage: the settings still work until the page is closed.
+  }
+}
+
+/** The page language follows the setting, for screen readers and the browser's own hyphenation. */
+function applyLang() {
+  document.documentElement.lang = state.locale;
+}
+
+function set(patch: Partial<TeacherState>) {
+  load();
+  // A change to what it already is is not news: no save, and nothing re-renders.
+  if ((Object.keys(patch) as (keyof TeacherState)[]).every((k) => state[k] === patch[k])) return;
+  state = { ...state, ...patch };
+  try {
+    window.localStorage.setItem(KEY, JSON.stringify(state));
+  } catch {
+    // ignore
+  }
+  applyLang();
+  listeners.forEach((l) => l());
+}
+
+let watching = false;
+
+function subscribe(cb: () => void) {
+  load();
+  // Subscribing happens after hydration, so this is the first safe moment to touch <html>.
+  applyLang();
+  if (!watching) {
+    watching = true;
+    // Another window may change the settings while this one is open.
+    window.addEventListener("storage", (e) => {
+      if (e.key !== KEY && e.key !== null) return;
+      loaded = false;
+      load();
+      applyLang();
+      listeners.forEach((l) => l());
+    });
+  }
+  listeners.add(cb);
+  return () => listeners.delete(cb);
+}
+
+/** The settings now, for code that is not a component (the mock adapter reads which demo school is chosen). */
+export function getTeacherState(): TeacherState {
+  load();
+  return state;
+}
+
+/** Listen to the settings from outside React. Returns the way to stop. */
+export const subscribeTeacher = subscribe;
+
+export function useTeacher(): TeacherState {
+  return useSyncExternalStore(
+    subscribe,
+    () => {
+      load();
+      return state;
+    },
+    () => DEFAULT,
+  );
+}
+
+export const actions = {
+  setLocale: (locale: Locale) => set({ locale }),
+  setSchoolType: (schoolType: SchoolType) => set({ schoolType, schoolSeen: true }),
+  /** The school's type is what the store already holds (the demo has no other source): note that it is known. */
+  setSchoolSeen: () => set({ schoolSeen: true }),
+};

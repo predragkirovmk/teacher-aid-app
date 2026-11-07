@@ -7,8 +7,25 @@ const isDev = process.env.NODE_ENV === "development";
 // directive for such a build; a Vercel production deploy ignores the flag.
 const e2e = process.env.NEXT_PUBLIC_E2E === "1" && process.env.VERCEL_ENV !== "production";
 
-// The student app's API, when it runs in live mode (NEXT_PUBLIC_API_MODE=live): its origin may be
-// fetched from and may serve profile photos. Empty in mock mode, which needs no server.
+const policy = ({ img, connect }: { img: string; connect: string }) =>
+  [
+    "default-src 'self'",
+    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+    "style-src 'self' 'unsafe-inline'",
+    `img-src ${img}`,
+    "font-src 'self'",
+    `connect-src ${connect}`,
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    ...(isDev || e2e ? [] : ["upgrade-insecure-requests"]),
+  ].join("; ");
+
+// The API, when an app runs in live mode (NEXT_PUBLIC_API_MODE=live): its origin may be fetched from
+// and may serve pictures. Empty in mock mode, which needs no server.
 const apiOrigin = (() => {
   try {
     return process.env.NEXT_PUBLIC_API_URL ? new URL(process.env.NEXT_PUBLIC_API_URL).origin : "";
@@ -19,26 +36,28 @@ const apiOrigin = (() => {
 
 // No third-party origins anywhere: fonts are self-hosted by next/font, the demo's QR codes are
 // inline SVG, and Redis is only called from the server. The one exception is the API above.
-const csp = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' blob: data:${apiOrigin ? ` ${apiOrigin}` : ""}`,
-  "font-src 'self'",
-  `connect-src 'self'${apiOrigin ? ` ${apiOrigin}` : ""}`,
-  "worker-src 'self'",
-  "manifest-src 'self'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-  ...(isDev || e2e ? [] : ["upgrade-insecure-requests"]),
-].join("; ");
+const csp = policy({
+  img: `'self' blob: data:${apiOrigin ? ` ${apiOrigin}` : ""}`,
+  connect: `'self'${apiOrigin ? ` ${apiOrigin}` : ""}`,
+});
+
+// The teacher app's own policy, stricter than the rest. Its pictures (FR-LES-19) are served by the API in live mode, whose origin is the
+// only one added, to `img-src` for the pictures and to `connect-src` for the calls (spec 11.4). In mock mode the demo keeps a picture in the
+// browser and serves it as a `data:` address, so that alone is allowed, and nothing else: no `blob:`, and none of it in a live build.
+const live = process.env.NEXT_PUBLIC_API_MODE === "live";
+const teacherApiOrigin = live ? apiOrigin : "";
+const teacherCsp = policy({
+  img: ["'self'", live ? teacherApiOrigin : "data:"].filter(Boolean).join(" "),
+  connect: ["'self'", teacherApiOrigin].filter(Boolean).join(" "),
+});
 
 const nextConfig: NextConfig = {
   // The live-mode smoke test builds beside the mock build, which would otherwise share .next.
   distDir: process.env.NEXT_DIST_DIR || ".next",
   env: {
+    // The teacher app's data source: "mock" (the default, a demo school in the browser) or "live" (the API). Stating the
+    // default here lets a build inline it, so the adapter that is not used is left out of the bundle.
+    NEXT_PUBLIC_API_MODE: process.env.NEXT_PUBLIC_API_MODE === "live" ? "live" : "mock",
     // Which build this is. The student app compares it with /app/build to notice a new deploy.
     NEXT_PUBLIC_APP_BUILD: process.env.VERCEL_DEPLOYMENT_ID ?? process.env.VERCEL_GIT_COMMIT_SHA ?? `local-${Date.now()}`,
   },
@@ -72,6 +91,11 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // The teacher app: pictures from the API's origin (live) or from the demo (mock), and no others.
+        source: "/teacher/:path*",
+        headers: [{ key: "Content-Security-Policy", value: teacherCsp }],
+      },
+      {
         // The student app scans class QR codes, so it alone may use the camera.
         source: "/app/:path*",
         headers: [
@@ -81,6 +105,11 @@ const nextConfig: NextConfig = {
       {
         // The student app's offline worker: a new one must reach phones on their next visit.
         source: "/app-sw.js",
+        headers: [{ key: "Cache-Control", value: "no-cache" }],
+      },
+      {
+        // The same for the teacher app's worker, and for the page it shows offline.
+        source: "/teacher-:file(sw.js|offline.html)",
         headers: [{ key: "Cache-Control", value: "no-cache" }],
       },
     ];

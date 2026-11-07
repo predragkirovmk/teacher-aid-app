@@ -46,7 +46,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # `mock` is the app as the demo runs it; `live` is a second build against tests/fake-api. They
+        # `mock` is both apps as the demo runs them (the student and the teacher projects share one build);
+        # `live` is a second build of the student app against tests/fake-api. They
         # run side by side so the second build does not add to the wall time.
         mode: [mock, live]
     steps:

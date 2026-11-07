@@ -1,0 +1,4639 @@
+/*
+ * The teacher app. Teal, dark only. Older teachers use this on a school laptop, so the rules are:
+ * body text 18px or more and nothing under 16px, buttons and rows 56px tall, one yellow button
+ * per screen, and white text on the ground only when it is large (white on --ground is 4.2:1).
+ * Sizes are in rem so they follow the browser's text size; spacing is on the 8pt grid.
+ */
+:root {
+  --deep: #124554;
+  --panel: #145667;
+  --ground-top: #155869;
+  --ground: #32878c;
+  --shadow: #0a2e37;
+  --yellow: #ffc83e;
+  --yellow-deep: #cea034;
+  --red: #ec221f;
+  --text: #ffffff;
+  --ink: #0a2e37;
+  /* Softer text for --panel and --deep only (6.5:1 on --panel). */
+  --text-2: #d9e7ea;
+  --line: rgba(255, 255, 255, 0.32);
+  /* The edge of a secondary button: 3:1 against the panel and the ground, so it reads as a button. */
+  --line-strong: rgba(255, 255, 255, 0.55);
+
+  /* The system's own font by name, and no system-ui: on Linux system-ui is the much wider DejaVu Sans, which breaks the
+     one-line rows and the projector's fit. There Arial, or its same-width stand-in Liberation Sans, is used instead. */
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-golos), system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Type scale. 18px body, 16px is the floor. */
+  --fs-small: 1rem; /* 16 */
+  --fs-body: 1.125rem; /* 18 */
+  --fs-button: 1.25rem; /* 20 */
+  --fs-h3: 1.375rem; /* 22 */
+  --fs-lead: 1.5rem; /* 24 */
+  --fs-h2: 1.75rem; /* 28 */
+  --fs-title: clamp(2rem, 1.4rem + 1.8vw, 2.75rem); /* 32 to 44 */
+  --lh-body: 1.55;
+  --lh-tight: 1.15;
+
+  /* Radius. */
+  --r-s: 0.5rem; /* 8 */
+  --r-m: 1rem; /* 16 */
+  --r-l: 1.5rem; /* 24 */
+  --r-pill: 999px;
+
+  /* Spacing, 8pt grid. */
+  --sp-1: 0.5rem; /* 8 */
+  --sp-2: 1rem; /* 16 */
+  --sp-3: 1.5rem; /* 24 */
+  --sp-4: 2rem; /* 32 */
+  --sp-5: 3rem; /* 48 */
+  --sp-6: 4rem; /* 64 */
+
+  --tap: 3.5rem; /* 56: buttons and rows */
+  --tap-small: 3rem; /* 48: small secondary buttons */
+  --sidebar-w: 17.5rem; /* 280 */
+  --page-w: 72rem; /* 1152: the column the header and the content share, centred in the main area */
+  --measure: 40rem; /* 640: the widest a paragraph runs, whatever the column */
+
+  /* Motion: small state changes only, under 250ms. */
+  --dur: 150ms;
+  --dur-drawer: 220ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--shadow);
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--ground-top);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+a,
+button,
+input,
+summary {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  text-decoration: none;
+}
+
+/* No word left alone on a last line: titles balance, running text avoids an orphan. */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+p,
+li,
+dd {
+  text-wrap: pretty;
+}
+td,
+th {
+  font-variant-numeric: tabular-nums;
+}
+
+button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
+  /* A dark gap between the ring and what is behind it keeps the ring 3:1 on any surface, even the
+     lightest part of the ground (yellow on --ground alone is 2.7:1). */
+  box-shadow: 0 0 0 2px var(--shadow);
+}
+
+/* Hidden to the eye, still read out. The calm line's region on the wait is the same until it has a line to show. */
+.sr,
+.waiting__still:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- shell ---- */
+.shell {
+  min-height: 100dvh;
+}
+
+.skip {
+  position: fixed;
+  left: var(--sp-2);
+  top: var(--sp-2);
+  z-index: 100;
+  transform: translateY(-200%);
+}
+.skip:focus {
+  transform: none;
+}
+
+/*
+ * Seven 56px rows and the logo need about 560px. A shorter window (a laptop at 125% to 150%, or
+ * 200% zoom in the drawer) scrolls the sidebar, and a shadow on the edge says there is more. The
+ * "local" layers cover the shadow once the end is reached, so it only shows on a side that still
+ * has something beyond it.
+ */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-2);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background:
+    linear-gradient(var(--deep) 30%, transparent) top / 100% 2.5rem no-repeat local,
+    linear-gradient(transparent, var(--deep) 70%) bottom / 100% 2.5rem no-repeat local,
+    linear-gradient(rgb(10 46 55 / 0.9), transparent) top / 100% 1.5rem no-repeat scroll,
+    linear-gradient(transparent, rgb(10 46 55 / 0.9)) bottom / 100% 1.5rem no-repeat scroll,
+    var(--deep);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-1);
+}
+
+.brand__link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: var(--tap);
+  padding: 0 var(--sp-1);
+  border-radius: var(--r-m);
+  font-family: var(--font-display);
+  font-size: var(--fs-lead);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.nav {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.nav__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-m);
+  font-size: var(--fs-body);
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: left;
+  transition: background-color var(--dur) var(--ease);
+}
+.nav__item svg {
+  flex: none;
+}
+.nav__item[aria-current="page"] {
+  background: var(--panel);
+  font-weight: 700;
+}
+/* The selected row is told apart by more than colour: filled icon, bold label and this bar. */
+.nav__item[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: 0.25rem;
+  top: 0.75rem;
+  bottom: 0.75rem;
+  width: 0.25rem;
+  border-radius: 2px;
+  background: var(--text);
+}
+@media (hover: hover) and (pointer: fine) {
+  .nav__item:hover:not([aria-current="page"]) {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+.sidebar__foot {
+  margin-top: auto;
+  padding-top: var(--sp-1);
+  border-top: 1px solid var(--line);
+}
+
+/* Wide: the sidebar stays on screen. Narrow: a top bar, and the sidebar is a drawer. */
+.topbar,
+.scrim,
+.brand .sidebar__close {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  .shell {
+    display: grid;
+    grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  }
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+  }
+}
+
+@media (max-width: 63.9375rem) {
+  /* The top bar is sticky: tabbing back up must not leave the focused row underneath it. */
+  html {
+    scroll-padding-top: 5.5rem;
+  }
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-1) var(--sp-2);
+    min-height: 4.5rem;
+    padding: var(--sp-1) var(--sp-2);
+    background: var(--deep);
+  }
+  .topbar .brand__link {
+    padding: 0;
+  }
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 40;
+    width: min(20rem, calc(100vw - 3rem));
+    box-shadow: 0 0 3rem rgba(10, 46, 55, 0.6);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform var(--dur-drawer) var(--ease),
+      visibility 0s linear var(--dur-drawer);
+  }
+  .sidebar[data-open="true"] {
+    transform: none;
+    visibility: visible;
+    transition-delay: 0s;
+  }
+  /* The drawer opens with Close, so it is the first thing reached and the first thing seen. */
+  .sidebar .brand {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-2);
+  }
+  .brand .sidebar__close {
+    display: inline-flex;
+  }
+  .scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: rgba(10, 46, 55, 0.7);
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity var(--dur-drawer) var(--ease),
+      visibility 0s linear var(--dur-drawer);
+  }
+  .scrim[data-open="true"] {
+    opacity: 1;
+    visibility: visible;
+    transition-delay: 0s;
+  }
+}
+@media (max-width: 26rem) {
+  .topbar .brand__word {
+    display: none;
+  }
+}
+/*
+ * A lesson is running: said on every page but Today, in the sidebar on a laptop and in the top bar where the sidebar is a
+ * drawer. A white edge, the icon and the words make it stand out from the menu; it is never yellow (the yellow of a screen is
+ * one button's) and it does not move. The top bar then has room for a second row, so tabbing back up keeps clear of it, and
+ * in a window too short or too narrow to spare it (a zoomed one) it scrolls away with the page instead of covering a third of it.
+ */
+.running {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 2px solid var(--text);
+  border-radius: var(--r-m);
+  background: var(--panel);
+}
+.running__tag {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  line-height: 1.25;
+}
+.running__tag svg {
+  flex: none;
+}
+.running__back {
+  width: 100%;
+}
+/* The way back and End side by side: each has a word, and End is the short one, so the tile is no taller than it was. */
+.running__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.running__actions .btn {
+  width: 100%;
+  min-width: 0;
+  padding-inline: 0.5rem;
+  gap: 0.375rem;
+}
+.nowrap {
+  white-space: nowrap;
+}
+/* A phrase that goes to the next line whole when it does not fit, and breaks inside only if it is wider than the line. */
+.keep {
+  display: inline-block;
+  max-width: 100%;
+}
+@media (min-width: 64rem) {
+  .running--top {
+    display: none;
+  }
+}
+@media (max-width: 63.9375rem) {
+  .running--side {
+    display: none;
+  }
+  /* One row of the words and the button, as wide as they need; when the row of the Menu cannot hold it, it takes the next one whole. */
+  .running--top {
+    flex: 1 0 auto;
+    grid-auto-flow: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.25rem 0.25rem 0.25rem 0.75rem;
+  }
+  .running--top .running__tag {
+    align-items: center;
+    white-space: nowrap;
+  }
+  .running--top .running__actions {
+    grid-template-columns: auto auto;
+  }
+  .running--top .running__actions .btn {
+    width: auto;
+  }
+  html:has(.topbar--running) {
+    scroll-padding-top: 9.5rem;
+  }
+}
+/* A phone's width (or a laptop's, zoomed to 400%): the words, then the button under them. */
+@media (max-width: 29.9375rem) {
+  .running--top {
+    grid-auto-flow: row;
+    justify-content: stretch;
+    padding: 0.75rem;
+  }
+  .running--top .running__tag {
+    align-items: flex-start;
+    white-space: normal;
+  }
+  .running--top .running__actions {
+    grid-template-columns: 1fr;
+  }
+  .running--top .running__actions .btn {
+    width: 100%;
+  }
+}
+@media (max-width: 63.9375rem) and (max-height: 40rem), (max-width: 29.9375rem) {
+  .topbar--running {
+    position: static;
+  }
+  html:has(.topbar--running) {
+    scroll-padding-top: 0;
+  }
+}
+
+/* A short window: the rows stay 56px, the space between them gives way. About 480px is enough. */
+@media (max-height: 40rem) {
+  .sidebar {
+    gap: var(--sp-1);
+    padding-block: var(--sp-1);
+  }
+  .sidebar .nav {
+    gap: 0;
+  }
+  .sidebar .brand {
+    gap: var(--sp-1);
+  }
+  .sidebar .brand__link {
+    min-height: var(--tap-small);
+  }
+}
+
+.main:focus {
+  outline: none;
+  box-shadow: none;
+}
+.main {
+  min-width: 0;
+  min-height: 100dvh;
+  padding: var(--sp-4) var(--sp-5) var(--sp-6);
+  background: linear-gradient(180deg, var(--ground-top) 0%, var(--ground) 100%);
+}
+@media (max-width: 63.9375rem) {
+  .main {
+    min-height: calc(100dvh - 4.5rem);
+    padding: var(--sp-3) var(--sp-2) var(--sp-5);
+  }
+}
+
+/* ---- page header ---- */
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-2) var(--sp-4);
+  max-width: var(--page-w);
+  margin: 0 auto var(--sp-4);
+}
+.head__text {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+.head__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+}
+/* 24px and up, so it may sit on the ground. */
+.head__sub {
+  margin: var(--sp-1) 0 0;
+  max-width: var(--measure);
+  font-size: var(--fs-lead);
+  font-weight: 500;
+  line-height: 1.3;
+}
+.head .back {
+  margin-bottom: var(--sp-2);
+}
+
+.me {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: var(--tap);
+  padding: var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-1);
+  border-radius: var(--r-pill);
+  background: var(--panel);
+  font-weight: 600;
+  line-height: 1.2;
+  transition: background-color var(--dur) var(--ease);
+}
+.me__badge {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--deep);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 700;
+}
+.me__badge::before {
+  content: attr(data-initials);
+}
+@media (hover: hover) and (pointer: fine) {
+  .me:hover {
+    background: var(--deep);
+  }
+}
+
+.content {
+  max-width: var(--page-w);
+  margin-inline: auto;
+  display: grid;
+  gap: var(--sp-3);
+}
+
+/* ---- cards ---- */
+.card {
+  background: var(--panel);
+  border-radius: var(--r-l);
+  padding: var(--sp-4);
+}
+.card h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+.card p {
+  margin: 0;
+  color: var(--text-2);
+  max-width: var(--measure);
+}
+.card--stack {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-2);
+}
+.card__icon {
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background: var(--deep);
+}
+@media (max-width: 40rem) {
+  .card {
+    padding: var(--sp-3);
+  }
+}
+
+/* A card that is one or two lines of words, not a place of its own: less air, so it does not push the work down. */
+.card--compact {
+  padding: var(--sp-2) var(--sp-3);
+}
+.card__icon--small {
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+}
+
+/* ---- buttons ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: var(--tap);
+  padding: 0.75rem var(--sp-4);
+  border: 2px solid transparent;
+  border-radius: var(--r-m);
+  font-family: var(--font-display);
+  font-size: var(--fs-button);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  transition:
+    background-color var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+.btn svg {
+  flex: none;
+}
+.btn:active {
+  transform: scale(0.98);
+}
+.btn--primary {
+  background: var(--yellow);
+  color: var(--ink);
+}
+.btn--primary:active {
+  background: var(--yellow-deep);
+}
+.btn--secondary {
+  background: var(--deep);
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+/* End, the one red control (FR-END-04). White on red is 4.4:1, so the label is bold and 19px or larger, always with a word and an icon. */
+.btn--danger {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--text);
+  font-size: 1.1875rem;
+  font-weight: 800;
+}
+.btn--danger:active {
+  background: #b81513;
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn--danger:hover {
+    background: #d11d1a;
+  }
+}
+/* A button that cannot be pressed now (the refinements while one is being made, "Повеќе прашања" at the most): dimmer, and it says so. */
+.btn[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn[aria-busy="true"] {
+  cursor: progress;
+}
+.btn--small {
+  min-height: var(--tap-small);
+  padding: var(--sp-1) var(--sp-3);
+  font-size: var(--fs-body);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn--primary:hover {
+    background: color-mix(in srgb, var(--yellow) 86%, white);
+  }
+  .btn--primary:hover:active {
+    background: var(--yellow-deep);
+  }
+  .btn--secondary:hover {
+    background: var(--shadow);
+  }
+}
+
+/* ---- settings: large radio choices ---- */
+.choices {
+  display: grid;
+  gap: 0.75rem;
+}
+.choices h2 {
+  margin-bottom: 0.25rem;
+}
+.choice {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 4rem;
+  padding: 0.75rem var(--sp-3);
+  border: 2px solid var(--line);
+  border-radius: var(--r-m);
+  background: var(--deep);
+  font-size: var(--fs-button);
+  transition: background-color var(--dur) var(--ease);
+}
+.choice input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.choice svg {
+  flex: none;
+}
+/* The chosen row has a filled tick, a bold label and a white edge. */
+.choice[data-checked="true"] {
+  border-color: var(--text);
+  background: var(--shadow);
+  font-weight: 700;
+}
+.choice:has(input:focus-visible) {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--shadow);
+}
+@media (hover: hover) and (pointer: fine) {
+  .choice[data-checked="false"]:hover {
+    background: var(--shadow);
+  }
+}
+
+.tag {
+  display: inline-block;
+  margin-left: var(--sp-1);
+  padding: 0.125rem 0.75rem;
+  border: 2px solid var(--text-2);
+  border-radius: var(--r-pill);
+  font-family: var(--font);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.steps {
+  list-style: none;
+  counter-reset: step;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+.steps li {
+  counter-increment: step;
+  display: flex;
+  gap: var(--sp-2);
+  align-items: flex-start;
+  color: var(--text);
+}
+.steps li::before {
+  content: counter(step);
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--deep);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 700;
+}
+.card .note {
+  color: var(--text-2);
+}
+.card .status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ---- help: questions ---- */
+.faq {
+  padding: 0;
+}
+.faq summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-height: 4rem;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-l);
+  font-size: var(--fs-button);
+  font-weight: 700;
+  list-style: none;
+  cursor: pointer;
+}
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+.faq summary svg {
+  flex: none;
+}
+.faq[open] .faq__plus,
+.faq:not([open]) .faq__minus {
+  display: none;
+}
+.faq p {
+  padding: 0 var(--sp-3) var(--sp-3);
+}
+/* The steps that make the projector show only the class view: a line, then each kind of computer with its own numbered steps. */
+.faq__steps {
+  display: grid;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-3) var(--sp-3);
+}
+.faq__steps p {
+  padding: 0;
+}
+.faq__steps h3 {
+  margin: 0 0 var(--sp-1);
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+}
+
+.address {
+  color: var(--text);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* ---- logout dialog ---- */
+.dialog {
+  width: min(32rem, calc(100vw - 2rem));
+  padding: var(--sp-4);
+  border: 0;
+  border-radius: var(--r-l);
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 1.5rem 4rem rgba(10, 46, 55, 0.6);
+}
+.dialog::backdrop {
+  background: rgba(10, 46, 55, 0.75);
+}
+.dialog[open] {
+  animation: pop var(--dur) var(--ease);
+}
+.dialog__title {
+  margin: 0 0 var(--sp-3);
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+.dialog__title:has(+ .dialog__body) {
+  margin-bottom: var(--sp-1);
+}
+.dialog__body {
+  margin: 0 0 var(--sp-3);
+  color: var(--text-2);
+  text-wrap: pretty;
+}
+.dialog__actions {
+  display: grid;
+  gap: 0.75rem;
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+
+/* ---- a screen with no sidebar: signed out, errors ---- */
+.solo {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-3) var(--sp-2);
+  background: linear-gradient(180deg, var(--ground-top) 0%, var(--ground) 100%);
+}
+.solo .card {
+  width: min(100%, 36rem);
+}
+.solo .card h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  letter-spacing: -0.015em;
+}
+.solo .btn {
+  margin-top: var(--sp-1);
+}
+
+/* ---- entry screens: sign-in and the welcome guide (no sidebar; a way back to nothing, because nothing is behind them yet) ---- */
+.entry {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-3) var(--sp-5);
+  background: linear-gradient(180deg, var(--ground-top) 0%, var(--ground) 100%);
+}
+.entry__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-1) var(--sp-2);
+  width: 100%;
+  max-width: var(--page-w);
+  margin-inline: auto;
+}
+.entry__body {
+  flex: 1;
+  display: grid;
+  place-items: center;
+}
+.entry__card {
+  width: min(100%, 36rem);
+}
+.entry h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  letter-spacing: -0.015em;
+}
+.card .entry__sub {
+  color: var(--text);
+  font-size: var(--fs-button);
+}
+
+/* The language switch: two toggle buttons, the chosen one bold with a white edge, never colour alone. */
+.lang {
+  display: inline-flex;
+  gap: 0.5rem;
+}
+.pill {
+  min-width: 3.5rem;
+  min-height: var(--tap-small);
+  padding: 0 var(--sp-2);
+  border: 2px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--deep);
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  transition: background-color var(--dur) var(--ease);
+}
+/* The chosen one is filled and the other is not: a difference of light, not of hue, so it shows to everyone. */
+.pill[aria-pressed="true"] {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--ink);
+  font-weight: 700;
+}
+@media (hover: hover) and (pointer: fine) {
+  .pill[aria-pressed="false"]:hover {
+    background: var(--shadow);
+  }
+}
+
+/* What the screen says about how the visit went: signed out on purpose, signed out for safety, or something that did not work. */
+.card .note-box,
+.problem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  padding: var(--sp-2);
+  border-radius: var(--r-m);
+  background: var(--deep);
+  color: var(--text);
+  font-weight: 600;
+  animation: pop var(--dur) var(--ease);
+}
+.note-box svg {
+  flex: none;
+  margin-top: 0.125rem;
+}
+/* A warning: a red badge with a white mark leads it (4.4:1, the white is what is read), and the words say what is wrong. */
+.problem__badge {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--red);
+  color: var(--text);
+}
+.problem p {
+  margin: 0;
+  max-width: var(--measure);
+  color: var(--text);
+}
+.problem__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+.problem__body {
+  font-weight: 500;
+}
+.problem__title + .problem__body {
+  margin-top: 0.25rem;
+}
+.problem__body:only-child {
+  /* No title: the badge is 40px, so the words line up with its middle. */
+  padding-block: 0.4rem;
+}
+
+/*
+ * The provider buttons keep each provider's own look, as their guidelines ask: a white button, a thin grey edge, the
+ * provider's logo and its words in its own grey, nothing recoloured. They are as tall and as wide as the app's buttons.
+ */
+.providers {
+  display: grid;
+  gap: var(--sp-2);
+  width: 100%;
+}
+.provider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0.75rem var(--sp-3);
+  border: 1px solid;
+  border-radius: var(--r-m);
+  background: #ffffff;
+  font-size: var(--fs-button);
+  line-height: 1.2;
+  text-align: center;
+  transition:
+    background-color var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+.provider svg {
+  flex: none;
+}
+.provider--google {
+  border-color: #747775;
+  color: #1f1f1f;
+  font-family: Roboto, var(--font);
+  font-weight: 500;
+}
+.provider--microsoft {
+  border-color: #8c8c8c;
+  color: #5e5e5e;
+  font-family: "Segoe UI", var(--font);
+  font-weight: 600;
+}
+.provider:active {
+  background: #e6e6e6;
+  transform: scale(0.98);
+}
+.provider:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+@media (hover: hover) and (pointer: fine) {
+  .provider:hover:not(:disabled) {
+    background: #f1f1f1;
+  }
+  .provider:hover:active:not(:disabled) {
+    background: #e6e6e6;
+  }
+}
+
+.card .entry__help {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--sp-2);
+  width: 100%;
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--line);
+}
+.entry__help a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-small);
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.entry__help span {
+  overflow-wrap: anywhere;
+}
+
+/* ---- the welcome guide ---- */
+.card .guide__step {
+  color: var(--text);
+  font-weight: 600;
+}
+.guide__bars {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+.guide__bars span {
+  flex: 1;
+  height: 0.5rem;
+  border-radius: var(--r-pill);
+  background: var(--deep);
+  transition: background-color var(--dur) var(--ease);
+}
+.guide__bars span[data-on="true"] {
+  background: var(--text);
+}
+.guide__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
+}
+.guide__head .card__icon {
+  flex: none;
+}
+.guide h2.guide__title {
+  font-size: var(--fs-h2);
+}
+.guide__title:focus {
+  outline: none;
+  box-shadow: none;
+}
+.card .guide__body {
+  color: var(--text);
+  font-size: var(--fs-button);
+  /* Keeps a word such as е-Дневник from being left alone at the start of a line. */
+  text-wrap: pretty;
+}
+/* The last step's yellow button, "Подготви ја првата лекција", is the longest label of the guide and is read on one line. */
+.guide.entry__card {
+  width: min(100%, 40rem);
+}
+.guide__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  width: 100%;
+  margin-top: var(--sp-1);
+}
+.guide__actions .btn--primary {
+  flex: 1 1 14rem;
+}
+.guide__quiet {
+  display: flex;
+  flex-wrap: wrap;
+  /* The words, not the padding, line up with the text above. */
+  margin-left: calc(var(--sp-2) * -1);
+}
+.card .guide__note {
+  margin-top: calc(var(--sp-1) * -1);
+  font-size: var(--fs-small);
+}
+.btn--quiet {
+  min-height: var(--tap-small);
+  padding: var(--sp-1) var(--sp-2);
+  background: transparent;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn--quiet:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* ---- a page anyone may open without signing in (Help): no sidebar ---- */
+.public {
+  min-height: 100dvh;
+  padding-top: var(--sp-3);
+  background: linear-gradient(180deg, var(--ground-top) 0%, var(--ground) 100%);
+}
+/* The top row lines up with the page under it: the same side padding as .main, inside the same column. */
+.public .entry__top {
+  max-width: calc(var(--page-w) + 2 * var(--sp-5));
+  padding-inline: var(--sp-5);
+}
+.public .brand__link {
+  margin-left: calc(var(--sp-1) * -1);
+}
+@media (max-width: 63.9375rem) {
+  .public .entry__top {
+    padding-inline: var(--sp-2);
+  }
+}
+.main--public {
+  min-height: 0;
+  background: none;
+}
+
+/* ---- the demo's stand-in for the provider's page ---- */
+/* Tight enough that the whole sheet fits a 1280 x 720 window without scrolling. */
+.dialog--sheet {
+  width: min(44rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  padding: var(--sp-3);
+  overflow-y: auto;
+}
+.tag.tag--solo {
+  margin: 0 0 var(--sp-1);
+}
+.sheet__title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.sheet__label {
+  margin: var(--sp-2) 0 var(--sp-1);
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+.sheet__group {
+  display: grid;
+  gap: 0.75rem;
+}
+.sheet__group--grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 40rem) {
+  .sheet__group--grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.sheet__back {
+  width: 100%;
+  margin-top: var(--sp-2);
+}
+.btn--who {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  text-align: left;
+}
+.btn--who small {
+  font-family: var(--font);
+  font-size: var(--fs-small);
+  font-weight: 500;
+}
+.dialog .problem {
+  margin: 0 0 var(--sp-3);
+}
+
+/* ---- Today ---- */
+.head__date {
+  font-weight: 700;
+}
+
+/* A lesson is running: the band at the top of Today. The yellow edge is the live lesson's colour; the tag says it in words. */
+.band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3) var(--sp-4);
+  padding: var(--sp-4);
+  border: 3px solid var(--yellow);
+  border-radius: var(--r-l);
+  background: var(--deep);
+}
+.band__text {
+  flex: 1 1 22rem;
+  min-width: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+.band__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--yellow);
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 700;
+}
+.band__course {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  overflow-wrap: anywhere;
+}
+.band__line {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fs-button);
+  text-wrap: pretty;
+}
+/* The yellow way back, and beside it the one red control. */
+.band__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  max-width: 100%;
+}
+/* The button keeps its size while it can and gives way when the line is narrower than it (a zoomed window), so it stays inside the band. */
+.band .btn {
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+
+/* A section of a page: a heading on the ground (28px, so white is fine there) and what it holds. */
+/* The draft's note and the sentence the teacher asked to stress: a line or two each, above the questions and not in front of them. */
+.draft__note {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.card .draft__note p {
+  max-width: 48rem;
+}
+.draft__note strong {
+  color: var(--text);
+}
+.draft__emphasis {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem var(--sp-2);
+}
+.card.draft__emphasis h2 {
+  font-size: var(--fs-h3);
+}
+/* What the teacher typed may be one long word or a link: it breaks, and the page does not grow sideways. */
+.card.draft__emphasis p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.section__title {
+  margin: 0 0 var(--sp-2);
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+
+.lessons {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-2);
+}
+.lesson {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2) var(--sp-3);
+  min-height: 9.5rem;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-l);
+  background: var(--panel);
+}
+.lesson__text {
+  flex: 1 1 20rem;
+  min-width: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+.lesson__title {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-lead);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.lesson__text p {
+  margin: 0;
+  color: var(--text-2);
+  /* A line that has to wrap does not leave one word alone on the second. */
+  text-wrap: pretty;
+}
+.lesson__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-2);
+}
+.lessons__all {
+  margin-top: var(--sp-2);
+}
+@media (max-width: 40rem) {
+  .lesson,
+  .band {
+    padding: var(--sp-3);
+  }
+}
+
+/* ---- calm placeholders: still shapes, no shimmer ---- */
+.loading {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: start;
+}
+.loading > .lesson,
+.loading > .question,
+.loading > .card {
+  width: 100%;
+}
+.skeleton {
+  display: block;
+  max-width: 100%;
+  border-radius: var(--r-s);
+  background: rgba(255, 255, 255, 0.16);
+}
+.skeleton--button {
+  border-radius: var(--r-m);
+}
+.skeleton--row {
+  border-radius: var(--r-m);
+}
+.skeleton--round {
+  border-radius: 50%;
+}
+/* Sits where the heading of the list sits, so the cards come in at the height they will have. */
+.skeleton--heading {
+  margin-top: 0.5rem;
+}
+.lesson--skeleton .lesson__text {
+  gap: 0.75rem;
+}
+.dialog .skeleton {
+  background: rgba(255, 255, 255, 0.12);
+}
+.dialog .loading {
+  margin-bottom: var(--sp-3);
+}
+
+/* Something could not be loaded: what went wrong, and the button to try again, together. */
+.load-problem {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-2);
+}
+.dialog .load-problem {
+  margin-bottom: var(--sp-3);
+}
+.dialog .load-problem .problem {
+  margin: 0;
+}
+
+/* ---- the window that starts a lesson ---- */
+.dialog .choices {
+  margin-bottom: var(--sp-3);
+}
+.choice__text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.choice__detail {
+  flex: none;
+  margin-left: auto;
+  color: var(--text-2);
+  font-size: var(--fs-body);
+  font-weight: 500;
+}
+
+/* ---- a lesson, to read ---- */
+.questions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-3);
+}
+.question {
+  display: grid;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border-radius: var(--r-l);
+  background: var(--panel);
+}
+.question__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem var(--sp-3);
+}
+.question__n {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+.question__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem var(--sp-3);
+  margin: 0;
+  color: var(--text-2);
+}
+.question__meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.question__image {
+  max-width: 100%;
+  max-height: 16rem;
+  border-radius: var(--r-m);
+  object-fit: contain;
+  justify-self: start;
+}
+.question__prompt {
+  margin: 0;
+  font-size: var(--fs-lead);
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+  counter-reset: option;
+}
+.option {
+  counter-increment: option;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--tap);
+  padding: 0.75rem var(--sp-2);
+  border: 2px solid var(--line);
+  border-radius: var(--r-m);
+  background: var(--deep);
+  font-size: var(--fs-button);
+}
+.option::before {
+  content: counter(option);
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--shadow);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 700;
+}
+.options--plain .option::before {
+  display: none;
+}
+/* The words keep at least 12rem beside the tick; in a narrower row (400% zoom) "Точен одговор" goes under them. */
+.option__text {
+  flex: 1 1 12rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* The right answer: a white edge, bold words, and the tick with "Точен одговор". */
+.option[data-correct="true"] {
+  border-color: var(--text);
+  background: var(--shadow);
+  font-weight: 700;
+}
+.option__correct {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: none;
+}
+.question__why {
+  padding: var(--sp-2);
+  border-radius: var(--r-m);
+  background: var(--deep);
+}
+.question__why p,
+.question__note {
+  margin: 0;
+  color: var(--text-2);
+}
+.question__label {
+  margin-bottom: 0.25rem !important;
+  color: var(--text) !important;
+  font-weight: 700;
+}
+@media (max-width: 40rem) {
+  .question {
+    padding: var(--sp-3);
+  }
+}
+
+/* ---- Settings: the demo's running lesson ---- */
+.demo__run {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-2);
+  width: 100%;
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--line);
+}
+
+/* ---- Prepare a lesson: three parts, one yellow button, and the wait on the same page ---- */
+.prepare {
+  display: grid;
+  gap: var(--sp-3);
+}
+.prepare__part {
+  display: grid;
+  gap: var(--sp-3);
+  align-content: start;
+}
+.prepare__group {
+  display: grid;
+  gap: var(--sp-2);
+}
+.prepare__label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+.prepare__label svg {
+  flex: none;
+}
+.card .prepare__hint {
+  overflow-wrap: anywhere;
+  max-width: var(--measure);
+  text-wrap: pretty;
+}
+/* Choices as tiles side by side where there is room, one under the other where there is not; the second line of a tile is its detail. */
+.prepare__tiles .choices {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+}
+.prepare__tiles .choice {
+  flex-wrap: wrap;
+  row-gap: 0;
+}
+.prepare__tiles .choice__text {
+  flex: 1 1 8rem;
+}
+.prepare__tiles .choice__detail {
+  flex: 1 0 100%;
+  margin-left: calc(28px + var(--sp-2));
+}
+/* Subjects have long names and there may be many: one under the other, so they read as a list and not as a ragged grid. */
+.prepare__tiles--rows .choices {
+  grid-template-columns: minmax(0, 1fr);
+}
+/* What there is no choice about, because there is only one: a plain line to read, not a row that looks chosen (and so pressable). */
+.card .prepare__stated {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  max-width: none;
+  color: var(--text);
+  font-size: var(--fs-button);
+}
+.prepare__stated-label {
+  color: var(--text-2);
+}
+.prepare__stated-value {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+}
+.prepare__stated-detail {
+  color: var(--text-2);
+}
+
+/* The two kinds of box the teacher writes in: 18px, a plain edge that reads as a box, the same yellow ring as everything. */
+.field {
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0.75rem var(--sp-2);
+  border: 2px solid var(--line-strong);
+  border-radius: var(--r-m);
+  background: var(--deep);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+.field--area {
+  min-height: 10rem;
+  resize: vertical;
+}
+.card .prepare__count {
+  justify-self: end;
+  font-weight: 600;
+}
+
+/* The document: a big button inside an area a file may also be dropped on. The input itself is the real, hidden-but-focusable one. */
+.drop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-3);
+  border: 3px dashed var(--line-strong);
+  border-radius: var(--r-l);
+  background: var(--deep);
+  transition: background-color var(--dur) var(--ease);
+}
+.drop[data-chosen="false"] {
+  flex-direction: column;
+  justify-content: center;
+  padding-block: var(--sp-4);
+  text-align: center;
+}
+.drop[data-over="true"] {
+  border-color: var(--text);
+  background: var(--shadow);
+}
+.drop:has(.sr:focus-visible) .drop__pick {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--shadow);
+}
+.drop__file {
+  display: flex;
+  flex: 1 1 16rem;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.drop__file svg {
+  flex: none;
+}
+.drop__text {
+  min-width: 0;
+}
+.card .drop__text p {
+  max-width: none;
+}
+.card .drop__name {
+  color: var(--text);
+  font-size: var(--fs-button);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.drop__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-2);
+}
+.drop__pick {
+  cursor: pointer;
+}
+
+/* On the ground, so the words are 24px: white on the ground is only large-text contrast. */
+.prepare__go {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-2);
+}
+.prepare__go p {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: var(--fs-lead);
+  font-weight: 500;
+  line-height: 1.3;
+  text-wrap: pretty;
+}
+.btn--big {
+  min-height: 4rem;
+  padding-inline: var(--sp-5);
+  font-size: var(--fs-h3);
+}
+.prepare__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+@media (max-width: 40rem) {
+  .prepare__go .btn,
+  .prepare__actions .btn,
+  .waiting .btn,
+  .drop__actions .btn {
+    width: 100%;
+  }
+  .btn--big {
+    padding-inline: var(--sp-3);
+  }
+}
+
+/* The wait: what is being done, how long it may take, and a way out. Three dots breathe; with Reduce Motion they stand still. */
+.waiting h2:focus {
+  outline: none;
+  box-shadow: none;
+}
+.card .waiting__step {
+  color: var(--text);
+  font-weight: 600;
+}
+.waiting__dots {
+  display: flex;
+  gap: 0.5rem;
+}
+.waiting__dots span {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: var(--text);
+  animation: breathe 1.6s ease-in-out infinite;
+}
+.waiting__dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.waiting__dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes breathe {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+/* The calm line comes under Cancel, so nothing is held back for it: the card simply grows by a line when it comes. */
+.card .waiting__still p {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ---- The editor: a lesson to change, with every change saved as it is made ---- */
+.lesson__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+/* Where saving stands, calmly: a mark that is more than colour, and the words. A failed save is a warning, so it gets the red badge. */
+.card .savestate,
+.savestate {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--text-2);
+  font-weight: 600;
+}
+.savestate[data-status="saved"],
+.savestate[data-status="failed"] {
+  color: var(--text);
+}
+.savestate[data-status="failed"] {
+  font-weight: 700;
+}
+/*
+ * The one yellow button of the editor and where saving stands, in a bar. While the window is tall enough for the page to scroll under
+ * it without taking a fifth of it, the bar stays at the bottom, so the way to make this a lesson is never a scroll away; the page
+ * keeps its distance (`scroll-padding`) so that a field that takes the focus is never under it. In a short window (a zoomed one) the
+ * bar is a part of the page, at its end, like the top bar of a short window is.
+ */
+.savebar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-3);
+  padding: 0.75rem var(--sp-2);
+  border: 2px solid var(--line-strong);
+  border-radius: var(--r-l);
+  background: var(--deep);
+}
+@media (min-height: 30rem) {
+  .savebar {
+    position: sticky;
+    bottom: var(--sp-2);
+    z-index: 20;
+    box-shadow: 0 0.5rem 1.5rem rgba(10, 46, 55, 0.45);
+  }
+  html:has(.savebar) {
+    scroll-padding-bottom: 6.5rem;
+  }
+}
+@media (max-width: 40rem) {
+  .savebar .btn {
+    width: 100%;
+  }
+}
+.savestate svg {
+  flex: none;
+}
+.savestate__badge {
+  width: 2rem;
+  height: 2rem;
+}
+/* On the ground, so the words are 24px: white on the ground is only large-text contrast. */
+.wait__offline {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: var(--fs-lead);
+  font-weight: 500;
+  line-height: 1.3;
+}
+.editor__refined {
+  flex-wrap: wrap;
+}
+.card .editor__refined p {
+  flex: 1 1 14rem;
+}
+.card .editor__refined .btn {
+  flex: none;
+}
+
+/* The question that is open: a white edge, so it is told from the ones that are only read. */
+.question--open {
+  border: 2px solid var(--text);
+  padding: calc(var(--sp-4) - 2px);
+}
+.question__blank {
+  color: var(--text-2);
+  font-weight: 400;
+}
+.question__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.question__actions--open {
+  padding-top: var(--sp-1);
+}
+.question--removed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2) var(--sp-3);
+  border: 2px dashed var(--line-strong);
+  background: transparent;
+}
+.question--removed p {
+  margin: 0;
+  font-size: var(--fs-lead);
+  font-weight: 600;
+}
+.editor__field {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+}
+.editor__field > .field,
+.editor__field > .choices,
+.editor__field > .prepare__tiles {
+  width: 100%;
+}
+.editor__label {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+.editor__hint {
+  margin: 0;
+  color: var(--text-2);
+  max-width: var(--measure);
+  text-wrap: pretty;
+}
+.editor__group {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.editor__group legend {
+  padding: 0;
+  margin-bottom: 0.25rem;
+}
+.opts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+/*
+ * One answer: its words, what pressing its choice does ("Означи како точен", or "Точен одговор" on the one that is), and Remove. The
+ * right one has a white edge, as the right answer has when it is read, and a tick with the words; the others say what pressing them
+ * does and carry no tick, so no row reads as right by default. Every row has the same room for that edge, so nothing moves when the
+ * choice does.
+ */
+.question--open {
+  container: question / inline-size;
+}
+.opt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16rem auto;
+  gap: 0.75rem;
+  align-items: center;
+  margin-inline: calc(-0.5rem - 2px);
+  padding: 0.5rem;
+  border: 2px solid transparent;
+  border-radius: var(--r-m);
+}
+.opt[data-right="true"] {
+  border-color: var(--text);
+  background: var(--shadow);
+}
+.opt__right {
+  min-height: var(--tap);
+  padding: 0.5rem var(--sp-2);
+}
+/* The row already has the edge: the choice inside it is only the tick and the words. */
+.opt[data-right="true"] .opt__right {
+  border-color: transparent;
+  background: transparent;
+}
+/* Where the open question is too narrow for all three side by side (the sidebar is there, or the window is zoomed), the words get the row and the other two share the next. */
+@container question (max-width: 46rem) {
+  .opt {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .opt__right {
+    justify-self: start;
+  }
+  .opt__text {
+    grid-column: 1 / -1;
+  }
+}
+/* A phone's width, or a laptop's zoomed to 400%: one under the other, each as wide as the row. */
+@container question (max-width: 30rem) {
+  .opt {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* The three kinds side by side where there is room, each as wide as its words, and wrapping where there is not. */
+.editor__field .prepare__tiles .choices {
+  display: flex;
+  flex-wrap: wrap;
+}
+.editor__field .prepare__tiles .choice {
+  flex: 1 1 auto;
+}
+.editor__field .prepare__tiles .choice__text {
+  flex: 0 1 auto;
+}
+.editor__short {
+  max-width: 20rem;
+}
+.editor__number {
+  width: 7rem;
+  text-align: center;
+}
+.editor__timer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.editor__check {
+  width: fit-content;
+  max-width: 100%;
+}
+.field--short {
+  min-height: 6rem;
+}
+.editor__add {
+  margin-top: var(--sp-3);
+}
+.editor__kinds,
+.editor__refine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+/* On the ground, so the words are 24px: white on the ground is only large-text contrast. */
+.editor__limit {
+  margin: 0;
+  font-size: var(--fs-lead);
+  font-weight: 500;
+  line-height: 1.3;
+}
+.problems__list {
+  margin: 0.25rem 0 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.25rem;
+  color: var(--text);
+}
+.problems__list--links {
+  list-style: none;
+  padding-left: 0;
+  gap: 0;
+}
+.problems__list--links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-small);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  font-weight: 600;
+}
+.problem--list .problem__body {
+  margin-top: 0.25rem;
+}
+.problem h2.problem__title:focus {
+  outline: none;
+  box-shadow: none;
+}
+.lesson__title:has(.lesson__badge) {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.lesson__badge {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+}
+.lesson__text .lesson__edit {
+  color: var(--text);
+  font-weight: 600;
+}
+@media (max-width: 40rem) {
+  .question--open {
+    padding: calc(var(--sp-3) - 2px);
+  }
+  .editor__refine .btn,
+  .editor__kinds .btn,
+  .question__actions--open .btn,
+  .lesson__buttons .btn {
+    width: 100%;
+  }
+}
+
+/* ---- Lessons and the Library ---- */
+/* The row of subjects: its label is large, because it sits on the ground, and the choices are the same large rows as everywhere. */
+.subjects {
+  display: grid;
+  gap: var(--sp-2);
+}
+.subjects__label {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-lead);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+/* What differs between a lesson that was held and one that was not: when, and how many times. */
+.lesson__text .lesson__held {
+  color: var(--text);
+  font-weight: 600;
+}
+/* Every card's two actions take the same room, whatever their words, so the buttons of a list stand in one column and the eye goes straight down it. */
+.lesson__actions > .btn:not(.btn--quiet) {
+  min-width: 14.5rem;
+}
+.lesson__actions > .btn--quiet {
+  min-width: 11.5rem;
+  justify-content: flex-start;
+}
+/* A lesson that was held has three lines, not four, and less air above and below them: a teacher with a year of them scrolls a list of them. */
+.lesson--held {
+  min-height: 0;
+  padding-block: var(--sp-2);
+}
+/* "Веќе ја копиравте": a tick and the words, so it is not told by colour or position alone. */
+.lesson__text .lesson__copied,
+.card .lesson__copied {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+  font-weight: 600;
+}
+.lesson__copied svg {
+  flex: none;
+}
+/* The end of a lesson's page: the one thing that cannot be undone, apart from the buttons that are pressed every day. */
+.lesson__delete {
+  display: grid;
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line);
+}
+.lesson__delete > .btn {
+  justify-self: start;
+}
+/* "Прво завршете го часот" on a line of its own, and the reason under it. */
+.draft__note strong.lesson__refused {
+  display: block;
+}
+
+/* ---- The picture of a question ---- */
+.question__figure {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+  margin: 0;
+}
+.question__figure figcaption {
+  max-width: var(--measure);
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+.imagefield {
+  gap: 0.75rem;
+}
+.imagefield__preview {
+  max-width: 100%;
+  max-height: 14rem;
+  border-radius: var(--r-m);
+  background: var(--deep);
+  object-fit: contain;
+}
+.imagefield__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-3);
+}
+.imagefield__rules {
+  flex: 1 1 14rem;
+}
+.imagefield__pick {
+  cursor: pointer;
+}
+/* The input is the real one but not seen; its button is the label, which shows the ring when the input has the focus. */
+.imagefield:has(input.sr:focus-visible) .imagefield__pick {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--shadow);
+}
+/* The wait is a mark and a line of words, still: nothing moves that does not have to. */
+.imagefield__busy {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  min-height: var(--tap);
+  color: var(--text);
+  font-weight: 600;
+}
+.imagefield__busy svg {
+  flex: none;
+}
+.imagefield__problem {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-2);
+  width: 100%;
+}
+.imagefield__alt {
+  width: 100%;
+}
+/* "Сликата е отстранета." and the way to take it back, in one row, while it is the last thing that was done. */
+.imagefield__removed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-3);
+}
+.imagefield__removed p {
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+}
+/* How far off an answer may be and whether it may be negative: behind "Повеќе опции" until one of them is set. */
+.editor__more {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-2);
+}
+@media (max-width: 40rem) {
+  .imagefield__actions .btn,
+  .imagefield__removed .btn,
+  .lesson__delete > .btn {
+    width: 100%;
+  }
+}
+
+/* ---- The live lesson: the console (names, the teacher's own screen) ---- */
+/* Where the lesson stands: four words in order. The current one has a filled mark, a white edge and the word "Сега"; never colour alone. */
+.states {
+  list-style: none;
+  margin: 0;
+  padding: var(--sp-1) var(--sp-3);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--sp-1);
+  border-radius: var(--r-l);
+  background: var(--panel);
+}
+.states__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--tap);
+  color: var(--text-2);
+  font-weight: 500;
+}
+.states__item + .states__item::before {
+  content: "";
+  width: 1rem;
+  height: 2px;
+  margin-right: var(--sp-1);
+  border-radius: 1px;
+  background: var(--line-strong);
+}
+.states__item svg {
+  flex: none;
+}
+.states__item[data-position="current"] {
+  color: var(--text);
+  font-weight: 700;
+}
+/* Where the window is not wide enough for the four on one line, the short lines between them go: the filled mark, the word and "Сега" say it. */
+@media (max-width: 69.99rem) {
+  .states__item + .states__item::before {
+    display: none;
+  }
+  .states {
+    gap: 0 var(--sp-2);
+  }
+}
+.states__word {
+  line-height: 1.2;
+}
+.states__item[data-position="current"] .states__word {
+  padding-block: 0.25rem;
+  border-bottom: 3px solid var(--text);
+}
+.states__now {
+  padding: 0.125rem 0.75rem;
+  border-radius: var(--r-pill);
+  background: var(--text);
+  color: var(--ink);
+  font-size: var(--fs-small);
+  font-weight: 700;
+}
+
+/* The code and the controls beside who has joined; one column where the window is not wide enough for both. */
+.live__grid {
+  display: grid;
+  gap: var(--sp-3);
+  align-items: start;
+}
+.live__side {
+  display: grid;
+  gap: var(--sp-3);
+}
+@media (min-width: 70rem) {
+  .live__grid {
+    grid-template-columns: 26rem minmax(0, 1fr);
+  }
+}
+
+.live__code {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-2);
+}
+/* Large enough to read out from the teacher's desk across a room. */
+.card .live__digits {
+  margin: 0;
+  max-width: none;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 2.2rem + 2.4vw, 4.5rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
+}
+.card .live__rotates,
+.card .live__starthint {
+  font-size: var(--fs-small);
+}
+.live__code .btn {
+  width: 100%;
+  padding-inline: var(--sp-2);
+}
+
+/* The projector: the button, where its window stands, and the one warning that matters. */
+.projector {
+  display: grid;
+  gap: var(--sp-2);
+}
+.projector .btn {
+  width: 100%;
+  padding-inline: var(--sp-2);
+  text-wrap: balance;
+}
+.card .projector__status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 1.5em;
+  color: var(--text);
+  font-weight: 600;
+}
+.projector__status svg {
+  flex: none;
+}
+.card .projector__hint {
+  font-size: var(--fs-small);
+}
+.callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: var(--sp-2);
+  border-radius: var(--r-m);
+  border: 2px solid var(--line-strong);
+  background: var(--deep);
+}
+.callout svg {
+  flex: none;
+  margin-top: 0.125rem;
+}
+.callout p,
+.card .callout p {
+  margin: 0;
+  color: var(--text);
+}
+.card .callout .callout__title {
+  font-weight: 700;
+}
+.callout__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-small);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+.reconnecting p {
+  color: var(--text);
+}
+
+/* Who has joined: every student by name, in two groups, each with an icon and a word. */
+.roster {
+  container: roster / inline-size;
+  display: grid;
+  gap: var(--sp-2);
+}
+.card .roster__count {
+  color: var(--text);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+}
+.card .roster__nophone {
+  color: var(--text-2);
+}
+/* What was done, said once and read out. It has no room of its own until it has something to say, so the list sits close under the count. */
+.card .roster__said {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+.card .roster__said:empty {
+  display: none;
+}
+.roster__group {
+  display: grid;
+  gap: var(--sp-1);
+}
+.roster__heading {
+  margin: var(--sp-1) 0 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+}
+.card .roster__none {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text);
+  font-weight: 600;
+}
+.roster__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+/* A student is one line: the name, then what is worth saying (an icon and a word), and a button when there is one. It wraps below the name only when it must. */
+.person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.125rem var(--sp-2);
+  min-height: 2.75rem;
+  padding: 0.375rem var(--sp-2);
+  border-radius: var(--r-m);
+  background: var(--deep);
+}
+.person__name {
+  flex: 1 1 11rem;
+  min-width: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+/* The parts of what is said about a student are items of the row itself, so the answer stays beside the name and what is longer (when a student came late, that they left the app) goes on a line of its own below. */
+.person__state {
+  display: contents;
+}
+.person__what,
+.person__answer,
+.person__focus {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-left: auto;
+  color: var(--text-2);
+  line-height: 1.3;
+}
+.person__answer {
+  order: 1;
+}
+.person__what {
+  order: 2;
+}
+.person__focus {
+  order: 4;
+  flex-basis: 100%;
+  margin-left: 0;
+}
+.person[data-state="late"] .person__what {
+  order: 3;
+  flex-basis: 100%;
+  margin-left: 0;
+}
+.person__what svg {
+  flex: none;
+}
+.person__word {
+  font-weight: 600;
+  color: var(--text);
+}
+.person__detail {
+  font-size: var(--fs-small);
+}
+.person__answer {
+  font-weight: 600;
+  color: var(--text);
+}
+.person__action {
+  align-self: center;
+}
+.person__problem {
+  grid-column: 1 / -1;
+}
+/* A student whose connection is lost is worth a look: a white edge besides the icon and the words. */
+.person[data-state="offline"] {
+  box-shadow: inset 0 0 0 2px var(--text);
+}
+
+.live__questions {
+  display: grid;
+  gap: var(--sp-2);
+}
+
+/* ---- The class view: the projected window. Big, high contrast, and nothing small; sized by the height of the window. ---- */
+.cv {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding: 3vh 4vw 4vh;
+  background: linear-gradient(180deg, var(--deep) 0%, var(--ground-top) 100%);
+  color: var(--text);
+  font-family: var(--font);
+  overflow: hidden;
+}
+.cv__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2vw;
+  min-height: 8vh;
+}
+.cv__brand {
+  display: flex;
+  align-items: center;
+  gap: 1.5vh;
+  font-family: var(--font-display);
+  font-size: max(1.5rem, 3.6vh);
+  font-weight: 700;
+}
+.cv__course {
+  margin: 0;
+  flex: 1;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: max(1.5rem, 4vh);
+  font-weight: 600;
+}
+.cv__fullscreen {
+  min-height: max(3.5rem, 7vh);
+  font-size: max(1.25rem, 3vh);
+}
+.cv__quiet {
+  margin: 0;
+  color: var(--text-2);
+  font-size: max(1.25rem, 3vh);
+  font-weight: 500;
+}
+.cv__lobby {
+  flex: 1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 5vw;
+  padding-top: 2vh;
+}
+.cv__qr {
+  display: grid;
+  place-items: center;
+  width: min(68vh, 42vw);
+  aspect-ratio: 1;
+  padding: 2vh;
+  border-radius: 3vh;
+  background: #ffffff;
+}
+.cv__qr svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.cv__info {
+  display: grid;
+  align-content: center;
+  gap: 1.5vh;
+  min-width: 0;
+}
+.cv__how {
+  margin: 0;
+  /* Wide enough that "QR-кодот" is not broken at its hyphen. */
+  max-width: 24ch;
+  font-family: var(--font-display);
+  font-size: max(2rem, 5.6vh);
+  font-weight: 600;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+.cv__label {
+  margin: 1vh 0 0;
+  color: var(--text-2);
+  font-size: max(1.25rem, 3vh);
+  font-weight: 600;
+}
+/* The code is about 15vh of type, on its own dark panel, so it reads from the back of the room even on a weak projector. */
+.cv__code {
+  margin: 0;
+  padding: 1vh 2.5vh;
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 2.5vh;
+  background: var(--shadow);
+  font-family: var(--font-display);
+  /* The type is 15vh, and no wider than what is left of the width beside the QR: seven characters and the panel's edges are about 4.4 times the size of the type. */
+  font-size: min(15vh, calc((53vw - 5vh) / 4.4));
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+.cv__count {
+  margin: 3vh 0 0;
+  font-family: var(--font-display);
+  font-size: max(2.25rem, 8vh);
+  font-weight: 800;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+/* The last few names: each stays whole on its line, a name too long for the line breaks inside itself, and the space between them is the only separator (a dot would be left at the end of a line). */
+.cv__names {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5vh 1.4em;
+  color: var(--text);
+  font-size: max(1.5rem, 4vh);
+  font-weight: 500;
+  line-height: 1.3;
+  /* Four lines at most, newest first: a run of very long names never pushes the window past its height. */
+  max-height: calc(4 * 1.3 * max(1.5rem, 4vh) + 3 * 0.5vh);
+  overflow: hidden;
+}
+/* Said to a screen reader only; kept as big as the rest, so that nothing on the window is under 20px. */
+.cv .sr {
+  font-size: 1.25rem;
+}
+.cv__names li {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.cv__big {
+  margin: 0;
+  flex: 1;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: min(14vh, 9vw);
+  font-weight: 800;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+/* Between questions: what there is to say on the left (the lesson, or the ranking as high as the window), and the way in for a late student beside it. */
+.cv__rest {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 4vw;
+}
+.cv__rest-main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 5vh;
+  text-align: center;
+}
+.cv__rest-main .cv__big {
+  flex: none;
+  font-size: min(17vh, 8vw);
+}
+.cv__lesson {
+  margin: 0;
+  color: var(--text-2);
+  font-family: var(--font-display);
+  font-size: max(1.75rem, 5.4vh);
+  font-weight: 600;
+}
+.cv__corner {
+  flex: none;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 2vh;
+  padding: 2vh;
+  border-radius: 3vh;
+  background: var(--deep);
+}
+.cv__corner .cv__qr {
+  width: min(38vh, 24vw);
+  padding: 1vh;
+  border-radius: 1.5vh;
+}
+.cv__corner .cv__label {
+  margin: 0 0 0.5vh;
+  max-width: 16ch;
+  color: var(--text);
+  font-size: max(1.5rem, 3.4vh);
+  text-wrap: balance;
+}
+.cv__code--small {
+  padding: 0.5vh 1.5vh;
+  font-size: 6vh;
+}
+.cv__reconnecting {
+  position: absolute;
+  left: 4vw;
+  bottom: 2vh;
+  margin: 0;
+  color: var(--text-2);
+  font-size: max(1.25rem, 2.6vh);
+  font-weight: 500;
+}
+/* With the code shown (students may type it) there is less room for the QR and the count: the sizes of a lobby that holds the code too. */
+.cv__lobby--code .cv__qr {
+  width: min(54vh, 34vw);
+}
+.cv__lobby--code .cv__how {
+  max-width: 24ch;
+  font-size: max(1.75rem, 4.4vh);
+}
+.cv__lobby--code .cv__count {
+  margin-top: 2vh;
+  font-size: max(2rem, 6.4vh);
+}
+.cv__lobby--code .cv__names {
+  font-size: max(1.5rem, 3.8vh);
+}
+/* A window that is narrow and tall (a phone in a test, a zoomed window): the QR above the words. */
+@media (max-aspect-ratio: 1/1) {
+  .cv__lobby {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    text-align: center;
+  }
+  .cv__qr,
+  .cv__lobby--code .cv__qr {
+    width: min(48vh, 80vw);
+  }
+  .cv__code {
+    font-size: min(11vh, 16vw);
+  }
+  .cv__info {
+    justify-items: center;
+  }
+}
+
+
+/* ---- Live lesson 2: the compact header, the panel "Прашањето сега", the list, the inbox ---- */
+
+/* While teaching the Back, the title and the course share a row, so the panel is in the first screen of a laptop. */
+.head--compact {
+  margin-bottom: var(--sp-2);
+  align-items: center;
+}
+/* The Back on the left, the title and the course in one column beside it, so the course sits under the title it belongs to. */
+.head--compact .head__text {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0 var(--sp-3);
+}
+.head--compact .back {
+  grid-row: 1 / span 2;
+  margin-bottom: 0;
+}
+.head--compact .head__title {
+  grid-column: 2;
+  align-self: end;
+}
+.head--compact .head__title:last-child {
+  align-self: center;
+}
+.head--compact .head__title {
+  font-size: var(--fs-h2);
+}
+.head--compact .head__sub {
+  grid-column: 2;
+  align-self: start;
+  margin: 0;
+  font-size: var(--fs-body);
+}
+.states--compact {
+  padding: 0 var(--sp-2);
+}
+.states--compact .states__item {
+  min-height: 3rem;
+}
+/* At 1024 wide the four steps and "Сега" must still be one line, so the panel is in the first screen. */
+@media (max-width: 69.99rem) {
+  .states--compact {
+    padding-inline: var(--sp-1);
+    gap: 0 var(--sp-1);
+  }
+  .states--compact .states__item {
+    gap: 0.375rem;
+  }
+}
+
+.live__teach {
+  display: grid;
+  gap: var(--sp-3);
+  align-items: start;
+}
+.live__main {
+  display: grid;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+@media (min-width: 70rem) {
+  .live__teach {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  }
+}
+
+.qpanel {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: start;
+  border: 3px solid var(--yellow);
+}
+.card .qpanel__title {
+  font-size: var(--fs-h3);
+  color: var(--text-2);
+  outline-offset: 4px;
+}
+.qpanel .qpanel__label {
+  color: var(--text-2);
+  font-weight: 600;
+}
+.qpanel .qpanel__prompt {
+  max-width: 60rem;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.qpanel .qpanel__state {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: 700;
+}
+.qpanel .qpanel__answer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text);
+  font-size: var(--fs-lead);
+  font-weight: 700;
+}
+.qpanel .qpanel__hint {
+  color: var(--text-2);
+  font-size: var(--fs-body);
+}
+.qpanel .qpanel__progress {
+  color: var(--text);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.qpanel__timer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.qpanel .qpanel__count {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 1.6rem + 2vw, 3.25rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.qpanel__counts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-4);
+  font-size: var(--fs-lead);
+}
+.qpanel__counts li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.qpanel__counts strong {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-variant-numeric: tabular-nums;
+}
+.qpanel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.qpanel .qpanel__said,
+.qpanel .qpanel__nudge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+  font-weight: 600;
+}
+.qpanel__more {
+  justify-self: start;
+}
+
+.qlist {
+  display: grid;
+  gap: var(--sp-2);
+}
+.qlist__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-1) var(--sp-3);
+}
+.qlist__head .section__title {
+  margin: 0;
+}
+/* One quiet line, only while sending another is not possible: plain weight, no bigger than the list, on the panel colour so it stays readable on the ground. */
+.qlist__wait {
+  margin: 0;
+  padding: 0.5rem var(--sp-2);
+  border-radius: var(--r-m);
+  background: var(--panel);
+  color: var(--text-2);
+  font-size: var(--fs-body);
+  font-weight: 400;
+}
+.qlist__items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-1);
+}
+.qitem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "n actions"
+    "prompt actions"
+    "status actions";
+  align-items: center;
+  gap: 0.25rem var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-m);
+  background: var(--panel);
+}
+.qitem__n {
+  grid-area: n;
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+.qitem__prompt {
+  grid-area: prompt;
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.qitem__status {
+  grid-area: status;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--text-2);
+}
+.qitem__word {
+  font-weight: 600;
+  color: var(--text);
+}
+.qitem__actions {
+  grid-area: actions;
+  display: grid;
+  justify-items: center;
+  gap: 0.25rem;
+}
+/* A question that was skipped is set back, not struck out: a quieter ground, and "Прескокнато" in words. */
+.qitem[data-status="skipped"] {
+  background: var(--deep);
+}
+.qitem[data-status="skipped"] .qitem__prompt {
+  color: var(--text-2);
+}
+@media (max-width: 40rem) {
+  .qitem {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "n" "prompt" "status" "actions";
+  }
+  .qitem__actions {
+    justify-items: start;
+    grid-auto-flow: column;
+    justify-content: start;
+  }
+}
+
+
+.inbox {
+  display: grid;
+  gap: var(--sp-2);
+}
+.card .inbox__title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.card .inbox__hint,
+.card .inbox__none {
+  font-size: var(--fs-body);
+}
+.inbox__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-1);
+}
+.inbox__item {
+  display: grid;
+  gap: 0.5rem;
+  padding: var(--sp-2);
+  border-radius: var(--r-m);
+  background: var(--deep);
+}
+.inbox__item[data-answered="true"] {
+  opacity: 0.72;
+}
+.card .inbox__who {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--sp-2);
+  color: var(--text-2);
+}
+.card .inbox__who strong {
+  color: var(--text);
+}
+.card .inbox__text {
+  color: var(--text);
+  font-size: var(--fs-lead);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.inbox__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-2);
+}
+.card .inbox__done {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* The quick question: one short screen. */
+.dialog--adhoc {
+  width: min(40rem, calc(100vw - 2rem));
+  /* Room above and below, so it reads as a window over the page; what does not fit scrolls inside it, with the buttons kept in view. */
+  max-height: min(calc(100dvh - 5rem), 46rem);
+  overflow: auto;
+}
+.dialog--adhoc .dialog__title {
+  margin-bottom: var(--sp-1);
+}
+.dialog--adhoc .dialog__body {
+  margin-bottom: var(--sp-2);
+}
+.dialog--adhoc {
+  padding: var(--sp-3);
+}
+.dialog--adhoc .field--area {
+  min-height: 4.5rem;
+}
+.dialog--adhoc .adhoc__option .field {
+  min-height: 3rem;
+  padding-block: 0.375rem;
+}
+.dialog--adhoc .choices {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-1);
+  padding: 0;
+  background: none;
+}
+.dialog--adhoc .choices h2 {
+  grid-column: 1 / -1;
+  font-size: var(--fs-body);
+}
+.dialog--adhoc .choice {
+  min-height: var(--tap);
+  padding: 0.5rem var(--sp-1);
+  gap: 0.375rem;
+  hyphens: manual;
+  font-size: var(--fs-body);
+}
+.dialog--adhoc .editor__field,
+.dialog--adhoc .choices,
+.dialog--adhoc .adhoc__options {
+  margin-bottom: var(--sp-2);
+}
+.dialog--adhoc .dialog__actions {
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  margin-top: var(--sp-2);
+  position: sticky;
+  bottom: calc(-1 * var(--sp-3));
+  padding-block: var(--sp-1) 0;
+  background: var(--panel);
+}
+.dialog--adhoc .dialog__actions .btn--primary {
+  white-space: nowrap;
+}
+.adhoc__options {
+  border: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-1);
+}
+.adhoc__option {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.adhoc__letter {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-h3);
+  text-align: center;
+}
+.adhoc__right {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: var(--tap);
+  padding-inline: var(--sp-1);
+  border: 2px solid var(--line);
+  border-radius: var(--r-m);
+  background: var(--deep);
+  white-space: nowrap;
+}
+.adhoc__right[data-checked="true"] {
+  border-color: var(--text);
+  background: var(--shadow);
+  font-weight: 700;
+}
+.adhoc__right input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.adhoc__right:has(input:focus-visible) {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
+}
+.adhoc__number {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+@media (max-width: 36rem) {
+  .dialog--adhoc .choices {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .adhoc__option {
+    grid-template-columns: 2rem minmax(0, 1fr);
+  }
+  .adhoc__right {
+    grid-column: 2;
+  }
+}
+
+/*
+ * ---- The projector: a question that fills the window ----
+ * One unit, `--u`, is a hundredth of the height of the window, or 0.56 of a hundredth of its width when the window is squarer than 16:9, so that the same words
+ * take the same number of lines in 1920 x 1080, 1280 x 720 and 1024 x 768. Type is sized in it; the options, bars and ranking are not sized but stretched, to
+ * share what height is left between the question and the countdown, so the content ends at the foot of the window and nothing needs scrolling.
+ * Everything on it is full white: the ground goes up to #155869 here (7.6:1), and a dimmed white would fall below 7:1 on it.
+ */
+.cv {
+  --u: min(1vh, 0.56vw);
+  --text-2: var(--text);
+}
+.cv[data-state="teaching"],
+.cv[data-state="review"] {
+  height: 100dvh;
+  min-height: 0;
+}
+.cvq {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: calc(1.6 * var(--u));
+  min-height: 0;
+  padding-top: calc(1 * var(--u));
+}
+.cvq__n {
+  margin: 0;
+  font-size: max(1.5rem, calc(4.2 * var(--u)));
+  font-weight: 600;
+}
+.cvq__prompt {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  line-height: 1.12;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.cvq__prompt[data-size="xl"] {
+  font-size: max(2.5rem, calc(7 * var(--u)));
+}
+.cvq__prompt[data-size="l"] {
+  font-size: max(2.25rem, calc(5.6 * var(--u)));
+}
+.cvq__prompt[data-size="m"] {
+  font-size: max(2rem, calc(4.6 * var(--u)));
+}
+.cvq__prompt[data-size="s"] {
+  font-size: max(1.75rem, calc(4.4 * var(--u)));
+  font-weight: 700;
+}
+.cvq__body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  gap: calc(3 * var(--u)) 4vw;
+}
+.cvq__body[data-picture="true"] {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+}
+.cvq__text {
+  display: flex;
+  flex-direction: column;
+  gap: calc(1.8 * var(--u));
+  min-width: 0;
+  min-height: 0;
+}
+.cvq__figure {
+  margin: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  border-radius: calc(2 * var(--u));
+  background: var(--deep);
+  overflow: hidden;
+}
+.cvq__figure img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+/* The options share the height that is left, up to a most for two or three (a tall bar of two words is not easier to read); each one centres its words. */
+.cvq__options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-auto-rows: minmax(0, 1fr);
+  gap: calc(1.5 * var(--u));
+}
+.cvq__options[data-count="2"] {
+  max-height: 44vh;
+}
+.cvq__options[data-count="3"] {
+  max-height: 58vh;
+}
+.cvq__option {
+  display: flex;
+  align-items: center;
+  gap: calc(2 * var(--u));
+  min-height: 0;
+  padding: 0 calc(2.4 * var(--u));
+  border-radius: calc(2 * var(--u));
+  background: var(--deep);
+  font-size: max(1.5rem, calc(5.4 * var(--u)));
+  font-weight: 700;
+  line-height: 1.15;
+}
+.cvq__options[data-fit="b"] .cvq__option {
+  font-size: max(1.5rem, calc(4.6 * var(--u)));
+}
+.cvq__options[data-fit="c"] .cvq__option {
+  font-size: max(1.5rem, calc(4 * var(--u)));
+}
+.cvq__options[data-kind="true_false"] {
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-rows: auto;
+  max-height: 40vh;
+}
+.cvq__options[data-kind="true_false"] .cvq__option {
+  justify-content: center;
+  font-size: max(2.25rem, calc(9 * var(--u)));
+}
+.cvq__letter {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 50%;
+  background: var(--text);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 800;
+}
+.cvq__label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.cvq__number {
+  flex: 1;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: calc(2 * var(--u));
+}
+.cvq__numeric {
+  margin: 0;
+  display: inline-block;
+  padding: calc(3 * var(--u)) calc(4 * var(--u));
+  border-radius: calc(2 * var(--u));
+  background: var(--deep);
+  font-size: max(2rem, calc(8 * var(--u)));
+  font-weight: 800;
+}
+.cvq__unit {
+  margin: 0;
+  font-size: max(1.75rem, calc(5.6 * var(--u)));
+  font-weight: 600;
+}
+.cvq__foot {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: calc(3 * var(--u)) 3vw;
+  margin-top: calc(1 * var(--u));
+}
+.cvq__seconds {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: calc(1.5 * var(--u));
+}
+.cvq__num {
+  min-width: 1.6ch;
+  text-align: right;
+  font-family: var(--font-display);
+  font-size: max(4rem, calc(13 * var(--u)));
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.cvq__unitword {
+  font-size: max(1.5rem, calc(4.4 * var(--u)));
+  font-weight: 600;
+}
+.cvq__bar {
+  height: calc(3.6 * var(--u));
+  min-height: 1.25rem;
+  border-radius: 999px;
+  background: var(--deep);
+  overflow: hidden;
+}
+/* The bar shrinks by transform (the compositor's own work), once for each tick of the clock. */
+.cvq__fill {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--text);
+  transform-origin: left center;
+  transition: transform 250ms linear;
+}
+.cvq__progress {
+  margin: 0;
+  font-size: max(1.75rem, calc(4.6 * var(--u)));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+/* Time is up, or the question does not count: the question stays where it was, and the one thing to say fills the rest. */
+.cvq__done {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(2.4 * var(--u));
+  font-family: var(--font-display);
+  font-size: max(3rem, calc(14 * var(--u)));
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+}
+.cvq--closed,
+.cvq--skipped {
+  align-items: stretch;
+}
+.cvq--closed .cvq__done,
+.cvq--skipped .cvq__done {
+  flex: 1;
+  align-items: flex-end;
+}
+.cvq--skipped .cvq__done {
+  font-size: max(3rem, calc(12 * var(--u)));
+}
+.cvq--closed .cvq__progress--big,
+.cvq--skipped .cvq__prompt {
+  flex: 1;
+  text-align: center;
+}
+.cvq__progress--big {
+  font-size: max(2rem, calc(8 * var(--u)));
+}
+
+/* The answer shown: the question across the top, the bars on the left and the ranking beside them, both as high as the window lets them be. */
+.cvq__reveal {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  gap: calc(3 * var(--u)) 4vw;
+}
+.cvq--revealed[data-board="true"] .cvq__reveal {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+}
+.cvq--revealed[data-board="true"][data-fit="c"] .cvq__reveal {
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+}
+.cvq--revealed[data-fit="c"] .cvb__row {
+  font-size: max(1.25rem, calc(3.4 * var(--u)));
+}
+.cvq--revealed[data-fit="c"] .cvb__title {
+  font-size: max(1.5rem, calc(4 * var(--u)));
+}
+.cvq__bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-auto-rows: minmax(min-content, 1fr);
+  gap: calc(1.2 * var(--u));
+}
+.cvq__bars[data-count="2"] {
+  max-height: 46vh;
+}
+.cvq__barrow {
+  display: grid;
+  align-content: center;
+  gap: calc(0.8 * var(--u));
+  min-height: 0;
+  padding: calc(0.8 * var(--u)) calc(2 * var(--u));
+  border: calc(0.5 * var(--u)) solid transparent;
+  border-radius: calc(2 * var(--u));
+  background: var(--deep);
+}
+.cvq__barrow[data-right="true"] {
+  border-color: var(--text);
+  background: var(--shadow);
+}
+/* The letter, the answer with its mark under it, and the count: three columns, so the mark never lands between the words and the number. */
+.cvq__barhead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: calc(1.6 * var(--u));
+  font-size: max(1.375rem, calc(3.8 * var(--u)));
+  font-weight: 700;
+  line-height: 1.15;
+}
+.cvq__barrow[data-kind="true_false"] .cvq__barhead {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.cvq__barrow[data-fit="c"] .cvq__barhead {
+  font-size: max(1.375rem, calc(3.2 * var(--u)));
+}
+.cvq__answer {
+  display: grid;
+  justify-items: start;
+  gap: calc(0.6 * var(--u));
+  min-width: 0;
+}
+.cvq__rightmark {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(1 * var(--u));
+  padding: calc(0.2 * var(--u)) calc(1.6 * var(--u));
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--ink);
+  font-size: max(1.25rem, calc(3 * var(--u)));
+  font-weight: 800;
+  white-space: nowrap;
+}
+.cvq__track {
+  display: block;
+  height: calc(1.8 * var(--u));
+  min-height: 0.875rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+}
+.cvq__barfill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--text);
+}
+.cvq__barcount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.cvq__bignumber {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: calc(2 * var(--u));
+  font-family: var(--font-display);
+  font-size: max(2.5rem, calc(9 * var(--u)));
+  font-weight: 800;
+  line-height: 1.1;
+}
+.cvq__tiles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+  max-height: 40vh;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: calc(2 * var(--u));
+}
+.cvq__tile {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: calc(0.5 * var(--u));
+  padding: calc(1 * var(--u));
+  border-radius: calc(2 * var(--u));
+  background: var(--deep);
+  font-size: max(2rem, calc(8 * var(--u)));
+  text-align: center;
+}
+.cvq__tilenum {
+  font-family: var(--font-display);
+  font-weight: 800;
+  line-height: 1;
+}
+.cvq__tileword {
+  font-size: max(1.5rem, calc(3.8 * var(--u)));
+  font-weight: 700;
+}
+.cvq__why {
+  margin: 0;
+  padding: calc(1.2 * var(--u)) calc(2 * var(--u));
+  border-radius: calc(2 * var(--u));
+  background: var(--deep);
+  font-size: max(1.5rem, calc(3.8 * var(--u)));
+  line-height: 1.3;
+}
+
+/* The ranking: the first places, big, in the height of the window. */
+.cvb {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2 * var(--u));
+  min-height: 0;
+  padding: calc(2.4 * var(--u));
+  border-radius: calc(3 * var(--u));
+  background: var(--deep);
+}
+.cvb__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: max(1.75rem, calc(4.8 * var(--u)));
+  font-weight: 800;
+}
+.cvb__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-auto-rows: minmax(min-content, 1fr);
+  align-content: stretch;
+  gap: calc(0.6 * var(--u));
+}
+.cvb__row {
+  display: grid;
+  grid-template-columns: 1.1em minmax(0, 1fr) auto;
+  align-items: center;
+  gap: calc(1.4 * var(--u));
+  font-size: max(1.375rem, calc(4.2 * var(--u)));
+  font-weight: 700;
+}
+.cvb__rank {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-align: center;
+}
+.cvb__name {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.cvb__points {
+  font-size: max(1.25rem, 0.85em);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Between questions: the ranking down the left of the window, as high as it, and the corner with the QR at the right. */
+.cv__between {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding-bottom: calc(1 * var(--u));
+}
+.cvb--between {
+  flex: 1;
+}
+.cvb--between .cvb__row {
+  font-size: max(2rem, calc(6.4 * var(--u)));
+}
+.cvb--between .cvb__title {
+  font-size: max(2rem, calc(6 * var(--u)));
+}
+/* A squarish window (1024 x 768): the width is the short side, so the ranking gets a little more of it and larger type, a name still on one line, and the bars still fill the height. */
+@media (max-aspect-ratio: 4/3) {
+  .cvq--revealed[data-board="true"] .cvq__reveal,
+  .cvq--revealed[data-board="true"][data-fit="c"] .cvq__reveal {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  }
+  .cvq--revealed .cvb--side .cvb__row {
+    font-size: max(1.625rem, calc(4.7 * var(--u)));
+  }
+  .cvq--revealed[data-fit="c"] .cvb--side .cvb__row {
+    font-size: max(1.5rem, calc(4.4 * var(--u)));
+  }
+  .cvq--revealed .cvb--side .cvb__points {
+    font-size: max(1.25rem, 0.78em);
+  }
+  .cvq--revealed .cvb--side .cvb__title {
+    font-size: max(2rem, calc(5.6 * var(--u)));
+  }
+}
+@media (max-aspect-ratio: 1/1) {
+  .cvq__body[data-picture="true"],
+  .cvq--revealed[data-board="true"] .cvq__reveal {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cvq__foot {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .cvq__progress {
+    grid-column: 1 / -1;
+  }
+}
+/* A shrinking bar is motion; with Reduce Motion the seconds and the count say the same, still. */
+@media (prefers-reduced-motion: reduce) {
+  .cvq__bar {
+    display: none;
+  }
+  .cvq__foot {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+}
+
+/*
+  Reduce Motion takes away movement, not feedback: nothing slides, scales or turns, while the short
+  colour and opacity fades (150ms) still run, which is gentler than none.
+*/
+@keyframes pop-fade {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .waiting__dots span {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+  .dialog[open],
+  .note-box {
+    animation-name: pop-fade;
+  }
+  .btn,
+  .provider {
+    transition: background-color var(--dur) var(--ease);
+  }
+  .btn:active,
+  .provider:active {
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) and (max-width: 63.9375rem) {
+  .sidebar {
+    transform: none;
+    opacity: 0;
+    transition:
+      opacity var(--dur) var(--ease),
+      visibility 0s linear var(--dur);
+  }
+  .sidebar[data-open="true"] {
+    opacity: 1;
+    transition-delay: 0s;
+  }
+  .scrim {
+    transition:
+      opacity var(--dur) var(--ease),
+      visibility 0s linear var(--dur);
+  }
+  .scrim[data-open="true"] {
+    transition-delay: 0s;
+  }
+}
+
+/* Windows high-contrast: fills are dropped, so the edges of cards, the chosen row and the one main
+   button are drawn as lines. The yellow button gets a thicker edge than the others. */
+@media (forced-colors: active) {
+  .card,
+  .dialog,
+  .me,
+  .provider,
+  .pill,
+  .problem,
+  .note-box,
+  .lesson,
+  .question,
+  .running,
+  .option,
+  .field,
+  .states,
+  .person,
+  .callout,
+  .cv__qr,
+  .cv__code,
+  .cv__corner,
+  .opt__right {
+    border: 2px solid CanvasText;
+  }
+  .band {
+    border-color: Highlight;
+  }
+  /* Each answer of an open question keeps the room for an edge that only the right one has; the tick and the words tell it apart too. */
+  .opt {
+    border-color: Canvas;
+  }
+  .opt[data-right="true"] {
+    border-color: Highlight;
+  }
+  .savebar {
+    border: 2px solid CanvasText;
+  }
+  .nav__item[aria-current="page"] {
+    border: 2px solid Highlight;
+  }
+  .btn--primary {
+    border-width: 4px;
+  }
+}
+
+.btn--danger.btn--small {
+  font-size: 1.1875rem;
+}
+
+/* ---- The review on the projector: one most-missed question, or the questions the class wrote, filling the window ---- */
+.cvr {
+  justify-content: flex-start;
+}
+.cvr__facts {
+  display: grid;
+  gap: calc(1.4 * var(--u));
+}
+.cvr .cvq__why {
+  font-size: max(1.375rem, calc(4.2 * var(--u)));
+}
+.cvr .cvq__options[data-kind="true_false"] {
+  max-height: 48vh;
+}
+.cvr__count {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: max(1.75rem, calc(6 * var(--u)));
+  font-weight: 800;
+  line-height: 1.1;
+}
+.cvr__number {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  align-content: center;
+}
+.cvr__number .cvq__bignumber {
+  font-size: max(2.5rem, calc(12 * var(--u)));
+}
+.cvq__option .cvq__rightmark {
+  margin-left: auto;
+}
+/* Two wide tiles: the word is centred and the mark that says it is the right one sits under it, the same in both tiles' axis. */
+.cvq__options[data-kind="true_false"] .cvq__option {
+  flex-direction: column;
+}
+.cvq__options[data-kind="true_false"] .cvq__rightmark {
+  margin-left: 0;
+}
+.cvq__option[data-right="true"] {
+  background: var(--shadow);
+  box-shadow: inset 0 0 0 calc(0.5 * var(--u)) var(--text);
+}
+.cvr--none {
+  flex: 1;
+  display: grid;
+  place-items: center;
+}
+.cvr__none {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: calc(2.4 * var(--u));
+  max-width: 90%;
+  font-family: var(--font-display);
+  font-size: max(2.5rem, calc(10 * var(--u)));
+  font-weight: 800;
+  line-height: 1.12;
+  text-wrap: balance;
+}
+.cvr__none svg {
+  flex: none;
+}
+.cvr__anon {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-auto-rows: minmax(min-content, 1fr);
+  gap: calc(2 * var(--u));
+}
+.cvr__anon li {
+  display: grid;
+  align-content: center;
+  padding: calc(1.6 * var(--u)) calc(3 * var(--u));
+  border-radius: calc(2 * var(--u));
+  background: var(--deep);
+  font-size: max(1.75rem, calc(7 * var(--u)));
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.cvr__anon[data-count="3"] li {
+  font-size: max(1.625rem, calc(5.6 * var(--u)));
+}
+
+/* ---- The review and the end page on the console ---- */
+.rpanel__list {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: start;
+}
+.card .rpanel__title {
+  font-size: var(--fs-h2);
+}
+.rpanel__none {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: 700;
+}
+.rpanel__done {
+  display: grid;
+  gap: var(--sp-1);
+  justify-items: start;
+  padding-top: var(--sp-2);
+  border-top: 2px solid var(--line);
+  width: 100%;
+}
+.card .rpanel__done p {
+  margin: 0;
+}
+.rpanel__anonnow {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-1);
+  width: 100%;
+}
+.rpanel__anonnow li {
+  display: grid;
+  gap: 0.25rem;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-m);
+  background: var(--deep);
+  font-size: var(--fs-lead);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.rpanel__anonnow strong {
+  font-size: var(--fs-body);
+}
+.rlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-1);
+  width: 100%;
+}
+.rlist__item {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  gap: 0.25rem var(--sp-2);
+  padding: var(--sp-2);
+  border: 3px solid transparent;
+  border-radius: var(--r-m);
+  background: var(--deep);
+}
+/* The one on the projector: a white outline and its words, never the colour alone. */
+.rlist__item[data-now="true"] {
+  border-color: var(--text);
+  background: var(--shadow);
+}
+.card .rlist__item p {
+  margin: 0;
+}
+.rlist__n {
+  grid-row: 1 / span 3;
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: 800;
+  color: var(--text-2);
+}
+.rlist__prompt {
+  font-size: var(--fs-lead);
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.rlist__answer,
+.rlist__count {
+  color: var(--text);
+  font-size: var(--fs-body);
+}
+.rlist__count {
+  font-weight: 700;
+}
+.card .rlist__item .rlist__on,
+.inbox__on {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: var(--fs-body);
+  font-weight: 800;
+  color: var(--text);
+}
+.card .rlist__item .rlist__on {
+  grid-column: 2;
+}
+.rpanel__now {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.rproj__closed {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+}
+.inbox__item[data-now="true"] {
+  outline: 3px solid var(--text);
+  outline-offset: -3px;
+}
+.qpanel__early {
+  margin-top: var(--sp-1);
+}
+/* A quiet link has padding for its tap area; the words, not the padding, line up with the panel's text above. */
+.qpanel__early .btn--quiet {
+  margin-left: calc(var(--sp-2) * -1);
+}
+.live__end {
+  display: grid;
+  gap: var(--sp-1);
+  justify-items: start;
+  padding: var(--sp-3);
+  border-radius: var(--r-l);
+  /* On the panel, not on the ground: the hint is small text, and white on the ground fails at the foot of a long page. */
+  background: var(--panel);
+}
+.live__endhint {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-body);
+}
+
+/* ---- The end page ---- */
+.endpage {
+  display: grid;
+  gap: var(--sp-3);
+}
+.att {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: start;
+}
+.att__hint {
+  margin: 0;
+  color: var(--text-2);
+  max-width: var(--measure);
+}
+.att-print__title {
+  display: none;
+}
+.att__counts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
+  gap: var(--sp-1);
+}
+.att__counts li {
+  display: grid;
+  align-content: start;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-m);
+  background: var(--deep);
+}
+.att__counts strong {
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.att__counts span {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  line-height: 1.25;
+}
+.att__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.att__note {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+}
+.att__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-lead);
+}
+.att__table th,
+.att__table td {
+  padding: 0.5rem var(--sp-2);
+  border-top: 1px solid var(--line);
+  text-align: left;
+}
+.att__table thead th {
+  font-size: var(--fs-body);
+  color: var(--text-2);
+}
+.att__table tbody th {
+  font-weight: 600;
+}
+.att__table tr[data-status="absent"] td {
+  font-weight: 700;
+}
+.endpage__way {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: start;
+}
+.practice {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: start;
+}
+.practice__sent {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--fs-lead);
+}
+.card .practice__sub {
+  margin: var(--sp-1) 0 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+}
+.practice__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+}
+.practice__list li {
+  display: flex;
+  font-size: var(--fs-lead);
+  font-weight: 600;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--line);
+}
+
+/* The attendance list on paper: only the list, black on white. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .att-print,
+  .att-print * {
+    visibility: visible;
+  }
+  .att-print {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: #fff;
+    color: #000;
+  }
+  .att-print .att__actions,
+  .att-print .att__note,
+  .att-print .att__hint,
+  .att-print .att__counts {
+    display: none;
+  }
+  .att-print h2,
+  .att-print .att-print__title {
+    margin: 0;
+    color: #000;
+  }
+  .att-print .att-print__title {
+    display: grid;
+    font-size: 1.125rem;
+  }
+  .att-print .att__table th,
+  .att-print .att__table td {
+    color: #000;
+    border-top: 1px solid #999;
+    font-size: 1rem;
+    padding: 0.25rem 0.5rem;
+  }
+}
+
+/* ---- Class results ---- */
+.cres {
+  gap: var(--sp-3);
+}
+.cres .card {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: start;
+}
+.cres .card > p {
+  max-width: 46rem;
+}
+.cres__sec {
+  scroll-margin-top: var(--sp-3);
+}
+.cres__sec:focus {
+  outline: none;
+}
+/* The three figures of the summary: each a number and what it counts, in words. */
+.cres__tiles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--sp-1);
+}
+.cres__tiles li {
+  display: grid;
+  align-content: start;
+  gap: 0.25rem;
+  padding: var(--sp-2);
+  border-radius: var(--r-m);
+  background: var(--deep);
+}
+.cres__tiles strong {
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.cres__tiles span {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  line-height: 1.3;
+}
+/* One quiet line of links, not a row of buttons. */
+.cres__jump {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--sp-2);
+  font-size: var(--fs-body);
+  font-weight: 700;
+}
+.cres__jump ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--sp-3);
+}
+.cres__jump a,
+.cres__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: var(--tap-small);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+/* A table sizes to its container, so it can turn into short stacked rows when the room is narrow (a small window, or the page at 200%). */
+.cres__scroll {
+  width: 100%;
+  container-type: inline-size;
+}
+.cres__table {
+  font-size: var(--fs-button);
+}
+.cres__table td,
+.cres__table th {
+  vertical-align: top;
+}
+.cres__table thead th {
+  font-size: var(--fs-body);
+  font-weight: 700;
+}
+.cres__table tbody th {
+  font-weight: 600;
+}
+.cres__table tbody td,
+.cres__table tbody th {
+  padding-block: 0.75rem;
+}
+/* The name takes the room it needs; the numbers have plenty. */
+.cres__name {
+  display: block;
+  white-space: nowrap;
+}
+.cres__table .cres__note {
+  max-width: 18rem;
+}
+.cres__table td:not(:first-child) {
+  font-variant-numeric: tabular-nums;
+}
+.cres__open {
+  text-align: right;
+  white-space: nowrap;
+}
+/* In a row the link sits on the line of the text beside it; its padding keeps the target tall. */
+.cres__open .cres__link {
+  min-height: 0;
+  padding-block: 0.5rem;
+  margin-block: -0.5rem;
+}
+@container (max-width: 42rem) {
+  .cres__table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .cres__table,
+  .cres__table tbody {
+    display: block;
+  }
+  .cres__table tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem var(--sp-3);
+    padding: 0.75rem 0;
+    border-top: 1px solid var(--line);
+  }
+  .cres__table th,
+  .cres__table td {
+    display: block;
+    padding: 0 !important;
+    border: 0 !important;
+    text-align: left;
+  }
+  .cres__table tbody th {
+    flex: 1 0 100%;
+  }
+  .cres__table .cres__title {
+    flex: 1 0 100%;
+    order: 1;
+  }
+  .cres__table td[data-label]::before {
+    content: attr(data-label) ": ";
+    font-weight: 400;
+    color: var(--text-2);
+  }
+  .cres__table td[data-label] {
+    order: 2;
+  }
+  .cres__table .cres__open {
+    margin-left: auto;
+    order: 3;
+  }
+  .cres__table .cres__note {
+    display: inline;
+    margin-left: 0.5rem;
+  }
+}
+.cres__note {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: var(--fs-small);
+  font-weight: 400;
+  color: var(--text-2);
+}
+.cres__meta,
+.cres__list .cres__note {
+  font-size: var(--fs-body);
+  color: var(--text-2);
+}
+.cres__topics,
+.cres__asked,
+.cres__sets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+}
+.cres__topics li,
+.cres__asked li,
+.cres__sets li {
+  display: grid;
+  gap: 0.25rem;
+  padding: var(--sp-2) 0;
+  border-top: 1px solid var(--line);
+}
+.cres__topics li p,
+.cres__asked li p,
+.cres__sets li p {
+  margin: 0;
+}
+.cres__topic-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  font-size: var(--fs-lead);
+}
+.cres__tag {
+  padding: 0.125rem 0.75rem;
+  border-radius: var(--r-pill);
+  background: var(--deep);
+  font-size: var(--fs-small);
+  font-weight: 700;
+}
+.cres__topic-share {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem var(--sp-2);
+}
+/* The length is the share right; the colour is the same for every topic. */
+.cres__bar {
+  display: block;
+  flex: 0 1 16rem;
+  min-width: 8rem;
+  height: 0.75rem;
+  border-radius: var(--r-pill);
+  background: var(--deep);
+  overflow: hidden;
+}
+.cres__bar span {
+  display: block;
+  height: 100%;
+  background: var(--text);
+}
+.cres__asked-text {
+  font-size: var(--fs-lead);
+  color: var(--text) !important;
+}
+.cres__sets h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  line-height: var(--lh-tight);
+}
+.cres__who {
+  width: 100%;
+}
+.cres__who summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--tap-small);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+  list-style: none;
+}
+.cres__who summary::-webkit-details-marker {
+  display: none;
+}
+.cres__who summary svg {
+  transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.cres__who[open] summary svg {
+  transform: rotate(180deg);
+}
+.cres__list li {
+  align-items: flex-start;
+}
+/* One control for one choice: the setting's name and its state in words on one row, the switch at the end. */
+.cres__switch {
+  width: 100%;
+  max-width: 46rem;
+  min-height: 4.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-m);
+  background: var(--deep);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.cres__switch-name {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+}
+.cres__switch-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-lead);
+}
+.cres__track {
+  display: inline-flex;
+  align-items: center;
+  width: 4rem;
+  height: 2.25rem;
+  padding: 0.25rem;
+  border: 2px solid var(--text);
+  border-radius: var(--r-pill);
+  background: transparent;
+  transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.cres__track[data-on="true"] {
+  background: var(--text);
+}
+.cres__thumb {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--text);
+  color: var(--ink);
+  transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.cres__track[data-on="true"] .cres__thumb {
+  background: var(--deep);
+  color: var(--text);
+  transform: translateX(1.75rem);
+}
+.cres__saved {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 1.75rem;
+  margin: 0;
+  font-weight: 700;
+}
+.cres__saved:empty {
+  min-height: 0;
+  margin-top: calc(var(--sp-2) * -1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cres__who summary svg,
+  .cres__track,
+  .cres__thumb {
+    transition: none;
+  }
+}
+
+/* The button of a student's row is as wide as its word needs, so a long surname keeps its line in the narrow card. */
+.person__action {
+  padding-inline: var(--sp-2);
+}
