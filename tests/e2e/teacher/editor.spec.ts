@@ -74,6 +74,8 @@ type Seed = { drafts?: Draft[]; sources?: unknown[]; lessons?: unknown[]; first_
 /** Put what the AI would have left into the demo's saved state, then load the page afresh so that the demo reads it. */
 async function seed(page: Page, what: Seed, url: string, whose: "school" | "university" | "novice" = "school") {
   await page.goto("/teacher/help");
+  // The demo writes its state once the page has started; read it only after.
+  await page.waitForFunction((key) => localStorage.getItem(key) !== null, MOCK_KEY);
   await page.evaluate(
     ([key, seeded, which]) => {
       const state = JSON.parse(localStorage.getItem(key) ?? "null");

@@ -73,6 +73,8 @@ type Seed = { drafts?: Draft[]; library_empty?: boolean; first_run_done?: boolea
 /** Put what the demo would have saved into its state, then load the page afresh so that the demo reads it. */
 async function seed(page: Page, what: Seed, url: string, whose: "school" | "university" | "novice" = "school") {
   await page.goto("/teacher/help");
+  // The demo writes its state once the page has started; read it only after.
+  await page.waitForFunction((key) => localStorage.getItem(key) !== null, MOCK_KEY);
   await page.evaluate(
     ([key, seeded, which]) => {
       const state = JSON.parse(localStorage.getItem(key) ?? "null");
@@ -301,6 +303,8 @@ test.describe("Lessons", () => {
       emphasis: null,
     });
     await page.goto("/teacher/help");
+    // The demo writes its state once the page has started; read it only after.
+    await page.waitForFunction((key) => localStorage.getItem(key) !== null, MOCK_KEY);
     await page.evaluate(
       ([key, added]) => {
         const state = JSON.parse(localStorage.getItem(key as string) ?? "null");

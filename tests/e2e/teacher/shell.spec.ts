@@ -72,6 +72,8 @@ test.describe("the frame on a long page", () => {
 
   test("the first Tab shows the skip link, and Enter moves the focus to the page's content", async ({ page }) => {
     await page.goto("/teacher/lessons/new");
+    // The frame is drawn once the sign-in is read; a Tab before that lands on nothing.
+    await expect(page.locator("h1")).toBeVisible();
     await page.keyboard.press("Tab");
     const skip = page.getByRole("link", { name: "Прескокни кон содржината" });
     await expect(skip).toBeFocused();
