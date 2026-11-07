@@ -41,6 +41,11 @@ import {
 const TIMEOUT_MS = 15_000;
 /** A 20 MB document takes a while on a school's connection (BR-LES-09). The AI's work is not a request any more: it is a draft that is polled. */
 const SLOW_TIMEOUT_MS = 180_000;
+/**
+ * Browsers refuse a `keepalive` request whose body is over 64 KiB (the Fetch standard's quota), failing it at once as if offline.
+ * A long draft (a pasted review text) would then never save and Save would fail too, so a body over this goes out as an ordinary request.
+ */
+export const KEEPALIVE_MAX_BYTES = 60 * 1024;
 
 type Options = {
   /** A JSON body, or a FormData sent as it is (a file). */
@@ -61,6 +66,8 @@ async function request<T>(method: string, path: string, { body, timeout = TIMEOU
     headers["Content-Type"] = "application/json";
     payload = JSON.stringify(body);
   }
+  const small = typeof payload !== "string" || new TextEncoder().encode(payload).length <= KEEPALIVE_MAX_BYTES;
+  const keep = keepalive === true && !(payload instanceof FormData) && small;
 
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), timeout);
@@ -69,7 +76,7 @@ async function request<T>(method: string, path: string, { body, timeout = TIMEOU
   else signal?.addEventListener("abort", stop, { once: true });
   let res: Response;
   try {
-    res = await fetch(`${apiBase}${path}`, { method, headers, body: payload, credentials: "include", keepalive, signal: abort.signal });
+    res = await fetch(`${apiBase}${path}`, { method, headers, body: payload, credentials: "include", keepalive: keep, signal: abort.signal });
   } catch (e) {
     // Offline, blocked, refused or timed out: the app treats them alike.
     throw new ApiError("network", { cause: e });
