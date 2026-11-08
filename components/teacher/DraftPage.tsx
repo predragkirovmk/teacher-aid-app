@@ -6,6 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { deleteDraft, retryDraft, useDraft } from "@/lib/teacher/api/hooks";
 import { isApiError } from "@/lib/teacher/api/errors";
+import { DRAFT_STUCK_MS } from "@/lib/teacher/lessons";
 import type { LessonDraft } from "@/lib/teacher/api/types";
 import { useT } from "@/lib/teacher/i18n";
 import { recallForm, leaveRefill } from "@/lib/teacher/refill";
@@ -125,7 +126,11 @@ export function DraftPage() {
     <>
       {preparing}
       <div className="content">
-        {draft.status === "pending" ? <Pending key={draft.id} draft={draft} from={from} offline={q.error?.code === "network"} /> : <Failed key={draft.id} draft={draft} from={from} />}
+        {draft.status === "pending" ? (
+          <Pending key={draft.id} draft={draft} from={from} offline={q.error?.code === "network"} onAsk={q.refetch} />
+        ) : (
+          <Failed key={draft.id} draft={draft} from={from} />
+        )}
       </div>
     </>
   );
@@ -145,19 +150,50 @@ function useGiveUp(draft: LessonDraft, from: string | null, note: "cancelled" | 
 /**
  * The wait. The page asks for the draft again every few seconds (see `useDraft`), so there is nothing to do here but wait, and the
  * page may be left: the lesson will be on Today. Cancel asks first, since it throws the draft away, and then returns to the form
- * filled in again (or, for a refinement, to the questions as they were).
+ * filled in again (or, for a refinement, to the questions as they were). A wait that goes on well past the server's own limit
+ * (`DRAFT_STUCK_MS`) is over: the page says so, and the teacher goes back with everything kept or waits on.
  */
-function Pending({ draft, from, offline }: { draft: LessonDraft; from: string | null; offline: boolean }) {
+function Pending({ draft, from, offline, onAsk }: { draft: LessonDraft; from: string | null; offline: boolean; onAsk: () => void }) {
   const { t, te } = useT();
   const refining = draft.previous_draft_id !== null;
   const [asking, setAsking] = useState(false);
   const [problem, setProblem] = useState<unknown>(null);
   const giveUp = useGiveUp(draft, from, "cancelled");
-
-  // The focus goes to what is being done, once, as the page opens: it is what a screen reader then reads.
+  const goBack = useGiveUp(draft, from, "kept");
+  // Each round of waiting has its own limit: "Keep waiting" starts another.
+  const [round, setRound] = useState(0);
+  const [stuck, setStuck] = useState(false);
   useEffect(() => {
-    document.querySelector<HTMLElement>('[data-focus="wait"]')?.focus();
-  }, []);
+    const timer = setTimeout(() => setStuck(true), DRAFT_STUCK_MS);
+    return () => clearTimeout(timer);
+  }, [round]);
+
+  // The focus goes to what is being done as the page opens, and again when the wait goes on after it was over: it is what a screen
+  // reader then reads.
+  useEffect(() => {
+    if (!stuck) document.querySelector<HTMLElement>('[data-focus="wait"]')?.focus();
+  }, [stuck]);
+
+  if (stuck) {
+    return (
+      <>
+        <Stuck
+          refining={refining}
+          onBack={() => {
+            setProblem(null);
+            goBack().catch(setProblem);
+          }}
+          onWait={() => {
+            setProblem(null);
+            setStuck(false);
+            setRound((r) => r + 1);
+            onAsk();
+          }}
+        />
+        {problem !== null && <Problem>{te(problem)}</Problem>}
+      </>
+    );
+  }
 
   return (
     <>
@@ -191,6 +227,34 @@ function Pending({ draft, from, offline }: { draft: LessonDraft; from: string | 
         }}
       />
     </>
+  );
+}
+
+/**
+ * The draft is still being written long after the server should have failed it: the job has stopped without anyone saying so. The
+ * yellow button is the way a failure has, back to the form filled in again (or the questions as they were); the other waits on.
+ */
+function Stuck({ refining, onBack, onWait }: { refining: boolean; onBack: () => void; onWait: () => void }) {
+  const { t } = useT();
+
+  useEffect(() => {
+    document.querySelector<HTMLElement>('[data-focus="stuck"]')?.focus();
+  }, []);
+
+  return (
+    <section className="card card--stack">
+      <Problem id="wait-stuck" title={t("prepare.fail.timeout.title")}>
+        {t(refining ? "refine.stuck.body" : "wait.stuck.body")}
+      </Problem>
+      <div className="prepare__actions">
+        <button type="button" className="btn btn--primary btn--big" data-focus="stuck" aria-describedby="wait-stuck" onClick={onBack}>
+          {t(refining ? "refine.fail.keep" : "wait.stuck.back")}
+        </button>
+        <button type="button" className="btn btn--secondary btn--big" onClick={onWait}>
+          {t("wait.stuck.wait")}
+        </button>
+      </div>
+    </section>
   );
 }
 

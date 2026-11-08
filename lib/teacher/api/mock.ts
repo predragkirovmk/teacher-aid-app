@@ -80,7 +80,8 @@ import type {
  * What a real teacher cannot trigger, the demo can, so the screens' failure states can be tried:
  * a typed text or emphasis containing `[fail]` makes the AI fail, `[fail-once]` makes it fail the first time and work the
  * second (so a retry can be seen to help), `[slow]` makes it never answer (the draft stays pending until the limit of
- * `DRAFT_PENDING_MAX_SECONDS`, and then it has failed), and a document named like a scan (`scan` or `скен`) has no text in it.
+ * `DRAFT_PENDING_MAX_SECONDS`, and then it has failed), `[stuck]` makes it never answer and never fail (a server that broke that
+ * rule, for the page's own limit), and a document named like a scan (`scan` or `скен`) has no text in it.
  * A computer that is offline cannot reach it, as the real API cannot be reached.
  *
  * Writing a lesson is a job, as it is in the API (BR-LES-08): `generateLesson` answers at once with the draft pending, and the draft is

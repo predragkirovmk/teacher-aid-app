@@ -20,14 +20,17 @@ export const FAIL_MS = 4000;
 export const FAIL = /\[fail\]/i;
 export const FAIL_ONCE = /\[fail-once\]/i;
 export const SLOW = /\[slow\]/i;
+export const STUCK = /\[stuck\]/i;
 
 /**
  * The job for a draft that is about to be written from `words`. `[slow]` is an AI that never answers (the draft then fails at the
- * limit, BR-LES-09), `[fail]` one that always fails, `[fail-once]` one that fails the first time a source is used and works after
+ * limit, BR-LES-09), `[stuck]` a worker that stopped and a server that broke that rule (the draft stays pending for good, for the
+ * page's own limit, `DRAFT_STUCK_MS`), `[fail]` one that always fails, `[fail-once]` one that fails the first time a source is used and works after
  * (`runs` is how many times it has been used). `ms` is how long a success takes.
  */
 export function startJob(words: string, runs: number, now: number, ms: number): DemoJob {
   const started_at = new Date(now).toISOString();
+  if (STUCK.test(words)) return { started_at, done_at: null, outcome: "stuck" };
   if (SLOW.test(words)) return { started_at, done_at: null, outcome: "ready" };
   const fails = FAIL.test(words) || (FAIL_ONCE.test(words) && runs === 0);
   return { started_at, done_at: new Date(now + (fails ? FAIL_MS : ms)).toISOString(), outcome: fails ? "failed" : "ready" };
@@ -37,6 +40,7 @@ export function startJob(words: string, runs: number, now: number, ms: number): 
 export function statusOf(draft: DemoDraft, now: number): DraftStatus {
   const job = draft.job;
   if (job === null) return "ready";
+  if (job.outcome === "stuck") return "pending";
   const limit = Date.parse(job.started_at) + DRAFT_PENDING_MAX_SECONDS * 1000;
   const done = job.done_at === null ? null : Date.parse(job.done_at);
   if (done !== null && done <= limit && now >= done) return job.outcome;

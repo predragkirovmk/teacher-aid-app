@@ -607,6 +607,45 @@ test.describe("the wait", () => {
     await expect(retry(page)).toHaveClass(/btn--primary/);
     expect(await sourcesMade(page)).toBe(1);
   });
+
+  test("a job that stops and is never failed: a minute past the server's limit the page says so, waits on if asked, and goes back with everything kept", async ({ page }) => {
+    await page.clock.install();
+    await page.goto(NEW);
+    await yearTwo(page);
+    await typeSentences(page, `${TYPED} [stuck]`);
+    await go(page).click();
+    await openDraftUnderFakeClock(page);
+
+    // Past the server's 3 minutes the draft is still pending, and the page still waits.
+    await page.clock.runFor(200_000);
+    await expect(phase(page, "Ги пишуваме прашањата")).toBeVisible();
+    await expect(alerts(page)).toHaveCount(0);
+
+    // At 4 minutes the wait is over, in plain words, with the way back in yellow and the focus on it.
+    await page.clock.runFor(41_000);
+    const stuck = page.getByRole("button", { name: "Врати се и обиди се повторно", exact: true });
+    await expect(alerts(page)).toContainText("Ова трае предолго");
+    await expect(alerts(page)).toContainText("Прашањата требаше веќе да стигнат.");
+    await expect(stuck).toHaveClass(/btn--primary/);
+    await expect(stuck).toBeFocused();
+    await expect(cancel(page)).toHaveCount(0);
+
+    // Waiting on brings the wait back, with a limit of its own.
+    await page.getByRole("button", { name: "Чекај уште", exact: true }).click();
+    await expect(phase(page, "Ги пишуваме прашањата")).toBeFocused();
+    await expect(alerts(page)).toHaveCount(0);
+    await page.clock.runFor(200_000);
+    await expect(alerts(page)).toHaveCount(0);
+    await page.clock.runFor(41_000);
+    await expect(stuck).toBeVisible();
+
+    // Going back throws the draft away and fills the form in again, as a failure does.
+    await stuck.click();
+    await expect(page).toHaveURL(/\/teacher\/lessons\/new/);
+    await expect(textbox(page)).toHaveValue(`${TYPED} [stuck]`);
+    await expect(page.getByRole("status").filter({ hasText: "Сѐ што внесовте е сочувано." })).toHaveCount(1);
+    expect((await demo(page)).drafts).toHaveLength(0);
+  });
 });
 
 // ---- Leaving the form -----------------------------------------------------------------------------------------------
