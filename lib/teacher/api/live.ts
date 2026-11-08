@@ -1,6 +1,7 @@
 import type { TeacherApi } from "./client";
 import { apiBase } from "./config";
 import { ApiError, parseErrorResponse } from "./errors";
+import { checkDraft, checkLesson } from "./shape";
 import { connectSse } from "./sse";
 import {
   CLASS_EVENT_TYPES,
@@ -13,8 +14,6 @@ import {
   type OpenSession,
   type ConsoleSnapshot,
   type DraftSummary,
-  type Lesson,
-  type LessonDraft,
   type LessonSummary,
   type LibraryItem,
   type Me,
@@ -26,7 +25,8 @@ import {
 /**
  * The live adapter: `fetch` against NEXT_PUBLIC_API_URL under `/api/v1`, JSON in and out, errors read
  * from the spec's envelope into stable codes (errors.ts). The paths are spec 11.1; the bodies are the PROPOSED
- * ones of types.ts. Nothing uses it until the backend exists.
+ * ones of types.ts. Nothing uses it until the backend exists. A draft or a lesson is checked against 11.5 before a screen sees it
+ * (shape.ts), so an answer in another shape is `invalid_response` and not a page that stops.
  *
  * Signing in is a full-page redirect and not a fetch: `POST /auth/start` answers with the provider's address and the page
  * navigates to it, so the CSP needs nothing for it (navigation is not `connect-src`). The provider's callback sets the
@@ -120,15 +120,15 @@ export function createLiveApi(): TeacherApi {
       return request<SourceCreated>("POST", "/lessons/sources", { body: form, timeout: SLOW_TIMEOUT_MS, signal });
     },
     // The AI's work is a job: these answer at once with the draft, `pending` (BR-LES-09), and the screen asks for it again.
-    generateLesson: (req, { signal } = {}) => request<LessonDraft>("POST", "/lessons/generate", { body: req, signal }),
-    getDraft: (draftId) => request<LessonDraft>("GET", `/lessons/drafts/${id(draftId)}`),
+    generateLesson: (req, { signal } = {}) => request<unknown>("POST", "/lessons/generate", { body: req, signal }).then(checkDraft),
+    getDraft: (draftId) => request<unknown>("GET", `/lessons/drafts/${id(draftId)}`).then(checkDraft),
     listDrafts: () => request<DraftSummary[]>("GET", "/lessons/drafts"),
-    updateDraft: (draftId, patch) => request<LessonDraft>("PATCH", `/lessons/drafts/${id(draftId)}`, { body: patch, keepalive: true }),
+    updateDraft: (draftId, patch) => request<unknown>("PATCH", `/lessons/drafts/${id(draftId)}`, { body: patch, keepalive: true }).then(checkDraft),
     deleteDraft: (draftId) => request<void>("DELETE", `/lessons/drafts/${id(draftId)}`),
-    retryDraft: (draftId) => request<LessonDraft>("POST", `/lessons/drafts/${id(draftId)}/retry`),
-    refineDraft: (draftId, refinement) => request<LessonDraft>("POST", `/lessons/drafts/${id(draftId)}/refine`, { body: { refinement } }),
-    startEditing: (lessonId) => request<LessonDraft>("POST", `/lessons/${id(lessonId)}/drafts`),
-    saveLesson: (req) => request<Lesson>("POST", "/lessons", { body: req }),
+    retryDraft: (draftId) => request<unknown>("POST", `/lessons/drafts/${id(draftId)}/retry`).then(checkDraft),
+    refineDraft: (draftId, refinement) => request<unknown>("POST", `/lessons/drafts/${id(draftId)}/refine`, { body: { refinement } }).then(checkDraft),
+    startEditing: (lessonId) => request<unknown>("POST", `/lessons/${id(lessonId)}/drafts`).then(checkDraft),
+    saveLesson: (req) => request<unknown>("POST", "/lessons", { body: req }).then(checkLesson),
     uploadMedia: (file) => {
       const form = new FormData();
       form.append("file", file);
@@ -136,11 +136,11 @@ export function createLiveApi(): TeacherApi {
     },
 
     listLessons: () => request<LessonSummary[]>("GET", "/lessons"),
-    getLesson: (lessonId) => request<Lesson>("GET", `/lessons/${id(lessonId)}`),
-    updateLesson: (lessonId, req) => request<Lesson>("PUT", `/lessons/${id(lessonId)}`, { body: req }),
+    getLesson: (lessonId) => request<unknown>("GET", `/lessons/${id(lessonId)}`).then(checkLesson),
+    updateLesson: (lessonId, req) => request<unknown>("PUT", `/lessons/${id(lessonId)}`, { body: req }).then(checkLesson),
     deleteLesson: (lessonId) => request<void>("DELETE", `/lessons/${id(lessonId)}`),
     listLibrary: () => request<LibraryItem[]>("GET", "/library"),
-    copyFromLibrary: (lessonId) => request<Lesson>("POST", `/library/${id(lessonId)}/copy`),
+    copyFromLibrary: (lessonId) => request<unknown>("POST", `/library/${id(lessonId)}/copy`).then(checkLesson),
 
     createSession: (req) => request<ConsoleSnapshot>("POST", "/sessions", { body: req }),
     getOpenSession: () => request<OpenSession>("GET", "/sessions/open"),

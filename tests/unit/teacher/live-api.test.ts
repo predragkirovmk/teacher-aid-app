@@ -30,6 +30,36 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+/** Drafts in the wire shape of 11.5: the adapter checks a draft before a screen reads it (shape.ts). */
+const pendingDraft = {
+  id: "d-1",
+  status: "pending",
+  failure: null,
+  title: null,
+  review_summary: null,
+  questions: null,
+  source_id: "src-1",
+  source: { kind: "typed", file_name: null },
+  subject: { id: "sub-1", name: "Биологија" },
+  year: 2,
+  emphasis: null,
+  refinements: [],
+  previous_draft_id: null,
+  created_at: "2026-11-08T08:00:00Z",
+  updated_at: "2026-11-08T08:00:00Z",
+  consumed_at: null,
+  lesson_id: null,
+};
+const readyDraft = {
+  ...pendingDraft,
+  status: "ready",
+  title: "Фотосинтеза",
+  review_summary: "Растенијата прават шеќер од светлина.",
+  questions: [
+    { id: "q-1", order: 0, kind: "multiple_choice", prompt: "Што произведува фотосинтезата?", options: ["Шеќер", "Сол"], correct: "0", media: null, explanation: null, timer_seconds: 20, topic: "Фотосинтеза" },
+  ],
+};
+
 const last = () => calls[calls.length - 1];
 const bodyOf = (c: Call) => JSON.parse(c.init.body as string);
 
@@ -55,7 +85,7 @@ describe("the lesson job endpoints (F-03, F-04, BR-LES-08)", () => {
   });
 
   test("generate, refine and retry each answer the pending draft", async () => {
-    const pending = { id: "d-1", status: "pending" };
+    const pending = pendingDraft;
     answer = json(pending, 202);
     const api = createLiveApi();
     await expect(api.generateLesson({ source_id: "src-1", subject_id: "sub-1", year: 2, emphasis: "втор дел" })).resolves.toEqual(pending);
@@ -74,8 +104,8 @@ describe("the lesson job endpoints (F-03, F-04, BR-LES-08)", () => {
 
   test("polling, listing and cancelling a draft", async () => {
     const api = createLiveApi();
-    answer = json({ id: "d-1", status: "ready" });
-    await api.getDraft("d-1");
+    answer = json(readyDraft);
+    await expect(api.getDraft("d-1")).resolves.toEqual(readyDraft);
     expect(last().url).toBe("/api/v1/lessons/drafts/d-1");
     expect(last().init.method).toBe("GET");
 
@@ -89,6 +119,7 @@ describe("the lesson job endpoints (F-03, F-04, BR-LES-08)", () => {
   });
 
   test("an id is encoded into the path", async () => {
+    answer = json(pendingDraft);
     await createLiveApi().getDraft("a/b?c");
     expect(last().url).toBe("/api/v1/lessons/drafts/a%2Fb%3Fc");
   });
@@ -106,6 +137,10 @@ describe("the lesson job endpoints (F-03, F-04, BR-LES-08)", () => {
 
 describe("autosave's keepalive (64 KiB browser quota)", () => {
   const draft = (chars: number) => ({ title: "Т", review_summary: "ж".repeat(chars), questions: [] });
+  // The answer is the draft (or, for Save, the lesson), and the shape of either is checked.
+  beforeEach(() => {
+    answer = json(readyDraft);
+  });
 
   test("a draft of ordinary size may outlive the page", async () => {
     await createLiveApi().updateDraft("d-1", draft(2_000));
@@ -143,6 +178,14 @@ describe("what comes back", () => {
   test("a fetch that throws is `network`", async () => {
     answer = () => Promise.reject(new TypeError("Failed to fetch"));
     await expect(createLiveApi().getMe()).rejects.toMatchObject({ code: "network" });
+  });
+
+  test("a draft whose answer is a number, as the AI's own schema writes it, is `invalid_response` and says which field", async () => {
+    answer = json({ ...readyDraft, questions: [{ ...readyDraft.questions[0], correct: 0 }] });
+    const api = createLiveApi();
+    await expect(api.getDraft("d-1")).rejects.toMatchObject({ code: "invalid_response", message: expect.stringContaining("questions[0].correct") });
+    await expect(api.refineDraft("d-1", "easier")).rejects.toMatchObject({ code: "invalid_response" });
+    await expect(api.getLesson("l-1")).rejects.toMatchObject({ code: "invalid_response", message: expect.stringContaining("lesson: questions[0].correct") });
   });
 
   test("a body that is not JSON is `invalid_response`", async () => {

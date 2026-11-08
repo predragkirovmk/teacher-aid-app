@@ -32,6 +32,10 @@ export function DraftPage() {
   const q = useDraft(id);
   const draft = q.data;
   const gone = q.status === "error" && isApiError(q.error) && q.error.code === "not_found";
+  // An answer the app cannot read (a draft not in the shape of 11.5) ends the wait with what went wrong: the draft on screen is the
+  // last one that could be read, and waiting on it would only ask for the same answer again. Asking still goes on, and a draft that
+  // can be read takes the page back. An editor already open keeps the teacher's work on screen.
+  const unreadable = isApiError(q.error) && q.error.code === "invalid_response" && draft?.status !== "ready";
   // A draft that was waited for here and is ready now: the editor says so, and the focus goes to its first field.
   const [waited, setWaited] = useState(false);
   if (draft?.status === "pending" && !waited) setWaited(true);
@@ -69,7 +73,7 @@ export function DraftPage() {
       </>
     );
   }
-  if (q.status === "error" && !draft) {
+  if ((q.status === "error" && !draft) || unreadable) {
     return (
       <>
         {plain}
