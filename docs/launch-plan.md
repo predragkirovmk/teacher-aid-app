@@ -42,9 +42,10 @@ Found in the live run (a spec-faithful fake API, the app built with `NEXT_PUBLIC
 
 1. **There is no backend yet.** `teacheraid-backend` holds the handoff documents only. Both apps run on the in-browser mock.
 2. **Production has no live settings.** Vercel has none of `NEXT_PUBLIC_API_MODE`, `NEXT_PUBLIC_API_URL`,
-   `NEXT_PUBLIC_VAPID_PUBLIC_KEY`. They are read at build time, and one build serves both apps, so setting them switches the
-   teacher app, the student app and the public demo to the real API together. The demo the website and the AI guide link
-   to would stop working.
+   `NEXT_PUBLIC_VAPID_PUBLIC_KEY`. They are read at build time, and one build serves both apps, so setting them on the
+   current project would switch the teacher app, the student app and the public demo to the real API together.
+   **Decided 2026-11-08:** the real app gets a second Vercel project on `app.teacheraid.education`; the current project
+   stays the demo the website and the AI guide link to.
 3. **Where the API lives decides whether phones stay signed in.** The session is a cookie on the API's origin. If the API is
    on another site (say `teacheraid-api.eu`), the cookie is third-party: Safari blocks those outright, whatever `SameSite`
    says, so every student on an iPhone would be signed out on each request. Put the API on `api.teacheraid.education`
@@ -54,7 +55,7 @@ Found in the live run (a spec-faithful fake API, the app built with `NEXT_PUBLIC
 
 | Decision | Recommendation |
 |---|---|
-| Keep the public demo once the real app is live? | Yes. Run the real app as a second Vercel project on `app.teacheraid.education` with the live settings, and leave `teacheraid.education/teacher` and `/app` as the demo. Nothing in the code changes. |
+| Keep the public demo once the real app is live? | **Decided 2026-11-08: yes.** The real app runs as a second Vercel project on `app.teacheraid.education` with the live settings; `teacheraid.education/teacher` and `/app` stay the demo. One code change comes first (step B2). |
 | API address | `api.teacheraid.education` (point 3 above). |
 | AI provider and region (OPEN-17, BR-SEC-01) | Claude, called through the backend only. The first-party Claude API runs inference `global` or `us`, with no EU-only option; for EU-only processing use Claude on Google Vertex AI (`region: "eu"`) or on Amazon Bedrock in an EU region, and confirm the model is offered there when the account is set up. Start with `claude-opus-5-5` ($4 in / $20 out per million tokens) with structured output (`output_config.format`) and the system prompt cached. Measure on real Macedonian lessons before choosing anything cheaper. |
 | Content language (OPEN-32) | Macedonian for v1, with `language` kept a parameter, as the spec says. |
@@ -64,8 +65,9 @@ Found in the live run (a spec-faithful fake API, the app built with `NEXT_PUBLIC
 
 ### A. Backend (the developer, against `backend-spec-for-agents.md` 2.13 and the AI spec 1.0)
 
-1. Auth for teachers and students: Google and Microsoft, `HttpOnly` cookie on `api.teacheraid.education`, CORS for the app's
-   origin with credentials, `Retry-After` in `Access-Control-Expose-Headers`.
+1. Auth for teachers and students: Google and Microsoft, `HttpOnly` cookie on `api.teacheraid.education`, CORS with
+   credentials for `https://app.teacheraid.education` only, `Retry-After` in `Access-Control-Expose-Headers`. The demo on
+   `teacheraid.education` never calls the API, so its origin is not allowed.
 2. The lesson job: `POST /lessons/sources`, `POST /lessons/generate` (202, `pending`), a worker, `GET /lessons/drafts/{id}`,
    refine, retry, `DELETE`, `PATCH`, `GET /lessons/drafts`, `POST /lessons`. The rules that matter most on day one:
    - one retry, then `failed`; never a `ready` draft that fails the schema (AC-LES-03);
@@ -87,16 +89,24 @@ Found in the live run (a spec-faithful fake API, the app built with `NEXT_PUBLIC
 ### B. Before the first real lesson
 
 1. Merge `launch-check` (the keepalive fix and the adapter tests).
-2. Run the teacher app against the real API on a preview: `NEXT_PUBLIC_API_MODE=live`, `NEXT_PUBLIC_API_URL=https://api.teacheraid.education`.
+2. Make a live build serve the two apps and nothing else. The second project runs the same code, so
+   `app.teacheraid.education` would also serve a second copy of the website, open to search engines (robots.txt allows
+   everything there and the pages carry no canonical link), an early-access form that loses every signup (that project
+   has no Redis), and the old Startup Weekend demo with the host key written in the code. In a live build, send every
+   path outside `/teacher`, `/app` and the files they load to `https://teacheraid.education`, and let robots.txt disallow
+   everything. The demo build is unchanged.
+3. Run the teacher app against the real API on a preview: `NEXT_PUBLIC_API_MODE=live`, `NEXT_PUBLIC_API_URL=https://api.teacheraid.education`.
    The steps of the smoke run above, by hand: sign in, prepare from typed text, prepare from a PDF and a .docx, wait, edit,
    each refinement and its undo, a failure and Retry, cancel the wait, save. Then a lesson end to end with two phones.
-3. Generate VAPID keys; the public one goes in `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, the private one stays on the server.
-4. Add the provider to the privacy page's sub-processor list (OPEN-28) once the provider and region are chosen.
-5. DMARC record for teacheraid.education (none yet).
+4. Generate VAPID keys; the public one goes in `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, the private one stays on the server.
+5. Add the provider to the privacy page's sub-processor list (OPEN-28) once the provider and region are chosen.
+6. DMARC record for teacheraid.education (none yet).
 
 ### C. Launch day
 
-1. Create the live Vercel project, set the three variables for Production, deploy, alias `app.teacheraid.education`.
+1. Create the live Vercel project from the same repository (production branch `main`), set the three variables for
+   Production, deploy, add the domain `app.teacheraid.education` and the record Vercel asks for at Spaceship. Leave the
+   current project's variables as they are.
 2. Check `/teacher` and `/app` on it: headers, CSP carries the API origin in `connect-src` and `img-src`, sign-in round trip on a
    laptop and on an iPhone.
 3. One real lesson prepared from a real plan, checked by a teacher before any class sees it (BR-LES-04).
