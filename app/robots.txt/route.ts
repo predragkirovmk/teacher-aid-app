@@ -12,7 +12,10 @@ export const dynamic = "force-static";
   the API stay out of crawling; the student app (/app) is noindex in its own layout.
 */
 export function GET() {
-  const body = [
+  // A live build is the real app on app.teacheraid.education: nothing there is for crawlers, and the website it would
+  // duplicate is on the main domain (next.config.ts sends every other path there).
+  if (process.env.NEXT_PUBLIC_API_MODE === "live") return text(["User-Agent: *", "Disallow: /", ""]);
+  return text([
     "# TeacherAid, a classroom app for schools in North Macedonia.",
     `# A summary for language models: ${siteUrl}/llms.txt`,
     "User-Agent: *",
@@ -26,6 +29,8 @@ export function GET() {
     "",
     `Sitemap: ${siteUrl}/sitemap.xml`,
     "",
-  ].join("\n");
-  return new Response(body, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  ]);
 }
+
+const text = (lines: string[]) =>
+  new Response(lines.join("\n"), { headers: { "Content-Type": "text/plain; charset=utf-8" } });
