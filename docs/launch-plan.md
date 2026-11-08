@@ -27,6 +27,20 @@ Fixed today (branch `launch-check`, not pushed):
 - **The teacher live adapter had no tests.** It is the only code that will talk to the real lesson API, and nothing ran it.
   15 tests now pin every lesson-job call, cookies, error reading, timeouts, cancelling and the realtime stream.
 
+Fixed 2026-11-08 (same branch, not pushed):
+
+- **A live build serves only the two apps** (step B2). Every other path redirects (307) to `https://teacheraid.education`
+  with its path kept, and robots.txt answers `Disallow: /`. The demo build is unchanged. Tests: `tests/unit/live-build.test.ts`.
+- **A draft or lesson in the wrong shape no longer stops the page.** The live adapter checks every draft and lesson against
+  11.5 before a screen reads it (`lib/teacher/api/shape.ts`). One that does not match, a number for `correct` among them, is
+  `invalid_response`: the draft page says "Добивме одговор што не го разбираме" with Try again, and the console message names
+  the first wrong field (`draft: questions[0].correct is not text`). The backend must still send strings (step A3).
+- **The wait has a limit of its own.** A draft still `pending` 4 minutes after the page began to wait (the server's 3, plus a
+  minute) shows "Ова трае предолго", with the way back to the form, everything kept, and "Чекај уште". The page keeps asking,
+  so a draft that comes late still opens. The demo shows it with `[stuck]` in the typed text. The server must still fail a
+  draft at 180 s (step A2): the app's limit is only there so that a dead worker cannot leave a teacher waiting for good.
+- **A 409 with no body is `invalid_state`**, the spec's code, not `validation_failed`.
+
 Found in the live run (a spec-faithful fake API, the app built with `NEXT_PUBLIC_API_MODE=live`):
 
 - The 64 KB limit is real: in Chrome the same 70 KB draft fails with `keepalive` ("Failed to fetch") and saves without it.
@@ -71,16 +85,16 @@ Found in the live run (a spec-faithful fake API, the app built with `NEXT_PUBLIC
 2. The lesson job: `POST /lessons/sources`, `POST /lessons/generate` (202, `pending`), a worker, `GET /lessons/drafts/{id}`,
    refine, retry, `DELETE`, `PATCH`, `GET /lessons/drafts`, `POST /lessons`. The rules that matter most on day one:
    - one retry, then `failed`; never a `ready` draft that fails the schema (AC-LES-03);
-   - a draft pending over 180 s becomes `failed` on the server. The app polls every 2.5 s for as long as a draft is pending
-     and has no limit of its own, so a dead worker would leave teachers on the wait for good;
+   - a draft pending over 180 s becomes `failed` on the server. The app polls every 2.5 s while a draft is pending; at 4
+     minutes it stops showing the wait and offers to go back, but only the server can turn the draft `failed`;
    - a second generate for a pending source answers the same draft (AC-LES-04);
    - nothing about students in the AI request (AC-LES-02, asserted on the serialized request).
 3. Convert the AI's output to the wire shape of spec 11.5 before it is stored. The AI spec's schema (3.1) gives the
    multiple-choice answer as a number and the numeric answer as a number; the app reads `correct` as a **string** (`"0"`,
    `"3.5"`) and needs `id` and `order` on every question, `subject` as `{ id, name }` and `source` as `{ kind, file_name }` on
-   the draft. Passing the AI output through unchanged crashes the draft page (checked in the live run). Say this in the AI
-   spec too, so the developer cannot miss it; and the app could check a draft's shape when it reads it and show "we got an
-   answer we don't understand" instead of crashing.
+   the draft. Passing the AI output through unchanged used to crash the draft page (checked in the live run); since
+   2026-11-08 the app refuses such a draft as `invalid_response`, so the teacher sees an error instead of the questions.
+   Say this in the AI spec too, so the developer cannot miss it.
 4. Join tokens only from `[A-Za-z0-9-]` (BR-JOIN-08). The student app's scanner refuses anything else, so a base64 token with
    `_` or `+` would make every QR scan fail.
 5. The rest of the student endpoints the released student app already uses (sessions, answers, realtime, push), then the
@@ -88,8 +102,8 @@ Found in the live run (a spec-faithful fake API, the app built with `NEXT_PUBLIC
 
 ### B. Before the first real lesson
 
-1. Merge `launch-check` (the keepalive fix and the adapter tests).
-2. Make a live build serve the two apps and nothing else. The second project runs the same code, so
+1. Merge `launch-check` (the keepalive fix, the adapter tests, and the four fixes of 2026-11-08 above).
+2. Done 2026-11-08 on `launch-check`: a live build serves the two apps and nothing else. The second project runs the same code, so
    `app.teacheraid.education` would also serve a second copy of the website, open to search engines (robots.txt allows
    everything there and the pages carry no canonical link), an early-access form that loses every signup (that project
    has no Redis), and the old Startup Weekend demo with the host key written in the code. In a live build, send every
@@ -116,5 +130,4 @@ Found in the live run (a spec-faithful fake API, the app built with `NEXT_PUBLIC
 
 - The old demo's host key falls back to a default written in the code when `HOST_KEY` is empty, and the repository is public.
   It only guards the old `/host` demo's reset and advance; set `HOST_KEY` in Vercel or retire that demo.
-- When the API answers 409 with no body, the app reads it as `validation_failed`; the spec's 409 is `invalid_state`. Only an
-  API that sends no error body would hit it.
+- Fixed 2026-11-08: a 409 with no body was read as `validation_failed`; it is now `invalid_state`, the spec's 409.
