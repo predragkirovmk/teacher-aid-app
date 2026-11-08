@@ -98,11 +98,14 @@ test.describe("reduced motion", () => {
         .filter((e) => {
           const cs = getComputedStyle(e);
           const longest = (v: string) => Math.max(...v.split(",").map((d) => parseFloat(d) * (d.trim().endsWith("ms") ? 1 : 1000)));
-          const runs = longest(cs.transitionDuration) > 0 || longest(cs.animationDuration) > 0;
           // A transition that runs may fade a colour or an opacity for 150ms at most; it may not move anything.
+          const transitions = longest(cs.transitionDuration) > 0;
           const props = cs.transitionProperty.split(",").map((p) => p.trim());
           const moves = props.some((p) => p === "all" || p === "transform" || p === "translate" || p === "scale" || p === "rotate");
-          return (runs && (moves || longest(cs.transitionDuration) > 150)) || cs.animationName !== "none" && longest(cs.animationDuration) > 150;
+          // An animation may only be the opacity fade (pop-fade), for 150ms at most: what arrives fades in and nothing rises, grows or lands.
+          const names = cs.animationName.split(",").map((n) => n.trim());
+          const animates = names.some((n) => n !== "none");
+          return (transitions && (moves || longest(cs.transitionDuration) > 150)) || (animates && (names.some((n) => n !== "pop-fade") || longest(cs.animationDuration) > 150));
         })
         .map((e) => e.className?.toString().split(" ")[0]),
     );

@@ -1,4 +1,4 @@
-import { expect, SETTINGS_KEY, test } from "./fixtures";
+import { expect, settled, SETTINGS_KEY, test } from "./fixtures";
 import {
   at, cards, go, joinedWhenTeaching, listItem, listSend, next, openProjector, panel, reveal, send, skipInPanel, start, T0, TEACHING_AT, teach, yellow,
 } from "./live-helpers";
@@ -639,13 +639,16 @@ test.describe("the projector uses the window", () => {
   test("everything that must be read is full white: nothing on the projector's question is dimmed", async ({ page, context }) => {
     const projector = await teach(page, context);
     await send(page).click();
-    const dimmed = () =>
-      projector.evaluate(() =>
+    // Measured at rest: what arrives fades in, so the arrivals are let finish first.
+    const dimmed = async () => {
+      await settled(projector);
+      return projector.evaluate(() =>
         [...document.querySelectorAll("main *")]
           .filter((el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent?.trim()) && !el.closest(".sr, .cvq__rightmark, .cvq__letter"))
           .filter((el) => getComputedStyle(el).color !== "rgb(255, 255, 255)" || Number(getComputedStyle(el).opacity) < 1)
           .map((el) => `${el.className}: ${getComputedStyle(el).color}`),
       );
+    };
     expect(await dimmed()).toEqual([]);
     await go(context, TEACHING_AT + 31);
     await reveal(page).click();
