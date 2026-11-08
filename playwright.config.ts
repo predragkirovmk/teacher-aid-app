@@ -32,8 +32,9 @@ const buildEnv: Record<string, string> = live
 
 const app = {
   command: `${skipBuild ? "" : "pnpm exec next build && "}pnpm exec next start -p ${port}`,
-  // The home page is served by the same build and is the one URL both apps rely on.
-  url: `http://localhost:${port}/`,
+  // The home page is served by the same build and is the one URL both apps rely on. A live build sends it to the main domain
+  // (next.config.ts), so the live run waits on robots.txt, which that build serves itself.
+  url: `http://localhost:${port}${live ? "/robots.txt" : "/"}`,
   env: buildEnv,
   reuseExistingServer: !ci,
   timeout: 300_000,
