@@ -176,6 +176,14 @@ describe("a job that does not work", () => {
     expect(await api.getDraft(draft.id)).toMatchObject({ status: "failed", failure: "generation_failed", questions: null });
   });
 
+  test("[stuck] never answers and is never failed: a server that broke BR-LES-09, for the page's own limit", async () => {
+    const draft = await ask(`${typed} [stuck]`);
+    for (const s of [10, 180, 240, 3600]) {
+      now = NOW + s * 1000;
+      expect((await api.getDraft(draft.id)).status).toBe("pending");
+    }
+  });
+
   test("a retry counts the limit from the retry, not from the first request", async () => {
     const draft = await ask(`${typed} [slow]`);
     secondsLater(181);

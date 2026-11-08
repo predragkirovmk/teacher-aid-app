@@ -52,6 +52,8 @@ describe("statuses and plain errors", () => {
     expect(codeForStatus(401)).toBe("unauthenticated");
     expect(codeForStatus(404)).toBe("not_found");
     expect(codeForStatus(400)).toBe("validation_failed");
+    expect(codeForStatus(422)).toBe("validation_failed");
+    expect(codeForStatus(409)).toBe("invalid_state");
     expect(codeForStatus(429)).toBe("rate_limited");
     expect(codeForStatus(500)).toBe("server_error");
     expect(codeForStatus(418)).toBe("unknown");

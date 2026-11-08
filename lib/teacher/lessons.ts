@@ -91,6 +91,12 @@ export const TYPED_TEXT_MAX_CHARS = 20_000;
 export const EMPHASIS_MAX_CHARS = 200;
 /** BR-LES-09: a draft may stay `pending` this long, from when its generation or retry started, and then it has `failed`. PROPOSED. */
 export const DRAFT_PENDING_MAX_SECONDS = 180;
+/**
+ * The page's own limit on the wait, behind the server's: a draft still `pending` a minute past `DRAFT_PENDING_MAX_SECONDS`, counted
+ * from when the page began to wait for it, belongs to a job that stopped before the server could fail it, and the page says so
+ * instead of waiting for good. The page goes on asking, so a draft that comes after all still takes it on.
+ */
+export const DRAFT_STUCK_MS = (DRAFT_PENDING_MAX_SECONDS + 60) * 1000;
 /** BR-LES-12: an unsaved draft is kept this long, and the teacher is told so. PROPOSED. */
 export const DRAFT_RETENTION_DAYS = 30;
 /** 11.4: while it shows the wait for a draft the app reads it every 2 to 3 seconds. */

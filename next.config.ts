@@ -51,6 +51,25 @@ const teacherCsp = policy({
   connect: ["'self'", teacherApiOrigin].filter(Boolean).join(" "),
 });
 
+// Where a live build sends everything that is not one of the two apps. Written out, not siteUrl: a preview of the live project
+// would otherwise send its paths to itself.
+const MAIN_SITE = "https://teacheraid.education";
+
+// What a live build serves, as a lookahead for the redirect below: the two apps, the files they load (their icons, workers,
+// manifests, launch images, Next's own files and the root icons Next adds to every page) and robots.txt, which shuts crawlers out.
+const LIVE_PATHS = [
+  "teacher(?:/|$)",
+  "teacher-",
+  "teacher\\.webmanifest$",
+  "app(?:/|$)",
+  "app-",
+  "app\\.webmanifest$",
+  "_next/",
+  "icon\\.svg$",
+  "apple-icon\\.png$",
+  "robots\\.txt$",
+].join("|");
+
 const nextConfig: NextConfig = {
   // The live-mode smoke test builds beside the mock build, which would otherwise share .next.
   distDir: process.env.NEXT_DIST_DIR || ".next",
@@ -74,6 +93,15 @@ const nextConfig: NextConfig = {
         destination: "https://teacheraid.education/:path*",
         permanent: true,
       },
+      // A live build is the real app on app.teacheraid.education and serves the two apps alone. The website, the early-access
+      // form (that project has no Redis) and the old Startup Weekend demo live on the main domain, so every other path goes
+      // there. Temporary, so a later use of these paths on the app's domain is not held in browsers' caches.
+      ...(live
+        ? [
+            { source: "/", destination: `${MAIN_SITE}/`, permanent: false },
+            { source: `/:path((?!${LIVE_PATHS}).+)`, destination: `${MAIN_SITE}/:path`, permanent: false },
+          ]
+        : []),
     ];
   },
   async headers() {

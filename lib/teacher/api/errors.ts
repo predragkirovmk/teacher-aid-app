@@ -89,11 +89,12 @@ export function toApiError(e: unknown): ApiError {
   return new ApiError("unknown", { cause: e, message: e instanceof Error ? e.message : undefined });
 }
 
-/** The code an error response with this status and no usable body stands for. */
+/** The code an error response with this status and no usable body stands for. A bare 409 is the spec's `invalid_state` (4.1). */
 export function codeForStatus(status: number): ApiErrorCode {
   if (status === 401) return "unauthenticated";
   if (status === 404) return "not_found";
-  if (status === 400 || status === 409 || status === 422) return "validation_failed";
+  if (status === 409) return "invalid_state";
+  if (status === 400 || status === 422) return "validation_failed";
   if (status === 429) return "rate_limited";
   return status >= 500 ? "server_error" : "unknown";
 }

@@ -31,7 +31,7 @@ export type DemoSource = { id: string; kind: SourceKind; file_name: string | nul
  * `DRAFT_PENDING_MAX_SECONDS` after `started_at` has failed (BR-LES-09). What a draft's status is, is worked out whenever it is read
  * (mock-drafts.ts), so a reload, or a window that was closed, finds the job where the clock has put it.
  */
-export type DemoJob = { started_at: string; done_at: string | null; outcome: "ready" | "failed" };
+export type DemoJob = { started_at: string; done_at: string | null; outcome: "ready" | "failed" | "stuck" };
 
 /** A draft as the mock keeps it. The wire shape (`LessonDraft`) is made from it, with the status the clock gives. */
 export type DemoDraft = {
@@ -236,7 +236,7 @@ const isIso = (v: unknown): v is string => isText(v) && Number.isFinite(Date.par
 const isSourceRef = (v: unknown) => v === null || (isObject(v) && (v.kind === "upload" || v.kind === "typed") && (v.file_name === null || isText(v.file_name)));
 
 const isJob = (v: unknown): v is DemoJob =>
-  isObject(v) && isIso(v.started_at) && (v.done_at === null || isIso(v.done_at)) && (v.outcome === "ready" || v.outcome === "failed");
+  isObject(v) && isIso(v.started_at) && (v.done_at === null || isIso(v.done_at)) && (v.outcome === "ready" || v.outcome === "failed" || v.outcome === "stuck");
 
 export function isDemoDraft(v: unknown): v is DemoDraft {
   if (!isObject(v)) return false;
