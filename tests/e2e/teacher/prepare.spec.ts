@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { makeDocx } from "./docx";
-import { expect, MOCK_KEY, SETTINGS_KEY, test } from "./fixtures";
+import { expect, MOCK_KEY, settled, SETTINGS_KEY, test } from "./fixtures";
 
 /**
  * Prepare a lesson (F-03): the three parts and the one yellow button, reading a document on the form, the wait for the questions
@@ -571,6 +571,8 @@ test.describe("the wait", () => {
     await typeSentences(page, `${TYPED} [slow]`);
     await go(page).click();
     await openDraftUnderFakeClock(page);
+    // Measured at rest: the card rises in, so its arrival is let finish first.
+    await settled(page);
     const sentence = (await page.getByText("Ова може да потрае до 3 минути.").boundingBox())!;
     const before = (await cancel(page).boundingBox())!;
     // The button is the next thing under the sentence, one gap apart (16px), not a line's room further.

@@ -34,3 +34,13 @@ export { expect };
 /** The session key as the page has it: who is signed in, or null. */
 export const sessionOf = async (page: Page): Promise<string | null> =>
   page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "null")?.persona ?? null, SESSION_KEY);
+
+/**
+ * Lets every animation that ends (an arrival, a mark that lands, a bar that grows) finish, so what is measured next is at rest;
+ * a wait that turns is left turning. Measure a place or a strength after this, not while the page is still coming in.
+ */
+export const settled = (page: Page): Promise<void> =>
+  page.evaluate(async () => {
+    const ending = document.getAnimations().filter((a) => a.effect?.getComputedTiming().endTime !== Infinity);
+    await Promise.all(ending.map((a) => a.finished.catch(() => null)));
+  });

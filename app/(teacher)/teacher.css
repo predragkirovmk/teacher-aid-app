@@ -57,10 +57,20 @@
   --page-w: 72rem; /* 1152: the column the header and the content share, centred in the main area */
   --measure: 40rem; /* 640: the widest a paragraph runs, whatever the column */
 
-  /* Motion: small state changes only, under 250ms. */
+  /* Motion. Colour and opacity changes take the short ease; anything that moves takes a spring, the same ones the student app
+     uses: SwiftUI's spring(duration:bounce:) sampled into linear(), each duration the settle time (it feels shorter). Nothing
+     bounces: press 0.25/0 for a press, smooth 0.4/0 for arrivals, drawers and windows, and snappy 0.3/0.15 for a small mark that
+     lands or a knob that slides, whose overshoot (0.6%) is felt rather than seen.
+     Leaving is quicker than arriving and takes --ease-out. The section "Motion" near the end says where each one is used. */
   --dur: 150ms;
-  --dur-drawer: 220ms;
   --ease: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --spring-press: linear(0, 0.069, 0.2109, 0.3667, 0.5096, 0.6296, 0.7255, 0.7995, 0.8552, 0.8964, 0.9265, 0.9481, 0.9636, 0.9746, 0.9824, 0.9878, 0.9916, 0.9942, 0.996, 0.9973, 1);
+  --spring-press-dur: 340ms;
+  --spring-snappy: linear(0, 0.0361, 0.1222, 0.2332, 0.3519, 0.4673, 0.5731, 0.666, 0.7448, 0.8098, 0.862, 0.9031, 0.9345, 0.958, 0.9751, 0.9872, 0.9954, 1.0007, 1.0039, 1.0056, 1.0062, 1.0062, 1.0058, 1.0051, 1.0044, 1.0037, 1.003, 1.0023, 1);
+  --spring-snappy-dur: 390ms;
+  --spring-smooth: linear(0, 0.0495, 0.1582, 0.2864, 0.4129, 0.5273, 0.6256, 0.7073, 0.7736, 0.8263, 0.8677, 0.8998, 0.9246, 0.9435, 0.9578, 0.9686, 0.9767, 0.9828, 0.9873, 0.9906, 0.9931, 0.995, 0.9963, 0.9973, 1);
+  --spring-smooth-dur: 540ms;
 
   color-scheme: dark;
 }
@@ -299,14 +309,17 @@ button {
     box-shadow: 0 0 3rem rgba(10, 46, 55, 0.6);
     transform: translateX(-100%);
     visibility: hidden;
+    /* Closing: quick and plain. Opening (below): the smooth spring. */
     transition:
-      transform var(--dur-drawer) var(--ease),
-      visibility 0s linear var(--dur-drawer);
+      transform 240ms var(--ease-out),
+      visibility 0s linear 240ms;
   }
   .sidebar[data-open="true"] {
     transform: none;
     visibility: visible;
-    transition-delay: 0s;
+    transition:
+      transform 480ms var(--spring-smooth),
+      visibility 0s;
   }
   /* The drawer opens with Close, so it is the first thing reached and the first thing seen. */
   .sidebar .brand {
@@ -326,13 +339,15 @@ button {
     opacity: 0;
     visibility: hidden;
     transition:
-      opacity var(--dur-drawer) var(--ease),
-      visibility 0s linear var(--dur-drawer);
+      opacity 200ms var(--ease-out),
+      visibility 0s linear 200ms;
   }
   .scrim[data-open="true"] {
     opacity: 1;
     visibility: visible;
-    transition-delay: 0s;
+    transition:
+      opacity 300ms var(--ease-out),
+      visibility 0s;
   }
 }
 @media (max-width: 26rem) {
@@ -619,15 +634,9 @@ button {
   font-weight: 700;
   line-height: 1.2;
   text-align: center;
-  transition:
-    background-color var(--dur) var(--ease),
-    transform var(--dur) var(--ease);
 }
 .btn svg {
   flex: none;
-}
-.btn:active {
-  transform: scale(0.98);
 }
 .btn--primary {
   background: var(--yellow);
@@ -848,9 +857,6 @@ button {
 .dialog::backdrop {
   background: rgba(10, 46, 55, 0.75);
 }
-.dialog[open] {
-  animation: pop var(--dur) var(--ease);
-}
 .dialog__title {
   margin: 0 0 var(--sp-3);
   font-family: var(--font-display);
@@ -869,12 +875,6 @@ button {
 .dialog__actions {
   display: grid;
   gap: 0.75rem;
-}
-@keyframes pop {
-  from {
-    opacity: 0;
-    transform: translateY(0.5rem);
-  }
 }
 
 /* ---- a screen with no sidebar: signed out, errors ---- */
@@ -982,7 +982,6 @@ button {
   background: var(--deep);
   color: var(--text);
   font-weight: 600;
-  animation: pop var(--dur) var(--ease);
 }
 .note-box svg {
   flex: none;
@@ -1044,9 +1043,6 @@ button {
   font-size: var(--fs-button);
   line-height: 1.2;
   text-align: center;
-  transition:
-    background-color var(--dur) var(--ease),
-    transform var(--dur) var(--ease);
 }
 .provider svg {
   flex: none;
@@ -1065,7 +1061,6 @@ button {
 }
 .provider:active {
   background: #e6e6e6;
-  transform: scale(0.98);
 }
 .provider:disabled {
   opacity: 0.55;
@@ -3786,8 +3781,279 @@ button {
 }
 
 /*
-  Reduce Motion takes away movement, not feedback: nothing slides, scales or turns, while the short
-  colour and opacity fades (150ms) still run, which is gentler than none.
+ * ---- Motion ----
+ * Few moves, each for a reason: something was pressed, arrived, changed place or was done. Only transform, opacity and (for a
+ * bar that fills) clip-path move. Arrivals rise a little and fade in; the fade is over before the rise, so words are readable at
+ * once. Nothing loops but a wait. With Reduce Motion only short fades are left (the block after this one).
+ */
+@keyframes arrive-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes arrive-rise {
+  from {
+    transform: translateY(0.625rem);
+  }
+}
+@keyframes arrive-rise-far {
+  from {
+    transform: translateY(1.5rem);
+  }
+}
+@keyframes mark-land {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+@keyframes bar-grow {
+  from {
+    clip-path: inset(0 100% 0 0 round 999px);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 999px);
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* A press: what can be pressed sinks a little at once and springs back when let go. Wide rows sink less than buttons. */
+.btn,
+.provider,
+.nav__item,
+.choice,
+.pill,
+.me,
+.cres__switch {
+  transition:
+    background-color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease),
+    transform var(--spring-press-dur) var(--spring-press);
+}
+.btn:active:not(:disabled, [aria-disabled="true"]),
+.pill:active,
+.me:active {
+  transform: scale(0.97);
+  transition-duration: var(--dur), var(--dur), 90ms;
+  transition-timing-function: var(--ease), var(--ease), var(--ease-out);
+}
+.provider:active:not(:disabled),
+.nav__item:active,
+.choice:active,
+.cres__switch:active {
+  transform: scale(0.985);
+  transition-duration: var(--dur), var(--dur), 90ms;
+  transition-timing-function: var(--ease), var(--ease), var(--ease-out);
+}
+
+/* A page arrives: its header first, its content a beat after. Content that comes later (a list after its placeholders, a band, a
+   problem) arrives the same way, so a change is seen as one. A window is left out: it has its own way in. */
+.main > .head,
+.main > .content > :not(dialog),
+.entry__top,
+.entry__card,
+.solo > .card {
+  animation:
+    arrive-fade 280ms var(--ease-out) backwards,
+    arrive-rise var(--spring-smooth-dur) var(--spring-smooth) backwards;
+}
+.main > .content > :not(dialog),
+.entry__card {
+  animation-delay: 60ms;
+}
+/* The guide's next step comes in where the last one was. */
+.guide__head,
+.guide__body {
+  animation:
+    arrive-fade 240ms var(--ease-out) backwards,
+    arrive-rise var(--spring-smooth-dur) var(--spring-smooth) backwards;
+}
+.guide__bars span {
+  transition: background-color 300ms var(--ease-out);
+}
+/* What the screen says about how it went comes in the same way, nearer. */
+.card .note-box,
+.problem {
+  animation:
+    arrive-fade 200ms var(--ease-out) backwards,
+    arrive-rise var(--spring-smooth-dur) var(--spring-smooth) backwards;
+}
+
+/* The selected row of the menu: one ground for the list that slides to the page that opens (NavGlide), so the eye follows the move.
+   While it is there, the row's own ground and bar step aside; the bold label and the filled icon stay with the row. */
+.sidebar nav {
+  position: relative;
+}
+.nav__glide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  border-radius: var(--r-m);
+  background: var(--panel);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 460ms var(--spring-smooth),
+    opacity var(--dur) var(--ease);
+}
+.nav__glide::before {
+  content: "";
+  position: absolute;
+  left: 0.25rem;
+  top: 0.75rem;
+  bottom: 0.75rem;
+  width: 0.25rem;
+  border-radius: 2px;
+  background: var(--text);
+}
+.nav__glide[data-on="true"] {
+  opacity: 1;
+}
+nav[data-glide="on"] .nav__item[aria-current="page"] {
+  background: transparent;
+}
+nav[data-glide="on"] .nav__item[aria-current="page"]::before {
+  content: none;
+}
+
+/* A window rises in on the smooth spring over a backdrop that fades in. It closes at once: a closing window would still be read out,
+   and found and pressed, for as long as it took to go. */
+.dialog[open] {
+  transition:
+    opacity 220ms var(--ease-out),
+    transform var(--spring-smooth-dur) var(--spring-smooth);
+}
+.dialog[open]::backdrop {
+  transition: opacity 260ms var(--ease-out);
+}
+@starting-style {
+  .dialog[open] {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  .dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+/* Something just done lands: the tick of a save, a sent set, a saved setting. A lesson already copied is a state, so its tick
+   is simply there. */
+.savestate[data-status="saved"] svg,
+.practice__sent svg,
+.cres__saved svg {
+  animation: mark-land var(--spring-snappy-dur) var(--spring-snappy) backwards;
+}
+/* A wait that is going on turns, so it never looks stuck. */
+.savestate[data-status="saving"] svg,
+.savestate[data-status="dirty"] svg,
+.imagefield__busy svg {
+  animation: spin 900ms linear infinite;
+}
+
+/* Data comes in by growing to its size: the share of a topic, a missed question. */
+.cres__bar span,
+.cvq__barfill {
+  animation: bar-grow 700ms var(--spring-smooth) backwards;
+}
+
+/* A student who joins comes into the room's list on the projector, newest first, so only the new name is drawn. The console's roster
+   is left still: its rows move as students change, and a moved row is drawn again, so it would come in again too. */
+.cv__names li {
+  animation:
+    arrive-fade 320ms var(--ease-out) backwards,
+    arrive-rise var(--spring-smooth-dur) var(--spring-smooth) backwards;
+}
+
+/*
+ * The projector, the one moment of the app. Each screen of the lesson comes in from a little lower. When the answer is shown it is
+ * told in order: the bars grow out to their share one after the other, the mark of the right answer lands on its bar, and the
+ * ranking rises in beside them, place by place. All of it is over in about a second and a half, and the words are there from the start.
+ */
+.cv__lobby,
+.cvq,
+.cv__rest {
+  animation:
+    arrive-fade 360ms var(--ease-out) backwards,
+    arrive-rise-far 700ms var(--spring-smooth) backwards;
+}
+.cvq__barrow .cvq__barfill {
+  animation-duration: 900ms;
+  animation-delay: 260ms;
+}
+.cvq__barrow:nth-child(2) .cvq__barfill {
+  animation-delay: 350ms;
+}
+.cvq__barrow:nth-child(3) .cvq__barfill {
+  animation-delay: 440ms;
+}
+.cvq__barrow:nth-child(4) .cvq__barfill {
+  animation-delay: 530ms;
+}
+.cvq__barrow:nth-child(n + 5) .cvq__barfill {
+  animation-delay: 620ms;
+}
+.cvq--revealed .cvq__rightmark {
+  animation: mark-land var(--spring-snappy-dur) var(--spring-snappy) 820ms backwards;
+}
+.cvq--revealed .cvq__bignumber {
+  animation: mark-land var(--spring-snappy-dur) var(--spring-snappy) 240ms backwards;
+}
+.cvq--revealed .cvq__tile,
+.cvq--revealed .cvq__why,
+.cvb__row {
+  animation:
+    arrive-fade 320ms var(--ease-out) backwards,
+    arrive-rise var(--spring-smooth-dur) var(--spring-smooth) backwards;
+  animation-delay: 420ms;
+}
+.cvb__row {
+  animation-delay: 200ms;
+}
+.cvq--revealed .cvq__tile:nth-child(2) {
+  animation-delay: 500ms;
+}
+.cvq--revealed .cvq__tile:nth-child(3) {
+  animation-delay: 580ms;
+}
+.cvq--revealed .cvq__why {
+  animation-delay: 1000ms;
+}
+.cvb--side .cvb__row {
+  animation-delay: 700ms;
+}
+.cvb__row:nth-child(2) {
+  animation-delay: 270ms;
+}
+.cvb__row:nth-child(3) {
+  animation-delay: 340ms;
+}
+.cvb__row:nth-child(4) {
+  animation-delay: 410ms;
+}
+.cvb__row:nth-child(n + 5) {
+  animation-delay: 480ms;
+}
+.cvb--side .cvb__row:nth-child(2) {
+  animation-delay: 770ms;
+}
+.cvb--side .cvb__row:nth-child(3) {
+  animation-delay: 840ms;
+}
+.cvb--side .cvb__row:nth-child(4) {
+  animation-delay: 910ms;
+}
+.cvb--side .cvb__row:nth-child(n + 5) {
+  animation-delay: 980ms;
+}
+
+/*
+  Reduce Motion takes away movement, not feedback: nothing slides, scales, grows or turns, while short colour and opacity fades
+  (150ms at most) still run, which is gentler than none. What arrives fades in; marks, bars and the ranking are simply there.
 */
 @keyframes pop-fade {
   from {
@@ -3804,22 +4070,76 @@ button {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
   }
-  .dialog[open],
-  .note-box {
-    animation-name: pop-fade;
+  .main > .head,
+  .main > .content > :not(dialog),
+  .entry__top,
+  .entry__card,
+  .solo > .card,
+  .guide__head,
+  .guide__body,
+  .card .note-box,
+  .problem,
+  .cv__names li,
+  .cv__lobby,
+  .cvq,
+  .cv__rest {
+    animation: pop-fade var(--dur) var(--ease-out) backwards;
+  }
+  .savestate svg,
+  .practice__sent svg,
+  .cres__saved svg,
+  .imagefield__busy svg,
+  .cres__bar span,
+  .cvq__barfill,
+  .cvq__rightmark,
+  .cvq__bignumber,
+  .cvq__tile,
+  .cvq__why,
+  .cvb__row {
+    animation: none !important;
   }
   .btn,
-  .provider {
+  .provider,
+  .nav__item,
+  .choice,
+  .pill,
+  .me,
+  .cres__switch {
+    transition:
+      background-color var(--dur) var(--ease),
+      border-color var(--dur) var(--ease);
+  }
+  .btn:active:not(:disabled, [aria-disabled="true"]),
+  .pill:active,
+  .me:active,
+  .provider:active:not(:disabled),
+  .nav__item:active,
+  .choice:active,
+  .cres__switch:active {
+    transform: none;
+  }
+  .guide__bars span {
     transition: background-color var(--dur) var(--ease);
   }
-  .btn:active,
-  .provider:active {
-    transform: none;
+  .nav__glide {
+    transition: opacity var(--dur) var(--ease);
+  }
+  .dialog[open],
+  .dialog[open]::backdrop {
+    transition: opacity var(--dur) var(--ease-out);
+  }
+  @starting-style {
+    .dialog[open] {
+      transform: none;
+    }
   }
 }
 @media (prefers-reduced-motion: reduce) and (max-width: 63.9375rem) {
-  .sidebar {
+  .sidebar,
+  .sidebar[data-open="true"] {
     transform: none;
+  }
+  .sidebar {
     opacity: 0;
     transition:
       opacity var(--dur) var(--ease),
@@ -3827,7 +4147,9 @@ button {
   }
   .sidebar[data-open="true"] {
     opacity: 1;
-    transition-delay: 0s;
+    transition:
+      opacity var(--dur) var(--ease),
+      visibility 0s;
   }
   .scrim {
     transition:
@@ -3835,7 +4157,9 @@ button {
       visibility 0s linear var(--dur);
   }
   .scrim[data-open="true"] {
-    transition-delay: 0s;
+    transition:
+      opacity var(--dur) var(--ease),
+      visibility 0s;
   }
 }
 
@@ -4606,7 +4930,11 @@ button {
   border-radius: 50%;
   background: var(--text);
   color: var(--ink);
-  transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  /* The knob slides over on the snappy spring (see "Motion"), its colours turning with the track. */
+  transition:
+    transform var(--spring-snappy-dur) var(--spring-snappy),
+    background-color var(--dur) var(--ease-out),
+    color var(--dur) var(--ease-out);
 }
 .cres__track[data-on="true"] .cres__thumb {
   background: var(--deep);

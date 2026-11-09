@@ -24,6 +24,7 @@ import { useT, type Key } from "@/lib/teacher/i18n";
 import { useNarrow } from "@/lib/teacher/media";
 import { showsOpenLesson } from "@/lib/teacher/routes";
 import { signInUrl } from "@/lib/teacher/signin";
+import { NavGlide } from "./NavGlide";
 import { OpenLesson } from "./OpenLesson";
 import { PublicFrame } from "./PublicFrame";
 
@@ -173,11 +174,13 @@ function Frame({ children }: { children: ReactNode }) {
           </Link>
         </div>
         <nav aria-label={t("nav.main")}>
+          <NavGlide at={pathname} />
           <ul className="nav">{MAIN.map(row)}</ul>
         </nav>
         {/* Under the four places, not above them: when it appears or goes the menu does not move under the pointer. */}
         {reminder && <OpenLesson session={reminder} where="side" />}
         <nav className="sidebar__foot" aria-label={t("nav.more")}>
+          <NavGlide at={pathname} />
           <ul className="nav">
             {MORE.map(row)}
             <li>

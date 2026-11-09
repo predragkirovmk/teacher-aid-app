@@ -67,7 +67,12 @@ use 19px bold or larger. Right and wrong are never shown by colour alone (icon p
 
 Type: Golos Text for titles and numbers, the system font for body. Icons: Phosphor, regular
 weight, filled for the selected sidebar item. Spacing on the 8pt grid. Focus ring 3px yellow,
-offset 2px. Motion only where something changed, short (under 250ms), Reduce Motion respected.
+offset 2px. Motion (owner, 2026-11-08: simple and luxurious): the student app's springs, no bounce;
+a press sinks and springs back, a page and late content rise in (header first), the menu's selection
+slides, windows spring in and close at once, the drawer springs in and leaves quicker, a done mark lands, data bars grow, and
+the projector's reveal is the one choreographed moment (bars, then the right mark, then the
+ranking). Transform and opacity only, nothing loops but a wait, Reduce Motion leaves 150ms fades.
+See "Motion" in teacher.css.
 The app is dark teal only (no light mode).
 
 ## Code layout

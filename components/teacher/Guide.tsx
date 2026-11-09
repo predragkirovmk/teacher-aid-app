@@ -89,7 +89,8 @@ export function Guide() {
             ))}
           </div>
 
-          <div className="guide__head">
+          {/* Keyed by the step, so the next one comes in where the last one was. */}
+          <div className="guide__head" key={`head-${step}`}>
             <span className="card__icon">
               <Glyph size={40} aria-hidden="true" />
             </span>
@@ -97,7 +98,9 @@ export function Guide() {
               {t(current.title)}
             </h2>
           </div>
-          <p className="guide__body">{t(current.body)}</p>
+          <p className="guide__body" key={`body-${step}`}>
+            {t(current.body)}
+          </p>
 
           {error !== null && <Problem title={t("guide.error.title")}>{te(error)}</Problem>}
 
