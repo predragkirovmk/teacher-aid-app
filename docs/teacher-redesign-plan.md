@@ -23,8 +23,13 @@ for review", its preview link and the pictures, and wait.
 
 ## Status
 
-- 2026-11-12: plan published. Waiting for the owner's decision on the direction (step 0).
-  Nothing is built.
+- 2026-11-12: plan published.
+- 2026-11-12, 10:10 UTC: the owner approved the direction with look A, light
+  (`decisions/direction`). Their note: UI libraries are allowed. Step 1 is being built.
+
+A decision made on the page does not reach the session by itself. Read the store before
+every message that says what is being waited for, and, while a step waits for the owner,
+check it on a schedule rather than only when a "go" arrives in the chat.
 
 ## What was measured
 
