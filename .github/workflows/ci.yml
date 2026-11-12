@@ -42,7 +42,9 @@ jobs:
   e2e:
     name: End-to-end (${{ matrix.mode }})
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # The mock run is both apps, over 600 tests on two workers: about 20 minutes by November 2026, and it was being
+    # stopped a few tests from the end. The limit is there to end a run that hangs, so it leaves room above the real time.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
