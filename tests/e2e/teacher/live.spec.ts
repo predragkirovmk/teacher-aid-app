@@ -1,5 +1,5 @@
 import { simulate, tokenAt } from "../../../lib/teacher/api/mock-live";
-import { expect, SETTINGS_KEY, test } from "./fixtures";
+import { expect, SETTINGS_KEY, tall, test } from "./fixtures";
 import {
   at, cards, classCode, code, comesLater, count, joinedAt, nextEdge, openProjector, people, PLANS, readQr, row, SESSION, start, T0, title, yellow,
 } from "./live-helpers";
@@ -280,7 +280,7 @@ test.describe("present without a phone", () => {
     await expect(dialog).toBeVisible();
     await expect(dialog.locator(".choice")).toHaveText(["Нема телефон", "Празна батерија", "Нема интернет", "Заклучувањето на екранот не е дозволено"]);
     for (const radio of await dialog.getByRole("radio").all()) await expect(radio).not.toBeChecked();
-    for (const choice of await dialog.locator(".choice").all()) expect((await choice.boundingBox())!.height).toBeGreaterThanOrEqual(56);
+    for (const choice of await dialog.locator(".choice").all()) expect(await tall(choice)).toBeGreaterThanOrEqual(56);
     await expect(dialog.getByRole("button", { name: "Означи како присутен" })).toHaveClass(/btn--primary/);
     await expect(dialog.getByRole("radio").first()).toBeFocused();
   });
@@ -673,7 +673,7 @@ test.describe("the screen", () => {
     // A student's row, and its button, fit.
     const button = page.locator(".person[data-state=not_yet]").first().getByRole("button");
     await button.scrollIntoViewIfNeeded();
-    expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+    expect(await tall(button)).toBeGreaterThanOrEqual(48);
   });
 
   test("the console fits 1024 x 768 and 1280 x 720 with no sideways scroll, and every button is at least 48px tall", async ({ page, context }) => {

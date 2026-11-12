@@ -1,5 +1,5 @@
 import type { BrowserContext, Page } from "@playwright/test";
-import { expect, SETTINGS_KEY, test } from "./fixtures";
+import { expect, SETTINGS_KEY, tall, test } from "./fixtures";
 
 /**
  * The reminder that a lesson is running, on every page but Today (which has its band) and the lesson's own screen: in the
@@ -158,7 +158,7 @@ test.describe("with a lesson running, on a laptop", () => {
     await simulate(page);
     await page.goto("/teacher/classes");
     await expect(reminder(page)).toBeVisible();
-    expect((await back(page).boundingBox())!.height).toBeGreaterThanOrEqual(48);
+    expect(await tall(back(page))).toBeGreaterThanOrEqual(48);
     const small = await reminder(page).evaluate((el) =>
       [el, ...el.querySelectorAll("*")].filter((e) => [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent?.trim()) && parseFloat(getComputedStyle(e).fontSize) < 16).length,
     );

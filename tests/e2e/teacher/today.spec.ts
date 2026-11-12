@@ -1,5 +1,5 @@
 import type { BrowserContext, Page } from "@playwright/test";
-import { expect, MOCK_KEY, SETTINGS_KEY, test } from "./fixtures";
+import { expect, MOCK_KEY, SETTINGS_KEY, tall, test } from "./fixtures";
 
 /**
  * Today, the window that starts a lesson, the read-only lesson, and the guide shown again from Settings, in mock mode, in
@@ -120,10 +120,10 @@ test.describe("Today with lessons prepared", () => {
 
   test("the buttons are big enough: 56px, and 48px for the quiet link", async ({ page }) => {
     await page.goto("/teacher");
-    const heights = async (locator: ReturnType<Page["locator"]>) => Promise.all((await locator.all()).map(async (b) => (await b.boundingBox())!.height));
+    const heights = async (locator: ReturnType<Page["locator"]>) => Promise.all((await locator.all()).map((b) => tall(b)));
     for (const h of await heights(page.getByRole("button", { name: "Започни час" }))) expect(h).toBeGreaterThanOrEqual(56);
     for (const h of await heights(page.getByRole("link", { name: "Отвори" }))) expect(h).toBeGreaterThanOrEqual(48);
-    expect((await page.getByRole("link", { name: "Подготви лекција" }).boundingBox())!.height).toBeGreaterThanOrEqual(56);
+    expect(await tall(page.getByRole("link", { name: "Подготви лекција" }))).toBeGreaterThanOrEqual(56);
     // And the type: 18px or more everywhere on the cards.
     const small = await page.locator(".lesson").evaluateAll((els) =>
       els.flatMap((el) => [el, ...el.querySelectorAll("*")]).filter((e) => e.childNodes.length && parseFloat(getComputedStyle(e).fontSize) < 16).length,
@@ -359,7 +359,7 @@ test.describe("starting a lesson", () => {
     await expect(dialog.locator(".choice")).toHaveText([/^II-4\s*26 ученици$/, /^III-5\s*24 ученици$/, /^IV-1\s*28 ученици$/, /^IV-2\s*25 ученици$/]);
     for (const radio of await rows.all()) await expect(radio).not.toBeChecked();
     // Large rows, and a window that fits the screen whole.
-    for (const row of await dialog.locator(".choice").all()) expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(56);
+    for (const row of await dialog.locator(".choice").all()) expect(await tall(row)).toBeGreaterThanOrEqual(56);
     const box = (await dialog.boundingBox())!;
     expect(box.y).toBeGreaterThanOrEqual(0);
     expect(box.y + box.height).toBeLessThanOrEqual(720);
@@ -663,7 +663,7 @@ test.describe("a lesson, to read", () => {
   test("Back is a labelled button the size of the others, at the top of the page", async ({ page }) => {
     await page.goto("/teacher/lessons/l-procenti?from=today");
     const back = page.getByRole("link", { name: "Назад кон Денес" });
-    expect((await back.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+    expect(await tall(back)).toBeGreaterThanOrEqual(48);
     await expect(back.locator("svg")).toHaveCount(1);
   });
 

@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { makeDocx } from "./docx";
-import { expect, MOCK_KEY, settled, SETTINGS_KEY, test } from "./fixtures";
+import { expect, MOCK_KEY, settled, SETTINGS_KEY, tall, test } from "./fixtures";
 
 /**
  * Prepare a lesson (F-03): the three parts and the one yellow button, reading a document on the form, the wait for the questions
@@ -100,7 +100,7 @@ test.describe("the form", () => {
     await expect(yellow(page)).toHaveCount(1);
     await expect(go(page)).toHaveClass(/btn--primary/);
     await expect(go(page)).toBeEnabled();
-    expect((await go(page).boundingBox())!.height).toBeGreaterThanOrEqual(56);
+    expect(await tall(go(page))).toBeGreaterThanOrEqual(56);
   });
 
   test("the sentences go in an 18px box, with a hint and no count, and the document has a big button on a real file input", async ({ page }) => {
@@ -117,7 +117,7 @@ test.describe("the form", () => {
     await expect(fileInput(page)).toHaveAttribute("accept", /\.pdf.*\.docx/);
     const pick = page.locator("label.btn", { hasText: "Избери документ" });
     await expect(pick).toBeVisible();
-    expect((await pick.boundingBox())!.height).toBeGreaterThanOrEqual(56);
+    expect(await tall(pick)).toBeGreaterThanOrEqual(56);
     // The two plain rules under it: size, and no students' data (EC-LES-05).
     await expect(page.getByText("PDF или Word (.docx), најмногу 20 MB.")).toBeVisible();
     await expect(page.getByText("Не прикачувајте документи со имиња или други податоци на Вашите ученици.")).toBeVisible();
@@ -1041,7 +1041,7 @@ test.describe("the drawer layout and a laptop's small window", () => {
     await go(page).click();
     await expect(page).toHaveURL(DRAFT_URL);
     await expect(phase(page, "Ги пишуваме прашањата")).toBeVisible();
-    expect((await cancel(page).boundingBox())!.height).toBeGreaterThanOrEqual(56);
+    expect(await tall(cancel(page))).toBeGreaterThanOrEqual(56);
     await expect(cancel(page)).toBeInViewport();
 
     // Leaving loses nothing, so the drawer's links go where they say, and the lesson waits on Today.
@@ -1053,7 +1053,7 @@ test.describe("the drawer layout and a laptop's small window", () => {
 
     await expect(retry(page)).toBeVisible({ timeout: 20_000 });
     expect(await overflow(page)).toBeLessThanOrEqual(0);
-    for (const button of [retry(page), backToForm(page)]) expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(56);
+    for (const button of [retry(page), backToForm(page)]) expect(await tall(button)).toBeGreaterThanOrEqual(56);
   });
 
   test("at 1024 x 768 the sidebar and the whole form are there with nothing running off the side", async ({ page }) => {
@@ -1065,8 +1065,8 @@ test.describe("the drawer layout and a laptop's small window", () => {
     expect(await overflow(page)).toBeLessThanOrEqual(0);
     // Everything that can be pressed is at least 48px tall, and the one that matters 56px.
     const buttons = await page.locator("main button:visible, main a.btn:visible").all();
-    for (const button of buttons) expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(48);
-    expect((await go(page).boundingBox())!.height).toBeGreaterThanOrEqual(56);
+    for (const button of buttons) expect(await tall(button)).toBeGreaterThanOrEqual(48);
+    expect(await tall(go(page))).toBeGreaterThanOrEqual(56);
   });
 
   test("the words on the ground are large text, the only kind that white has enough contrast for there", async ({ page }) => {

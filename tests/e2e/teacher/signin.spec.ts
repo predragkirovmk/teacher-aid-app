@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, MOCK_KEY, SESSION_KEY, SETTINGS_KEY, sessionOf, test } from "./fixtures";
+import { expect, MOCK_KEY, SESSION_KEY, SETTINGS_KEY, sessionOf, tall, test } from "./fixtures";
 
 /**
  * Signing in, the guide of a first run and signing out, in mock mode, in Macedonian unless a test changes the language. The
@@ -98,9 +98,9 @@ test.describe("the sign-in screen", () => {
     await expect(microsoft.locator("path")).toHaveCount(4);
     // Equal, and no smaller than 56px, with text of at least 18px.
     const [a, b] = [(await google.boundingBox())!, (await microsoft.boundingBox())!];
-    expect(a.height).toBeGreaterThanOrEqual(56);
-    expect(b.height).toBe(a.height);
-    expect(b.width).toBe(a.width);
+    expect(await tall(google)).toBeGreaterThanOrEqual(56);
+    expect(await tall(microsoft)).toBe(await tall(google));
+    expect(Math.round(b.width * 100)).toBe(Math.round(a.width * 100));
     expect(parseFloat(await google.evaluate((el) => getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(18);
     // These are not the screen's yellow.
     await expect(google).not.toHaveCSS("background-color", "rgb(255, 200, 62)");
@@ -225,7 +225,7 @@ test.describe("the demo's provider page", () => {
     await page.goto("/teacher/sign-in");
     await providerButton(page, "Google").click();
     for (const button of await sheet(page).getByRole("button").all()) {
-      expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(56);
+      expect(await tall(button)).toBeGreaterThanOrEqual(56);
     }
   });
 

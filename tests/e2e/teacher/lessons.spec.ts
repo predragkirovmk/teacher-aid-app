@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, MOCK_KEY, SETTINGS_KEY, test } from "./fixtures";
+import { expect, MOCK_KEY, SETTINGS_KEY, tall, test } from "./fixtures";
 
 /**
  * Lessons and the library (step 7): the Lessons page of three sections and a row of subjects; deleting a lesson from its own page, and
@@ -275,9 +275,9 @@ test.describe("Lessons", () => {
     await page.goto("/teacher/lessons");
     await expect(held(page).first()).toBeVisible();
     // The outlined button of a card is 56 or more, the quiet link beside it 48 or more.
-    for (const b of await page.locator(".lesson__actions > .btn--secondary").all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(56);
-    for (const l of await page.locator(".lesson__actions > .btn--quiet").all()) expect((await l.boundingBox())!.height).toBeGreaterThanOrEqual(48);
-    expect((await page.getByRole("link", { name: "Подготви лекција" }).boundingBox())!.height).toBeGreaterThanOrEqual(56);
+    for (const b of await page.locator(".lesson__actions > .btn--secondary").all()) expect(await tall(b)).toBeGreaterThanOrEqual(56);
+    for (const l of await page.locator(".lesson__actions > .btn--quiet").all()) expect(await tall(l)).toBeGreaterThanOrEqual(48);
+    expect(await tall(page.getByRole("link", { name: "Подготви лекција" }))).toBeGreaterThanOrEqual(56);
     const small = await page.locator("main").evaluate((main) => [...main.querySelectorAll("*")].filter((e) => e.childNodes.length && parseFloat(getComputedStyle(e).fontSize) < 16 && !e.closest(".sr")).length);
     expect(small).toBe(0);
     expect(await overflow(page)).toBeLessThanOrEqual(0);
@@ -524,7 +524,7 @@ test.describe("deleting a lesson", () => {
     const lastQuestion = questionCards(page).last();
     expect(await y(deleteButton(page))).toBeGreaterThan((await y(lastQuestion)) + (await lastQuestion.boundingBox())!.height - 1);
     expect(await y(deleteButton(page))).toBeGreaterThan(await y(page.getByRole("button", { name: "Уреди лекција" })) + 400);
-    expect((await deleteButton(page).boundingBox())!.height).toBeGreaterThanOrEqual(56);
+    expect(await tall(deleteButton(page))).toBeGreaterThanOrEqual(56);
   });
 
   test("asks first, in plain words, and 'Не, задржи ја' is the yellow button that has the focus, as in every other question of the app", async ({ page }) => {
@@ -668,7 +668,7 @@ test.describe("the picture of a question", () => {
     const add = open(page).locator("label.btn", { hasText: "Додај слика" });
     await expect(add).toBeVisible();
     await expect(add).toHaveClass(/btn--secondary/);
-    expect((await add.boundingBox())!.height).toBeGreaterThanOrEqual(56);
+    expect(await tall(add)).toBeGreaterThanOrEqual(56);
     await expect(open(page).getByText("JPEG, PNG или WebP, најмногу 10 MB.")).toBeVisible();
     // No picture yet: no preview, and none of the words about it either.
     await expect(open(page).locator(".imagefield__preview")).toHaveCount(0);
@@ -789,7 +789,7 @@ test.describe("the picture of a question", () => {
     const back = open(page).getByRole("button", { name: "Врати ја сликата" });
     await expect(back).toBeVisible();
     await expect(back).toHaveClass(/btn--secondary/);
-    expect((await back.boundingBox())!.height).toBeGreaterThanOrEqual(56);
+    expect(await tall(back)).toBeGreaterThanOrEqual(56);
     await expect(open(page).locator(".imagefield__removed")).toContainText("Сликата е отстранета.");
     await back.click();
     await expect(preview).toBeVisible();
@@ -974,7 +974,7 @@ test.describe("a numeric question", () => {
     const more = moreOptions(page);
     await expect(more).toHaveText("Повеќе опции");
     await expect(more).toHaveAttribute("aria-expanded", "false");
-    expect((await more.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+    expect(await tall(more)).toBeGreaterThanOrEqual(48);
     await expect(more).toHaveClass(/btn--secondary/);
     await more.click();
     await expect(more).toHaveText("Помалку опции");

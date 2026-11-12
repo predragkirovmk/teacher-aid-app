@@ -1,4 +1,4 @@
-import { expect, settled, SETTINGS_KEY, test } from "./fixtures";
+import { expect, settled, SETTINGS_KEY, tall, test } from "./fixtures";
 import {
   at, cards, go, joinedWhenTeaching, listItem, listSend, next, openProjector, panel, reveal, send, skipInPanel, start, T0, TEACHING_AT, teach, yellow,
 } from "./live-helpers";
@@ -341,7 +341,7 @@ test.describe("the quick question", () => {
       expect(size.height - (box.y + box.height)).toBeGreaterThanOrEqual(32);
       // The main button says its words on one line, and the buttons are in view without scrolling the page.
       const main = dialog.getByRole("button", { name: "Испрати го веднаш" });
-      expect((await main.boundingBox())!.height).toBeLessThan(64);
+      expect(await tall(main)).toBeLessThan(64);
       await expect(main).toBeInViewport({ ratio: 1 });
       await dialog.getByRole("button", { name: "Откажи" }).click();
       await expect(dialog).toBeHidden();

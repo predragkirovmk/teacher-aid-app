@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, MOCK_KEY, SETTINGS_KEY, test } from "./fixtures";
+import { expect, MOCK_KEY, SETTINGS_KEY, tall, test } from "./fixtures";
 
 /**
  * The editor (F-03 step 5, F-04, FR-LES-07 to -22): a draft that is ready is a lesson to change, one question open at a time,
@@ -225,8 +225,8 @@ test.describe("at rest", () => {
   });
 
   test("everything that can be pressed is large, and the words are 18px or more", async ({ page }) => {
-    for (const button of await page.locator("main button:visible, main a.btn:visible").all()) expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(48);
-    expect((await saveButton(page).boundingBox())!.height).toBeGreaterThanOrEqual(56);
+    for (const button of await page.locator("main button:visible, main a.btn:visible").all()) expect(await tall(button)).toBeGreaterThanOrEqual(48);
+    expect(await tall(saveButton(page))).toBeGreaterThanOrEqual(56);
     const small = await page.locator("main *:visible").evaluateAll((els) =>
       els
         .filter((el) => [...el.childNodes].some((n) => n.nodeType === Node.TEXT_NODE && n.textContent!.trim() !== ""))
@@ -398,7 +398,7 @@ test.describe("editing a question of each kind", () => {
       const tile = open(page).locator(".prepare__tiles .choice").filter({ hasText: name });
       await expect(tile).toBeVisible();
       // One line: a tile of 64px, not one of three lines.
-      expect((await tile.boundingBox())!.height).toBeLessThanOrEqual(64);
+      expect(await tall(tile)).toBeLessThanOrEqual(64);
     }
     await done(page).click();
     await expect(card(page, 1).locator(".question__meta")).toContainText("Понудени одговори");
@@ -942,7 +942,7 @@ test.describe("saving the lesson", () => {
     // Nothing was saved, and it is said where the button is.
     await expect(page).toHaveURL(new RegExp(`${SEED}$`));
     expect((await demo(page)).school.lessons).toHaveLength(0);
-    for (const link of await list.getByRole("link").all()) expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    for (const link of await list.getByRole("link").all()) expect(await tall(link)).toBeGreaterThanOrEqual(44);
 
     // Each link opens its question and puts the focus where the fault is.
     await list.getByRole("link", { name: "Прашање 3: времето мора да биде од 5 до 300 секунди." }).click();
@@ -1295,7 +1295,7 @@ test.describe("the first run", () => {
     await expect(yellow(page)).toHaveCount(1);
     await expect(yellow(page)).toHaveText("Подготви ја првата лекција");
     // The longest label of the guide is read on one line (a button of 56px, not two lines of words in one of 80), beside Back.
-    expect((await yellow(page).boundingBox())!.height).toBeLessThanOrEqual(60);
+    expect(await tall(yellow(page))).toBeLessThanOrEqual(60);
     await expect(page.getByRole("button", { name: "Не сега, оди на Денес" })).toHaveClass(/btn--quiet/);
     await expect(page.getByText("Да почнеме со вистинска лекција")).toBeVisible();
     // Nothing is marked done by arriving here.
@@ -1539,8 +1539,8 @@ test.describe("zoomed and small windows", () => {
     await edit(page, 1).click();
     expect(await overflow(page)).toBeLessThanOrEqual(0);
     const buttons = await page.locator("main button:visible, main a.btn:visible").all();
-    for (const button of buttons) expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(48);
-    for (const field of await open(page).locator("input[type=text]:visible, textarea:visible").all()) expect((await field.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+    for (const button of buttons) expect(await tall(button)).toBeGreaterThanOrEqual(48);
+    for (const field of await open(page).locator("input[type=text]:visible, textarea:visible").all()) expect(await tall(field)).toBeGreaterThanOrEqual(48);
   });
 
   test("at 900 wide, in the drawer layout, the editor fits and the one yellow button is whole", async ({ page }) => {
