@@ -13,7 +13,7 @@ export const CLASS_IDS = Array.from({ length: 26 }, (_, i) => `st-ii-4-${String(
 export const PLANS = planClass(SESSION, CLASS_IDS);
 
 export const title = (page: Page) => page.getByRole("heading", { level: 1 });
-export const yellow = (page: Page) => page.locator(".btn--primary:visible");
+export const mainButton = (page: Page) => page.locator(".btn--primary:visible");
 export const cards = (page: Page) => page.locator(".lessons > li");
 export const startDialog = (page: Page) => page.getByRole("dialog", { name: /^Со кој(а)? (клас|група)\?$/ });
 export const people = (page: Page) => page.locator(".person");

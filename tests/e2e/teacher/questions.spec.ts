@@ -1,6 +1,6 @@
 import { expect, settled, SETTINGS_KEY, tall, test } from "./fixtures";
 import {
-  at, cards, go, joinedWhenTeaching, listItem, listSend, next, openProjector, panel, reveal, send, skipInPanel, start, T0, TEACHING_AT, teach, yellow,
+  at, cards, go, joinedWhenTeaching, listItem, listSend, next, openProjector, panel, reveal, send, skipInPanel, start, T0, TEACHING_AT, teach, mainButton,
 } from "./live-helpers";
 
 /**
@@ -15,18 +15,18 @@ const progress = new RegExp(`^\\d+ од ${joinedWhenTeaching()} одговор(�
 test.describe("the life of a question", () => {
   test("a number: the panel and the projector follow it from sending to the answer shown, and the projector never has the answer before", async ({ page, context }) => {
     const projector = await teach(page, context);
-    // Nothing is open: the next question is named, with what it is, and the one yellow button sends it.
+    // Nothing is open: the next question is named, with what it is, and the one main button sends it.
     await expect(panel(page).getByRole("heading", { name: "Прашањето сега" })).toBeVisible();
     await expect(panel(page)).toContainText("Следно прашање: Прашање 1 од 6, одговор со број");
     await expect(panel(page).getByTestId("panel-prompt")).toHaveText("Колку е 15% од 240?");
-    await expect(yellow(page)).toHaveCount(1);
-    await expect(yellow(page)).toHaveText("Испрати го прашањето");
+    await expect(mainButton(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveText("Испрати го прашањето");
     await expect(projector.getByRole("heading", { name: "Часот е во тек" })).toBeVisible();
 
     await send(page).click();
-    // Open: a calm countdown, how many have answered, the way to skip, and no yellow.
+    // Open: a calm countdown, how many have answered, the way to skip, and no main button.
     await expect(panel(page).getByTestId("countdown")).toHaveText("Уште 30 секунди");
-    await expect(yellow(page)).toHaveCount(0);
+    await expect(mainButton(page)).toHaveCount(0);
     await expect(skipInPanel(page)).toBeVisible();
     await expect(panel(page).getByTestId("progress")).toHaveText(progress);
     await expect(projector.getByTestId("cv-prompt")).toHaveText("Колку е 15% од 240?");
@@ -41,10 +41,10 @@ test.describe("the life of a question", () => {
     await expect(projector.getByText("Точен одговор")).toHaveCount(0);
     expect(await projector.locator("main").innerHTML()).not.toMatch(/data-right|cv-right|cv-answer/);
 
-    // Closed: "Времето истече" on both, and the yellow button shows the answer.
+    // Closed: "Времето истече" on both, and the main button shows the answer.
     await go(context, TEACHING_AT + 31);
     await expect(panel(page).getByText("Времето истече")).toBeVisible();
-    await expect(yellow(page)).toHaveText("Прикажи го точниот одговор");
+    await expect(mainButton(page)).toHaveText("Прикажи го точниот одговор");
     await expect(projector.getByText("Времето истече")).toBeVisible();
     await expect(projector.getByText("Точен одговор")).toHaveCount(0);
 
@@ -52,7 +52,7 @@ test.describe("the life of a question", () => {
     await expect(panel(page).getByText("Одговорот е прикажан")).toBeVisible();
     await expect(panel(page).getByTestId("right-answer")).toHaveText("Точен одговор: 36");
     await expect(panel(page).getByRole("list").getByRole("listitem")).toHaveText([/Точни\s*\d+/, /Неточни\s*\d+/, /Без одговор\s*\d+/]);
-    await expect(yellow(page)).toHaveText("Испрати го следното прашање");
+    await expect(mainButton(page)).toHaveText("Испрати го следното прашање");
     await expect(panel(page)).toContainText("Следно: Цената на еден производ");
     // The projector: the right number, how many were right, not right and gave none, and the ranking.
     await expect(projector.getByTestId("cv-answer")).toHaveText("Точниот број е 36");
@@ -67,7 +67,7 @@ test.describe("the life of a question", () => {
     await expect(projector.locator(".cvq__letter")).toHaveText(["A", "B", "C", "D"]);
     await expect(projector.getByTestId("cv-option")).toHaveText([/600 денари/, /650 денари/, /200 денари/, /775 денари/]);
     await go(context, TEACHING_AT + 26);
-    await expect(yellow(page)).toHaveText("Прикажи го точниот одговор");
+    await expect(mainButton(page)).toHaveText("Прикажи го точниот одговор");
     await reveal(page).click();
     await expect(panel(page).getByTestId("right-answer")).toHaveText("Точен одговор: A. 600 денари");
     const bars = projector.getByTestId("cv-bar");
@@ -117,7 +117,7 @@ test.describe("the life of a question", () => {
     await expect(panel(page).getByTestId("countdown")).toHaveText("Уште 1 секунда");
   });
 
-  test("when the last question has its answer shown, the panel says plainly that none is left, and the one yellow button goes on to the review", async ({ page, context }) => {
+  test("when the last question has its answer shown, the panel says plainly that none is left, and the one main button goes on to the review", async ({ page, context }) => {
     await teach(page, context);
     const times = [30, 25, 15, 45, 25, 45];
     let t = TEACHING_AT;
@@ -131,18 +131,18 @@ test.describe("the life of a question", () => {
       await expect(panel(page).getByText("Одговорот е прикажан")).toBeVisible();
     }
     await expect(panel(page).getByTestId("none-left")).toContainText("Сите прашања се готови");
-    await expect(yellow(page)).toHaveText("Премини на прегледот");
+    await expect(mainButton(page)).toHaveText("Премини на прегледот");
     await expect(page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]")).toContainText("Предавање");
     await expect(page.locator(".qitem[data-status=shown]")).toHaveCount(6);
   });
 });
 
 test.describe("the list of questions", () => {
-  test("each question says where it stands in words, any one not sent can be sent with an outlined button, and only the panel has the yellow one", async ({ page, context }) => {
+  test("each question says where it stands in words, any one not sent can be sent with a quiet button, and only the panel has the main one", async ({ page, context }) => {
     await teach(page, context);
     await expect(page.locator(".qitem")).toHaveCount(6);
     await expect(page.locator(".qitem .qitem__word")).toHaveText(Array(6).fill("Не е испратено"));
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
     await expect(page.locator(".qlist .btn--primary:visible")).toHaveCount(0);
     await expect(listSend(page, 1)).toHaveText("Испрати");
   });
@@ -161,9 +161,9 @@ test.describe("the list of questions", () => {
     await reveal(page).click();
     await expect(listItem(page, 3)).toContainText("Одговорот е прикажан");
     await expect(panel(page)).toContainText("Следно: Колку е 15% од 240?");
-    await expect(yellow(page)).toHaveText("Испрати го следното прашање");
+    await expect(mainButton(page)).toHaveText("Испрати го следното прашање");
     await expect(listSend(page, 1)).toHaveAttribute("aria-disabled", "false");
-    // The yellow button sends question 1, the next in the lesson's order.
+    // The main button sends question 1, the next in the lesson's order.
     await next(page).click();
     await expect(projector.getByTestId("cv-prompt")).toHaveText("Колку е 15% од 240?");
   });
@@ -205,7 +205,7 @@ test.describe("skipping", () => {
     const item = listItem(page, 1);
     await expect(item).toContainText("Прескокнато");
     expect(await item.locator(".qitem__prompt").evaluate((el) => getComputedStyle(el).textDecorationLine)).toBe("none");
-    // Not as bright as the others' ground, but the same words in a colour that is still 7:1 and more.
+    // Set back by a greyer ground than the others', with the same words at full strength.
     expect(await item.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(await listItem(page, 2).evaluate((el) => getComputedStyle(el).backgroundColor));
     expect(await item.locator(".qitem__prompt").evaluate((el) => Number(getComputedStyle(el).opacity))).toBe(1);
   });
@@ -220,7 +220,7 @@ test.describe("skipping", () => {
     await expect(listItem(page, 1)).toContainText("Прескокнато");
     await expect(projector.getByTestId("cv-skipped")).toHaveText("Ова прашање не се брои");
     await expect(projector.getByTestId("cv-board")).toHaveCount(0);
-    await expect(yellow(page)).toHaveText("Испрати го прашањето");
+    await expect(mainButton(page)).toHaveText("Испрати го прашањето");
     await expect(panel(page)).toContainText("Прашање 2 од 6");
   });
 
@@ -228,11 +228,11 @@ test.describe("skipping", () => {
     await teach(page, context);
     await send(page).click();
     await go(context, TEACHING_AT + 31);
-    await expect(yellow(page)).toHaveText("Прикажи го точниот одговор");
+    await expect(mainButton(page)).toHaveText("Прикажи го точниот одговор");
     await skipInPanel(page).click();
     await page.getByRole("button", { name: "Да, прескокни го" }).click();
     await expect(listItem(page, 1)).toContainText("Прескокнато");
-    await expect(yellow(page)).toHaveText("Испрати го прашањето");
+    await expect(mainButton(page)).toHaveText("Испрати го прашањето");
   });
 });
 
@@ -243,7 +243,7 @@ test.describe("the note above the list", () => {
     await expect(note).toHaveCount(0);
     await send(page).click();
     await expect(note).toBeVisible();
-    expect(await note.evaluate((el) => [getComputedStyle(el).fontWeight, getComputedStyle(el).fontSize])).toEqual(["400", "18px"]);
+    expect(await note.evaluate((el) => [getComputedStyle(el).fontWeight, getComputedStyle(el).fontSize])).toEqual(["400", "17px"]);
     await go(context, TEACHING_AT + 31);
     await reveal(page).click();
     await expect(note).toHaveCount(0);
@@ -347,7 +347,7 @@ test.describe("the quick question", () => {
       await expect(dialog).toBeHidden();
     }
     await expect(page.locator(".qitem")).toHaveCount(6);
-    await expect(yellow(page)).toHaveText("Испрати го прашањето");
+    await expect(mainButton(page)).toHaveText("Испрати го прашањето");
   });
 });
 
@@ -411,7 +411,9 @@ test.describe("the inbox of anonymous questions", () => {
     await expect(items.last()).toHaveAttribute("data-answered", "true");
     await expect(items.last()).toContainText("Одговорено");
     await expect(items.first()).toHaveAttribute("data-answered", "false");
-    expect(await items.last().evaluate((el) => Number(getComputedStyle(el).opacity))).toBeLessThan(1);
+    // It steps back by giving up its ground for an edge, not by fading: its words stay at full strength.
+    expect(await items.last().evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(await items.first().evaluate((el) => getComputedStyle(el).backgroundColor));
+    expect(await items.last().evaluate((el) => Number(getComputedStyle(el).opacity))).toBe(1);
     // Taking it back.
     await items.last().getByRole("button", { name: `Врати: прашање од ${name}` }).click();
     await expect(items.first().locator(".inbox__text")).toHaveText(texts[0]);
@@ -482,7 +484,7 @@ test.describe("flags and the nudge", () => {
     await expect(page.locator(".person__answer")).toHaveCount(0);
   });
 
-  test("the nudge: after a while with no question one quiet line near the yellow button, no window and no sound, gone when a question is sent", async ({ page, context }) => {
+  test("the nudge: after a while with no question one quiet line near the main button, no window and no sound, gone when a question is sent", async ({ page, context }) => {
     await teach(page, context);
     await go(context, TEACHING_AT + 80);
     await expect(page.getByTestId("nudge")).toHaveCount(0);
@@ -491,7 +493,7 @@ test.describe("flags and the nudge", () => {
     await expect(nudge).toHaveText("Помина 1 минута без прашање.");
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.getByRole("alertdialog")).toHaveCount(0);
-    // It is in the panel with the yellow button, not elsewhere.
+    // It is in the panel with the main button, not elsewhere.
     await expect(panel(page).getByTestId("nudge")).toBeVisible();
     expect(await page.locator("audio").count()).toBe(0);
     await send(page).click();
@@ -509,14 +511,14 @@ test.describe("coming back", () => {
     await expect(panel(page).getByTestId("countdown")).toHaveText("Уште 20 секунди");
     await expect(panel(page).getByTestId("progress")).toHaveText(progress);
     await expect(listItem(page, 1)).toContainText("Испратено");
-    await expect(yellow(page)).toHaveCount(0);
+    await expect(mainButton(page)).toHaveCount(0);
     await go(context, TEACHING_AT + 31);
     await page.reload();
-    await expect(yellow(page)).toHaveText("Прикажи го точниот одговор");
+    await expect(mainButton(page)).toHaveText("Прикажи го точниот одговор");
     await reveal(page).click();
     await page.reload();
     await expect(panel(page).getByTestId("right-answer")).toHaveText("Точен одговор: 36");
-    await expect(yellow(page)).toHaveText("Испрати го следното прашање");
+    await expect(mainButton(page)).toHaveText("Испрати го следното прашање");
   });
 
   test("a reload of the projector in the middle of a question, and after it, finds the same screen", async ({ page, context }) => {
@@ -750,12 +752,12 @@ test.describe("the keyboard alone", () => {
     await expect(panel(page).getByTestId("countdown")).toBeVisible();
     await go(context, TEACHING_AT + 31);
     // The time is up while the focus is on Skip: it stays where the teacher is.
-    await expect(yellow(page)).toHaveText("Прикажи го точниот одговор");
-    await yellow(page).focus();
+    await expect(mainButton(page)).toHaveText("Прикажи го точниот одговор");
+    await mainButton(page).focus();
     await page.keyboard.press("Enter");
-    // The yellow button of the next step has the focus.
-    await expect(yellow(page)).toHaveText("Испрати го следното прашање");
-    await expect(yellow(page)).toBeFocused();
+    // The main button of the next step has the focus.
+    await expect(mainButton(page)).toHaveText("Испрати го следното прашање");
+    await expect(mainButton(page)).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(panel(page)).toContainText("Прашање 2 од 6");
     expect(await inPanel()).toBe(true);
@@ -841,16 +843,16 @@ test.describe("words and zoom", () => {
     await expect(page).toHaveURL(/\/teacher\/live\//);
   });
 
-  test("the console works at 200% zoom while teaching: no sideways scroll, the yellow button in reach, and every button 48px tall", async ({ page, context }) => {
+  test("the console works at 200% zoom while teaching: no sideways scroll, the main button in reach, and every button 44px tall", async ({ page, context }) => {
     await teach(page, context);
     await page.setViewportSize({ width: 640, height: 360 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
     await send(page).scrollIntoViewIfNeeded();
     await expect(send(page)).toBeInViewport();
-    for (const h of await page.locator(".live button:visible, .live a.btn:visible").evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height))) expect(h).toBeGreaterThanOrEqual(47.5);
+    for (const h of await page.locator(".live button:visible, .live a.btn:visible").evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height))) expect(h).toBeGreaterThanOrEqual(43.5);
   });
 
-  test("the panel and its yellow button are in the first screen at 1280 x 720 and 1024 x 768, and nothing scrolls sideways", async ({ page, context }) => {
+  test("the panel and its main button are in the first screen at 1280 x 720 and 1024 x 768, and nothing scrolls sideways", async ({ page, context }) => {
     await teach(page, context);
     for (const size of [{ width: 1024, height: 768 }, { width: 1280, height: 720 }, { width: 1440, height: 900 }]) {
       await page.setViewportSize(size);

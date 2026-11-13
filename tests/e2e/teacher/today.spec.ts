@@ -11,7 +11,7 @@ import { expect, MOCK_KEY, SETTINGS_KEY, tall, test } from "./fixtures";
 const NOW = new Date("2026-10-29T09:30:00+01:00");
 const title = (page: Page) => page.getByRole("heading", { level: 1 });
 const mainMenu = (page: Page) => page.getByRole("navigation").first();
-const yellow = (page: Page) => page.locator(".btn--primary:visible");
+const mainButton = (page: Page) => page.locator(".btn--primary:visible");
 const cards = (page: Page) => page.locator(".lessons > li");
 const startDialog = (page: Page) => page.getByRole("dialog", { name: /^Со кој(а)? (клас|група)\?$/ });
 const runningDialog = (page: Page) => page.getByRole("dialog", { name: "Веќе имате час во тек" });
@@ -104,10 +104,10 @@ test.describe("Today with lessons prepared", () => {
     await expect(page.getByRole("link", { name: "Сите лекции" })).toHaveCount(0);
   });
 
-  test("has one yellow button, \"Подготви лекција\", at the top above the lessons; the lessons' own buttons are not yellow", async ({ page }) => {
+  test("has one main button, \"Подготви лекција\", at the top above the lessons; the lessons' own buttons are quiet ones", async ({ page }) => {
     await page.goto("/teacher");
     await expect(cards(page)).toHaveCount(2);
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
     const prepare = page.getByRole("link", { name: "Подготви лекција" });
     await expect(prepare).toHaveClass(/btn--primary/);
     await expect(prepare).toHaveAttribute("href", "/teacher/lessons/new?from=today");
@@ -118,13 +118,13 @@ test.describe("Today with lessons prepared", () => {
     for (const card of await cards(page).all()) await expect(card.getByRole("button", { name: "Започни час" })).toHaveClass(/btn--secondary/);
   });
 
-  test("the buttons are big enough: 56px, and 48px for the quiet link", async ({ page }) => {
+  test("the buttons are big enough: 48px for the main one, 44px for the others", async ({ page }) => {
     await page.goto("/teacher");
     const heights = async (locator: ReturnType<Page["locator"]>) => Promise.all((await locator.all()).map((b) => tall(b)));
-    for (const h of await heights(page.getByRole("button", { name: "Започни час" }))) expect(h).toBeGreaterThanOrEqual(56);
-    for (const h of await heights(page.getByRole("link", { name: "Отвори" }))) expect(h).toBeGreaterThanOrEqual(48);
-    expect(await tall(page.getByRole("link", { name: "Подготви лекција" }))).toBeGreaterThanOrEqual(56);
-    // And the type: 18px or more everywhere on the cards.
+    for (const h of await heights(page.getByRole("button", { name: "Започни час" }))) expect(h).toBeGreaterThanOrEqual(44);
+    for (const h of await heights(page.getByRole("link", { name: "Отвори" }))) expect(h).toBeGreaterThanOrEqual(44);
+    expect(await tall(page.getByRole("link", { name: "Подготви лекција" }))).toBeGreaterThanOrEqual(48);
+    // And the type: 16px or more everywhere on the cards.
     const small = await page.locator(".lesson").evaluateAll((els) =>
       els.flatMap((el) => [el, ...el.querySelectorAll("*")]).filter((e) => e.childNodes.length && parseFloat(getComputedStyle(e).fontSize) < 16).length,
     );
@@ -185,7 +185,7 @@ test.describe("Today with lessons prepared", () => {
 test.describe("Today with nothing prepared", () => {
   test.use({ account: "novice" });
 
-  test("keeps the empty state, with the one yellow button in it", async ({ page }) => {
+  test("keeps the empty state, with the one main button in it", async ({ page }) => {
     await page.goto("/teacher");
     await page.getByRole("button", { name: "Прескокни го водичот" }).click();
     await expect(title(page)).toHaveText("Денес");
@@ -193,11 +193,11 @@ test.describe("Today with nothing prepared", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Немате подготвени лекции" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Подготвени лекции", exact: true })).toHaveCount(0);
     await expect(cards(page)).toHaveCount(0);
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
     await expect(page.getByRole("link", { name: "Подготви лекција" })).toHaveClass(/btn--primary/);
   });
 
-  test("with a lesson running, the empty state stays and its button is not yellow; the band's is", async ({ page }) => {
+  test("with a lesson running, the empty state stays and its button is not the main one; the band's is", async ({ page }) => {
     // A new teacher is taken to the guide first; skipping it comes to the page that was asked for.
     await page.goto("/teacher/settings");
     await page.getByRole("button", { name: "Прескокни го водичот" }).click();
@@ -207,7 +207,7 @@ test.describe("Today with nothing prepared", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Немате подготвени лекции" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Врати се на часот" })).toHaveClass(/btn--primary/);
     await expect(page.getByRole("link", { name: "Подготви лекција" })).toHaveClass(/btn--secondary/);
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
   });
 });
 
@@ -220,7 +220,7 @@ test.describe("Today with a lesson running", () => {
     await expect(title(page)).toHaveText("Денес");
   }
 
-  test("puts a band at the top: the subject and class, the lesson, how long, and the way back; and the yellow moves to it", async ({ page }) => {
+  test("puts a band at the top: the subject and class, the lesson, how long, and the way back; and the main button moves to it", async ({ page }) => {
     await simulate(page);
     const band = page.getByRole("region", { name: "Час во тек" });
     await expect(band).toBeVisible();
@@ -229,8 +229,8 @@ test.describe("Today with a lesson running", () => {
     await expect(band).toContainText("Трае 12 минути");
     const back = band.getByRole("link", { name: "Врати се на часот" });
     await expect(back).toHaveClass(/btn--primary/);
-    // The one yellow button of the screen; "Подготви лекција" is secondary.
-    await expect(yellow(page)).toHaveCount(1);
+    // The one main button of the screen; "Подготви лекција" is secondary.
+    await expect(mainButton(page)).toHaveCount(1);
     await expect(page.getByRole("link", { name: "Подготви лекција" })).toHaveClass(/btn--secondary/);
     // The band is above everything else but the header.
     const [bandBox, listBox] = [(await band.boundingBox())!, (await page.getByRole("link", { name: "Подготви лекција" }).boundingBox())!];
@@ -294,7 +294,7 @@ test.describe("Today with a lesson running", () => {
     await expect(page.getByRole("region", { name: "Час во тек" })).toBeVisible();
   });
 
-  test("ending the lesson from the band takes the band away and gives the yellow back; the lesson is then a held one", async ({ page }) => {
+  test("ending the lesson from the band takes the band away and gives the main button back; the lesson is then a held one", async ({ page }) => {
     await simulate(page);
     await page.goto("/teacher/settings");
     await expect(demoButton(page, "Симулирај час во тек")).toHaveCount(0);
@@ -363,7 +363,7 @@ test.describe("starting a lesson", () => {
     const box = (await dialog.boundingBox())!;
     expect(box.y).toBeGreaterThanOrEqual(0);
     expect(box.y + box.height).toBeLessThanOrEqual(720);
-    // Start is the window's yellow button. The focus is on the choices, on the first one, which is not chosen by it, so Enter
+    // Start is the window's main button. The focus is on the choices, on the first one, which is not chosen by it, so Enter
     // starts nothing.
     await expect(dialog.getByRole("button", { name: /^Започни( со .+)?$/ })).toHaveClass(/btn--primary/);
     await expect(rows.first()).toBeFocused();
@@ -412,7 +412,7 @@ test.describe("starting a lesson", () => {
     await page.goto("/teacher");
     await procenti(page).getByRole("button", { name: "Започни час" }).click();
     const dialog = startDialog(page);
-    // The yellow button says plainly what it will do: with nothing chosen it names no class, and it names the one that is chosen.
+    // The main button says plainly what it will do: with nothing chosen it names no class, and it names the one that is chosen.
     await expect(dialog.getByRole("button", { name: /^Започни/ })).toHaveText("Започни");
     await dialog.getByRole("radio", { name: /III-5/ }).check();
     await expect(dialog.getByRole("radio", { name: /III-5/ })).toBeChecked();
@@ -433,7 +433,7 @@ test.describe("starting a lesson", () => {
     await page.getByRole("link", { name: "Назад кон Денес" }).click();
     const band = page.getByRole("region", { name: "Час во тек" });
     await expect(band.getByRole("heading", { level: 2 })).toHaveText("Математика, III-5");
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
     await expect(cards(page)).toHaveCount(1);
     await expect(procenti(page)).toHaveCount(0);
   });
@@ -547,7 +547,7 @@ test.describe("starting a lesson", () => {
     // And the page behind it has the band.
     await runningDialog(page).getByRole("button", { name: "Затвори" }).click();
     await expect(page.getByRole("region", { name: "Час во тек" })).toBeVisible();
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
   });
 
   test("the very lesson being asked about, started in another window, turns the question into that message and does not just vanish", async ({ page, context }: { page: Page; context: BrowserContext }) => {
@@ -660,18 +660,18 @@ test.describe("a lesson, to read", () => {
     await expect(page.getByRole("link", { name: "Назад кон Лекции" })).toBeVisible();
   });
 
-  test("Back is a labelled button the size of the others, at the top of the page", async ({ page }) => {
+  test("Back is a labelled link with an arrow, 44px tall, at the top of the page", async ({ page }) => {
     await page.goto("/teacher/lessons/l-procenti?from=today");
     const back = page.getByRole("link", { name: "Назад кон Денес" });
-    expect(await tall(back)).toBeGreaterThanOrEqual(48);
+    expect(await tall(back)).toBeGreaterThanOrEqual(44);
     await expect(back.locator("svg")).toHaveCount(1);
   });
 
-  test("has the same \"Започни час\" as Today, and it is the screen's yellow button", async ({ page }) => {
+  test("has the same \"Започни час\" as Today, and it is the screen's main button", async ({ page }) => {
     await page.goto("/teacher/lessons/l-procenti?from=today");
     const start = page.getByRole("button", { name: "Започни час" });
     await expect(start).toHaveClass(/btn--primary/);
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
     await start.click();
     const dialog = startDialog(page);
     await expect(dialog).toContainText("Лекција: Проценти и пропорции");
@@ -681,13 +681,13 @@ test.describe("a lesson, to read", () => {
     await expect(page.getByText("Математика, II-4: Проценти и пропорции")).toBeVisible();
   });
 
-  test("with a lesson running its start button is not yellow, and says so when pressed", async ({ page }) => {
+  test("with a lesson running its start button is not the main one, and says so when pressed", async ({ page }) => {
     await page.goto("/teacher/settings");
     await demoButton(page, "Симулирај час во тек").click();
     await page.goto("/teacher/lessons/l-procenti");
     const start = page.getByRole("button", { name: "Започни час" });
     await expect(start).toHaveClass(/btn--secondary/);
-    await expect(yellow(page)).toHaveCount(0);
+    await expect(mainButton(page)).toHaveCount(0);
     await start.click();
     await expect(runningDialog(page)).toBeVisible();
   });

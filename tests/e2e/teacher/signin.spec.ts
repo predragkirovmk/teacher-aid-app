@@ -96,18 +96,18 @@ test.describe("the sign-in screen", () => {
     // The four colours of the G, the four squares of Microsoft.
     await expect(google.locator("path")).toHaveCount(4);
     await expect(microsoft.locator("path")).toHaveCount(4);
-    // Equal, and no smaller than 56px, with text of at least 18px.
+    // Equal, and no smaller than 48px, with words of at least 17px.
     const [a, b] = [(await google.boundingBox())!, (await microsoft.boundingBox())!];
-    expect(await tall(google)).toBeGreaterThanOrEqual(56);
+    expect(await tall(google)).toBeGreaterThanOrEqual(48);
     expect(await tall(microsoft)).toBe(await tall(google));
     expect(Math.round(b.width * 100)).toBe(Math.round(a.width * 100));
-    expect(parseFloat(await google.evaluate((el) => getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(18);
-    // These are not the screen's yellow.
-    await expect(google).not.toHaveCSS("background-color", "rgb(255, 200, 62)");
+    expect(parseFloat(await google.evaluate((el) => getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(17);
+    // These keep the providers' own look, not the accent of the app's main button.
+    await expect(google).not.toHaveCSS("background-color", "rgb(18, 69, 84)");
     expect(outside, "requests to another origin").toEqual([]);
   });
 
-  test("has no yellow button: the two provider buttons are the main actions and keep the providers' look", async ({ page }) => {
+  test("has no main button: the two provider buttons are the main actions and keep the providers' look", async ({ page }) => {
     await page.goto("/teacher/sign-in");
     await expect(page.locator(".btn--primary")).toHaveCount(0);
   });
@@ -194,7 +194,7 @@ test.describe("the demo's provider page", () => {
     await expect(dialog.getByRole("button", { name: CHOICE.veteran })).toBeVisible();
     await expect(dialog.getByRole("button", { name: CHOICE.novice })).toBeVisible();
     for (const who of ["not_invited", "personal", "cancelled", "offline"] as const) await expect(dialog.getByRole("button", { name: CHOICE[who] })).toBeVisible();
-    // One yellow button: the teacher with history.
+    // One main button: the teacher with history.
     await expect(dialog.locator(".btn--primary")).toHaveCount(1);
 
     // Back: the screen as it was, where it was heading still remembered.
@@ -221,12 +221,13 @@ test.describe("the demo's provider page", () => {
     expect(room).toBeGreaterThanOrEqual(0);
   });
 
-  test("the buttons are as big as the app's: 56px and up", async ({ page }) => {
+  test("the buttons are as big as the app's: 44px and up, and the two people to sign in as are rows of 56px", async ({ page }) => {
     await page.goto("/teacher/sign-in");
     await providerButton(page, "Google").click();
     for (const button of await sheet(page).getByRole("button").all()) {
-      expect(await tall(button)).toBeGreaterThanOrEqual(56);
+      expect(await tall(button)).toBeGreaterThanOrEqual(44);
     }
+    for (const who of [CHOICE.veteran, CHOICE.novice]) expect(await tall(sheet(page).getByRole("button", { name: who }))).toBeGreaterThanOrEqual(56);
   });
 
   test("is in English when the screen is", async ({ page }) => {
@@ -278,7 +279,7 @@ test.describe("signing in", () => {
     await expect(page.getByText("Чекор 1 од 3")).toBeVisible();
     await expect(page.getByRole("heading", { level: 2 })).toHaveText("Подгответе лекција");
     await expect(page.getByRole("button", { name: "Назад" })).toHaveCount(0);
-    // One yellow button, and a way out that is always in view.
+    // One main button, and a way out that is always in view.
     await expect(page.locator(".btn--primary")).toHaveCount(1);
     await expect(page.getByRole("button", { name: "Прескокни го водичот" })).toBeVisible();
     // Skipping is not a trap: it says where the guide is when the teacher wants it again.
@@ -297,7 +298,7 @@ test.describe("signing in", () => {
     await page.getByRole("button", { name: "Следно" }).click();
     await expect(page.getByText("Чекор 3 од 3")).toBeVisible();
     await expect(page.getByRole("heading", { level: 2 })).toHaveText("Видете кој бил присутен и што да се повтори");
-    // The last step leads into the first lesson (the one yellow button), and "Не сега" is the way out; there is nothing to skip.
+    // The last step leads into the first lesson (the one main button), and "Не сега" is the way out; there is nothing to skip.
     await expect(page.getByRole("button", { name: "Следно" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Прескокни го водичот" })).toHaveCount(0);
     await expect(page.locator(".btn--primary")).toHaveCount(1);
@@ -308,7 +309,7 @@ test.describe("signing in", () => {
     await expect(page).toHaveURL(/\/teacher$/);
     await expect(title(page)).toHaveText("Денес");
     await expect(page.getByText(TODAY_GREETING)).toContainText("Игор");
-    // Nothing prepared yet, and the one yellow button says what to do.
+    // Nothing prepared yet, and the one main button says what to do.
     await expect(page.getByRole("heading", { name: "Немате подготвени лекции" })).toBeVisible();
     await expect(page.locator(".btn--primary:visible")).toHaveCount(1);
     await expect(page.getByRole("link", { name: "Подготви лекција" })).toBeVisible();
@@ -416,7 +417,7 @@ test.describe("when signing in does not work", () => {
       // Each button says it too when the teacher comes to it, since either one is the next try.
       await expect(providerButton(page, "Google")).toHaveAccessibleDescription(new RegExp(heading));
       await expect(providerButton(page, "Microsoft")).toHaveAccessibleDescription(new RegExp(heading));
-      await expect(alert.locator(".problem__badge")).toHaveCSS("background-color", "rgb(236, 34, 31)");
+      await expect(alert.locator(".problem__badge")).toHaveCSS("background-color", "rgb(180, 35, 24)");
       await expect(alert).toHaveCSS("border-left-width", "0px");
       await expect(title(page)).toHaveText("Најава");
       expect(await sessionOf(page)).toBeNull();

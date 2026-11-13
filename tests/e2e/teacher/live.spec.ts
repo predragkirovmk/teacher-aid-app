@@ -1,7 +1,7 @@
 import { simulate, tokenAt } from "../../../lib/teacher/api/mock-live";
 import { expect, SETTINGS_KEY, tall, test } from "./fixtures";
 import {
-  at, cards, classCode, code, comesLater, count, joinedAt, nextEdge, openProjector, people, PLANS, readQr, row, SESSION, start, T0, title, yellow,
+  at, cards, classCode, code, comesLater, count, joinedAt, nextEdge, openProjector, people, PLANS, readQr, row, SESSION, start, T0, title, mainButton,
 } from "./live-helpers";
 
 /**
@@ -29,7 +29,7 @@ test.describe("starting", () => {
 });
 
 test.describe("the lobby", () => {
-  test("says where the lesson stands in four words, the current one by a word and a mark, and gives the page one yellow button", async ({ page, context }) => {
+  test("says where the lesson stands in four words, the current one by a word and a mark, and gives the page one main button", async ({ page, context }) => {
     await start(page, context);
     const states = page.getByRole("list", { name: "Каде е часот" });
     await expect(states.getByRole("listitem")).toHaveText([/Чекаме ученици/, /Предавање/, /Преглед/, /Крај/]);
@@ -37,8 +37,8 @@ test.describe("the lobby", () => {
     await expect(now).toHaveCount(1);
     await expect(now).toContainText("Чекаме ученици");
     await expect(now).toContainText("Сега");
-    await expect(yellow(page)).toHaveCount(1);
-    await expect(yellow(page)).toHaveText("Почни го часот");
+    await expect(mainButton(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveText("Почни го часот");
     // The ones that are not current are told apart by more than colour: a screen reader is told which are done and which are still to come.
     await expect(states.getByRole("listitem").nth(1)).toContainText("следно");
   });
@@ -271,7 +271,7 @@ test.describe("the projector", () => {
 });
 
 test.describe("present without a phone", () => {
-  test("a student who is not here has a button that asks the reason, in four plain choices, and one yellow button marks them", async ({ page, context }) => {
+  test("a student who is not here has a button that asks the reason, in four plain choices, and one main button marks them", async ({ page, context }) => {
     await start(page, context);
     const missing = page.locator(".person[data-state=not_yet]").first();
     const name = await missing.locator(".person__name").innerText();
@@ -285,7 +285,7 @@ test.describe("present without a phone", () => {
     await expect(dialog.getByRole("radio").first()).toBeFocused();
   });
 
-  test("pressing the yellow button with nothing chosen says so and marks nothing", async ({ page, context }) => {
+  test("pressing the main button with nothing chosen says so and marks nothing", async ({ page, context }) => {
     await start(page, context);
     await page.locator(".person[data-state=not_yet]").first().getByRole("button", { name: /^Без телефон/ }).click();
     const dialog = page.getByRole("dialog");
@@ -430,7 +430,7 @@ test.describe("starting the lesson, and teaching", () => {
     await expect(page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]")).toContainText("Чекаме ученици");
   });
 
-  test("moves to teaching: the state line says so, the panel for the question now has the one yellow button, the questions are listed, and the only way to end is the red one at the foot", async ({ page, context }) => {
+  test("moves to teaching: the state line says so, the panel for the question now has the one main button, the questions are listed, and the only way to end is the red one at the foot", async ({ page, context }) => {
     await start(page, context);
     await at(context, 30, page);
     await page.getByRole("button", { name: "Почни го часот" }).click();
@@ -439,8 +439,8 @@ test.describe("starting the lesson, and teaching", () => {
     await expect(now).toContainText("Предавање");
     await expect(now).toContainText("Сега");
     await expect(page.getByRole("listitem").filter({ hasText: "Чекаме ученици" })).toContainText("завршено");
-    await expect(yellow(page)).toHaveCount(1);
-    await expect(yellow(page)).toHaveText("Испрати го прашањето");
+    await expect(mainButton(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveText("Испрати го прашањето");
     await expect(page.getByRole("button", { name: "Почни го часот" })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Прашањето сега" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Прашања на часот" })).toBeVisible();
@@ -658,7 +658,7 @@ test.describe("words", () => {
 });
 
 test.describe("the screen", () => {
-  test("the console works at 200% zoom: no sideways scroll, and the projector button and the yellow button are in reach", async ({ page, context }) => {
+  test("the console works at 200% zoom: no sideways scroll, and the projector button and the main button are in reach", async ({ page, context }) => {
     // 200% on a 1280 x 720 window leaves 640 x 360 CSS pixels.
     await page.setViewportSize({ width: 640, height: 360 });
     await start(page, context);
@@ -673,17 +673,17 @@ test.describe("the screen", () => {
     // A student's row, and its button, fit.
     const button = page.locator(".person[data-state=not_yet]").first().getByRole("button");
     await button.scrollIntoViewIfNeeded();
-    expect(await tall(button)).toBeGreaterThanOrEqual(48);
+    expect(await tall(button)).toBeGreaterThanOrEqual(44);
   });
 
-  test("the console fits 1024 x 768 and 1280 x 720 with no sideways scroll, and every button is at least 48px tall", async ({ page, context }) => {
+  test("the console fits 1024 x 768 and 1280 x 720 with no sideways scroll, and every button is at least 44px tall", async ({ page, context }) => {
     await start(page, context);
     await at(context, 40, page);
     for (const size of [{ width: 1024, height: 768 }, { width: 1280, height: 720 }, { width: 1440, height: 900 }]) {
       await page.setViewportSize(size);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
       const heights = await page.locator(".live button:visible, .live a.btn:visible").evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
-      for (const h of heights) expect(h).toBeGreaterThanOrEqual(47.5);
+      for (const h of heights) expect(h).toBeGreaterThanOrEqual(43.5);
     }
   });
 
@@ -717,7 +717,7 @@ test.describe("the reminder", () => {
 });
 
 test.describe("what the review of step 8 changed", () => {
-  test("the projector button comes first and is in the first screen at 1280 x 720 and 1024 x 768, above the one yellow button", async ({ page, context }) => {
+  test("the projector button comes first and is in the first screen at 1280 x 720 and 1024 x 768, above the one main button", async ({ page, context }) => {
     await start(page, context);
     await at(context, 40, page);
     for (const size of [{ width: 1280, height: 720 }, { width: 1024, height: 768 }]) {
@@ -726,10 +726,10 @@ test.describe("what the review of step 8 changed", () => {
       await expect(projector).toBeInViewport({ ratio: 1 });
       const start = page.getByRole("button", { name: "Почни го часот" });
       expect((await projector.boundingBox())!.y).toBeLessThan((await start.boundingBox())!.y);
-      // The projector button is outlined and big, and the yellow one is the page's only yellow.
+      // The projector button is a quiet one and big, and the page has one main button.
       await expect(projector).toHaveClass(/btn--secondary/);
       await expect(projector).toHaveClass(/btn--big/);
-      await expect(yellow(page)).toHaveCount(1);
+      await expect(mainButton(page)).toHaveCount(1);
     }
   });
 
@@ -761,7 +761,7 @@ test.describe("what the review of step 8 changed", () => {
     await page.getByRole("button", { name: "Почни го часот" }).click();
     const ask = page.getByRole("alertdialog", { name: "Да го почнеме часот сега?" });
     await expect(ask).toContainText(`Уште ${missing - 1} не се приклучиле.`);
-    // The safe answer is the yellow one and has the focus; Escape stays, and the lesson is still in the lobby.
+    // The safe answer is the main button and has the focus; Escape stays, and the lesson is still in the lobby.
     await expect(ask.getByRole("button", { name: "Не, уште чекам" })).toBeFocused();
     await expect(ask.getByRole("button", { name: "Не, уште чекам" })).toHaveClass(/btn--primary/);
     await page.keyboard.press("Escape");

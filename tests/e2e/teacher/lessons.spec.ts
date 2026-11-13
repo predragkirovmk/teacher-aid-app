@@ -99,7 +99,7 @@ const demo = (page: Page) => page.evaluate((key) => JSON.parse(localStorage.getI
 // ---- What is on the page ------------------------------------------------------------------------------------------------------
 
 const title = (page: Page) => page.getByRole("heading", { level: 1 });
-const yellow = (page: Page) => page.locator(".btn--primary:visible");
+const mainButton = (page: Page) => page.locator(".btn--primary:visible");
 const sections = (page: Page) => page.locator("main h2.section__title");
 const prepared = (page: Page) => page.locator("section[aria-labelledby=prepared] .lessons > li");
 const held = (page: Page) => page.locator("section[aria-labelledby=held] .lessons > li");
@@ -153,11 +153,11 @@ async function picture(page: Page, width: number, height: number, color = "#3b82
 // ---------------------------------------------------------------------------------------------------------------------------
 
 test.describe("Lessons", () => {
-  test("is one page with no tabs: one yellow button, then the prepared lessons and the ones that were held, each section saying how many", async ({ page }) => {
+  test("is one page with no tabs: one main button, then the prepared lessons and the ones that were held, each section saying how many", async ({ page }) => {
     await page.goto("/teacher/lessons");
     await expect(title(page)).toHaveText("Лекции");
     await expect(page.getByRole("tab")).toHaveCount(0);
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
     const prepare = page.getByRole("link", { name: "Подготви лекција" });
     await expect(prepare).toHaveClass(/btn--primary/);
     await expect(prepare).toHaveAttribute("href", "/teacher/lessons/new");
@@ -214,7 +214,7 @@ test.describe("Lessons", () => {
     await expect(held(page).filter({ hasText: "Квадратна функција" })).toContainText("2 пати");
   });
 
-  test("each card has one outlined button, the way on, and one quiet link beside it, whichever section it is in", async ({ page }) => {
+  test("each card has one button, the way on, and one quiet link beside it, whichever section it is in", async ({ page }) => {
     await seed(page, { drafts: [draftOf()] }, "/teacher/lessons");
     await expect(held(page).first()).toBeVisible();
     for (const lesson of await prepared(page).all()) {
@@ -237,10 +237,10 @@ test.describe("Lessons", () => {
       await expect(lesson.locator(".btn--quiet")).toHaveText("Фрли");
     }
     await expect(page.getByRole("button", { name: "Избриши лекција" })).toHaveCount(0);
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
   });
 
-  test("the outlined buttons of a list are as wide as each other, so they stand in one column", async ({ page }) => {
+  test("the buttons of a list are as wide as each other, so they stand in one column", async ({ page }) => {
     await page.goto("/teacher/lessons");
     await expect(held(page).first()).toBeVisible();
     const lefts = await page.locator(".lesson__actions > .btn--secondary").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)));
@@ -274,10 +274,10 @@ test.describe("Lessons", () => {
     await page.setViewportSize({ width: 1024, height: 768 });
     await page.goto("/teacher/lessons");
     await expect(held(page).first()).toBeVisible();
-    // The outlined button of a card is 56 or more, the quiet link beside it 48 or more.
-    for (const b of await page.locator(".lesson__actions > .btn--secondary").all()) expect(await tall(b)).toBeGreaterThanOrEqual(56);
-    for (const l of await page.locator(".lesson__actions > .btn--quiet").all()) expect(await tall(l)).toBeGreaterThanOrEqual(48);
-    expect(await tall(page.getByRole("link", { name: "Подготви лекција" }))).toBeGreaterThanOrEqual(56);
+    // A card's button and the quiet link beside it are 44px or more; the page's main button is 48px or more.
+    for (const b of await page.locator(".lesson__actions > .btn--secondary").all()) expect(await tall(b)).toBeGreaterThanOrEqual(44);
+    for (const l of await page.locator(".lesson__actions > .btn--quiet").all()) expect(await tall(l)).toBeGreaterThanOrEqual(44);
+    expect(await tall(page.getByRole("link", { name: "Подготви лекција" }))).toBeGreaterThanOrEqual(48);
     const small = await page.locator("main").evaluate((main) => [...main.querySelectorAll("*")].filter((e) => e.childNodes.length && parseFloat(getComputedStyle(e).fontSize) < 16 && !e.closest(".sr")).length);
     expect(small).toBe(0);
     expect(await overflow(page)).toBeLessThanOrEqual(0);
@@ -343,7 +343,7 @@ test.describe("Lessons", () => {
     await expect(unfinished(page).nth(1).getByRole("link", { name: "Продолжи" })).toBeVisible();
     await expect(unfinished(page).nth(1).getByRole("button", { name: "Фрли" })).toBeVisible();
     await expect(page.locator("#nedovrseni")).toHaveText("Недовршени (2)");
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
   });
 
   test("throwing one away asks first, here as on Today, and it is gone from both", async ({ page }) => {
@@ -357,13 +357,13 @@ test.describe("Lessons", () => {
     expect((await demo(page)).school.drafts).toHaveLength(0);
   });
 
-  test("with a lesson running, the lesson of it is still listed as prepared, and the yellow button stays the one that prepares", async ({ page }) => {
+  test("with a lesson running, the lesson of it is still listed as prepared, and the main button stays the one that prepares", async ({ page }) => {
     await page.goto("/teacher/settings");
     await page.getByRole("button", { name: "Симулирај час во тек" }).click();
     await page.getByRole("navigation", { name: "Главно мени" }).getByRole("link", { name: "Лекции" }).click();
     await expect(title(page)).toHaveText("Лекции");
     await expect(prepared(page).filter({ hasText: "Основи на веројатноста" })).toHaveCount(1);
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
   });
 });
 
@@ -380,11 +380,11 @@ test.describe("the subjects of a teacher who has several", () => {
     await expect(subjectRow(page).getByRole("radio")).toHaveCount(4);
     await expect(subjectRow(page).getByRole("radio").first()).toBeChecked();
     await expect(subjectRow(page).locator(".choice__text")).toHaveText(["Сите предмети", "Веројатност и статистика", "Линеарна алгебра", "Математичка анализа 1"]);
-    // Under the yellow button and above the first section.
+    // Under the main button and above the first section.
     const y = async (l: ReturnType<typeof page.locator>) => (await l.boundingBox())!.y;
     expect(await y(subjectRow(page))).toBeGreaterThan(await y(page.getByRole("link", { name: "Подготви лекција" })));
     expect(await y(subjectRow(page))).toBeLessThan(await y(sections(page).first()));
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
   });
 
   test("a subject shows only its own lessons, and a section with none of them goes", async ({ page }) => {
@@ -450,11 +450,11 @@ test.describe("the subjects of a teacher who has several", () => {
 test.describe("a teacher with no lessons", () => {
   test.use({ account: "novice" });
 
-  test("is told so in one card, whose yellow button prepares the first", async ({ page }) => {
+  test("is told so in one card, whose main button prepares the first", async ({ page }) => {
     await seed(page, { first_run_done: true }, "/teacher/lessons", "novice");
     await expect(page.getByRole("heading", { level: 2, name: "Сѐ уште немате лекции" })).toBeVisible();
     await expect(page.getByText("Подгответе ја првата лекција. Кога ќе биде готова, ќе ја најдете тука.")).toBeVisible();
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
     await expect(page.getByRole("link", { name: "Подготви лекција" })).toHaveClass(/btn--primary/);
     await expect(page.locator(".lessons")).toHaveCount(0);
     await expect(subjectRow(page)).toHaveCount(0);
@@ -475,7 +475,7 @@ test.describe("Today with lessons not finished", () => {
     await expect(all).toBeVisible();
     await expect(all).toHaveAttribute("href", "/teacher/lessons#nedovrseni");
     await expect(all).toHaveClass(/btn--secondary/);
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
   });
 
   test("the link leads to all of them, on the Lessons page, at their section", async ({ page }) => {
@@ -513,21 +513,21 @@ test.describe("Today with lessons not finished", () => {
 // ---- Deleting a lesson -------------------------------------------------------------------------------------------------------
 
 test.describe("deleting a lesson", () => {
-  test("is the last thing on the lesson's page, outlined and away from the buttons that are pressed every day", async ({ page }) => {
+  test("is the last thing on the lesson's page, a quiet button away from the buttons that are pressed every day", async ({ page }) => {
     await page.goto(PROCENTI);
     await expect(title(page)).toHaveText("Проценти и пропорции");
     await expect(deleteButton(page)).toBeVisible();
     await expect(deleteButton(page)).toHaveClass(/btn--secondary/);
-    await expect(yellow(page)).toHaveCount(1);
-    await expect(yellow(page)).toHaveText("Започни час");
+    await expect(mainButton(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveText("Започни час");
     const y = async (l: ReturnType<typeof page.locator>) => (await l.boundingBox())!.y;
     const lastQuestion = questionCards(page).last();
     expect(await y(deleteButton(page))).toBeGreaterThan((await y(lastQuestion)) + (await lastQuestion.boundingBox())!.height - 1);
     expect(await y(deleteButton(page))).toBeGreaterThan(await y(page.getByRole("button", { name: "Уреди лекција" })) + 400);
-    expect(await tall(deleteButton(page))).toBeGreaterThanOrEqual(56);
+    expect(await tall(deleteButton(page))).toBeGreaterThanOrEqual(44);
   });
 
-  test("asks first, in plain words, and 'Не, задржи ја' is the yellow button that has the focus, as in every other question of the app", async ({ page }) => {
+  test("asks first, in plain words, and 'Не, задржи ја' is the main button that has the focus, as in every other question of the app", async ({ page }) => {
     await page.goto(PROCENTI);
     await deleteButton(page).click();
     const question = deleteQuestion(page);
@@ -570,7 +570,7 @@ test.describe("deleting a lesson", () => {
     await expect(page.getByRole("heading", { level: 2, name: /Не успеавме|Не го најдовме/ }).or(page.getByText("Не го најдовме тоа што го барате."))).toBeVisible();
   });
 
-  test("after the lesson is deleted the focus is on the line that says so, and Tab goes on to the yellow button", async ({ page }) => {
+  test("after the lesson is deleted the focus is on the line that says so, and Tab goes on to the main button", async ({ page }) => {
     await page.goto(PROCENTI);
     await deleteButton(page).click();
     await deleteQuestion(page).getByRole("button", { name: "Да, избриши ја" }).click();
@@ -668,7 +668,7 @@ test.describe("the picture of a question", () => {
     const add = open(page).locator("label.btn", { hasText: "Додај слика" });
     await expect(add).toBeVisible();
     await expect(add).toHaveClass(/btn--secondary/);
-    expect(await tall(add)).toBeGreaterThanOrEqual(56);
+    expect(await tall(add)).toBeGreaterThanOrEqual(44);
     await expect(open(page).getByText("JPEG, PNG или WebP, најмногу 10 MB.")).toBeVisible();
     // No picture yet: no preview, and none of the words about it either.
     await expect(open(page).locator(".imagefield__preview")).toHaveCount(0);
@@ -789,7 +789,7 @@ test.describe("the picture of a question", () => {
     const back = open(page).getByRole("button", { name: "Врати ја сликата" });
     await expect(back).toBeVisible();
     await expect(back).toHaveClass(/btn--secondary/);
-    expect(await tall(back)).toBeGreaterThanOrEqual(56);
+    expect(await tall(back)).toBeGreaterThanOrEqual(44);
     await expect(open(page).locator(".imagefield__removed")).toContainText("Сликата е отстранета.");
     await back.click();
     await expect(preview).toBeVisible();
@@ -974,7 +974,7 @@ test.describe("a numeric question", () => {
     const more = moreOptions(page);
     await expect(more).toHaveText("Повеќе опции");
     await expect(more).toHaveAttribute("aria-expanded", "false");
-    expect(await tall(more)).toBeGreaterThanOrEqual(48);
+    expect(await tall(more)).toBeGreaterThanOrEqual(44);
     await expect(more).toHaveClass(/btn--secondary/);
     await more.click();
     await expect(more).toHaveText("Помалку опции");
@@ -1095,12 +1095,12 @@ test.describe("the library", () => {
     await expect(items(page).nth(1)).toContainText("5 прашања · Од Зоран Илиев");
     await expect(items(page).nth(1)).toContainText("Зачувана пред една недела");
     await expect(items(page).nth(3)).toContainText("Од Билјана Стојановска");
-    // None of them is the teacher's own, none is copied yet, and the one button of each is outlined.
+    // None of them is the teacher's own, none is copied yet, and the one button of each is a quiet one.
     await expect(page.getByText("Марија Петровска")).toHaveCount(1); // only the name at the top right
     await expect(page.getByText("Веќе ја копиравте")).toHaveCount(0);
     for (const item of await items(page).all()) await expect(item.getByRole("link", { name: "Прегледај" })).toHaveClass(/btn--secondary/);
-    // The main action, copying, is on the preview, so this page has no yellow button.
-    await expect(yellow(page)).toHaveCount(0);
+    // The main action, copying, is on the preview, so this page has no main button.
+    await expect(mainButton(page)).toHaveCount(0);
   });
 
   test("has a row of subjects as the Lessons page has, and a subject shows its own", async ({ page }) => {
@@ -1138,7 +1138,7 @@ test.describe("the library", () => {
     await expect(page.getByText("Кога колегите од Вашето училиште ќе зачуваат лекции, ќе се појават тука и ќе можете да ги копирате.")).toBeVisible();
     await expect(page.locator(".lessons")).toHaveCount(0);
     await expect(page.getByRole("radiogroup")).toHaveCount(0);
-    await expect(yellow(page)).toHaveCount(0);
+    await expect(mainButton(page)).toHaveCount(0);
   });
 
   test("an empty library at a faculty names the faculty, in both languages", async ({ page }) => {
@@ -1148,7 +1148,7 @@ test.describe("the library", () => {
     await expect(page.getByText("When your colleagues at your faculty save lessons, they appear here and you can copy them.")).toBeVisible();
   });
 
-  test("a lesson is previewed, read only, as a lesson is read, with who made it and one yellow button", async ({ page }) => {
+  test("a lesson is previewed, read only, as a lesson is read, with who made it and one main button", async ({ page }) => {
     await page.goto("/teacher/library");
     await items(page).filter({ hasText: "Статистика: средна вредност и медијана" }).getByRole("link", { name: "Прегледај" }).click();
     await expect(page).toHaveURL(/\/teacher\/library\/lib-statistika$/);
@@ -1157,8 +1157,8 @@ test.describe("the library", () => {
     await expect(page.getByRole("link", { name: "Назад кон Библиотека" })).toHaveAttribute("href", "/teacher/library");
     await expect(page.getByText("Ова е преглед на лекцијата на Билјана Стојановска.")).toBeVisible();
     await expect(page.getByText("Оригиналот не се менува.")).toBeVisible();
-    await expect(yellow(page)).toHaveCount(1);
-    await expect(yellow(page)).toHaveText("Копирај во моите лекции");
+    await expect(mainButton(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveText("Копирај во моите лекции");
     // The questions, in order, with the right answer marked, exactly as a lesson of the teacher's own; nothing to change.
     await expect(questionCards(page)).toHaveCount(5);
     await expect(card(page, 1).getByRole("heading", { level: 3 })).toHaveText("Прашање 1 од 5");
@@ -1235,9 +1235,9 @@ test.describe("the library", () => {
     await expect(page.getByText("Веќе ја копиравте")).toHaveCount(1);
     await item.getByRole("link", { name: "Прегледај" }).click();
     await expect(page.getByText("Веќе ја копиравте оваа лекција. Ако ја копирате повторно, ќе добиете уште една копија.")).toBeVisible();
-    // Copying again stays possible, with the same yellow button.
-    await expect(yellow(page)).toHaveText("Копирај во моите лекции");
-    await yellow(page).click();
+    // Copying again stays possible, with the same main button.
+    await expect(mainButton(page)).toHaveText("Копирај во моите лекции");
+    await mainButton(page).click();
     await expect(page).toHaveURL(/\/teacher\/lessons\/l-n\d+$/);
     const copies = (await demo(page)).school.lessons.filter((l) => l.title.startsWith("Статистика"));
     expect(copies).toHaveLength(2);
@@ -1264,21 +1264,21 @@ test.describe("the library", () => {
     // The teacher's own lesson is not a lesson of the library either.
     await page.goto("/teacher/library/l-procenti");
     await expect(page.getByRole("heading", { level: 2, name: "Не ја најдовме лекцијата" })).toBeVisible();
-    await expect(yellow(page)).toHaveCount(0);
+    await expect(mainButton(page)).toHaveCount(0);
   });
 
   test("a copy that cannot be made says why at the button, and the button is still there to try again", async ({ page, context }) => {
     await page.goto("/teacher/library/lib-statistika");
-    await expect(yellow(page)).toBeVisible();
+    await expect(mainButton(page)).toBeVisible();
     await context.setOffline(true);
-    await yellow(page).click();
+    await mainButton(page).click();
     const problem = page.locator("main").getByRole("alert");
     await expect(problem).toContainText("Не успеавме да ја копираме лекцијата");
     await expect(problem).toContainText("Нема врска со интернет.");
     await expect(page).toHaveURL(/\/teacher\/library\/lib-statistika$/);
     expect((await demo(page)).school.lessons).toHaveLength(0);
     await context.setOffline(false);
-    await yellow(page).click();
+    await mainButton(page).click();
     await expect(page).toHaveURL(/\/teacher\/lessons\/l-n\d+$/);
   });
 

@@ -3,7 +3,7 @@ import { makeDocx } from "./docx";
 import { expect, MOCK_KEY, settled, SETTINGS_KEY, tall, test } from "./fixtures";
 
 /**
- * Prepare a lesson (F-03): the three parts and the one yellow button, reading a document on the form, the wait for the questions
+ * Prepare a lesson (F-03): the three parts and the one main button, reading a document on the form, the wait for the questions
  * on the page of the draft (a job that goes on without the page), every failure, and the draft page the wait ends on, in mock
  * mode, in Macedonian unless a test changes the language. The demo school is a gymnasium: the demo teacher has one subject
  * (Математика) in three years (II-4, III-5, IV-1), so the subject is stated and the year is offered; at the faculty it is the
@@ -16,7 +16,7 @@ const NEW = "/teacher/lessons/new";
 const TYPED = "Равенки од втор степен и дискриминантата. Учениците треба да знаат да ги решаваат.";
 
 const title = (page: Page) => page.getByRole("heading", { level: 1 });
-const yellow = (page: Page) => page.locator(".btn--primary:visible");
+const mainButton = (page: Page) => page.locator(".btn--primary:visible");
 const go = (page: Page) => page.getByRole("button", { name: "Подготви прашања", exact: true });
 const cancel = (page: Page) => page.getByRole("button", { name: "Откажи", exact: true });
 const retry = (page: Page) => page.getByRole("button", { name: "Обиди се повторно", exact: true });
@@ -70,7 +70,7 @@ test.beforeEach(async ({ page }) => {
 // ---- The form -------------------------------------------------------------------------------------------------------
 
 test.describe("the form", () => {
-  test("has three numbered parts and one yellow button that is never disabled, and nothing is chosen but what is only one", async ({ page }) => {
+  test("has three numbered parts and one main button that is never disabled, and nothing is chosen but what is only one", async ({ page }) => {
     for (const heading of ["1. Предмет и година", "2. Материјал", "3. Што да се нагласи?"]) {
       await expect(page.getByRole("heading", { level: 2, name: new RegExp(`^${heading.replace("?", "\\?")}`) })).toBeVisible();
     }
@@ -97,16 +97,16 @@ test.describe("the form", () => {
     await expect(page.getByText("Не мора", { exact: false })).toHaveCount(0);
     await expect(page.getByText(/^Една реченица, на пример:/)).toBeVisible();
 
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
     await expect(go(page)).toHaveClass(/btn--primary/);
     await expect(go(page)).toBeEnabled();
-    expect(await tall(go(page))).toBeGreaterThanOrEqual(56);
+    expect(await tall(go(page))).toBeGreaterThanOrEqual(48);
   });
 
-  test("the sentences go in an 18px box, with a hint and no count, and the document has a big button on a real file input", async ({ page }) => {
+  test("the sentences go in a box with 17px words, with a hint and no count, and the document has a button on a real file input", async ({ page }) => {
     await page.getByRole("radio", { name: /^Неколку реченици/ }).check();
     await expect(page.getByText(/^Најмалку 40 знаци/)).toBeVisible();
-    expect(await textbox(page).evaluate((el) => getComputedStyle(el).fontSize)).toBe("18px");
+    expect(await textbox(page).evaluate((el) => getComputedStyle(el).fontSize)).toBe("17px");
     // Typing is not counted, aloud or on screen.
     await textbox(page).pressSequentially("Логаритми");
     await expect(page.getByText(/^\d+ од \d+$/)).toHaveCount(0);
@@ -117,7 +117,7 @@ test.describe("the form", () => {
     await expect(fileInput(page)).toHaveAttribute("accept", /\.pdf.*\.docx/);
     const pick = page.locator("label.btn", { hasText: "Избери документ" });
     await expect(pick).toBeVisible();
-    expect(await tall(pick)).toBeGreaterThanOrEqual(56);
+    expect(await tall(pick)).toBeGreaterThanOrEqual(44);
     // The two plain rules under it: size, and no students' data (EC-LES-05).
     await expect(page.getByText("PDF или Word (.docx), најмногу 20 MB.")).toBeVisible();
     await expect(page.getByText("Не прикачувајте документи со имиња или други податоци на Вашите ученици.")).toBeVisible();
@@ -294,7 +294,7 @@ async function openDraftUnderFakeClock(page: Page) {
 test.describe("the wait", () => {
   test.slow();
 
-  test("typed sentences: the form is replaced by the page of the draft, which waits in one honest phase, with no percentage and Cancel outlined", async ({ page }) => {
+  test("typed sentences: the form is replaced by the page of the draft, which waits in one honest phase, with no percentage and a quiet Cancel", async ({ page }) => {
     await page.goto("/teacher");
     await page.getByRole("link", { name: "Подготви лекција" }).click();
     await yearTwo(page);
@@ -309,7 +309,7 @@ test.describe("the wait", () => {
     await expect(page.getByText(/^Чекор \d од 2$/)).toHaveCount(0);
     await expect(page.getByText("Ова може да потрае до 3 минути. Можете да ја напуштите страницата: лекцијата ќе Ве чека на Денес.")).toBeVisible();
     await expect(cancel(page)).toHaveClass(/btn--secondary/);
-    await expect(yellow(page)).toHaveCount(0);
+    await expect(mainButton(page)).toHaveCount(0);
     await expect(page.locator("main").getByText(/\d\s*%/)).toHaveCount(0);
 
     // The editor takes the place of the wait, on the same address.
@@ -471,7 +471,7 @@ test.describe("the wait", () => {
     await expect(page).toHaveURL(/\/teacher\/lessons\/new/);
   });
 
-  test("when the AI cannot write the questions: the draft says so in plain words, the yellow button tries again, the other gives it up and fills the form in", async ({ page }) => {
+  test("when the AI cannot write the questions: the draft says so in plain words, the main button tries again, the other gives it up and fills the form in", async ({ page }) => {
     await yearTwo(page);
     await typeSentences(page, `${TYPED} [fail]`);
     await go(page).click();
@@ -480,7 +480,7 @@ test.describe("the wait", () => {
     await expect(alerts(page)).toContainText("Вашиот материјал и сѐ што внесовте се сочувани.");
     await expect(retry(page)).toHaveClass(/btn--primary/);
     await expect(retry(page)).toBeFocused();
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
     await expect(backToForm(page)).toHaveClass(/btn--secondary/);
     // The focus is on the way forward, which is read together with what went wrong; and there is no second "Назад" beside the
     // page's own Back, which leaves the page.
@@ -623,7 +623,7 @@ test.describe("the wait", () => {
     await expect(phase(page, "Ги пишуваме прашањата")).toBeVisible();
     await expect(alerts(page)).toHaveCount(0);
 
-    // At 4 minutes the wait is over, in plain words, with the way back in yellow and the focus on it.
+    // At 4 minutes the wait is over, in plain words, with the way back as the main button and the focus on it.
     await page.clock.runFor(41_000);
     const stuck = page.getByRole("button", { name: "Врати се и обиди се повторно", exact: true });
     await expect(alerts(page)).toContainText("Ова трае предолго");
@@ -773,12 +773,12 @@ test.describe("the draft page", () => {
     expect(await questions.count()).toBeLessThanOrEqual(8);
     await expect(questions.first().getByRole("heading", { level: 3 })).toHaveText(/^Прашање 1 од \d$/);
     await expect(questions.first().getByText("Точен одговор")).toBeVisible();
-    // The questions are what is read and checked: they come first, and the summary closes the page, before the one yellow button.
+    // The questions are what is read and checked: they come first, and the summary closes the page, before the one main button.
     const summary = await page.getByRole("heading", { level: 2, name: "Резиме за повторување" }).boundingBox();
     const last = await questions.last().boundingBox();
     expect(summary!.y).toBeGreaterThan(last!.y + last!.height);
-    await expect(yellow(page)).toHaveCount(1);
-    await expect(yellow(page)).toHaveText("Зачувај лекција");
+    await expect(mainButton(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveText("Зачувај лекција");
   });
 
   test("the questions start in the first screen of a laptop, and nothing but the title stands in front of them", async ({ page }) => {
@@ -827,7 +827,7 @@ test.describe("the draft page", () => {
     const prepare = page.getByRole("link", { name: "Подготви лекција", exact: true });
     await expect(prepare).toHaveClass(/btn--primary/);
     await expect(prepare).toHaveAttribute("href", NEW);
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
     await prepare.click();
     await expect(page).toHaveURL(/\/teacher\/lessons\/new/);
   });
@@ -841,7 +841,6 @@ test.describe("keyboard only", () => {
   test("a whole lesson can be prepared with the keyboard alone, and the way back from the wait too", async ({ page }) => {
     // Start from the Back link; every step after is a key.
     await page.getByRole("link", { name: "Назад кон Лекции" }).focus();
-    await page.keyboard.press("Tab"); // the teacher's name
     await page.keyboard.press("Tab"); // the years: the radio group is one stop
     await expect(page.getByRole("radio", { name: /^II година/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
@@ -1034,14 +1033,14 @@ test.describe("zoomed", () => {
 test.describe("the drawer layout and a laptop's small window", () => {
   test.slow();
 
-  test("at 900 wide the wait is in the page, Cancel is a full-height button, the drawer's links do not ask, and the failure fits", async ({ page }) => {
+  test("at 900 wide the wait is in the page, Cancel is a full-size button, the drawer's links do not ask, and the failure fits", async ({ page }) => {
     await page.setViewportSize({ width: 900, height: 700 });
     await yearTwo(page);
     await typeSentences(page, `${TYPED} [fail]`);
     await go(page).click();
     await expect(page).toHaveURL(DRAFT_URL);
     await expect(phase(page, "Ги пишуваме прашањата")).toBeVisible();
-    expect(await tall(cancel(page))).toBeGreaterThanOrEqual(56);
+    expect(await tall(cancel(page))).toBeGreaterThanOrEqual(44);
     await expect(cancel(page)).toBeInViewport();
 
     // Leaving loses nothing, so the drawer's links go where they say, and the lesson waits on Today.
@@ -1053,7 +1052,8 @@ test.describe("the drawer layout and a laptop's small window", () => {
 
     await expect(retry(page)).toBeVisible({ timeout: 20_000 });
     expect(await overflow(page)).toBeLessThanOrEqual(0);
-    for (const button of [retry(page), backToForm(page)]) expect(await tall(button)).toBeGreaterThanOrEqual(56);
+    expect(await tall(retry(page))).toBeGreaterThanOrEqual(48);
+    expect(await tall(backToForm(page))).toBeGreaterThanOrEqual(44);
   });
 
   test("at 1024 x 768 the sidebar and the whole form are there with nothing running off the side", async ({ page }) => {
@@ -1063,28 +1063,28 @@ test.describe("the drawer layout and a laptop's small window", () => {
     await go(page).click();
     await expect(alerts(page)).toHaveCount(2);
     expect(await overflow(page)).toBeLessThanOrEqual(0);
-    // Everything that can be pressed is at least 48px tall, and the one that matters 56px.
+    // Everything that can be pressed is at least 44px tall, and the one that matters 48px.
     const buttons = await page.locator("main button:visible, main a.btn:visible").all();
-    for (const button of buttons) expect(await tall(button)).toBeGreaterThanOrEqual(48);
-    expect(await tall(go(page))).toBeGreaterThanOrEqual(56);
+    for (const button of buttons) expect(await tall(button)).toBeGreaterThanOrEqual(44);
+    expect(await tall(go(page))).toBeGreaterThanOrEqual(48);
   });
 
-  test("the words on the ground are large text, the only kind that white has enough contrast for there", async ({ page }) => {
+  test("the words on the ground are dark ink at the body size, and nothing on the form is under 16px", async ({ page }) => {
     await expect(page.locator(".head__sub")).toBeVisible();
-    // 24px and up on the gradient (white on #32878C is 4.2:1; 3:1 is what large text needs). Everything smaller sits on a panel.
+    // On the light ground the second ink is 5.9:1, enough for words of any size: these lines no longer have to be large to be read.
     const size = (selector: string) => page.locator(selector).evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
-    expect(await size(".head__sub")).toBeGreaterThanOrEqual(24);
-    expect(await size(".prepare__go p")).toBeGreaterThanOrEqual(24);
-    // Nothing on the form is under 16px, and the text that is read (not a badge or a label) is 18px or more.
+    expect(await size(".head__sub")).toBeGreaterThanOrEqual(17);
+    expect(await size(".prepare__go p")).toBeGreaterThanOrEqual(17);
+    await expect(page.locator(".head__sub")).toHaveCSS("color", "rgb(74, 96, 104)");
+    // Nothing on the form is under 16px, and what is chosen is the body size, 17px, or more.
     const small = await page.locator("main *:visible").evaluateAll((els) =>
       els
         .filter((el) => [...el.childNodes].some((n) => n.nodeType === Node.TEXT_NODE && n.textContent!.trim() !== ""))
-        .filter((el) => !el.closest(".sr, .me"))
-        .map((el) => ({ text: el.textContent!.trim().slice(0, 30), size: parseFloat(getComputedStyle(el).fontSize), tag: el.classList.contains("tag") }))
-        .filter((x) => x.size < 18),
+        .filter((el) => !el.closest(".sr"))
+        .map((el) => ({ text: el.textContent!.trim().slice(0, 30), size: parseFloat(getComputedStyle(el).fontSize) }))
+        .filter((x) => x.size < 16),
     );
-    expect(small.filter((x) => x.size < 16)).toEqual([]);
-    // The one text under 18px is the "По желба" badge.
-    expect(small.filter((x) => !x.tag)).toEqual([]);
+    expect(small).toEqual([]);
+    for (const choice of await page.locator(".choice:visible").all()) expect(parseFloat(await choice.evaluate((el) => getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(17);
   });
 });

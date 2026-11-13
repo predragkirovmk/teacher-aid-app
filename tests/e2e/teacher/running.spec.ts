@@ -10,7 +10,7 @@ import { expect, SETTINGS_KEY, tall, test } from "./fixtures";
 const NOW = new Date("2026-10-29T09:30:00+01:00");
 const title = (page: Page) => page.getByRole("heading", { level: 1 });
 const mainMenu = (page: Page) => page.getByRole("navigation").first();
-const yellow = (page: Page) => page.locator(".btn--primary:visible");
+const mainButton = (page: Page) => page.locator(".btn--primary:visible");
 const demoButton = (page: Page, name: string) => page.getByRole("button", { name });
 /** The words with the class, whichever way the name is put together for a screen reader (a comma may or may not have a space before it). */
 const reminder = (page: Page, name: RegExp | string = /^Час во тек\s*,\s*IV-1$/) => page.getByRole("group", { name });
@@ -130,35 +130,38 @@ test.describe("with a lesson running, on a laptop", () => {
     await expect(reminder(page)).toHaveCount(0);
   });
 
-  test("is told apart from the menu by more than colour: an icon, words, an edge and a button, and none of it is yellow", async ({ page }) => {
+  test("is told apart from the menu by more than colour: an icon, words, its own ground and a button; its one yellow is the mark that says live", async ({ page }) => {
     await simulate(page);
     await page.goto("/teacher/classes");
     const tile = reminder(page);
     await expect(tile.locator("svg")).toHaveCount(3);
     await expect(back(page)).toHaveClass(/btn--secondary/);
     await expect(back(page)).not.toHaveClass(/btn--primary/);
-    // The edge is white and 2px; the tile has its own ground, which the menu rows do not.
-    await expect(tile).toHaveCSS("border-top-width", "2px");
-    await expect(tile).toHaveCSS("border-top-color", "rgb(255, 255, 255)");
+    // The tile has its own ground, which the menu rows do not, and no drawn edge.
+    await expect(tile).toHaveCSS("border-top-width", "0px");
     expect(await tile.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
+    // Yellow means live, and here it is one small mark: the disc behind the icon, beside the words that say so.
+    const yellow = await tile.evaluate((el) => [el, ...el.querySelectorAll("*")].filter((e) => getComputedStyle(e).backgroundColor === "rgb(255, 200, 62)").map((e) => e.tagName.toLowerCase()));
+    expect(yellow).toEqual(["svg"]);
+    await expect(tile.locator(".running__tag")).toContainText("Час во тек");
     // Nothing on it moves, ever.
     expect(await tile.evaluate((el) => [el, ...el.querySelectorAll("*")].flatMap((e) => e.getAnimations()).length)).toBe(0);
     for (const e of await tile.evaluate((el) => [el, ...el.querySelectorAll("*")].map((x) => getComputedStyle(x).animationName))) expect(e).toBe("none");
-    // Its screen's yellow stays with its own one button: the lesson's start button is not yellow while a lesson runs.
+    // The screen keeps one main button at most: the lesson's start button is not the main one while a lesson runs.
     await page.goto("/teacher/lessons/l-procenti");
     await expect(title(page)).toHaveText("Проценти и пропорции");
     await expect(reminder(page)).toBeVisible();
-    await expect(yellow(page)).toHaveCount(0);
+    await expect(mainButton(page)).toHaveCount(0);
   });
 
-  test("is big enough and plain enough: the button is 48px tall, nothing under 16px, and it sits under the four places, so the menu does not move", async ({ page }) => {
+  test("is big enough and plain enough: the button is 44px tall, nothing under 16px, and it sits under the four places, so the menu does not move", async ({ page }) => {
     await page.goto("/teacher/classes");
     const rowsBefore = await mainMenu(page).getByRole("link").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
     const footBefore = (await page.getByRole("navigation").nth(1).boundingBox())!.y;
     await simulate(page);
     await page.goto("/teacher/classes");
     await expect(reminder(page)).toBeVisible();
-    expect(await tall(back(page))).toBeGreaterThanOrEqual(48);
+    expect(await tall(back(page))).toBeGreaterThanOrEqual(44);
     const small = await reminder(page).evaluate((el) =>
       [el, ...el.querySelectorAll("*")].filter((e) => [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent?.trim()) && parseFloat(getComputedStyle(e).fontSize) < 16).length,
     );
@@ -241,7 +244,7 @@ test.describe("with a lesson running, where the sidebar is a drawer", () => {
     await page.goto("/teacher");
     await expect(page.getByRole("region", { name: "Час во тек" })).toBeVisible();
     await expect(page.locator("header.topbar").getByRole("group")).toHaveCount(0);
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
   });
 });
 

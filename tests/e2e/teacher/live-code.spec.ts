@@ -22,7 +22,7 @@ test.describe("with the code switched on", () => {
     expect(await code(page).evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(48);
     await expect(page.getByText("Кодот се менува на секои 30 секунди.")).toBeVisible();
     await expect(people(page)).toHaveCount(26);
-    // The one yellow button is still alone.
+    // The one main button is still alone.
     await expect(page.locator(".btn--primary:visible")).toHaveCount(1);
   });
 
