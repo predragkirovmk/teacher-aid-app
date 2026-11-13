@@ -27,9 +27,47 @@ for review", its preview link and the pictures, and wait.
 - 2026-11-12, 10:10 UTC: the owner approved the direction with look A, light
   (`decisions/direction`). Their note: UI libraries are allowed. Step 1 is being built.
 
+- 2026-11-13: step 1 (foundation and frame) is built and waits for the owner on the review page
+  (`decisions/step-1`). What it changed is under "Step 1 as built" below.
+
 A decision made on the page does not reach the session by itself. Read the store before
 every message that says what is being waited for, and, while a step waits for the owner,
 check it on a schedule rather than only when a "go" arrives in the chat.
+
+## Step 1 as built (2026-11-13)
+
+Every teacher screen changed skin at once; no layout, flow, wording or feature changed, and
+nothing new is asked of the API.
+
+- **Tokens.** `app/(teacher)/teacher.css` opens with the light palette of look A and one scale for
+  type, radius and sizes (`--fs-*`, `--r-*`, `--tap` 48px, `--tap-small` 44px, `--row` 56px). The
+  old dark names are gone from the file; `docs/teacher-plan.md` ("Design tokens") lists the new
+  ones.
+- **Type.** Golos Text for everything, body 17px, floor 16px, one large title a page.
+- **Buttons.** One main button a screen: deep teal, 48px, a pill. Every other button is quiet:
+  44px, the pale tint (white with an edge where it sits on the ground). End is white with a red
+  edge and red words. Yellow is left for a live lesson only: the band on Today, the tile in the
+  sidebar, the open question's panel.
+- **Surfaces.** White panels on the pale ground with a hairline ring, radius 20 to 22px; one soft
+  shadow under what floats (the sidebar, the save bar, windows).
+- **Frame.** The sidebar is a floating white panel, 248px, with who is signed in at its foot (the
+  link to Settings it always was). The name pill is gone from the top right of every page. Back is
+  a quiet link above the title.
+- **Window colours.** The browser's own colour, the installed app's manifest and the offline page
+  are light.
+- **The projector is untouched.** The class view keeps its dark teal palette, set on `.cv`
+  itself; its eight captures are the same picture as before, pixel for pixel.
+- **Motion** is as built on 2026-11-08: one rule now carries the colour and press transitions of
+  every control, and reduced motion still leaves only short fades.
+- **No library was added.** Step 1 is colour, type and the frame; the first place a headless
+  library earns its keep is the tabs and segmented controls of steps 4 and 5.
+- **Tests.** The tests that described the old look were rewritten to describe the new one (none
+  skipped): the helper for the screen's main button no longer names a colour, the sizes are 48px
+  for the main button, 44px for the others and 56px for a row that is chosen, the body is 17px with
+  the 16px floor, and the colours asserted are the new ones.
+
+Left for the later steps, on purpose: the layouts themselves (rows instead of stacks of boxes,
+one button a row, the live lesson on one screen). Step 1 only makes them calm to look at.
 
 ## What was measured
 

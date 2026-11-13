@@ -16,6 +16,8 @@ where they differ.
   and the website are not touched.
 - Colours come from the owner's desktop screens (`~/Desktop/desktop screens ta/`); their layouts
   are not the design. Teal is for the teacher app only; students stay blue and yellow.
+  (2026-11-12: the owner approved a light look for the teacher app, with that teal as its one
+  accent; see "Design tokens" below and `docs/teacher-redesign-plan.md`.)
 - v1 scope: lesson prep, live lesson (console plus projected class view, End), class results.
   School admin is out.
 - No timetable. "Today" lists prepared lessons, as the spec says.
@@ -30,16 +32,21 @@ where they differ.
 
 ## Simplicity first
 
-The users include older teachers who are not comfortable with computers. Every screen passes these:
+The users include older teachers who are not comfortable with computers. Every screen passes these
+(sizes and colours revised 2026-11-13 by step 1 of the redesign, `docs/teacher-redesign-plan.md`;
+the owner approved the light look on 2026-11-12):
 
-- Body text 18px or larger; nothing under 16px. Titles large and plain.
-- Buttons and rows at least 56px tall (48px for small secondary ones), always a word next to an
-  icon, never an icon alone.
-- One yellow button per screen: the main action, named for what it does ("Подготви лекција").
-- The sidebar is always visible on a laptop, with four labelled destinations. Nothing hidden
-  behind hover, right-click, drag, double-click or keyboard shortcuts; shortcuts may exist as an
-  extra, never as the only way.
-- Every screen has a plain title saying where you are. Deep screens have a labelled Back.
+- Body text 17px; nothing under 16px. Titles large and plain. Size and place carry the order of
+  things; weight is for names, numbers and buttons, not for whole paragraphs.
+- The main button is 48px tall, every other button or link that is pressed at least 44px, and a
+  row that is chosen or opened 56px. Always a word next to an icon, never an icon alone.
+- One main button per screen (teal): the main action, named for what it does
+  ("Подготви лекција"). Yellow is not a button colour any more: it only says a lesson is live.
+- The sidebar is always visible on a laptop, with four labelled destinations, and at its foot
+  Settings, Help, Sign out and who is signed in. Nothing hidden behind hover, right-click, drag,
+  double-click or keyboard shortcuts; shortcuts may exist as an extra, never as the only way.
+- Every screen has a plain title saying where you are. Deep screens have a labelled Back, a quiet
+  line above the title.
 - Anything that cannot be undone asks first, in plain words, with the safe choice as the default.
   Work saves itself.
 - Plain Macedonian, no jargon ("лекција", "час", not "сесија", "конзола").
@@ -48,32 +55,48 @@ The users include older teachers who are not comfortable with computers. Every s
 
 ## Design tokens (teacher app only)
 
+The app is light: a pale ground, white surfaces, dark ink and one accent, the teal of the logo.
+The values live in `:root` of `app/(teacher)/teacher.css`; this table is the summary.
+
 | Token | Value | Use |
 |---|---|---|
-| `--deep` | `#124554` | Sidebar, darkest panels |
-| `--panel` | `#145667` | Cards, bands, inputs' surround |
-| `--ground-top` | `#155869` | Page ground, top of the gradient |
-| `--ground` | `#32878C` | Page ground, body |
-| `--shadow` | `#0A2E37` | Deepest shade, overlays |
-| `--yellow` | `#FFC83E` | The one primary button; the live lesson |
-| `--yellow-deep` | `#CEA034` | Yellow pressed, yellow patterns |
-| `--red` | `#EC221F` | Warnings and End only |
-| `--text` | `#FFFFFF` | Text on teal |
-| `--ink` | `#0A2E37` | Text on yellow (white on yellow fails contrast) |
+| `--ground` | `#EEF2F2` | The window |
+| `--surface` | `#FFFFFF` | A card, a list, the sidebar, a dialog |
+| `--well`, `--well-2` | `#EEF2F2`, `#E2E9EA` | A quieter block inside a surface; a track or a chip |
+| `--ink` | `#0D2A32` | Words (15.1:1 on white, 13.4:1 on the ground) |
+| `--ink-2` | `#4A6068` | Secondary words (6.6:1 on white, 5.9:1 on the ground) |
+| `--ink-3` | `#8A9BA1` | Marks that carry no meaning alone; never words (2.9:1) |
+| `--teal` | `#124554` | The accent: the main button, links, what is selected (white on it 10.5:1) |
+| `--tint` | `#E1ECEE` | The fill of a quiet button and of the selected row (teal on it 8.7:1) |
+| `--yellow` | `#FFC83E` | A lesson is live, and nothing else (ink on it 9.7:1) |
+| `--red` | `#B42318` | End and what went wrong (6.6:1 on white), as words and an edge, not a block |
+| `--hairline`, `--edge`, `--edge-strong` | ink at 9%, ink at 20%, `#77898F` | A line between rows; the edge of a quiet control; the edge of a box to write in (3.7:1) |
 
-Contrast: white on `--ground` is about 4.2:1, so only large text (24px, or 19px bold) sits on the
-ground; normal text sits on `--panel` or `--deep`. White on `--red` is about 4.4:1: red buttons
-use 19px bold or larger. Right and wrong are never shown by colour alone (icon plus word).
+Contrast: every pair of words and ground above is 4.5:1 or more, so there is no rule about which
+text may sit where. Opacity is never used to dim words. Right and wrong are never shown by colour
+alone (icon plus word), and the accent and the ink are too close to be told apart by colour, so a
+selected thing also has its own ground, a filled icon or a tick, and a heavier label.
 
-Type: Golos Text for titles and numbers, the system font for body. Icons: Phosphor, regular
-weight, filled for the selected sidebar item. Spacing on the 8pt grid. Focus ring 3px yellow,
-offset 2px. Motion (owner, 2026-11-08: simple and luxurious): the student app's springs, no bounce;
+Shape and depth: surfaces have a 20px radius, what is inside them 13px, buttons are pills. A
+surface has a hairline ring and no shadow; only what floats over the page (the sidebar, a bar that
+stays, a window) has one soft shadow.
+
+Type: Golos Text everywhere (the system font until it has loaded), so a Windows laptop and a Mac
+show the same letters. Title 32 to 40px at weight 650, a section 20px, the name of a row 18px,
+body 17px, secondary 16px. Icons: Phosphor, regular weight, 22px in the menu and 20px in a button,
+filled for the selected sidebar item. Spacing on the 8pt grid. Focus ring 3px teal, offset 2px.
+
+The projected window (`.cv`) is the one dark place: it is read from the back of a classroom on a
+weak projector, so it keeps the dark teal, full-white words and sizes it had, under its own names
+(`--deep` `#124554`, `--ground-top` `#155869`, `--shadow` `#0A2E37`), and a yellow focus ring.
+Step 1 of the redesign left it pixel for pixel as it was.
+
+Motion (owner, 2026-11-08: simple and luxurious): the student app's springs, no bounce;
 a press sinks and springs back, a page and late content rise in (header first), the menu's selection
 slides, windows spring in and close at once, the drawer springs in and leaves quicker, a done mark lands, data bars grow, and
 the projector's reveal is the one choreographed moment (bars, then the right mark, then the
 ranking). Transform and opacity only, nothing loops but a wait, Reduce Motion leaves 150ms fades.
 See "Motion" in teacher.css.
-The app is dark teal only (no light mode).
 
 ## Code layout
 
@@ -85,6 +108,9 @@ The app is dark teal only (no light mode).
   `app/(app)/`, `components/app/`, `lib/app/` or the website is modified.
 
 ## Carried notes for later steps
+
+(These notes were written while the main button of a screen was yellow. Since 2026-11-13 it is
+teal: read "the yellow button" as "the main button". Yellow now only marks a live lesson.)
 
 - Step 4: the guide replayed from Settings returns to Settings when done or skipped (a first run
   still lands on Today). The sign-in screen has no yellow button on purpose: the provider buttons
