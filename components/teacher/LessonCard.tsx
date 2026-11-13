@@ -17,7 +17,7 @@ export const kindLine = (t: ReturnType<typeof useT>["t"], lesson: Pick<LessonSum
 
 /**
  * One lesson on Today or on the Lessons page: what it is, how many questions, and the two things to do with it, each named. One of them
- * is the outlined button, the way on from this card; the other is the quiet underlined link beside it, the lesser thing (the same two
+ * is the quiet filled button, the way on from this card; the other is the quiet underlined link beside it, the lesser thing (the same two
  * looks as on a card of a draft, whose "Фрли" is the quiet one). A lesson that is prepared is for starting a class, so "Започни час" is
  * the button and "Отвори", to look at it first, the link. A lesson that has been held is mostly looked up (to read it, to change it, to
  * hold it again from its own page), so "Отвори" is the button there and "Започни час" the link, still one press and still in words. A held

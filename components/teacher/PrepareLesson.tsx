@@ -47,7 +47,7 @@ import { Bar, Loading } from "./Skeleton";
 type Stage = { name: "form" } | { name: "wait"; phase: Phase } | { name: "failed"; failure: Failure; error: unknown };
 
 /**
- * Prepare a lesson (F-03), on one page. The form has three numbered parts and one yellow button; pressing it checks what it
+ * Prepare a lesson (F-03), on one page. The form has three numbered parts and one main button; pressing it checks what it
  * can on this side, reads the document if there is one (that is the wait here, with Cancel), asks for the questions, and goes on
  * to the page of the draft, which is where the questions are waited for: writing them is a job that goes on without this page
  * (BR-LES-08). Nothing typed or chosen is ever lost: Cancel, Back after a failure and a refusal of the material all return to the
@@ -415,7 +415,7 @@ export function PrepareLesson() {
 
 /**
  * What there is no choice about because there is only one: said as a plain line, "Предмет: Математика", and not as a chosen
- * row. A row with a tick and a white edge looks like something to press; this is only something to read.
+ * row. A row with a tick and an edge looks like something to press; this is only something to read.
  */
 function Stated({ label, text, detail }: { label: string; text: string; detail?: string }) {
   return (

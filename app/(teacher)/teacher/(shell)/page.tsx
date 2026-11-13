@@ -43,7 +43,7 @@ export default function TodayPage() {
   const date = today === null ? undefined : dateParts(today);
   const running = open.data?.session ?? null;
   const loading = lessons.status === "loading" || open.status === "loading" || drafts.status === "loading";
-  // Yellow belongs to one button: the way back to a running lesson, else the way to prepare a new one.
+  // A screen has one main button: the way back to a running lesson, else the way to prepare a new one.
   const prepareClass = running ? "btn btn--secondary" : "btn btn--primary";
   const { shown, more } = shownOnToday(lessons.data ?? []);
   // The same order as on the Lessons page, so that the few shown here are the first few there.

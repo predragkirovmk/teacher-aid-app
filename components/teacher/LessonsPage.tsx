@@ -20,7 +20,7 @@ import { StartDialog, type StartLesson } from "./StartDialog";
 import { SubjectRow } from "./SubjectRow";
 
 /**
- * All the teacher's lessons on one page, with nothing hidden behind a tab: the one yellow button prepares a lesson, and under it, in this
+ * All the teacher's lessons on one page, with nothing hidden behind a tab: the one main button prepares a lesson, and under it, in this
  * order (the order of Today), the lessons that are prepared, the ones that are not finished and the ones that were held, which are the
  * long list of a teacher with a year of lessons and so come last. Each section's name says how many it holds. A section with nothing in
  * it is not shown. A teacher with more than one subject chooses between them in a row at the top; with one there is no row. The

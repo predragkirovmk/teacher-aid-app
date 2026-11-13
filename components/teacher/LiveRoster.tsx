@@ -234,7 +234,7 @@ export function LiveRoster({ sessionId, students }: { sessionId: string; student
 }
 
 /**
- * The four reasons in plain words, and one yellow button that marks the student: "Confirming marks present_no_device with no further
+ * The four reasons in plain words, and one main button that marks the student: "Confirming marks present_no_device with no further
  * question." Nothing is chosen at first, so a wrong tap is not made for the teacher; Enter on the choices starts nothing. The student
  * may have joined with a phone while the teacher was choosing: then the console says so and marks nothing.
  */

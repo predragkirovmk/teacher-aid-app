@@ -42,9 +42,9 @@ export function currentQuestion(questions: readonly ConsoleQuestion[]): ConsoleQ
 }
 
 /**
- * What the panel shows, and so what the page's one yellow button does:
+ * What the panel shows, and so what the page's one main button does:
  * - nothing is open: send the next question (`next`; none left is said plainly), and `skipped` is the one just skipped, if that was the last thing done;
- * - open: no yellow, a countdown and the way to skip;
+ * - open: no main button, a countdown and the way to skip;
  * - closed: show the right answer;
  * - revealed: the counts, and send the next (`next`, or none left). Moving on to the review is the next step of the build, not this one's.
  */

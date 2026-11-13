@@ -17,9 +17,9 @@ const ICONS: Record<GuideIcon, Icon> = { prepare: FileTextIcon, hold: QrCodeIcon
 
 /**
  * The welcome guide of a first run: three short steps, one thing each, with Next, a labelled Back and "Skip the guide" always
- * in view. Skipping marks the first run done (FR-SUP-03) and lands on Today, where the one yellow button is "Prepare a lesson",
+ * in view. Skipping marks the first run done (FR-SUP-03) and lands on Today, where the one main button is "Prepare a lesson",
  * or on the screen the first sign-in was heading for. The last step of a first run leads into the first lesson (F-01 step 3): the
- * yellow button opens the form that prepares one, and the first run is done when that lesson is saved; "Not now" is the way
+ * main button opens the form that prepares one, and the first run is done when that lesson is saved; "Not now" is the way
  * out to Today. It is also reached again from Settings, where finishing or skipping changes nothing on the server and goes back
  * to Settings, and says so.
  */

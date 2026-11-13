@@ -30,7 +30,7 @@ export function useRunningWords(session: NonNullable<OpenSession["session"]>, se
 }
 
 /**
- * A lesson is running: said at the top of Today, with what it is and for how long, and the screen's one yellow button, which
+ * A lesson is running: said at the top of Today, with what it is and for how long, and the screen's one main button, which
  * goes back to it. The yellow edge is the live lesson's colour; the word and the icon say it too.
  */
 export function RunningBand({ session, serverNow }: { session: NonNullable<OpenSession["session"]>; serverNow: string }) {

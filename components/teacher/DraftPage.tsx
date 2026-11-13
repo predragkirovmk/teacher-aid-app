@@ -232,7 +232,7 @@ function Pending({ draft, from, offline, onAsk }: { draft: LessonDraft; from: st
 
 /**
  * The draft is still being written long after the server should have failed it: the job has stopped without anyone saying so. The
- * yellow button is the way a failure has, back to the form filled in again (or the questions as they were); the other waits on.
+ * main button is the way a failure has, back to the form filled in again (or the questions as they were); the other waits on.
  */
 function Stuck({ refining, onBack, onWait }: { refining: boolean; onBack: () => void; onWait: () => void }) {
   const { t } = useT();
@@ -258,7 +258,7 @@ function Stuck({ refining, onBack, onWait }: { refining: boolean; onBack: () => 
   );
 }
 
-/** The AI could not write it, even after its one retry (EC-LES-02): the yellow button runs the same draft again, the other gives it up. */
+/** The AI could not write it, even after its one retry (EC-LES-02): the main button runs the same draft again, the other gives it up. */
 function Failed({ draft, from }: { draft: LessonDraft; from: string | null }) {
   const [problem, setProblem] = useState<unknown>(null);
   const { te } = useT();

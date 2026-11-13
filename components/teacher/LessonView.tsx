@@ -23,7 +23,7 @@ const SAVED_WORDS = { new: "lesson.saved.new", changes: "lesson.saved.changes", 
 /**
  * A lesson, to read: its title, subject and year, what the teacher asked to stress, and the questions in order, each with
  * its kind in words, its answers, which one is right (an icon and the words "Точен одговор", never colour alone), its timer
- * and why. Two things to do with it: start a class (the yellow one), and edit it, which opens a draft of it to change (a lesson
+ * and why. Two things to do with it: start a class (the main one), and edit it, which opens a draft of it to change (a lesson
  * is read here, and changed on a draft's page, where every change saves itself). Coming from saving, a line says so once.
  * Back goes to the screen the teacher came from, and names it.
  */

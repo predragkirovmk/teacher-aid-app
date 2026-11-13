@@ -4,7 +4,7 @@ import { useEffect, useId, useRef } from "react";
 import { Problem } from "./Problem";
 
 /**
- * A question before something that cannot be undone, in plain words, with the safe answer in hand: it is the yellow
+ * A question before something that cannot be undone, in plain words, with the safe answer in hand: it is the main
  * button and it has the focus. The safe button comes first in the markup because that is the one `showModal()` focuses
  * (a closed dialog cannot take an `autoFocus`). Escape and the backdrop-less close both answer "stay".
  */

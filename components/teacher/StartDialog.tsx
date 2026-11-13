@@ -21,7 +21,7 @@ export type StartLesson = Pick<Lesson, "id" | "title" | "subject" | "year">;
 /**
  * "Започни час": which class is the lesson for, and go. It is shown when the teacher presses the button and is gone when it
  * closes, so every time it opens it is a fresh question. The focus is on the choices, where the keyboard has something to do
- * at once (an arrow chooses) and where Enter starts nothing; Start is the yellow button. A teacher who already has a lesson
+ * at once (an arrow chooses) and where Enter starts nothing; Start is the main button. A teacher who already has a lesson
  * running is told so instead, with the way back to it,
  * whether this screen knew or only the API did (`session_open`). Close it only with its own `close()`: the browser then gives
  * the focus back to the button that opened it.

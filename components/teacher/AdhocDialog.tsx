@@ -33,7 +33,7 @@ const PROBLEM_WORDS = {
 
 /**
  * "Брзо прашање" (FR-POP-04): one short screen. The kind, the question, the right answer and the time, with the time already filled in for the kind.
- * It is sent at once and the panel takes it over. Nothing is checked until the yellow button is pressed, and then every problem is listed in plain words.
+ * It is sent at once and the panel takes it over. Nothing is checked until the main button is pressed, and then every problem is listed in plain words.
  */
 export function AdhocDialog({ sessionId, onClose }: { sessionId: string; onClose: () => void }) {
   const { t, te } = useT();

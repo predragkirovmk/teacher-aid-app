@@ -21,7 +21,7 @@ import { SubjectRow } from "./SubjectRow";
 
 /**
  * The school library (F-05): the lessons colleagues of the same school saved, newest first, each with who made it, how many questions it
- * has and whether the teacher has copied it already. Each opens a preview, where it is read and copied. There is no yellow button here:
+ * has and whether the teacher has copied it already. Each opens a preview, where it is read and copied. There is no main button here:
  * the main action, copying, is on the preview. A short library is shown whole; a long one opens on the teacher's own subjects.
  */
 export function LibraryPage() {

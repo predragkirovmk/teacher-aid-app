@@ -80,7 +80,7 @@ function SaveState({ status }: { status: SaveStatus }) {
 
 /**
  * The page of a draft that is ready: the lesson to read and change. The title, each question (one open at a time), the four
- * refinements, the review summary and the one yellow button that makes it a lesson. Every change goes into the draft a moment after
+ * refinements, the review summary and the one main button that makes it a lesson. Every change goes into the draft a moment after
  * the teacher stops (lib/teacher/autosave.ts), so there is nothing to remember to save, nothing is lost by leaving, and the page
  * says so calmly. Questions are first and the summary after them, as the draft was read before it could be edited.
  */
@@ -583,7 +583,7 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
         )}
 
         {/*
-          The one yellow button and where saving stands are one bar that stays at the bottom of the window while the page is longer than
+          The one main button and where saving stands are one bar that stays at the bottom of the window while the page is longer than
           it, so the way to make this a lesson is never a scroll away; on a short window (a zoomed one) it is part of the page instead.
         */}
         <div className="savebar">

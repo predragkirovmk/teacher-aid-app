@@ -61,7 +61,7 @@ const WORDS: Record<Exclude<Failure, "other">, { title: Key; body: Key }> = {
 };
 
 /**
- * The wait ended in a failure: what happened in plain words, that nothing is lost, and the way forward. The yellow button asks
+ * The wait ended in a failure: what happened in plain words, that nothing is lost, and the way forward. The main button asks
  * again for the questions with the same material (a document already sent is not sent again); the other button returns to the
  * form with everything as it was, or, for a refinement that failed, to the questions as they were.
  */

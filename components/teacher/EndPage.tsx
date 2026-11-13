@@ -39,7 +39,7 @@ function useAttendanceWords(): AttendanceWords {
 
 /**
  * The page a lesson ends on, and the page a held lesson opens to (`/teacher/live/{id}`, the address of the console while it ran): the full attendance list
- * for e-Дневник with its counts, to copy or print (FR-END-03); the questions the class missed most; the practice set to send (F-12); and the one yellow way on,
+ * for e-Дневник with its counts, to copy or print (FR-END-03); the questions the class missed most; the practice set to send (F-12); and the one main way on,
  * back to Today. It reads `GET /sessions/{id}/review`, so it is the same after a reload or on another day.
  */
 export function EndPage({ sessionId }: { sessionId: string }) {

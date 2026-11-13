@@ -13,7 +13,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
  * The one red control of the app (FR-END-04): "Заврши го часот", on the console in every state and on the band and the reminder of every other page.
  * It always asks first, in plain words, with the safe answer as the default. If the call fails the question stays open and says so, and pressing
  * "Да" again tries again; the lesson is untouched. A lesson another window already ended is as good as ended. From another page it leads to the end page.
- * White on red is 4.4:1, so the label is bold and 19px or larger (the stylesheet).
+ * It is red words and a stop icon in a red edge, never a red block, so the main button of a screen stays the one that leads.
  */
 export function EndLesson({
   sessionId,
