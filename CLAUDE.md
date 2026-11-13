@@ -53,8 +53,8 @@ How the work moves, and this is not optional:
    you are waiting, and before you start the next step. A message in the chat is not an approval
    unless the owner says so in their own words.
 4. Never start the next step on a guess. If a step is sent back, fix it and show it again.
-5. When a step is shown, record it: the plan's Status, the day's note in the brain and
-   `Areas/product/prototype.md` there.
+5. When a step is shown, record it: the plan's Status, and in the brain the day's note and
+   `Areas/product/teacher-app-redesign.md`.
 
 ## What good looks like in the teacher app
 

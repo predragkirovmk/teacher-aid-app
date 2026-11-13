@@ -232,4 +232,4 @@ One preview link a step; the owner approves each before the next starts.
   `CLAUDE.md`.
 - When the direction is approved: rewrite "Simplicity first" and the token table in
   `docs/teacher-plan.md`, and record the decision in the brain (the day's note, then
-  `Areas/product/prototype.md`).
+  `Areas/product/teacher-app-redesign.md`). The same two places record each step when it is shown.
