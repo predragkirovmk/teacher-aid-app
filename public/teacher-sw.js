@@ -9,6 +9,10 @@
  * Pages: network first, the cached copy when offline or slow. /_next/static: cache first, the names are content-hashed.
  * The page posts { type: "warm", routes } after load; the worker then caches those pages and the files they use, and
  * drops what a previous deploy left behind.
+ *
+ * The files in ASSETS are fetched when the worker is installed, and a browser installs it again only when this file
+ * changes. So a change to one of them (the offline page, the manifest) needs a change here: move the date on.
+ * Assets as of 2026-11-13 (the light look).
  */
 
 const PAGES = "teacher-pages";

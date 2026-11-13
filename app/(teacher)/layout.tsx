@@ -22,11 +22,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+// The window's own colour is the ground of the app, so the browser's bar and the page read as one light surface. The projected
+// window is the one dark page and says so itself (teacher/live/[sessionId]/class/page.tsx).
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#124554",
-  colorScheme: "dark",
+  themeColor: "#eef2f2",
+  colorScheme: "light",
 };
 
 export default function TeacherRootLayout({ children }: { children: ReactNode }) {
