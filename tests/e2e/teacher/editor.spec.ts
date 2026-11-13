@@ -1109,10 +1109,16 @@ test.describe("editing a saved lesson", () => {
     const draft = page.locator(".lessons > li", { hasText: "Измени на зачувана лекција" });
     await expect(draft).toHaveCount(1);
     await expect(draft).toContainText("Во тек на измена");
-    await draft.getByRole("button", { name: "Фрли" }).click();
+    // Throwing the changes away is on the draft's own page, at its end, and says what stays.
+    await draft.getByRole("link", { name: "Продолжи" }).click();
+    await page.getByRole("button", { name: "Фрли ги измените" }).click();
     const dialog = page.getByRole("alertdialog", { name: "Дали да се фрли оваа лекција?" });
     await expect(dialog).toContainText("Измените ќе се изгубат. Зачуваната лекција останува каква што е.");
     await dialog.getByRole("button", { name: "Да, фрли" }).click();
+    // It leaves by the way Back does: to the saved lesson, which is as it was.
+    await expect(page).toHaveURL(/\/teacher\/lessons\/l-zadaci/);
+    await page.goto("/teacher");
+    await expect(page.getByRole("heading", { level: 1, name: "Денес" })).toBeVisible();
     await expect(draft).toHaveCount(0);
     await expect(page.locator(".lessons > li", { hasText: "Задачи за проценти" })).toHaveCount(1);
   });
@@ -1155,9 +1161,9 @@ test.describe("Today lists what is not finished", () => {
     await expect(drafts.nth(2)).toContainText("6 прашања · Последна промена:");
     // "Продолжи" only where there is something to carry on: a lesson being written, or that failed, is opened to be looked at.
     for (let i = 0; i < 3; i++) {
-      await expect(drafts.nth(i).getByRole("link", { name: i === 2 ? "Продолжи" : "Отвори" })).toHaveClass(/btn--secondary/);
-      await expect(drafts.nth(i).getByRole("link", { name: i === 2 ? "Отвори" : "Продолжи" })).toHaveCount(0);
-      await expect(drafts.nth(i).getByRole("button", { name: "Фрли" })).toBeVisible();
+      // The row's one link, in words; no button: throwing a draft away is on its own page.
+      await expect(drafts.nth(i).getByRole("link")).toHaveText(i === 2 ? "Продолжи" : "Отвори");
+      await expect(drafts.nth(i).getByRole("button")).toHaveCount(0);
     }
     // The only red on the card that failed is its warning mark.
     const red = await drafts.nth(1).evaluate((card) => [...card.querySelectorAll("*")].filter((el) => getComputedStyle(el).backgroundColor === "rgb(180, 35, 24)").map((el) => el.className));
@@ -1232,21 +1238,29 @@ test.describe("Today lists what is not finished", () => {
     expect((await demo(page)).school.drafts.filter((d) => d.id === "d-failed")).toHaveLength(1);
   });
 
-  test("'Фрли' asks first: staying keeps it, and yes throws it away for good", async ({ page }) => {
+  test("'Фрли ја лекцијата', at the end of the draft's page, asks first: staying keeps it, and yes throws it away for good", async ({ page }) => {
     await seed(page, { drafts: [draftOf()] }, "/teacher");
     const draft = page.locator("section[aria-labelledby=unfinished] .lessons > li");
-    await draft.getByRole("button", { name: "Фрли" }).click();
+    await draft.getByRole("link", { name: "Продолжи" }).click();
+    const discard = page.getByRole("button", { name: "Фрли ја лекцијата" });
+    // It is the last thing on the page, after the bar that saves, and it is a quiet button.
+    await expect(discard).toHaveClass(/btn--secondary/);
+    expect((await discard.boundingBox())!.y).toBeGreaterThan((await page.locator("#save-note").boundingBox())!.y);
+    await discard.click();
     const dialog = page.getByRole("alertdialog", { name: "Дали да се фрли оваа лекција?" });
     await expect(dialog).toContainText("Она што е подготвено ќе се изгуби.");
     await expect(dialog.getByRole("button", { name: "Не, задржи" })).toBeFocused();
     await expect(dialog.getByRole("button", { name: "Не, задржи" })).toHaveClass(/btn--primary/);
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
-    await expect(draft).toHaveCount(1);
+    await expect(discard).toBeFocused();
+    expect((await demo(page)).school.drafts).toHaveLength(1);
 
-    await draft.getByRole("button", { name: "Фрли" }).click();
+    await discard.click();
     await dialog.getByRole("button", { name: "Да, фрли" }).click();
-    await expect(dialog).toBeHidden();
+    // It leaves by the way Back does, to Today, where the lesson is no longer listed.
+    await expect(page).toHaveURL(/\/teacher$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Денес" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Недовршени лекции" })).toHaveCount(0);
     expect((await demo(page)).school.drafts).toEqual([]);
     // The lesson itself is not there either: this is the one the AI made, never saved.
@@ -1254,11 +1268,14 @@ test.describe("Today lists what is not finished", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Недовршени лекции" })).toHaveCount(0);
   });
 
-  test("a draft being written is thrown away with its own words, and writing stops", async ({ page }) => {
+  test("a draft being written is stopped from its own page: the row opens the wait, and its 'Откажи' asks first", async ({ page }) => {
     const job = { started_at: iso(Date.now() - 1_000), done_at: iso(Date.now() + 5 * 60_000), outcome: "ready" };
     await seed(page, { drafts: [second({ job, content: { title: "Скриено", review_summary: "", questions: [] } })] }, "/teacher");
-    await page.locator("section[aria-labelledby=unfinished] .lessons > li").getByRole("button", { name: "Фрли" }).click();
-    await expect(page.getByRole("alertdialog", { name: "Дали да се фрли оваа лекција?" })).toContainText("Подготвувањето ќе запре.");
+    const row = page.locator("section[aria-labelledby=unfinished] .lessons > li");
+    await expect(row.getByRole("button")).toHaveCount(0);
+    await row.getByRole("link", { name: "Отвори" }).click();
+    await page.getByRole("button", { name: "Откажи" }).click();
+    await expect(page.getByRole("alertdialog", { name: "Дали сакате да откажете?" })).toContainText("Прашањата нема да се напишат.");
   });
 });
 

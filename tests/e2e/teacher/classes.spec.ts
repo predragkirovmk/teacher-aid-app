@@ -60,7 +60,7 @@ test.describe("the list of classes", () => {
 
   test("a card opens the results of its class", async ({ page }) => {
     await page.goto("/teacher/classes");
-    await page.getByTestId("class-card").nth(1).getByRole("link", { name: "Види резултати" }).click();
+    await page.getByTestId("class-card").nth(1).getByRole("link").click();
     await expect(page).toHaveURL(/\/teacher\/classes\/course-iv-1$/);
     await expect(title(page)).toHaveText("IV-1 · Математика");
   });
@@ -316,7 +316,7 @@ test.describe("a lesson ended in the demo", () => {
     await expect(card.getByRole("heading")).toHaveText("II-4 · Математика");
     await expect(card).toContainText("11 одржани часа");
     await expect(card).toContainText("Последниот час беше денес");
-    await card.getByRole("link", { name: "Види резултати" }).click();
+    await card.getByRole("link").click();
     await expect(page.getByTestId("sum-lessons")).toHaveText("11");
     const lessons = page.getByTestId("points-row");
     await expect(lessons.first()).toContainText("Проценти и пропорции");

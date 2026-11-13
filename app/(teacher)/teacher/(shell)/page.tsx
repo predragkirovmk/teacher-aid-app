@@ -4,7 +4,6 @@ import { ArrowRightIcon, ChalkboardTeacherIcon, PlusIcon } from "@phosphor-icons
 import Link from "next/link";
 import { useState } from "react";
 import { DraftCard } from "@/components/teacher/DraftCard";
-import { useDiscardDraft } from "@/components/teacher/DiscardDraft";
 import { LessonCard } from "@/components/teacher/LessonCard";
 import { LoadProblem } from "@/components/teacher/LoadProblem";
 import { PageHeader } from "@/components/teacher/PageHeader";
@@ -22,9 +21,10 @@ import { dateParts } from "@/lib/teacher/when";
 const GREETING = { morning: "today.greet.morning", day: "today.greet.day", evening: "today.greet.evening" } as const;
 
 /**
- * Today, top to bottom: the date, a lesson that is running, the one button to prepare a lesson, the lessons prepared and not run (what
- * Today is for: the one a teacher comes to hold), then the lessons that are not finished (being written, failed, or being changed).
- * Not the other way round: a few forgotten drafts would push the lesson for the day below the fold of a laptop.
+ * Today, top to bottom: the date and the title, with the one button to prepare a lesson at their right; a lesson that is running; the
+ * lessons prepared and not run (what Today is for: the one a teacher comes to hold), then the lessons that are not finished (being
+ * written, failed, or being changed). Not the other way round: a few forgotten drafts would push the lesson for the day below the fold
+ * of a laptop. Each list is rows on one surface: a row opens its lesson and has one button.
  */
 export default function TodayPage() {
   const { t } = useT();
@@ -37,8 +37,6 @@ export default function TodayPage() {
   // The window that starts a lesson belongs to the page, not to the lesson's card: a lesson that has just been started leaves
   // the list, and the window must stay until it has said what happened.
   const [starting, setStarting] = useState<StartLesson | null>(null);
-  // Throwing a draft away is asked about by the page too, for the same reason: the list changes under its buttons.
-  const discarding = useDiscardDraft();
 
   const date = today === null ? undefined : dateParts(today);
   const running = open.data?.session ?? null;
@@ -49,6 +47,8 @@ export default function TodayPage() {
   // The same order as on the Lessons page, so that the few shown here are the first few there.
   const unfinished = newestChangeFirst(drafts.data ?? []);
   const { shown: shownDrafts, more: moreDrafts } = shownOnToday(unfinished, TODAY_DRAFTS_MAX);
+
+  const empty = !loading && lessons.status !== "error" && shown.length === 0 && unfinished.length === 0 && drafts.status !== "error";
 
   const prepare = (
     <Link href={newLessonUrl(FROM_TODAY)} className={prepareClass}>
@@ -63,6 +63,8 @@ export default function TodayPage() {
         title={t("today.title")}
         date={date ? t("today.date", { weekday: t(date.weekday), day: date.day, month: t(date.month) }) : undefined}
         subtitle={teacher ? t(part ? GREETING[part] : "today.greet.neutral", { name: teacher.first }) : undefined}
+        // With nothing prepared yet the button is in the middle of the page, with the words that say what it is for.
+        action={empty ? undefined : prepare}
       />
       <div className="content">
         {open.status === "error" && <LoadProblem title={t("running.error.title")} error={open.error} onRetry={open.refetch} />}
@@ -70,22 +72,22 @@ export default function TodayPage() {
 
         {loading ? (
           <Loading>
-            <Bar width="14rem" height="3.5rem" className="skeleton--button" />
             <Bar width="16rem" height="2rem" className="skeleton--heading" />
-            {[0, 1].map((i) => (
-              <div key={i} className="lesson lesson--skeleton" aria-hidden="true">
-                <div className="lesson__text">
-                  <Bar width="55%" height="1.75rem" />
-                  <Bar width="35%" height="1.25rem" />
-                  <Bar width="45%" height="1.25rem" />
+            <div className="lessons" aria-hidden="true">
+              {[0, 1].map((i) => (
+                <div key={i} className="lesson lesson--skeleton">
+                  <div className="lesson__text">
+                    <Bar width="45%" height="1.5rem" />
+                    <Bar width="65%" height="1.25rem" />
+                  </div>
+                  <Bar width="9rem" height="2.75rem" className="skeleton--button" />
                 </div>
-                <Bar width="11rem" height="3.5rem" className="skeleton--button" />
-              </div>
-            ))}
+              ))}
+            </div>
           </Loading>
         ) : lessons.status === "error" ? (
           <LoadProblem title={t("today.prepared.error")} error={lessons.error} onRetry={lessons.refetch} />
-        ) : shown.length === 0 && unfinished.length === 0 && drafts.status !== "error" ? (
+        ) : empty ? (
           <div className="card card--stack">
             <span className="card__icon">
               <ChalkboardTeacherIcon size={32} aria-hidden="true" />
@@ -96,7 +98,6 @@ export default function TodayPage() {
           </div>
         ) : (
           <>
-            <div>{prepare}</div>
             {shown.length > 0 && (
               <section aria-labelledby="prepared">
                 <h2 className="section__title" id="prepared">
@@ -122,7 +123,7 @@ export default function TodayPage() {
                 </h2>
                 <ul className="lessons">
                   {shownDrafts.map((draft) => (
-                    <DraftCard key={draft.id} draft={draft} today={today} from={FROM_TODAY} onDiscard={discarding.ask} />
+                    <DraftCard key={draft.id} draft={draft} today={today} from={FROM_TODAY} />
                   ))}
                 </ul>
                 {moreDrafts && (
@@ -138,7 +139,6 @@ export default function TodayPage() {
         )}
       </div>
       {starting && <StartDialog lesson={starting} onClose={() => setStarting(null)} />}
-      {discarding.dialog}
     </>
   );
 }

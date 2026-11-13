@@ -94,25 +94,29 @@ test.describe("Today with lessons prepared", () => {
     await expect(cards(page).nth(1).getByRole("heading", { level: 3 })).toHaveText("Проценти и пропорции");
     await expect(cards(page).nth(1)).toContainText("Математика · II година");
     await expect(cards(page).nth(1)).toContainText("6 прашања · Последна промена: пред 3 дена");
-    // Two labelled actions on each, a word beside every icon.
+    // One button on each, in words; the row itself opens the lesson: its title is the link, and it is the only one.
     for (const card of await cards(page).all()) {
-      await expect(card.getByRole("button", { name: "Започни час" })).toBeVisible();
-      await expect(card.getByRole("link", { name: "Отвори" })).toBeVisible();
+      await expect(card.getByRole("button")).toHaveText("Започни час");
+      await expect(card.getByRole("link")).toHaveText(await card.getByRole("heading", { level: 3 }).innerText());
+      await expect(card.getByRole("link")).toHaveAttribute("href", /\/teacher\/lessons\/l-.*from=today/);
     }
     // Nothing is running, so no band.
     await expect(page.getByText("Час во тек", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Сите лекции" })).toHaveCount(0);
   });
 
-  test("has one main button, \"Подготви лекција\", at the top above the lessons; the lessons' own buttons are quiet ones", async ({ page }) => {
+  test("has one main button, \"Подготви лекција\", in the header at the right of the title; the lessons' own buttons are quiet ones", async ({ page }) => {
     await page.goto("/teacher");
     await expect(cards(page)).toHaveCount(2);
     await expect(mainButton(page)).toHaveCount(1);
     const prepare = page.getByRole("link", { name: "Подготви лекција" });
     await expect(prepare).toHaveClass(/btn--primary/);
     await expect(prepare).toHaveAttribute("href", "/teacher/lessons/new?from=today");
-    const [button, list] = [(await prepare.boundingBox())!, (await cards(page).first().boundingBox())!];
-    expect(button.y).toBeLessThan(list.y);
+    const [button, list, title] = [(await prepare.boundingBox())!, (await cards(page).first().boundingBox())!, (await page.getByRole("heading", { level: 1 }).boundingBox())!];
+    expect(button.y + button.height).toBeLessThan(list.y);
+    // Beside the title, not under it: to its right, and ending where the list ends.
+    expect(button.x).toBeGreaterThan(title.x + title.width);
+    expect(Math.abs(button.x + button.width - (list.x + list.width))).toBeLessThanOrEqual(1);
     // Where the eye starts: under the title, inside the first screen of a 1280 x 720 window.
     expect(button.y + button.height).toBeLessThan(720);
     for (const card of await cards(page).all()) await expect(card.getByRole("button", { name: "Започни час" })).toHaveClass(/btn--secondary/);
@@ -122,7 +126,8 @@ test.describe("Today with lessons prepared", () => {
     await page.goto("/teacher");
     const heights = async (locator: ReturnType<Page["locator"]>) => Promise.all((await locator.all()).map((b) => tall(b)));
     for (const h of await heights(page.getByRole("button", { name: "Започни час" }))) expect(h).toBeGreaterThanOrEqual(44);
-    for (const h of await heights(page.getByRole("link", { name: "Отвори" }))) expect(h).toBeGreaterThanOrEqual(44);
+    // A row is pressed to open its lesson: 56px or more of it.
+    for (const h of await heights(page.locator(".lesson"))) expect(h).toBeGreaterThanOrEqual(56);
     expect(await tall(page.getByRole("link", { name: "Подготви лекција" }))).toBeGreaterThanOrEqual(48);
     // And the type: 16px or more everywhere on the cards.
     const small = await page.locator(".lesson").evaluateAll((els) =>
@@ -169,7 +174,7 @@ test.describe("Today with lessons prepared", () => {
     await expect(cards(page).nth(1)).toContainText("Last changed: 3 days ago");
     await expect(page.getByRole("link", { name: "Prepare a lesson" })).toBeVisible();
     await expect(cards(page).first().getByRole("button", { name: "Start lesson" })).toBeVisible();
-    await expect(cards(page).first().getByRole("link", { name: "Open" })).toBeVisible();
+    await expect(cards(page).first().getByRole("link")).toHaveText(await cards(page).first().getByRole("heading", { level: 3 }).innerText());
   });
 
   test("at a faculty it is groups and study years", async ({ page }) => {
@@ -232,9 +237,10 @@ test.describe("Today with a lesson running", () => {
     // The one main button of the screen; "Подготви лекција" is secondary.
     await expect(mainButton(page)).toHaveCount(1);
     await expect(page.getByRole("link", { name: "Подготви лекција" })).toHaveClass(/btn--secondary/);
-    // The band is above everything else but the header.
-    const [bandBox, listBox] = [(await band.boundingBox())!, (await page.getByRole("link", { name: "Подготви лекција" }).boundingBox())!];
-    expect(bandBox.y).toBeLessThan(listBox.y);
+    // The band is above everything else but the header, where the quiet "Подготви лекција" stays at the right of the title.
+    const [bandBox, headBox, listBox] = [(await band.boundingBox())!, (await page.getByRole("link", { name: "Подготви лекција" }).boundingBox())!, (await cards(page).first().boundingBox())!];
+    expect(headBox.y + headBox.height).toBeLessThan(bandBox.y);
+    expect(bandBox.y + bandBox.height).toBeLessThan(listBox.y);
     // The running lesson is not offered again below.
     await expect(cards(page)).toHaveCount(1);
     await expect(cards(page).first().getByRole("heading", { level: 3 })).toHaveText("Проценти и пропорции");
@@ -606,7 +612,7 @@ test.describe("starting a lesson", () => {
 test.describe("a lesson, to read", () => {
   test("opened from Today: its title, subject and year, and the questions in order, each with its kind, answers, timer and why", async ({ page }) => {
     await page.goto("/teacher");
-    await cards(page).filter({ hasText: "Проценти и пропорции" }).getByRole("link", { name: "Отвори" }).click();
+    await cards(page).filter({ hasText: "Проценти и пропорции" }).getByRole("link").click();
     await expect(page).toHaveURL(/\/teacher\/lessons\/l-procenti\?from=today$/);
     await expect(title(page)).toHaveText("Проценти и пропорции");
     await expect(page).toHaveTitle("Проценти и пропорции · TeacherAid");
@@ -724,7 +730,7 @@ test.describe("a lesson, to read", () => {
   test("is in English, at a faculty", async ({ page }) => {
     await page.addInitScript((key) => localStorage.setItem(key, JSON.stringify({ locale: "en", schoolType: "university", schoolSeen: true })), SETTINGS_KEY);
     await page.goto("/teacher");
-    await cards(page).first().getByRole("link", { name: "Open" }).click();
+    await cards(page).first().getByRole("link").click();
     await expect(page.getByRole("link", { name: "Back to Today" })).toBeVisible();
     await expect(page.locator(".head__sub")).toHaveText("Математичка анализа 1 · Year 1");
     await expect(page.getByRole("heading", { level: 2, name: "Questions" })).toBeVisible();

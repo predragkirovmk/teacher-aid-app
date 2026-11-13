@@ -1,8 +1,8 @@
 "use client";
 
-import { BooksIcon, CheckCircleIcon, EyeIcon } from "@phosphor-icons/react";
+import { BooksIcon, CaretRightIcon, CheckCircleIcon } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useId, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useCourses, useLibrary } from "@/lib/teacher/api/hooks";
 import type { LibraryItem } from "@/lib/teacher/api/types";
 import { useToday } from "@/lib/teacher/day";
@@ -21,7 +21,7 @@ import { SubjectRow } from "./SubjectRow";
 
 /**
  * The school library (F-05): the lessons colleagues of the same school saved, newest first, each with who made it, how many questions it
- * has and whether the teacher has copied it already. Each opens a preview, where it is read and copied. There is no main button here:
+ * has and whether the teacher has copied it already. Each is a row that opens a preview, where it is read and copied. There is no main button here:
  * the main action, copying, is on the preview. A short library is shown whole; a long one opens on the teacher's own subjects.
  */
 export function LibraryPage() {
@@ -56,16 +56,16 @@ export function LibraryPage() {
         {loading ? (
           <Loading>
             <Bar width="12rem" height="2rem" className="skeleton--heading" />
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="lesson lesson--skeleton" aria-hidden="true">
-                <div className="lesson__text">
-                  <Bar width="55%" height="1.75rem" />
-                  <Bar width="35%" height="1.25rem" />
-                  <Bar width="45%" height="1.25rem" />
+            <div className="lessons" aria-hidden="true">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="lesson lesson--skeleton">
+                  <div className="lesson__text">
+                    <Bar width="45%" height="1.5rem" />
+                    <Bar width="65%" height="1.25rem" />
+                  </div>
                 </div>
-                <Bar width="11rem" height="3.5rem" className="skeleton--button" />
-              </div>
-            ))}
+              ))}
+            </div>
           </Loading>
         ) : library.status === "error" ? (
           <LoadProblem title={t("library.error")} error={library.error} onRetry={library.refetch} />
@@ -99,21 +99,22 @@ export function LibraryPage() {
   );
 }
 
-/** One colleague's lesson: what it is, who made it, when, and the one thing to do with it, read it. */
+/** One colleague's lesson, as a row: what it is, who made it and when. The row opens it to be read; copying is there. */
 function LibraryCard({ item, today }: { item: LibraryItem; today: number | null }) {
   const { t, locale } = useT();
-  const title = useId();
   const questions = t(isOne(item.question_count, locale) ? "lesson.questions.one" : "lesson.questions.many", { n: item.question_count });
   const saved = today === null ? null : t("library.saved", { when: sayWhen(t, relativeDay(Date.parse(item.saved_at), today)) });
+  const owner = t("library.owner", { name: item.owner.name });
   return (
     <li className="lesson">
       <div className="lesson__text">
-        <h3 className="lesson__title" id={title}>
-          {item.title}
+        <h3 className="lesson__title">
+          <Link href={libraryLessonUrl(item.lesson_id)} prefetch={false} className="lesson__open">
+            {item.title}
+          </Link>
         </h3>
-        <p>{kindLine(t, item)}</p>
-        <p>{`${questions} · ${t("library.owner", { name: item.owner.name })}`}</p>
-        {saved && <p>{saved}</p>}
+        <p>{`${kindLine(t, item)} · ${questions}`}</p>
+        <p>{saved ? `${owner} · ${saved}` : owner}</p>
         {item.already_copied && (
           <p className="lesson__edit lesson__copied">
             <CheckCircleIcon size={24} weight="fill" aria-hidden="true" />
@@ -121,12 +122,7 @@ function LibraryCard({ item, today }: { item: LibraryItem; today: number | null 
           </p>
         )}
       </div>
-      <div className="lesson__actions">
-        <Link href={libraryLessonUrl(item.lesson_id)} prefetch={false} className="btn btn--secondary" aria-describedby={title}>
-          <EyeIcon size={24} aria-hidden="true" />
-          {t("library.open")}
-        </Link>
-      </div>
+      <CaretRightIcon className="lesson__chev" size={20} weight="bold" aria-hidden="true" />
     </li>
   );
 }

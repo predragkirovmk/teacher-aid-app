@@ -43,6 +43,7 @@ import { QUESTIONS_MAX } from "@/lib/teacher/scoring";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { kindLine } from "./LessonCard";
 import { QuestionCard } from "./LessonView";
+import { DiscardDraft } from "./DiscardDraft";
 import { LeaveGuard } from "./LeaveGuard";
 import { PageHeader } from "./PageHeader";
 import { Problem as ProblemBox } from "./Problem";
@@ -598,6 +599,9 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
           <p>{t(draft.lesson_id ? "save.changes.note" : "save.new.note")}</p>
           <p>{t(draft.lesson_id ? "editor.kept.edit" : "editor.kept", { days: DRAFT_RETENTION_DAYS })}</p>
         </div>
+
+        {/* The one thing here that cannot be undone, after everything else. It leaves by the way Back does. */}
+        <DiscardDraft draft={draft} before={async () => saver.current?.flush()} onGone={() => router.replace(back.href)} />
 
         {/* A change that is only waiting for its moment is sent as the page goes; one that could not be sent, or a number that is not one yet, would be lost. */}
         {losesWorkOnLeaving(status, unfinishedNumber) && <LeaveGuard body="editor.leave.body" />}

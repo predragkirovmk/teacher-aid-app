@@ -193,13 +193,11 @@ test.describe("Lessons", () => {
     expect(ages).toEqual([...ages].sort((a, b) => a - b));
   });
 
-  test("a held lesson is three lines, without the date of its last change, which is not the date the list is in the order of", async ({ page }) => {
+  test("a held lesson is its title and one line: when it was held first, without the date of its last change, which is not the date the list is in the order of", async ({ page }) => {
     await page.goto("/teacher/lessons");
     const lesson = held(page).filter({ hasText: "Тригонометрија на правоаголен триаголник" });
-    await expect(lesson).toContainText("Математика · III година · 5 прашања");
-    await expect(lesson).toContainText("Одржана пред 6 дена · 3 пати");
+    await expect(lesson.locator(".lesson__text p")).toHaveText("Одржана пред 6 дена · 3 пати · Математика · III година · 5 прашања");
     await expect(lesson).not.toContainText("Последна промена");
-    await expect(lesson.locator(".lesson__text p")).toHaveCount(2);
   });
 
   test("a lesson that was held says when it was last held and how many times, in words and in Macedonian's own forms", async ({ page }) => {
@@ -214,33 +212,33 @@ test.describe("Lessons", () => {
     await expect(held(page).filter({ hasText: "Квадратна функција" })).toContainText("2 пати");
   });
 
-  test("each card has one button, the way on, and one quiet link beside it, whichever section it is in", async ({ page }) => {
+  test("each row opens its lesson and has one thing more to press at the most, whichever section it is in", async ({ page }) => {
     await seed(page, { drafts: [draftOf()] }, "/teacher/lessons");
     await expect(held(page).first()).toBeVisible();
-    for (const lesson of await prepared(page).all()) {
-      // A prepared lesson is for starting a class; to look at it first is the quiet one.
-      await expect(lesson.locator(".btn--secondary")).toHaveText("Започни час");
-      await expect(lesson.locator(".btn--quiet")).toHaveText("Отвори");
-      await expect(lesson.getByRole("link", { name: "Отвори" })).toHaveAttribute("href", /\/teacher\/lessons\/l-/);
-      await expect(lesson.getByRole("button", { name: /Избриши|Фрли/ })).toHaveCount(0);
-    }
-    for (const lesson of await held(page).all()) {
-      // A held lesson is mostly looked up, so opening it is the button and starting it again the link.
-      await expect(lesson.locator(".btn--secondary")).toHaveText("Отвори");
-      await expect(lesson.locator(".btn--quiet")).toHaveText("Започни час");
-      await expect(lesson.getByRole("link", { name: "Отвори" })).toHaveAttribute("href", /\/teacher\/lessons\/l-/);
-      await expect(lesson.getByRole("button", { name: /Избриши|Фрли/ })).toHaveCount(0);
+    for (const lesson of [...(await prepared(page).all()), ...(await held(page).all())]) {
+      // A lesson, prepared or held: its title is the link that opens it, and the one button starts a class with it.
+      await expect(lesson.getByRole("link")).toHaveText(await lesson.getByRole("heading", { level: 3 }).innerText());
+      await expect(lesson.getByRole("link")).toHaveAttribute("href", /\/teacher\/lessons\/l-/);
+      await expect(lesson.getByRole("button")).toHaveText("Започни час");
+      await expect(lesson.getByRole("button")).toHaveClass(/btn--secondary/);
     }
     for (const lesson of await unfinished(page).all()) {
-      // A draft: carrying on (or looking at one that is not ready) is the button, throwing away the link.
-      await expect(lesson.locator(".btn--secondary")).toHaveText("Продолжи");
-      await expect(lesson.locator(".btn--quiet")).toHaveText("Фрли");
+      // A draft: carrying on is the row's link, in words, and there is no button. Throwing it away is on its own page.
+      await expect(lesson.getByRole("link")).toHaveText("Продолжи");
+      await expect(lesson.getByRole("button")).toHaveCount(0);
     }
+    // The link is the whole row: pressing the row away from its words opens the lesson too.
+    const row = prepared(page).first();
+    const box = (await row.boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page).toHaveURL(/\/teacher\/lessons\/l-/);
+    await page.goBack();
+    await expect(held(page).first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Избриши лекција" })).toHaveCount(0);
     await expect(mainButton(page)).toHaveCount(1);
   });
 
-  test("the buttons of a list are as wide as each other, so they stand in one column", async ({ page }) => {
+  test("the buttons of the lists are as wide as each other, so they stand in one column", async ({ page }) => {
     await page.goto("/teacher/lessons");
     await expect(held(page).first()).toBeVisible();
     const lefts = await page.locator(".lesson__actions > .btn--secondary").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)));
@@ -252,18 +250,18 @@ test.describe("Lessons", () => {
 
   test("a lesson opened from the Lessons page goes Back to the Lessons, one opened from Today goes Back to Today", async ({ page }) => {
     await seed(page, { drafts: [draftOf()] }, "/teacher/lessons");
-    await prepared(page).first().getByRole("link", { name: "Отвори" }).click();
+    await prepared(page).first().getByRole("link").click();
     await expect(page.getByRole("link", { name: "Назад кон Лекции" })).toHaveAttribute("href", "/teacher/lessons");
     await expect(page.getByRole("link", { name: "Назад кон Денес" })).toHaveCount(0);
     await page.goto("/teacher/lessons");
-    await held(page).first().getByRole("link", { name: "Отвори" }).click();
+    await held(page).first().getByRole("link").click();
     await expect(page.getByRole("link", { name: "Назад кон Лекции" })).toBeVisible();
     // A lesson that is not finished: its page too goes Back to where the list was.
     await page.goto("/teacher/lessons");
     await unfinished(page).first().getByRole("link", { name: "Продолжи" }).click();
     await expect(page.getByRole("link", { name: "Назад кон Лекции" })).toBeVisible();
     await page.goto("/teacher");
-    await page.locator("section[aria-labelledby=prepared] .lessons > li").first().getByRole("link", { name: "Отвори" }).click();
+    await page.locator("section[aria-labelledby=prepared] .lessons > li").first().getByRole("link").click();
     await expect(page.getByRole("link", { name: "Назад кон Денес" })).toBeVisible();
     await page.goto("/teacher");
     await page.locator("section[aria-labelledby=unfinished] .lessons > li").first().getByRole("link", { name: "Продолжи" }).click();
@@ -274,9 +272,9 @@ test.describe("Lessons", () => {
     await page.setViewportSize({ width: 1024, height: 768 });
     await page.goto("/teacher/lessons");
     await expect(held(page).first()).toBeVisible();
-    // A card's button and the quiet link beside it are 44px or more; the page's main button is 48px or more.
+    // A row's button is 44px or more and the row, which is pressed to open it, 56px or more; the page's main button is 48px or more.
     for (const b of await page.locator(".lesson__actions > .btn--secondary").all()) expect(await tall(b)).toBeGreaterThanOrEqual(44);
-    for (const l of await page.locator(".lesson__actions > .btn--quiet").all()) expect(await tall(l)).toBeGreaterThanOrEqual(44);
+    for (const l of await page.locator(".lesson").all()) expect(await tall(l)).toBeGreaterThanOrEqual(56);
     expect(await tall(page.getByRole("link", { name: "Подготви лекција" }))).toBeGreaterThanOrEqual(48);
     const small = await page.locator("main").evaluate((main) => [...main.querySelectorAll("*")].filter((e) => e.childNodes.length && parseFloat(getComputedStyle(e).fontSize) < 16 && !e.closest(".sr")).length);
     expect(small).toBe(0);
@@ -341,17 +339,20 @@ test.describe("Lessons", () => {
     await expect(unfinished(page).nth(1).getByRole("heading", { level: 3 })).toHaveText("Квадратни равенки");
     await expect(unfinished(page).nth(0).getByRole("link", { name: "Отвори" })).toBeVisible();
     await expect(unfinished(page).nth(1).getByRole("link", { name: "Продолжи" })).toBeVisible();
-    await expect(unfinished(page).nth(1).getByRole("button", { name: "Фрли" })).toBeVisible();
+    await expect(unfinished(page).nth(1).getByRole("button")).toHaveCount(0);
     await expect(page.locator("#nedovrseni")).toHaveText("Недовршени (2)");
     await expect(mainButton(page)).toHaveCount(1);
   });
 
-  test("throwing one away asks first, here as on Today, and it is gone from both", async ({ page }) => {
+  test("throwing one away is on its own page, asks first, and comes back to the Lessons without it", async ({ page }) => {
     await seed(page, { drafts: [draftOf()] }, "/teacher/lessons");
-    await unfinished(page).first().getByRole("button", { name: "Фрли" }).click();
+    await unfinished(page).first().getByRole("link", { name: "Продолжи" }).click();
+    await page.getByRole("button", { name: "Фрли ја лекцијата" }).click();
     const question = page.getByRole("alertdialog");
     await expect(question).toBeVisible();
-    await question.getByRole("button", { name: "Фрли" }).click();
+    await question.getByRole("button", { name: "Да, фрли" }).click();
+    await expect(page).toHaveURL(/\/teacher\/lessons$/);
+    await expect(prepared(page).first()).toBeVisible();
     await expect(unfinished(page)).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 2, name: "Недовршени" })).toHaveCount(0);
     expect((await demo(page)).school.drafts).toHaveLength(0);
@@ -570,20 +571,24 @@ test.describe("deleting a lesson", () => {
     await expect(page.getByRole("heading", { level: 2, name: /Не успеавме|Не го најдовме/ }).or(page.getByText("Не го најдовме тоа што го барате."))).toBeVisible();
   });
 
-  test("after the lesson is deleted the focus is on the line that says so, and Tab goes on to the main button", async ({ page }) => {
+  test("after the lesson is deleted the focus is on the line that says so: Tab goes on into the list, and the main button is one step back", async ({ page }) => {
     await page.goto(PROCENTI);
     await deleteButton(page).click();
     await deleteQuestion(page).getByRole("button", { name: "Да, избриши ја" }).click();
     const line = page.getByRole("status").filter({ hasText: "Лекцијата е избришана." });
     await expect(line).toBeFocused();
+    // The main button is in the header now, before the line; the list comes after it.
     await page.keyboard.press("Tab");
+    await expect(prepared(page).first().getByRole("link")).toBeFocused();
+    // The line is not a stop of its own, so one step back from the list is the main button.
+    await page.keyboard.press("Shift+Tab");
     await expect(page.getByRole("link", { name: "Подготви лекција" })).toBeFocused();
   });
 
   test("a lesson that was held can be deleted too", async ({ page }) => {
     await page.goto("/teacher/lessons");
     const lesson = held(page).filter({ hasText: "Квадратна функција" });
-    await lesson.getByRole("link", { name: "Отвори" }).click();
+    await lesson.getByRole("link").click();
     await expect(title(page)).toHaveText("Квадратна функција");
     await deleteButton(page).click();
     await deleteQuestion(page, "Квадратна функција").getByRole("button", { name: "Да, избриши ја" }).click();
@@ -639,7 +644,7 @@ test.describe("deleting a lesson", () => {
   test("in English, at a faculty, the same", async ({ page }) => {
     await setLanguage(page, "en", "university");
     await page.goto("/teacher/lessons");
-    await prepared(page).first().getByRole("link", { name: "Open" }).click();
+    await prepared(page).first().getByRole("link").click();
     await page.getByRole("button", { name: "Delete lesson" }).click();
     const question = page.getByRole("alertdialog", { name: /^Delete the lesson “.+”\?$/ });
     await expect(question).toContainText("The lesson will leave your lessons. The lessons you have already held and their results stay.");
@@ -1088,17 +1093,17 @@ test.describe("the library", () => {
       "Статистика: средна вредност и медијана",
       "Основи на комбинаториката",
     ]);
-    await expect(items(page).nth(0)).toContainText("Физика · I година");
-    await expect(items(page).nth(0)).toContainText("6 прашања · Од Весна Аврамовска");
-    await expect(items(page).nth(0)).toContainText("Зачувана пред 6 дена");
-    await expect(items(page).nth(1)).toContainText("Математика · II година");
-    await expect(items(page).nth(1)).toContainText("5 прашања · Од Зоран Илиев");
-    await expect(items(page).nth(1)).toContainText("Зачувана пред една недела");
+    // Two lines under the title: what it is, then whose it is and when.
+    await expect(items(page).nth(0).locator(".lesson__text p")).toHaveText(["Физика · I година · 6 прашања", "Од Весна Аврамовска · Зачувана пред 6 дена"]);
+    await expect(items(page).nth(1).locator(".lesson__text p")).toHaveText(["Математика · II година · 5 прашања", "Од Зоран Илиев · Зачувана пред една недела"]);
     await expect(items(page).nth(3)).toContainText("Од Билјана Стојановска");
-    // None of them is the teacher's own, none is copied yet, and the one button of each is a quiet one.
+    // None of them is the teacher's own, none is copied yet, and each is a row that opens: its title is the link, with no button.
     await expect(page.getByText("Марија Петровска")).toHaveCount(1); // only the name at the top right
     await expect(page.getByText("Веќе ја копиравте")).toHaveCount(0);
-    for (const item of await items(page).all()) await expect(item.getByRole("link", { name: "Прегледај" })).toHaveClass(/btn--secondary/);
+    for (const item of await items(page).all()) {
+      await expect(item.getByRole("link")).toHaveText(await item.getByRole("heading", { level: 3 }).innerText());
+      await expect(item.getByRole("button")).toHaveCount(0);
+    }
     // The main action, copying, is on the preview, so this page has no main button.
     await expect(mainButton(page)).toHaveCount(0);
   });
@@ -1150,7 +1155,7 @@ test.describe("the library", () => {
 
   test("a lesson is previewed, read only, as a lesson is read, with who made it and one main button", async ({ page }) => {
     await page.goto("/teacher/library");
-    await items(page).filter({ hasText: "Статистика: средна вредност и медијана" }).getByRole("link", { name: "Прегледај" }).click();
+    await items(page).filter({ hasText: "Статистика: средна вредност и медијана" }).getByRole("link").click();
     await expect(page).toHaveURL(/\/teacher\/library\/lib-statistika$/);
     await expect(title(page)).toHaveText("Статистика: средна вредност и медијана");
     await expect(page.locator(".head__sub")).toHaveText("Математика · III година");
@@ -1233,7 +1238,7 @@ test.describe("the library", () => {
     const item = items(page).filter({ hasText: "Статистика: средна вредност и медијана" });
     await expect(item).toContainText("Веќе ја копиравте");
     await expect(page.getByText("Веќе ја копиравте")).toHaveCount(1);
-    await item.getByRole("link", { name: "Прегледај" }).click();
+    await item.getByRole("link").click();
     await expect(page.getByText("Веќе ја копиравте оваа лекција. Ако ја копирате повторно, ќе добиете уште една копија.")).toBeVisible();
     // Copying again stays possible, with the same main button.
     await expect(mainButton(page)).toHaveText("Копирај во моите лекции");
@@ -1287,9 +1292,9 @@ test.describe("the library", () => {
     await page.goto("/teacher/library");
     await expect(title(page)).toHaveText("Library");
     await expect(page.locator(".head__sub")).toHaveText("Lessons your colleagues at your faculty have saved.");
-    await expect(items(page).first().getByRole("link", { name: "Preview" })).toBeVisible();
+    await expect(items(page).first().getByRole("link")).toBeVisible();
     await expect(items(page).first()).toContainText("By ");
-    await items(page).first().getByRole("link", { name: "Preview" }).click();
+    await items(page).first().getByRole("link").click();
     await expect(page.getByRole("link", { name: "Back to the Library" })).toBeVisible();
     await expect(page.getByText(/^This is a preview of .+’s lesson\. If you copy it, you get a lesson of your own that you can edit\. The original does not change\.$/)).toBeVisible();
     await page.getByRole("button", { name: "Copy to my lessons" }).click();
@@ -1304,13 +1309,13 @@ test.describe("keyboard only", () => {
     await page.goto("/teacher/lessons");
     await expect(prepared(page).first()).toBeVisible();
     await page.getByRole("link", { name: "Подготви лекција" }).focus();
+    // A row is read in its order: the lesson, which opens it, then its button.
+    await page.keyboard.press("Tab");
+    await expect(prepared(page).first().getByRole("link")).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(prepared(page).first().getByRole("button", { name: "Започни час" })).toBeFocused();
     await page.keyboard.press("Tab");
-    await expect(prepared(page).first().getByRole("link", { name: "Отвори" })).toBeFocused();
-    await page.keyboard.press("Tab");
-    await expect(prepared(page).nth(1).getByRole("button", { name: "Започни час" })).toBeFocused();
-    await page.keyboard.press("Tab");
+    await expect(prepared(page).nth(1).getByRole("link")).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(title(page)).toHaveText("Проценти и пропорции");
     // To the end of the page by keys, the delete button is the last stop of the lesson.
@@ -1333,7 +1338,7 @@ test.describe("keyboard only", () => {
 
   test("a colleague's lesson is previewed and copied, and the new lesson is reached", async ({ page }) => {
     await page.goto("/teacher/library");
-    const first = page.locator(".lessons > li").first().getByRole("link", { name: "Прегледај" });
+    const first = page.locator(".lessons > li").first().getByRole("link");
     await first.focus();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/teacher\/library\/lib-/);
@@ -1356,7 +1361,7 @@ test.describe("keyboard only", () => {
     await expect(row.getByRole("radio", { name: "Дискретна математика" })).toBeChecked();
     await expect(page.locator(".lessons > li")).toHaveCount(1);
     await page.keyboard.press("Tab");
-    await expect(page.locator(".lessons > li").first().getByRole("link", { name: "Прегледај" })).toBeFocused();
+    await expect(page.locator(".lessons > li").first().getByRole("link")).toBeFocused();
   });
 });
 

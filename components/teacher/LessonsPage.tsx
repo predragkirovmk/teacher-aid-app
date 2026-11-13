@@ -10,7 +10,6 @@ import { lessonSections, shownWords, unfinishedDrafts, UNFINISHED_ANCHOR, withCo
 import { newLessonUrl } from "@/lib/teacher/routes";
 import { ALL, choiceOf, effectiveChoice, needsSubjectRow, subjectsOf, type SubjectChoice } from "@/lib/teacher/subjects";
 import { DraftCard } from "./DraftCard";
-import { useDiscardDraft } from "./DiscardDraft";
 import { LessonCard } from "./LessonCard";
 import { LoadProblem } from "./LoadProblem";
 import { OnceLine } from "./OnceLine";
@@ -20,10 +19,10 @@ import { StartDialog, type StartLesson } from "./StartDialog";
 import { SubjectRow } from "./SubjectRow";
 
 /**
- * All the teacher's lessons on one page, with nothing hidden behind a tab: the one main button prepares a lesson, and under it, in this
- * order (the order of Today), the lessons that are prepared, the ones that are not finished and the ones that were held, which are the
- * long list of a teacher with a year of lessons and so come last. Each section's name says how many it holds. A section with nothing in
- * it is not shown. A teacher with more than one subject chooses between them in a row at the top; with one there is no row. The
+ * All the teacher's lessons on one page, with nothing hidden behind a tab: the one main button, at the right of the title, prepares a
+ * lesson, and under it, in this order (the order of Today), the lessons that are prepared, the ones that are not finished and the ones
+ * that were held, which are the long list of a teacher with a year of lessons and so come last. Each is rows on one surface, and its
+ * name says how many it holds. A section with nothing in it is not shown. A teacher with more than one subject chooses between them in a row at the top; with one there is no row. The
  * lessons are only read here: deleting one is on its own page.
  */
 export function LessonsPage() {
@@ -33,7 +32,6 @@ export function LessonsPage() {
   const drafts = useDrafts();
   // The window that starts a lesson belongs to the page, as it does on Today: the list can change under the button that opened it.
   const [starting, setStarting] = useState<StartLesson | null>(null);
-  const discarding = useDiscardDraft();
   const [chosen, setChosen] = useState<SubjectChoice | null>(null);
   // What the list became when a subject was chosen, said to a screen reader (the list changes where it cannot see).
   const [result, setResult] = useState("");
@@ -78,6 +76,8 @@ export function LessonsPage() {
     section.current?.scrollIntoView({ block: "start" });
   }, [hasSection]);
 
+  const empty = !loading && lessons.status !== "error" && nothing && drafts.status !== "error";
+
   const prepare = (
     <Link href={newLessonUrl()} className="btn btn--primary">
       <PlusIcon size={24} weight="bold" aria-hidden="true" />
@@ -87,28 +87,29 @@ export function LessonsPage() {
 
   return (
     <>
-      <PageHeader title={t("lessons.title")} />
+      {/* With no lesson yet the button is in the middle of the page, with the words that say what it is for. */}
+      <PageHeader title={t("lessons.title")} action={empty ? undefined : prepare} />
       <div className="content">
         {deleted && <OnceLine>{t("lessons.deleted")}</OnceLine>}
 
         {loading ? (
           <Loading>
-            <Bar width="14rem" height="3.5rem" className="skeleton--button" />
             <Bar width="12rem" height="2rem" className="skeleton--heading" />
-            {[0, 1].map((i) => (
-              <div key={i} className="lesson lesson--skeleton" aria-hidden="true">
-                <div className="lesson__text">
-                  <Bar width="55%" height="1.75rem" />
-                  <Bar width="35%" height="1.25rem" />
-                  <Bar width="45%" height="1.25rem" />
+            <div className="lessons" aria-hidden="true">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="lesson lesson--skeleton">
+                  <div className="lesson__text">
+                    <Bar width="45%" height="1.5rem" />
+                    <Bar width="65%" height="1.25rem" />
+                  </div>
+                  <Bar width="9rem" height="2.75rem" className="skeleton--button" />
                 </div>
-                <Bar width="11rem" height="3.5rem" className="skeleton--button" />
-              </div>
-            ))}
+              ))}
+            </div>
           </Loading>
         ) : lessons.status === "error" ? (
           <LoadProblem title={t("lessons.error")} error={lessons.error} onRetry={lessons.refetch} />
-        ) : nothing && drafts.status !== "error" ? (
+        ) : empty ? (
           <div className="card card--stack">
             <span className="card__icon">
               <ChalkboardTeacherIcon size={32} aria-hidden="true" />
@@ -119,7 +120,6 @@ export function LessonsPage() {
           </div>
         ) : (
           <>
-            <div>{prepare}</div>
             {needsSubjectRow(subjects) && (
               <SubjectRow
                 choices={[{ value: ALL, label: t("lessons.subject.all") }, ...subjects.map((s) => ({ value: choiceOf(s.id), label: s.name }))]}
@@ -147,7 +147,7 @@ export function LessonsPage() {
                 </h2>
                 <ul className="lessons">
                   {shownDrafts.map((draft) => (
-                    <DraftCard key={draft.id} draft={draft} today={today} onDiscard={discarding.ask} />
+                    <DraftCard key={draft.id} draft={draft} today={today} />
                   ))}
                 </ul>
               </section>
@@ -169,7 +169,6 @@ export function LessonsPage() {
         )}
       </div>
       {starting && <StartDialog lesson={starting} onClose={() => setStarting(null)} />}
-      {discarding.dialog}
     </>
   );
 }
