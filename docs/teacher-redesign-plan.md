@@ -30,6 +30,10 @@ for review", its preview link and the pictures, and wait.
 - 2026-11-13: step 1 (foundation and frame) is built and waits for the owner on the review page
   (`decisions/step-1`). What it changed is under "Step 1 as built" below.
 
+- 2026-11-13, 10:09 UTC: the owner approved step 1 (`decisions/step-1`, no note).
+- 2026-11-13: step 2 (Today, Lessons, Classes and the Library as rows) is built and waits for the
+  owner on the review page (`decisions/step-2`). What it changed is under "Step 2 as built" below.
+
 A decision made on the page does not reach the session by itself. Read the store before
 every message that says what is being waited for, and, while a step waits for the owner,
 check it on a schedule rather than only when a "go" arrives in the chat.
@@ -68,6 +72,42 @@ nothing new is asked of the API.
 
 Left for the later steps, on purpose: the layouts themselves (rows instead of stacks of boxes,
 one button a row, the live lesson on one screen). Step 1 only makes them calm to look at.
+
+## Step 2 as built (2026-11-13)
+
+The four lists stopped being stacks of boxes. Every feature is where it was or one press away;
+nothing new is asked of the API.
+
+- **One surface, rows inside it.** A list is one white panel with a hairline between its rows. A
+  row is a title and one line under it (two in the Library: what the lesson is, then whose it is
+  and when), and a chevron at its right end.
+- **The row opens.** The title is the link and the link covers the whole row, so pressing a row
+  anywhere opens it; with the keyboard the row itself takes the focus ring. The separate "Отвори",
+  "Прегледај" and "Види резултати" are gone: they said what pressing the row already does.
+- **One button a row, at the most.** A lesson, prepared or held, has "Започни час", the quiet
+  tint one, the same on Today and on Lessons, so the buttons stand in one column. A class and a
+  Library lesson have none. A draft has none either: its one link is the words "Продолжи" (ready)
+  or "Отвори" (being written, or failed).
+- **"Подготви лекција" is in the header**, at the right of the title, on Today and on Lessons. It
+  is still the page's one main button. Where a page is empty and its empty card already holds the
+  button, the header does not repeat it.
+- **Throwing a draft away moved to the draft's own page.** "Фрли ја лекцијата" (or "Фрли ги
+  измените" for changes to a saved lesson) is the last thing on the editor's page, asks first as
+  before, saves nothing more, deletes, and leaves the way Back does. A draft that is still being
+  written is stopped with the wait's own "Откажи", as it always could be. The lists lost a
+  destructive button a row; no words were lost.
+- **The subject filter is a segmented control**: one track, the chosen subject a white piece with
+  a tick and bolder teal words. It is still the same group of radio buttons underneath (arrows
+  choose, Tab leaves), so no library was needed here either.
+- **A held lesson says when it was held first** in its one line, then what it is.
+- **Loading** shows rows, not boxes, so the page does not jump when the lessons arrive.
+- **Phone.** A row wraps: the text and the chevron on the first line, the button full width under
+  them.
+- **The projector is untouched**, and so are the lesson page, the editor's questions, the class
+  page and the live lesson: steps 3 to 6.
+- **Tests.** The tests that described a card with a button and a quiet link were rewritten to
+  describe a row (none skipped): a row has one link, its title; it opens when pressed anywhere; it
+  is 56px or more; a draft row has no button; throwing away is tested on the editor's page.
 
 ## What was measured
 

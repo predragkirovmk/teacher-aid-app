@@ -163,7 +163,8 @@ teal: read "the yellow button" as "the main button". Yellow now only marks a liv
     The lesson page gets "Уреди лекција" (outlined); the card keeps "Отвори".
   - Today lists unfinished drafts below the prepared lessons (changed in the design review of step 6: with a few forgotten drafts above
     them the lesson of the day was off the first screen of a laptop): title (or "Се подготвува" while pending, "Не успеа" when failed),
-    subject and year, "Продолжи" (a ready draft) or "Отвори" (one being written, or failed), and "Фрли" with a question.
+    subject and year, "Продолжи" (a ready draft) or "Отвори" (one being written, or failed), and "Фрли" with a question
+    (since 2026-11-13 the question is asked from the draft's own page, not from the list; see the step 7 review below).
   - The page's one yellow button and the save status are a bar that stays at the bottom of the window (design review of step 6).
 - Step 6 review, decided by the planner (2026-11-01): Today shows prepared lessons first and
   unfinished drafts after them; a draft being written or failed says "Отвори", a ready one
@@ -179,6 +180,9 @@ teal: read "the yellow button" as "the main button". Yellow now only marks a liv
   link. The Lessons page is in the order of Today (prepared, not finished, held), each section with its count, the held ones in the order of when
   they were held. Every question of the app is answered with "Не, ..." (the safe one, yellow, with the focus) and "Да, ...". A line said once
   after a change (a lesson deleted, saved or copied) takes the focus. Removing a picture can be taken back.
+  (Revised 2026-11-13 by step 2 of the redesign, `docs/teacher-redesign-plan.md`: a list is rows on one surface; the row itself opens, its
+  title being the link; a lesson's one button is "Започни час", prepared or held; a draft's row has only the words "Продолжи" or "Отвори",
+  and "Фрли" is on the draft's own page, at its end. The order of the Lessons page and the rest of this entry stand.)
 - Step 8: the start button in "Со кој клас?" names the chosen class ("Започни со IV-1") so a
   wrong pick is visible before it is made; update the tests that rely on the label. The
   `/teacher/live/[sessionId]` placeholder is replaced by the console.
