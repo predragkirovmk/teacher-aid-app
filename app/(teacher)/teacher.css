@@ -1964,10 +1964,10 @@ button {
 }
 
 /* ---- Prepare a lesson: three parts, one main button, and the wait on the same page ---- */
-/* One narrow form on one surface: the three parts are its rows, and the button with its line of reassurance is the last. */
+/* One form on one surface, as wide as the page's other panels (the owner asked for the full width, 2026-11-14): the three parts are
+   its rows, and the button with its line of reassurance is the last. */
 .prepare {
   display: grid;
-  max-width: 46rem;
   border-radius: var(--r-l);
   background: var(--surface);
   box-shadow: var(--ring);
@@ -1988,10 +1988,6 @@ button {
 }
 .prepare > .prepare__go {
   padding: var(--sp-3);
-}
-/* The wait and what went wrong keep the form's width, so the page does not change shape when the button is pressed. */
-.content > .waiting {
-  max-width: 46rem;
 }
 .prepare__group {
   display: grid;

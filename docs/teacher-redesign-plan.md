@@ -38,6 +38,9 @@ for review", its preview link and the pictures, and wait.
 - 2026-11-14: step 3 (preparing a lesson: the form, the wait, the editor, the lesson page, the
   Library's preview) is built and waits for the owner on the review page (`decisions/step-3`).
   What it changed is under "Step 3 as built" below.
+- 2026-11-14, 14:43 UTC: the owner approved step 3 (`decisions/step-3`) with one note: the
+  prepare form "is not on the full screen". The form and the wait were made as wide as the
+  page's other panels the same day. Step 4 is being built.
 
 A decision made on the page does not reach the session by itself. Read the store before
 every message that says what is being waited for, and, while a step waits for the owner,
@@ -141,8 +144,9 @@ Every feature is where it was; nothing new is asked of the API.
   end.
 - **The open question** is a row of the same surface with a teal edge all round it. A question
   that was deleted is a quiet row with "Врати го прашањето".
-- **The prepare form is one narrow surface** (46rem): the three parts are its rows and the button
-  with its line of reassurance is the last. The wait keeps the form's width.
+- **The prepare form is one surface**, as wide as the page's other panels: the three parts are
+  its rows and the button with its line of reassurance is the last. The wait has the same width.
+  (It was first built narrow, 46rem; the owner asked for the full width when approving.)
 - **Loading** shows rows of a surface on these pages too.
 - **Heights at 1280 x 800, the demo's lesson of six questions:** the editor 3,921px to 2,611px,
   the Library's preview 2,733px to 1,818px.
