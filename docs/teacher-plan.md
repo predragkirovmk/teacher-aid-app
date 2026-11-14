@@ -158,6 +158,9 @@ teal: read "the yellow button" as "the main button". Yellow now only marks a liv
   - Refinements: one row, "Промени ги сите прашања", with the four (Полесни, Потешки, Повеќе
     прашања, Пократко време). Each is a job with the same wait inline; afterwards one line says what
     changed with "Врати ги претходните прашања" (the earlier draft stays readable, BR-LES-08).
+    (Revised 2026-11-14 by step 3 of the redesign, `docs/teacher-redesign-plan.md`: the questions are rows of one surface, with "Уреди"
+    at the right end of a row's first line. This row of four stays after the questions: putting it above them was tried and undone,
+    because nothing but the lesson's name stands in front of the first question.)
   - Saving: problems are listed in plain words above the yellow button, each a link that opens its
     question. A save lands on the lesson page with a line that it is saved and will be on Today.
     The lesson page gets "Уреди лекција" (outlined); the card keeps "Отвори".

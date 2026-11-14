@@ -34,6 +34,11 @@ for review", its preview link and the pictures, and wait.
 - 2026-11-13: step 2 (Today, Lessons, Classes and the Library as rows) is built and waits for the
   owner on the review page (`decisions/step-2`). What it changed is under "Step 2 as built" below.
 
+- 2026-11-14, 00:53 UTC: the owner approved step 2 (`decisions/step-2`, no note).
+- 2026-11-14: step 3 (preparing a lesson: the form, the wait, the editor, the lesson page, the
+  Library's preview) is built and waits for the owner on the review page (`decisions/step-3`).
+  What it changed is under "Step 3 as built" below.
+
 A decision made on the page does not reach the session by itself. Read the store before
 every message that says what is being waited for, and, while a step waits for the owner,
 check it on a schedule rather than only when a "go" arrives in the chat.
@@ -108,6 +113,44 @@ nothing new is asked of the API.
 - **Tests.** The tests that described a card with a button and a quiet link were rewritten to
   describe a row (none skipped): a row has one link, its title; it opens when pressed anywhere; it
   is 56px or more; a draft row has no button; throwing away is tested on the editor's page.
+
+## Step 3 as built (2026-11-14)
+
+Preparing a lesson: the form, the wait, the editor, the lesson page and the Library's preview.
+Every feature is where it was; nothing new is asked of the API.
+
+- **Questions are rows of one surface**, wherever a lesson is read (the lesson page, the Library's
+  preview, the editor). A row is the question's number in a small disc, its prompt, one quiet line
+  with its kind and timer, its answers and its explanation. Each question was a card of its own with
+  every answer in a box and the explanation in another.
+- **Answers stand two side by side** where there is room, each a plain line with its number in a
+  ring. The right one has the tint under it, heavier words, a tick and "Точен одговор": never
+  colour alone.
+- **The explanation is one quiet line**: "Објаснување:" and the words.
+- **The heading "Прашање 2 од 6" is heard, not seen**, on a question that is read: the eye gets the
+  number. The open question still shows it.
+- **In the editor "Уреди" is at the right end of the question's first line**, not under the
+  question; on a narrow window it goes back under what it edits.
+- **"Промени ги сите прашања" stays after the questions**, a row of four as it was. Putting it
+  above the questions was tried and undone the same day: the tests hold the page to an earlier
+  decision, that nothing but the lesson's name stands in front of the first question and that
+  the keyboard goes from the name to the first question. With the questions as rows it is
+  about 1,300px nearer the top than it was.
+- **The lesson's name is one row**: label and box on a line.
+- **The save bar** says where saving stands at its left and has the one main button at its right
+  end.
+- **The open question** is a row of the same surface with a teal edge all round it. A question
+  that was deleted is a quiet row with "Врати го прашањето".
+- **The prepare form is one narrow surface** (46rem): the three parts are its rows and the button
+  with its line of reassurance is the last. The wait keeps the form's width.
+- **Loading** shows rows of a surface on these pages too.
+- **Heights at 1280 x 800, the demo's lesson of six questions:** the editor 3,921px to 2,611px,
+  the Library's preview 2,733px to 1,818px.
+- **High contrast:** the surface has the edge and a row the line above it; the right answer keeps
+  an edge of its own, and the open question an outline.
+- **No library was added.** No words were changed.
+- **Not touched:** the question's own form (its fields are as they were, inside the new row),
+  the live lesson, the class results, the projector: steps 4 to 7.
 
 ## What was measured
 
