@@ -43,6 +43,7 @@ import { QUESTIONS_MAX } from "@/lib/teacher/scoring";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { kindLine } from "./LessonCard";
 import { QuestionCard } from "./LessonView";
+import { DiscardDraft } from "./DiscardDraft";
 import { LeaveGuard } from "./LeaveGuard";
 import { PageHeader } from "./PageHeader";
 import { Problem as ProblemBox } from "./Problem";
@@ -80,7 +81,7 @@ function SaveState({ status }: { status: SaveStatus }) {
 
 /**
  * The page of a draft that is ready: the lesson to read and change. The title, each question (one open at a time), the four
- * refinements, the review summary and the one yellow button that makes it a lesson. Every change goes into the draft a moment after
+ * refinements, the review summary and the one main button that makes it a lesson. Every change goes into the draft a moment after
  * the teacher stops (lib/teacher/autosave.ts), so there is nothing to remember to save, nothing is lost by leaving, and the page
  * says so calmly. Questions are first and the summary after them, as the draft was read before it could be edited.
  */
@@ -583,7 +584,7 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
         )}
 
         {/*
-          The one yellow button and where saving stands are one bar that stays at the bottom of the window while the page is longer than
+          The one main button and where saving stands are one bar that stays at the bottom of the window while the page is longer than
           it, so the way to make this a lesson is never a scroll away; on a short window (a zoomed one) it is part of the page instead.
         */}
         <div className="savebar">
@@ -598,6 +599,9 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
           <p>{t(draft.lesson_id ? "save.changes.note" : "save.new.note")}</p>
           <p>{t(draft.lesson_id ? "editor.kept.edit" : "editor.kept", { days: DRAFT_RETENTION_DAYS })}</p>
         </div>
+
+        {/* The one thing here that cannot be undone, after everything else. It leaves by the way Back does. */}
+        <DiscardDraft draft={draft} before={async () => saver.current?.flush()} onGone={() => router.replace(back.href)} />
 
         {/* A change that is only waiting for its moment is sent as the page goes; one that could not be sent, or a number that is not one yet, would be lost. */}
         {losesWorkOnLeaving(status, unfinishedNumber) && <LeaveGuard body="editor.leave.body" />}

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, MOCK_KEY, SETTINGS_KEY, test } from "./fixtures";
+import { expect, MOCK_KEY, SETTINGS_KEY, tall, test } from "./fixtures";
 
 /**
  * The editor (F-03 step 5, F-04, FR-LES-07 to -22): a draft that is ready is a lesson to change, one question open at a time,
@@ -102,7 +102,7 @@ const draftOnDisk = async (page: Page, id = SEED) => (await demo(page)).school.d
 // ---- What is on the page ------------------------------------------------------------------------------------------------
 
 const title = (page: Page) => page.getByRole("heading", { level: 1 });
-const yellow = (page: Page) => page.locator(".btn--primary:visible");
+const mainButton = (page: Page) => page.locator(".btn--primary:visible");
 const cards = (page: Page) => page.locator(".questions > li");
 const card = (page: Page, n: number) => cards(page).nth(n - 1);
 const open = (page: Page) => page.locator("li.question--open");
@@ -147,7 +147,7 @@ test.beforeEach(async ({ page }, testInfo) => {
 // ---- The editor at rest ---------------------------------------------------------------------------------------------------
 
 test.describe("at rest", () => {
-  test("is the title, the questions in order, the four ways to change them all, the summary, and one yellow button", async ({ page }) => {
+  test("is the title, the questions in order, the four ways to change them all, the summary, and one main button", async ({ page }) => {
     await expect(page.locator(".head__sub")).toHaveText("Математика · II година");
     await expect(titleField(page)).toHaveValue("Квадратни равенки");
     await expect(status(page)).toHaveText("Промените се зачувуваат сами.");
@@ -160,8 +160,8 @@ test.describe("at rest", () => {
     await expect(refineHeading(page)).toBeVisible();
     for (const name of ["Полесни", "Потешки", "Повеќе прашања", "Пократко време"]) await expect(refine(page, name)).toBeVisible();
     await expect(summaryField(page)).toHaveValue("Квадратна равенка е равенка од втор степен.");
-    await expect(yellow(page)).toHaveCount(1);
-    await expect(yellow(page)).toHaveText("Зачувај лекција");
+    await expect(mainButton(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveText("Зачувај лекција");
 
     // Questions first, then the ways to change them all, then the review summary, then the button (in the page's own order: the button
     // is in a bar that stays in the window, so where it is on the screen says nothing about where it is in the page).
@@ -180,7 +180,7 @@ test.describe("at rest", () => {
     await expect(saveButton(page)).toHaveAccessibleDescription(/Откако ќе ја зачувате, лекцијата е на Денес/);
   });
 
-  test("the yellow button and where saving stands are one bar that stays in the window, and is the only place that says it", async ({ page }) => {
+  test("the main button and where saving stands are one bar that stays in the window, and is the only place that says it", async ({ page }) => {
     const bar = page.locator(".savebar");
     await expect(bar).toHaveCount(1);
     await expect(bar.locator(".btn--primary")).toHaveText("Зачувај лекција");
@@ -200,7 +200,7 @@ test.describe("at rest", () => {
     await inWindow();
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight / 2));
     await inWindow();
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
     // At the end of the page it is where it belongs, above the two lines about what saving does.
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     const barBox = (await bar.boundingBox())!;
@@ -224,19 +224,20 @@ test.describe("at rest", () => {
     expect(box.x + box.width).toBeLessThanOrEqual(640);
   });
 
-  test("everything that can be pressed is large, and the words are 18px or more", async ({ page }) => {
-    for (const button of await page.locator("main button:visible, main a.btn:visible").all()) expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(48);
-    expect((await saveButton(page).boundingBox())!.height).toBeGreaterThanOrEqual(56);
+  test("everything that can be pressed is large: 44px and up, the main button 48px; and no words are under 16px", async ({ page }) => {
+    for (const button of await page.locator("main button:visible, main a.btn:visible").all()) expect(await tall(button)).toBeGreaterThanOrEqual(44);
+    expect(await tall(saveButton(page))).toBeGreaterThanOrEqual(48);
     const small = await page.locator("main *:visible").evaluateAll((els) =>
       els
         .filter((el) => [...el.childNodes].some((n) => n.nodeType === Node.TEXT_NODE && n.textContent!.trim() !== ""))
-        .filter((el) => !el.closest(".sr, .me"))
+        .filter((el) => !el.closest(".sr"))
         .map((el) => ({ text: el.textContent!.trim().slice(0, 30), size: parseFloat(getComputedStyle(el).fontSize) }))
-        .filter((x) => x.size < 18),
+        .filter((x) => x.size < 16),
     );
     expect(small).toEqual([]);
-    // The words that stand on the ground, not on a panel, are 24px: white on the ground is only large-text contrast.
-    expect(await page.locator(".prepare__go p").first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(24);
+    // What is read, the question and the words beside the main button, is the body size: 17px.
+    expect(await card(page, 1).locator(".question__prompt").evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(17);
+    expect(await page.locator(".prepare__go p").first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(17);
   });
 
   test("the first question starts in the first screen of a laptop", async ({ page }) => {
@@ -366,8 +367,8 @@ test.describe("editing a question of each kind", () => {
       await expect(rows.nth(i)).toHaveAttribute("data-right", "false");
       await expect(rows.nth(i)).not.toContainText("Точен одговор");
     }
-    // The tick is a drawing next to the words, never alone: the one with the words is the one with the white edge.
-    expect(await rows.nth(1).evaluate((el) => getComputedStyle(el).borderTopColor)).toBe("rgb(255, 255, 255)");
+    // The tick is a drawing next to the words, never alone: the one with the words is the one with the edge, in the accent.
+    expect(await rows.nth(1).evaluate((el) => getComputedStyle(el).borderTopColor)).toBe("rgb(18, 69, 84)");
     expect(await rows.nth(0).evaluate((el) => getComputedStyle(el).borderTopColor)).toBe("rgba(0, 0, 0, 0)");
     // What a screen reader says of each, with the words that are on the screen in it.
     await expect(isRight(page, 2)).toHaveAccessibleName("Одговор 2, точен одговор");
@@ -398,7 +399,7 @@ test.describe("editing a question of each kind", () => {
       const tile = open(page).locator(".prepare__tiles .choice").filter({ hasText: name });
       await expect(tile).toBeVisible();
       // One line: a tile of 64px, not one of three lines.
-      expect((await tile.boundingBox())!.height).toBeLessThanOrEqual(64);
+      expect(await tall(tile)).toBeLessThanOrEqual(64);
     }
     await done(page).click();
     await expect(card(page, 1).locator(".question__meta")).toContainText("Понудени одговори");
@@ -750,12 +751,12 @@ test.describe("changing all the questions", () => {
     test(`'${name}' is a wait on the page, then the new questions with a line that says what changed, and 'Врати ги претходните прашања' brings the earlier ones back`, async ({ page }) => {
       const before = (await draftOnDisk(page)).content.questions;
       await refine(page, name).click();
-      // The same wait, in the page: what is being done, Cancel, no yellow button.
+      // The same wait, in the page: what is being done, Cancel, no main button.
       await expect(waitHeading(page)).toBeVisible();
       await expect(waitHeading(page)).toBeFocused();
       await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d\d+$/);
       await expect(page.getByRole("button", { name: "Откажи", exact: true })).toBeVisible();
-      await expect(yellow(page)).toHaveCount(0);
+      await expect(mainButton(page)).toHaveCount(0);
 
       await expect(page.getByText(line, { exact: true }).first()).toBeVisible({ timeout: 15_000 });
       const refined = page.url();
@@ -849,7 +850,7 @@ test.describe("changing all the questions", () => {
     await expect(alerts(page)).toContainText("Не успеавме да ги променеме прашањата", { timeout: 15_000 });
     await expect(alerts(page)).toContainText("Вашите претходни прашања се сочувани.");
     await expect(page.getByRole("button", { name: "Обиди се повторно", exact: true })).toBeFocused();
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
     await page.getByRole("button", { name: "Остави ги како што беа", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/teacher/lessons/drafts/${SEED}$`));
     await expect(cards(page)).toHaveCount(6);
@@ -885,9 +886,9 @@ test.describe("saving the lesson", () => {
     const line = page.locator(".draft__note");
     await expect(line).toContainText("Лекцијата е зачувана. Ќе ја најдете на Денес, подготвена за час.");
     await expect(page.getByRole("status").filter({ hasText: "Лекцијата е зачувана." })).toHaveCount(1);
-    // One yellow button on the lesson page: start a class. Editing is outlined beside it.
-    await expect(yellow(page)).toHaveCount(1);
-    await expect(yellow(page)).toHaveText("Започни час");
+    // One main button on the lesson page: start a class. Editing is a quiet button beside it.
+    await expect(mainButton(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveText("Започни час");
     await expect(page.getByRole("button", { name: "Уреди лекција" })).toHaveClass(/btn--secondary/);
     await expect(page.locator(".questions > li").nth(1)).toContainText("Исправено прашање?");
     // Told once: a reload does not tell it again.
@@ -942,7 +943,7 @@ test.describe("saving the lesson", () => {
     // Nothing was saved, and it is said where the button is.
     await expect(page).toHaveURL(new RegExp(`${SEED}$`));
     expect((await demo(page)).school.lessons).toHaveLength(0);
-    for (const link of await list.getByRole("link").all()) expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    for (const link of await list.getByRole("link").all()) expect(await tall(link)).toBeGreaterThanOrEqual(44);
 
     // Each link opens its question and puts the focus where the fault is.
     await list.getByRole("link", { name: "Прашање 3: времето мора да биде од 5 до 300 секунди." }).click();
@@ -1039,16 +1040,16 @@ test.describe("editing a saved lesson", () => {
     await expect(title(page)).toHaveText("Задачи за проценти");
   });
 
-  test("'Уреди лекција' is outlined beside the one yellow button, and opens a draft of the lesson, with Back to the lesson", async ({ page }) => {
-    await expect(yellow(page)).toHaveCount(1);
-    await expect(yellow(page)).toHaveText("Започни час");
+  test("'Уреди лекција' is a quiet button beside the one main button, and opens a draft of the lesson, with Back to the lesson", async ({ page }) => {
+    await expect(mainButton(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveText("Започни час");
     await page.getByRole("button", { name: "Уреди лекција" }).click();
     await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d\d+\?from=today$/);
     await expect(title(page)).toHaveText("Задачи за проценти");
     await expect(titleField(page)).toHaveValue("Задачи за проценти");
     await expect(cards(page)).toHaveCount(5);
     // It saves as the next version of this lesson, and Back is the lesson.
-    await expect(yellow(page)).toHaveText("Зачувај ги промените");
+    await expect(mainButton(page)).toHaveText("Зачувај ги промените");
     await expect(page.getByText("Новата верзија важи за следните часови. Веќе одржаните остануваат какви што беа.")).toBeAttached();
     // What is kept is the changes: the lesson itself is there already.
     await expect(page.getByText("Ако не ги зачувате промените сега, ги чуваме до 30 дена и ги наоѓате на Денес.")).toBeAttached();
@@ -1108,10 +1109,16 @@ test.describe("editing a saved lesson", () => {
     const draft = page.locator(".lessons > li", { hasText: "Измени на зачувана лекција" });
     await expect(draft).toHaveCount(1);
     await expect(draft).toContainText("Во тек на измена");
-    await draft.getByRole("button", { name: "Фрли" }).click();
+    // Throwing the changes away is on the draft's own page, at its end, and says what stays.
+    await draft.getByRole("link", { name: "Продолжи" }).click();
+    await page.getByRole("button", { name: "Фрли ги измените" }).click();
     const dialog = page.getByRole("alertdialog", { name: "Дали да се фрли оваа лекција?" });
     await expect(dialog).toContainText("Измените ќе се изгубат. Зачуваната лекција останува каква што е.");
     await dialog.getByRole("button", { name: "Да, фрли" }).click();
+    // It leaves by the way Back does: to the saved lesson, which is as it was.
+    await expect(page).toHaveURL(/\/teacher\/lessons\/l-zadaci/);
+    await page.goto("/teacher");
+    await expect(page.getByRole("heading", { level: 1, name: "Денес" })).toBeVisible();
     await expect(draft).toHaveCount(0);
     await expect(page.locator(".lessons > li", { hasText: "Задачи за проценти" })).toHaveCount(1);
   });
@@ -1122,7 +1129,7 @@ test.describe("editing a saved lesson", () => {
 test.describe("Today lists what is not finished", () => {
   const second = (extra: Draft) => draftOf({ created_at: iso(Date.now() - 30_000), updated_at: iso(Date.now() - 30_000), ...extra });
 
-  test("a draft being written, one that failed and one that is ready, below the prepared lessons, with 'Отвори' or 'Продолжи' and 'Фрли', and one yellow button", async ({ page }) => {
+  test("a draft being written, one that failed and one that is ready, below the prepared lessons, with 'Отвори' or 'Продолжи' and 'Фрли', and one main button", async ({ page }) => {
     const pendingJob = { started_at: iso(Date.now() - 1_000), done_at: iso(Date.now() + 5 * 60_000), outcome: "ready" };
     const failedJob = { started_at: iso(Date.now() - 60_000), done_at: iso(Date.now() - 50_000), outcome: "failed" };
     await seed(
@@ -1154,18 +1161,18 @@ test.describe("Today lists what is not finished", () => {
     await expect(drafts.nth(2)).toContainText("6 прашања · Последна промена:");
     // "Продолжи" only where there is something to carry on: a lesson being written, or that failed, is opened to be looked at.
     for (let i = 0; i < 3; i++) {
-      await expect(drafts.nth(i).getByRole("link", { name: i === 2 ? "Продолжи" : "Отвори" })).toHaveClass(/btn--secondary/);
-      await expect(drafts.nth(i).getByRole("link", { name: i === 2 ? "Отвори" : "Продолжи" })).toHaveCount(0);
-      await expect(drafts.nth(i).getByRole("button", { name: "Фрли" })).toBeVisible();
+      // The row's one link, in words; no button: throwing a draft away is on its own page.
+      await expect(drafts.nth(i).getByRole("link")).toHaveText(i === 2 ? "Продолжи" : "Отвори");
+      await expect(drafts.nth(i).getByRole("button")).toHaveCount(0);
     }
     // The only red on the card that failed is its warning mark.
-    const red = await drafts.nth(1).evaluate((card) => [...card.querySelectorAll("*")].filter((el) => getComputedStyle(el).backgroundColor === "rgb(236, 34, 31)").map((el) => el.className));
+    const red = await drafts.nth(1).evaluate((card) => [...card.querySelectorAll("*")].filter((el) => getComputedStyle(el).backgroundColor === "rgb(180, 35, 24)").map((el) => el.className));
     expect(red).toEqual(["problem__badge lesson__badge"]);
     await expect(drafts.nth(0).locator(".problem__badge")).toHaveCount(0);
     await expect(drafts.nth(2).locator(".problem__badge")).toHaveCount(0);
-    // The yellow button is the one that prepares a lesson, as before.
-    await expect(yellow(page)).toHaveCount(1);
-    await expect(yellow(page)).toHaveText("Подготви лекција");
+    // The main button is the one that prepares a lesson, as before.
+    await expect(mainButton(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveText("Подготви лекција");
     // The prepared lessons are as they were.
     await expect(page.locator("section[aria-labelledby=prepared] .lessons > li")).toHaveCount(2);
   });
@@ -1186,7 +1193,7 @@ test.describe("Today lists what is not finished", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Подготвени лекции" })).toBeInViewport();
     await expect(page.locator("section[aria-labelledby=prepared] .lessons > li").first().getByRole("button", { name: /^Започни час/ })).toBeInViewport();
     expect(await overflow(page)).toBeLessThanOrEqual(0);
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
   });
 
   test("a draft that is being written turns into its lesson on Today, without a reload", async ({ page }) => {
@@ -1231,21 +1238,29 @@ test.describe("Today lists what is not finished", () => {
     expect((await demo(page)).school.drafts.filter((d) => d.id === "d-failed")).toHaveLength(1);
   });
 
-  test("'Фрли' asks first: staying keeps it, and yes throws it away for good", async ({ page }) => {
+  test("'Фрли ја лекцијата', at the end of the draft's page, asks first: staying keeps it, and yes throws it away for good", async ({ page }) => {
     await seed(page, { drafts: [draftOf()] }, "/teacher");
     const draft = page.locator("section[aria-labelledby=unfinished] .lessons > li");
-    await draft.getByRole("button", { name: "Фрли" }).click();
+    await draft.getByRole("link", { name: "Продолжи" }).click();
+    const discard = page.getByRole("button", { name: "Фрли ја лекцијата" });
+    // It is the last thing on the page, after the bar that saves, and it is a quiet button.
+    await expect(discard).toHaveClass(/btn--secondary/);
+    expect((await discard.boundingBox())!.y).toBeGreaterThan((await page.locator("#save-note").boundingBox())!.y);
+    await discard.click();
     const dialog = page.getByRole("alertdialog", { name: "Дали да се фрли оваа лекција?" });
     await expect(dialog).toContainText("Она што е подготвено ќе се изгуби.");
     await expect(dialog.getByRole("button", { name: "Не, задржи" })).toBeFocused();
     await expect(dialog.getByRole("button", { name: "Не, задржи" })).toHaveClass(/btn--primary/);
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
-    await expect(draft).toHaveCount(1);
+    await expect(discard).toBeFocused();
+    expect((await demo(page)).school.drafts).toHaveLength(1);
 
-    await draft.getByRole("button", { name: "Фрли" }).click();
+    await discard.click();
     await dialog.getByRole("button", { name: "Да, фрли" }).click();
-    await expect(dialog).toBeHidden();
+    // It leaves by the way Back does, to Today, where the lesson is no longer listed.
+    await expect(page).toHaveURL(/\/teacher$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Денес" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Недовршени лекции" })).toHaveCount(0);
     expect((await demo(page)).school.drafts).toEqual([]);
     // The lesson itself is not there either: this is the one the AI made, never saved.
@@ -1253,11 +1268,14 @@ test.describe("Today lists what is not finished", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Недовршени лекции" })).toHaveCount(0);
   });
 
-  test("a draft being written is thrown away with its own words, and writing stops", async ({ page }) => {
+  test("a draft being written is stopped from its own page: the row opens the wait, and its 'Откажи' asks first", async ({ page }) => {
     const job = { started_at: iso(Date.now() - 1_000), done_at: iso(Date.now() + 5 * 60_000), outcome: "ready" };
     await seed(page, { drafts: [second({ job, content: { title: "Скриено", review_summary: "", questions: [] } })] }, "/teacher");
-    await page.locator("section[aria-labelledby=unfinished] .lessons > li").getByRole("button", { name: "Фрли" }).click();
-    await expect(page.getByRole("alertdialog", { name: "Дали да се фрли оваа лекција?" })).toContainText("Подготвувањето ќе запре.");
+    const row = page.locator("section[aria-labelledby=unfinished] .lessons > li");
+    await expect(row.getByRole("button")).toHaveCount(0);
+    await row.getByRole("link", { name: "Отвори" }).click();
+    await page.getByRole("button", { name: "Откажи" }).click();
+    await expect(page.getByRole("alertdialog", { name: "Дали сакате да откажете?" })).toContainText("Прашањата нема да се напишат.");
   });
 });
 
@@ -1269,8 +1287,8 @@ test.describe("a new teacher with one draft and no lesson", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Недовршени лекции" })).toBeVisible();
     await expect(page.locator("section[aria-labelledby=unfinished] .lessons > li")).toHaveCount(1);
     await expect(page.getByRole("heading", { level: 2, name: "Немате подготвени лекции" })).toHaveCount(0);
-    await expect(yellow(page)).toHaveCount(1);
-    await expect(yellow(page)).toHaveText("Подготви лекција");
+    await expect(mainButton(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveText("Подготви лекција");
   });
 });
 
@@ -1290,12 +1308,12 @@ test.describe("the first run", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Видете кој бил присутен и што да се повтори" })).toBeVisible();
   }
 
-  test("the guide's last screen leads into the first lesson, with 'Не сега' to leave; the yellow button is the first lesson", async ({ page }) => {
+  test("the guide's last screen leads into the first lesson, with 'Не сега' to leave; the main button is the first lesson", async ({ page }) => {
     await toLastScreen(page);
-    await expect(yellow(page)).toHaveCount(1);
-    await expect(yellow(page)).toHaveText("Подготви ја првата лекција");
-    // The longest label of the guide is read on one line (a button of 56px, not two lines of words in one of 80), beside Back.
-    expect((await yellow(page).boundingBox())!.height).toBeLessThanOrEqual(60);
+    await expect(mainButton(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveText("Подготви ја првата лекција");
+    // The longest label of the guide is read on one line (a button of 48px, not two lines of words in a taller one), beside Back.
+    expect(await tall(mainButton(page))).toBeLessThanOrEqual(60);
     await expect(page.getByRole("button", { name: "Не сега, оди на Денес" })).toHaveClass(/btn--quiet/);
     await expect(page.getByText("Да почнеме со вистинска лекција")).toBeVisible();
     // Nothing is marked done by arriving here.
@@ -1370,7 +1388,6 @@ test.describe("keyboard only", () => {
   test("a lesson can be changed and saved with the keyboard alone", async ({ page }) => {
     // From the first button of the page on, every step is a key.
     await page.getByRole("link", { name: "Назад кон Лекции" }).focus();
-    await page.keyboard.press("Tab"); // the teacher's name
     await page.keyboard.press("Tab"); // the title
     await expect(titleField(page)).toBeFocused();
     // A box that is tabbed into is selected, so what is typed takes its place.
@@ -1408,7 +1425,7 @@ test.describe("keyboard only", () => {
     expect((await draftOnDisk(page)).content.questions[0].options).toEqual(["2x + 5 = 0", "x² − 4x + 3 = 0", "x³ − 1 = 0!", "3/x = 6"]);
     expect((await draftOnDisk(page)).content.title).toBe("Квадратни равенки (проверена)");
 
-    // Down to the one yellow button, and Enter makes it a lesson.
+    // Down to the one main button, and Enter makes it a lesson.
     await saveButton(page).focus();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/teacher\/lessons\/l-n\d+/);
@@ -1539,16 +1556,16 @@ test.describe("zoomed and small windows", () => {
     await edit(page, 1).click();
     expect(await overflow(page)).toBeLessThanOrEqual(0);
     const buttons = await page.locator("main button:visible, main a.btn:visible").all();
-    for (const button of buttons) expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(48);
-    for (const field of await open(page).locator("input[type=text]:visible, textarea:visible").all()) expect((await field.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+    for (const button of buttons) expect(await tall(button)).toBeGreaterThanOrEqual(44);
+    for (const field of await open(page).locator("input[type=text]:visible, textarea:visible").all()) expect(await tall(field)).toBeGreaterThanOrEqual(48);
   });
 
-  test("at 900 wide, in the drawer layout, the editor fits and the one yellow button is whole", async ({ page }) => {
+  test("at 900 wide, in the drawer layout, the editor fits and the one main button is whole", async ({ page }) => {
     await page.setViewportSize({ width: 900, height: 700 });
     expect(await overflow(page)).toBeLessThanOrEqual(0);
     await edit(page, 1).click();
     expect(await overflow(page)).toBeLessThanOrEqual(0);
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
   });
 
   test("the motion stops when the computer asks for less of it, and nothing on the page moves by itself", async ({ page }) => {

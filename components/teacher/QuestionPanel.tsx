@@ -32,13 +32,13 @@ export function answerWords(q: ConsoleQuestion, t: ReturnType<typeof useT>["t"])
 }
 
 /**
- * "Прашањето сега" (4.2): the one place a teacher looks while teaching. It follows the question's life, and the page's one yellow button is always the
+ * "Прашањето сега" (4.2): the one place a teacher looks while teaching. It follows the question's life, and the page's one main button is always the
  * next sensible step:
- * - nothing open: the next question not yet sent, with what it is, and yellow "Send the question";
- * - open: a calm countdown on the server's clock and how many have answered; no yellow while it runs, and the time is the question's (BR-TIME-04 may close it
+ * - nothing open: the next question not yet sent, with what it is, and the main button "Send the question";
+ * - open: a calm countdown on the server's clock and how many have answered; no main button while it runs, and the time is the question's (BR-TIME-04 may close it
  *   sooner, by itself);
- * - closed: yellow "Show the right answer";
- * - answer shown: the counts and the right answer, then yellow "Send the next question".
+ * - closed: the main button "Show the right answer";
+ * - answer shown: the counts and the right answer, then the main button "Send the next question".
  * Skipping asks first (BR-SKIP-01). The panel is read from the questions alone, so a reload or a second window shows the same.
  */
 export function QuestionPanel({ snapshot }: { snapshot: ConsoleSnapshot }) {

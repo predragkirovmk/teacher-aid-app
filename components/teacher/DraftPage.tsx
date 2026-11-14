@@ -61,14 +61,15 @@ export function DraftPage() {
               <Bar width="40%" height="2rem" />
               <Bar width="80%" height="1.5rem" />
             </div>
-            {[0, 1].map((i) => (
-              <div key={i} className="question" aria-hidden="true">
-                <Bar width="30%" height="1.75rem" />
-                <Bar width="80%" height="2rem" />
-                <Bar height="3.5rem" className="skeleton--row" />
-                <Bar height="3.5rem" className="skeleton--row" />
-              </div>
-            ))}
+            <div className="questions" aria-hidden="true">
+              {[0, 1].map((i) => (
+                <div key={i} className="question">
+                  <Bar width="60%" height="1.75rem" />
+                  <Bar width="80%" height="1.5rem" />
+                  <Bar width="40%" height="1.5rem" />
+                </div>
+              ))}
+            </div>
           </Loading>
         </div>
       </>
@@ -232,7 +233,7 @@ function Pending({ draft, from, offline, onAsk }: { draft: LessonDraft; from: st
 
 /**
  * The draft is still being written long after the server should have failed it: the job has stopped without anyone saying so. The
- * yellow button is the way a failure has, back to the form filled in again (or the questions as they were); the other waits on.
+ * main button is the way a failure has, back to the form filled in again (or the questions as they were); the other waits on.
  */
 function Stuck({ refining, onBack, onWait }: { refining: boolean; onBack: () => void; onWait: () => void }) {
   const { t } = useT();
@@ -258,7 +259,7 @@ function Stuck({ refining, onBack, onWait }: { refining: boolean; onBack: () => 
   );
 }
 
-/** The AI could not write it, even after its one retry (EC-LES-02): the yellow button runs the same draft again, the other gives it up. */
+/** The AI could not write it, even after its one retry (EC-LES-02): the main button runs the same draft again, the other gives it up. */
 function Failed({ draft, from }: { draft: LessonDraft; from: string | null }) {
   const [problem, setProblem] = useState<unknown>(null);
   const { te } = useT();

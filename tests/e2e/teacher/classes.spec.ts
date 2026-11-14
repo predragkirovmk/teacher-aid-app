@@ -4,7 +4,7 @@ import { freshState, MOCK_KEY, startOfDay } from "../../../lib/teacher/api/mock-
 import { attendanceByStudent, focusByStudent, newestQuestions, summaryOf, weakestFirst } from "../../../lib/teacher/classes";
 import type { CourseDashboard } from "../../../lib/teacher/api/types";
 import { expect, SETTINGS_KEY, test } from "./fixtures";
-import { go, next, panel, reveal, send, T0, teach, TEACHING_AT, title, yellow } from "./live-helpers";
+import { go, next, panel, reveal, send, T0, teach, TEACHING_AT, title, mainButton } from "./live-helpers";
 
 /**
  * The class results, step 11: the list of classes and the results page of a class, with the numbers of the demo school worked out here from the
@@ -55,12 +55,12 @@ test.describe("the list of classes", () => {
     await expect(cards.nth(3)).toContainText("25 ученици");
     await expect(cards.nth(3)).toContainText("Уште нема одржан час со овој клас");
     await expect(cards.nth(3)).not.toContainText("0 одржани");
-    await expect(yellow(page)).toHaveCount(0);
+    await expect(mainButton(page)).toHaveCount(0);
   });
 
   test("a card opens the results of its class", async ({ page }) => {
     await page.goto("/teacher/classes");
-    await page.getByTestId("class-card").nth(1).getByRole("link", { name: "Види резултати" }).click();
+    await page.getByTestId("class-card").nth(1).getByRole("link").click();
     await expect(page).toHaveURL(/\/teacher\/classes\/course-iv-1$/);
     await expect(title(page)).toHaveText("IV-1 · Математика");
   });
@@ -102,7 +102,7 @@ test.describe("the results of a class with a season", () => {
     await jump.getByRole("link", { name: "Слаби теми" }).click();
     await expect(page).toHaveURL(/#topics$/);
     await expect(page.getByRole("heading", { name: "Слаби теми" })).toBeInViewport();
-    await expect(yellow(page)).toHaveCount(0);
+    await expect(mainButton(page)).toHaveCount(0);
   });
 
   test("attendance: five students, then all; the reasons and the student who joined mid-year", async ({ page }) => {
@@ -263,7 +263,7 @@ test.describe("a class with no lesson held", () => {
     await expect(title(page)).toHaveText("IV-2 · Математика");
     const empty = page.getByTestId("course-empty");
     await expect(empty).toContainText("За овој клас уште нема одржан час");
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
     await expect(empty.getByRole("link", { name: "Оди на Денес" })).toHaveAttribute("href", "/teacher");
     await expect(page.locator("#settings")).toBeVisible();
     await expect(page.getByTestId("points-row")).toHaveCount(0);
@@ -316,7 +316,7 @@ test.describe("a lesson ended in the demo", () => {
     await expect(card.getByRole("heading")).toHaveText("II-4 · Математика");
     await expect(card).toContainText("11 одржани часа");
     await expect(card).toContainText("Последниот час беше денес");
-    await card.getByRole("link", { name: "Види резултати" }).click();
+    await card.getByRole("link").click();
     await expect(page.getByTestId("sum-lessons")).toHaveText("11");
     const lessons = page.getByTestId("points-row");
     await expect(lessons.first()).toContainText("Проценти и пропорции");

@@ -21,7 +21,7 @@ const ICONS: Record<ListStatus, Icon> = { not_sent: CircleIcon, sent: PaperPlane
 
 /**
  * Every question of the lesson, in order, each with where it stands in words (not sent, sent, answer shown, skipped) and an icon. A question not yet
- * sent can be sent out of order with an outlined "Send" and skipped with the quiet link; the yellow button is only ever in the panel above. A question
+ * sent can be sent out of order with a quiet "Send" and skipped with the quiet link; the main button is only ever in the panel above. A question
  * made on the spot is listed after the others. "Quick question" opens a small form.
  */
 export function QuestionList({ snapshot }: { snapshot: ConsoleSnapshot }) {

@@ -1,4 +1,4 @@
-import { test as base, expect, type Page } from "@playwright/test";
+import { test as base, expect, type Locator, type Page } from "@playwright/test";
 
 /**
  * The demo's session is a key in localStorage, standing in for the API's cookie (lib/teacher/api/mock-session.ts). Most
@@ -44,3 +44,14 @@ export const settled = (page: Page): Promise<void> =>
     const ending = document.getAnimations().filter((a) => a.effect?.getComputedTiming().endTime !== Infinity);
     await Promise.all(ending.map((a) => a.finished.catch(() => null)));
   });
+
+/**
+ * How tall something is on the screen, to a hundredth of a pixel. The browser hands a box back in 32-bit floats, so a button that
+ * is 48px tall arrives as 47.999996 when it sits on a fraction of a pixel, which depends on whether the web font has landed yet.
+ * A size check takes its number from here, so that it fails on a button that is too small and never on that rounding.
+ */
+export async function tall(target: Locator): Promise<number> {
+  const box = await target.boundingBox();
+  if (!box) throw new Error("Nothing to measure: it is not on the screen.");
+  return Math.round(box.height * 100) / 100;
+}

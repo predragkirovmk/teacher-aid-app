@@ -1,6 +1,6 @@
 import type { BrowserContext, Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { CLASS_IDS, go, next, openProjector, panel, PLANS, reveal, row, send, SESSION, start, TEACHING_AT, teach, yellow, at } from "./live-helpers";
+import { CLASS_IDS, go, next, openProjector, panel, PLANS, reveal, row, send, SESSION, start, TEACHING_AT, teach, mainButton, at } from "./live-helpers";
 
 /**
  * The end of a lesson, step 10: the way from teaching to the review, the review on the console and on the projector, End with its question, the end page with the
@@ -40,12 +40,12 @@ async function endIt(page: Page) {
 }
 
 test.describe("from teaching to the review", () => {
-  test("after the last question the panel says so and the one yellow button goes on to the review", async ({ page, context }) => {
+  test("after the last question the panel says so and the one main button goes on to the review", async ({ page, context }) => {
     const projector = await teach(page, context);
     await ask(page, context, 6);
     await expect(panel(page).getByTestId("none-left")).toContainText("Сите прашања се готови");
-    await expect(yellow(page)).toHaveCount(1);
-    await expect(yellow(page)).toHaveText("Премини на прегледот");
+    await expect(mainButton(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveText("Премини на прегледот");
     // Nothing is left to send, so there is no quiet way to leave early either.
     await expect(early(page)).toHaveCount(0);
     await toReview(page).click();
@@ -102,7 +102,7 @@ test.describe("the review", () => {
     await expect(anon.first().locator("strong")).not.toBeEmpty();
     await anon.first().getByRole("button", { name: /^Означи како одговорено/ }).click();
     await expect(page.locator('[data-testid="anon"][data-answered=true]')).toHaveCount(1);
-    await expect(yellow(page)).toHaveText("Следно на проекторот");
+    await expect(mainButton(page)).toHaveText("Следно на проекторот");
   });
 
   test("on the projector: one screen at a time which the teacher steps through, the right answer and why, then the questions with no name", async ({ page, context }) => {
@@ -130,9 +130,9 @@ test.describe("the review", () => {
     const wholeScreen = await projector.locator("main").innerText();
     for (const name of senders) expect(wholeScreen).not.toContain(name);
     for (const text of await page.getByTestId("anon").locator(".inbox__text").allInnerTexts()) expect(wholeScreen).toContain(text);
-    // The last has been shown: no yellow step is left, and the way on is the red End.
+    // The last has been shown: no main step is left, and the way on is the red End.
     await expect(nextOnProjector).toHaveCount(0);
-    await expect(yellow(page)).toHaveCount(0);
+    await expect(mainButton(page)).toHaveCount(0);
     await expect(endButton(page)).toBeVisible();
     // Back one.
     await page.getByRole("button", { name: "Претходно" }).click();
@@ -146,7 +146,7 @@ test.describe("the review", () => {
     await expect(page.locator(".head")).toHaveClass(/head--compact/);
     const now = page.locator(".rpanel");
     const list = page.getByTestId("missed-list");
-    // The panel is above the list, in the first screen, with the yellow button on one line.
+    // The panel is above the list, in the first screen, with the main button on one line.
     const box = await now.boundingBox();
     const listBox = await list.boundingBox();
     expect(box!.y + box!.height).toBeLessThanOrEqual(listBox!.y);
@@ -364,9 +364,9 @@ test.describe("the end page", () => {
     // By surname, then name: the first word of each name is the surname, in the Macedonian alphabet.
     const surnames = (await rows.locator("th").allInnerTexts()).map((n) => n.split(" ")[0]);
     expect(surnames).toEqual([...surnames].sort((a, b) => a.localeCompare(b, "mk")));
-    // One yellow button, the way on.
-    await expect(yellow(page)).toHaveText(/Оди на Денес/);
-    await expect(yellow(page)).toHaveCount(1);
+    // One main button, the way on.
+    await expect(mainButton(page)).toHaveText(/Оди на Денес/);
+    await expect(mainButton(page)).toHaveCount(1);
   });
 
   test("the list is copied as one student a line, and the line that says so takes the focus", async ({ page, context }) => {

@@ -39,7 +39,7 @@ test.describe("offline", () => {
 
   test("the manifest is one Chrome offers to install", async ({ request }) => {
     const m = await (await request.get("/teacher.webmanifest")).json();
-    expect(m).toMatchObject({ name: "TeacherAid за наставници", short_name: "TeacherAid", start_url: "/teacher", scope: "/teacher", display: "standalone", background_color: "#124554", theme_color: "#124554" });
+    expect(m).toMatchObject({ name: "TeacherAid за наставници", short_name: "TeacherAid", start_url: "/teacher", scope: "/teacher", display: "standalone", background_color: "#eef2f2", theme_color: "#eef2f2" });
     const icons = m.icons as { sizes: string; purpose: string; src: string }[];
     expect(icons.some((i) => i.sizes === "192x192")).toBe(true);
     expect(icons.some((i) => i.sizes === "512x512" && i.purpose === "any")).toBe(true);

@@ -50,7 +50,7 @@ test.describe("the frame on a long page", () => {
     [1024, 768],
     [900, 700],
   ] as const) {
-    test(`at ${width} x ${height}, scrolled to the bottom: the skip link is out of sight and the sidebar (or the top bar) still fills its place`, async ({ page }) => {
+    test(`at ${width} x ${height}, scrolled to the bottom: the skip link is out of sight and the sidebar (or the top bar) still keeps its place`, async ({ page }) => {
       await page.setViewportSize({ width, height });
       await page.goto("/teacher/lessons/new");
       await page.getByRole("radio", { name: /^Неколку реченици/ }).check();
@@ -60,9 +60,10 @@ test.describe("the frame on a long page", () => {
 
       await expect(page.getByRole("link", { name: "Прескокни кон содржината" })).not.toBeInViewport();
       if (width >= 1024) {
+        // The sidebar is a panel that floats 12px inside the window, as tall as the window allows.
         const sidebar = (await page.locator("#sidebar").boundingBox())!;
-        expect(sidebar.y).toBe(0);
-        expect(sidebar.height).toBe(height);
+        expect(sidebar.y).toBe(12);
+        expect(sidebar.height).toBe(height - 24);
       } else {
         const bar = (await page.locator(".topbar").boundingBox())!;
         expect(bar.y).toBe(0);
@@ -87,9 +88,12 @@ test.describe("the frame on a long page", () => {
 test.describe("the teacher", () => {
   test("the name, the initials and the greeting come from the account", async ({ page }) => {
     await page.goto("/teacher");
-    const me = page.getByRole("link", { name: "Марија Петровска, поставки" });
+    // Who is signed in is said once, at the foot of the sidebar, and it leads to Settings; the page's own top has no name on it.
+    const me = page.locator("#sidebar").getByRole("link", { name: "Марија Петровска, поставки" });
     await expect(me).toBeVisible();
+    await expect(me).toHaveText("Марија Петровска");
     await expect(me.locator(".me__badge")).toHaveAttribute("data-initials", "МП");
+    await expect(page.locator("main").getByRole("link", { name: /поставки$/ })).toHaveCount(0);
     await expect(page.getByText(/^(Добро утро|Добар ден|Добра вечер), Марија$/)).toBeVisible();
   });
 

@@ -1,46 +1,89 @@
 /*
- * The teacher app. Teal, dark only. Older teachers use this on a school laptop, so the rules are:
- * body text 18px or more and nothing under 16px, buttons and rows 56px tall, one yellow button
- * per screen, and white text on the ground only when it is large (white on --ground is 4.2:1).
- * Sizes are in rem so they follow the browser's text size; spacing is on the 8pt grid.
+ * The teacher app. Light and quiet: a pale ground, white surfaces, dark ink and one accent, the teal of the logo. Teachers use
+ * this on a school laptop, many of them not at ease with computers, so the rules are: body text 17px and nothing under 16px,
+ * the main button 48px tall and the others 44px, one main button per screen, weight for names and numbers only, and yellow
+ * for what is live and nothing else. Sizes are in rem so they follow the browser's text size; spacing is on the 8pt grid.
+ * The projected window (.cv) is the one dark place: it is read from the back of a classroom, and keeps its own palette.
  */
 :root {
-  --deep: #124554;
-  --panel: #145667;
-  --ground-top: #155869;
-  --ground: #32878c;
-  --shadow: #0a2e37;
-  --yellow: #ffc83e;
-  --yellow-deep: #cea034;
-  --red: #ec221f;
-  --text: #ffffff;
-  --ink: #0a2e37;
-  /* Softer text for --panel and --deep only (6.5:1 on --panel). */
-  --text-2: #d9e7ea;
-  --line: rgba(255, 255, 255, 0.32);
-  /* The edge of a secondary button: 3:1 against the panel and the ground, so it reads as a button. */
-  --line-strong: rgba(255, 255, 255, 0.55);
+  /* Surfaces, from the back forward. */
+  --ground: #eef2f2; /* the window */
+  --surface: #ffffff; /* a card, a list, the sidebar, a dialog */
+  --well: #eef2f2; /* a quieter block inside a surface */
+  --well-2: #e2e9ea; /* a track, a placeholder, the ground of a switch */
 
-  /* The system's own font by name, and no system-ui: on Linux system-ui is the much wider DejaVu Sans, which breaks the
-     one-line rows and the projector's fit. There Arial, or its same-width stand-in Liberation Sans, is used instead. */
-  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Ink. On white 15.1:1 and 6.6:1; on the ground 13.4:1 and 5.9:1; the second on the tint 5.5:1. The third is for marks
+     that carry no meaning alone (a chevron), never for words: it is 2.9:1. */
+  --ink: #0d2a32;
+  --ink-2: #4a6068;
+  --ink-3: #8a9ba1;
+
+  /* Lines. A hairline parts rows; an edge draws a quiet control; the strong edge is the one a box to write in needs to be
+     found at all (3.7:1 on white, 3.2:1 on the ground). */
+  --hairline: rgba(13, 42, 50, 0.09);
+  --edge: rgba(13, 42, 50, 0.2);
+  --edge-strong: #77898f;
+
+  /* The accent: the main button, links, what is selected. White on it is 10.5:1; it is 8.7:1 on the tint. */
+  --teal: #124554;
+  --teal-hover: #0e3a47;
+  --teal-active: #0b2f3a;
+  --on-teal: #ffffff;
+  --tint: #e1ecee;
+  --tint-hover: #d6e5e8;
+  --tint-active: #cbdde1;
+  --hover: rgba(13, 42, 50, 0.05);
+  --pressed: rgba(13, 42, 50, 0.1);
+
+  /* Yellow says a lesson is live, and only that; ink on it is 9.7:1. Red is End and what went wrong: 6.6:1 on white, and
+     5.8:1 on its own tint. */
+  --yellow: #ffc83e;
+  --on-yellow: #0d2a32;
+  --red: #b42318;
+  --red-tint: #fdecea;
+  --red-tint-hover: #fbdad6;
+  --red-edge: rgba(180, 35, 24, 0.36);
+  --focus: var(--teal);
+
+  /* Depth. A surface has a hairline ring and no shadow; only what floats over the page (the sidebar, a bar that stays, a
+     window) has a soft one. */
+  --ring: 0 0 0 1px rgba(13, 42, 50, 0.06);
+  --shadow-panel: 0 0 0 1px rgba(13, 42, 50, 0.05), 0 12px 32px -20px rgba(13, 42, 50, 0.3);
+  --shadow-float: 0 0 0 1px rgba(13, 42, 50, 0.07), 0 18px 44px -14px rgba(13, 42, 50, 0.32);
+  --shadow-window: 0 0 0 1px rgba(13, 42, 50, 0.06), 0 32px 80px -24px rgba(13, 42, 50, 0.45);
+
+  /* What a quiet button is filled with depends on what it sits on. On the ground it is white with a thin edge; a surface
+     sets these two to the tint and no edge, and a well inside a surface sets them back (the rules are under "buttons"). */
+  --quiet: var(--surface);
+  --quiet-edge: inset 0 0 0 1px var(--edge);
+  /* The same for a block that holds a note or a warning: white with a ring on the ground, a well inside a surface. */
+  --box: var(--surface);
+  --box-ring: var(--ring);
+
+  /* One family for everything, so a Windows laptop and a Mac show the same letters. The names after it are what is drawn
+     until it has loaded: the system's own font by name and no system-ui, which on Linux is the much wider DejaVu Sans. */
+  --font: var(--font-golos), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-display: var(--font-golos), system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  /* Type scale. 18px body, 16px is the floor. */
+  /* Type scale. 17px body, 16px is the floor. Size and place carry the order of things; weight is 400 for words, 500 for a
+     label, 600 for a name, a number or a button, 650 for a title. */
   --fs-small: 1rem; /* 16 */
-  --fs-body: 1.125rem; /* 18 */
-  --fs-button: 1.25rem; /* 20 */
-  --fs-h3: 1.375rem; /* 22 */
-  --fs-lead: 1.5rem; /* 24 */
-  --fs-h2: 1.75rem; /* 28 */
-  --fs-title: clamp(2rem, 1.4rem + 1.8vw, 2.75rem); /* 32 to 44 */
-  --lh-body: 1.55;
+  --fs-body: 1.0625rem; /* 17 */
+  --fs-row: 1.125rem; /* 18: the name of a row, a choice, the line under a title */
+  --fs-section: 1.25rem; /* 20: the heading of a section or a card */
+  --fs-large: 1.375rem; /* 22: the title of a window */
+  --fs-xl: 1.75rem; /* 28: the words of the question that is open */
+  --fs-figure: 2rem; /* 32: a number that is the point */
+  --fs-title: clamp(2rem, 1.55rem + 1.5vw, 2.5rem); /* 32 to 40 */
+  --lh-body: 1.5;
   --lh-tight: 1.15;
 
   /* Radius. */
   --r-s: 0.5rem; /* 8 */
-  --r-m: 1rem; /* 16 */
-  --r-l: 1.5rem; /* 24 */
+  --r-m: 0.8125rem; /* 13: a row, a field, a block inside a surface */
+  --r-l: 1.25rem; /* 20: a surface */
+  --r-xl: 1.375rem; /* 22: what floats */
+  --r-btn: 1.5rem; /* a button: a pill while its words are on one line, a rounded box when they take two */
   --r-pill: 999px;
 
   /* Spacing, 8pt grid. */
@@ -51,9 +94,11 @@
   --sp-5: 3rem; /* 48 */
   --sp-6: 4rem; /* 64 */
 
-  --tap: 3.5rem; /* 56: buttons and rows */
-  --tap-small: 3rem; /* 48: small secondary buttons */
-  --sidebar-w: 17.5rem; /* 280 */
+  --tap: 3rem; /* 48: the main button, a box to write in */
+  --tap-small: 2.75rem; /* 44: every other button and link that is pressed */
+  --row: 3.5rem; /* 56: a row that is chosen or opened */
+  --frame: 0.75rem; /* 12: the air round the floating sidebar */
+  --sidebar-w: 15.5rem; /* 248 */
   --page-w: 72rem; /* 1152: the column the header and the content share, centred in the main area */
   --measure: 40rem; /* 640: the widest a paragraph runs, whatever the column */
 
@@ -72,7 +117,7 @@
   --spring-smooth: linear(0, 0.0495, 0.1582, 0.2864, 0.4129, 0.5273, 0.6256, 0.7073, 0.7736, 0.8263, 0.8677, 0.8998, 0.9246, 0.9435, 0.9578, 0.9686, 0.9767, 0.9828, 0.9873, 0.9906, 0.9931, 0.995, 0.9963, 0.9973, 1);
   --spring-smooth-dur: 540ms;
 
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 * {
@@ -80,15 +125,15 @@
 }
 
 html {
-  background: var(--shadow);
+  background: var(--ground);
   text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
   min-height: 100dvh;
-  background: var(--ground-top);
-  color: var(--text);
+  background: var(--ground);
+  color: var(--ink);
   font-family: var(--font);
   font-size: var(--fs-body);
   line-height: var(--lh-body);
@@ -130,12 +175,11 @@ button {
   cursor: pointer;
 }
 
+/* The ring is the accent, 10.5:1 on white and 9.3:1 on the ground, and it stands off what it is round by 2px, so it is seen
+   round a teal button too. */
 :focus-visible {
-  outline: 3px solid var(--yellow);
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
-  /* A dark gap between the ring and what is behind it keeps the ring 3:1 on any surface, even the
-     lightest part of the ground (yellow on --ground alone is 2.7:1). */
-  box-shadow: 0 0 0 2px var(--shadow);
 }
 
 /* Hidden to the eye, still read out. The calm line's region on the wait is the same until it has a line to show. */
@@ -169,24 +213,27 @@ button {
 }
 
 /*
- * Seven 56px rows and the logo need about 560px. A shorter window (a laptop at 125% to 150%, or
- * 200% zoom in the drawer) scrolls the sidebar, and a shadow on the edge says there is more. The
- * "local" layers cover the shadow once the end is reached, so it only shows on a side that still
- * has something beyond it.
+ * The sidebar is a white panel that floats on the ground: the logo, the four places, and at its foot Settings, Help,
+ * Sign out and who is signed in. All of it needs about 500px. A shorter window (a laptop at 125% to 150%, or 200% zoom
+ * in the drawer) scrolls the sidebar, and a shadow on the edge says there is more. The "local" layers cover the shadow
+ * once the end is reached, so it only shows on a side that still has something beyond it.
  */
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-3);
-  padding: var(--sp-2);
+  gap: 1.25rem;
+  padding: 1.125rem 0.75rem 0.875rem;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* A quiet button in it is filled with the tint. */
+  --quiet: var(--tint);
+  --quiet-edge: 0 0 transparent;
   background:
-    linear-gradient(var(--deep) 30%, transparent) top / 100% 2.5rem no-repeat local,
-    linear-gradient(transparent, var(--deep) 70%) bottom / 100% 2.5rem no-repeat local,
-    linear-gradient(rgb(10 46 55 / 0.9), transparent) top / 100% 1.5rem no-repeat scroll,
-    linear-gradient(transparent, rgb(10 46 55 / 0.9)) bottom / 100% 1.5rem no-repeat scroll,
-    var(--deep);
+    linear-gradient(var(--surface) 30%, transparent) top / 100% 2.5rem no-repeat local,
+    linear-gradient(transparent, var(--surface) 70%) bottom / 100% 2.5rem no-repeat local,
+    linear-gradient(rgb(13 42 50 / 0.14), transparent) top / 100% 0.75rem no-repeat scroll,
+    linear-gradient(transparent, rgb(13 42 50 / 0.14)) bottom / 100% 0.75rem no-repeat scroll,
+    var(--surface);
 }
 
 .brand {
@@ -199,14 +246,18 @@ button {
 .brand__link {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  min-height: var(--tap);
-  padding: 0 var(--sp-1);
+  gap: 0.625rem;
+  min-height: var(--tap-small);
+  padding: 0 0.75rem;
   border-radius: var(--r-m);
-  font-family: var(--font-display);
-  font-size: var(--fs-lead);
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-size: 1.1875rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+/* The logo is drawn in the colour of the words round it: here it takes the accent, and the name stays ink. */
+.brand__link svg {
+  flex: none;
+  color: var(--teal);
 }
 
 .nav {
@@ -214,52 +265,93 @@ button {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.25rem;
+  gap: 0.125rem;
 }
 
 .nav__item {
   position: relative;
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: 0.75rem;
   width: 100%;
-  min-height: var(--tap);
-  padding: var(--sp-1) var(--sp-2);
+  min-height: 2.875rem;
+  padding: 0.5rem 0.75rem;
   border-radius: var(--r-m);
   font-size: var(--fs-body);
   font-weight: 500;
   line-height: 1.25;
   text-align: left;
-  transition: background-color var(--dur) var(--ease);
 }
 .nav__item svg {
   flex: none;
 }
+/* The selected row is told apart by more than colour: its own ground, a filled icon and a heavier label. */
 .nav__item[aria-current="page"] {
-  background: var(--panel);
-  font-weight: 700;
-}
-/* The selected row is told apart by more than colour: filled icon, bold label and this bar. */
-.nav__item[aria-current="page"]::before {
-  content: "";
-  position: absolute;
-  left: 0.25rem;
-  top: 0.75rem;
-  bottom: 0.75rem;
-  width: 0.25rem;
-  border-radius: 2px;
-  background: var(--text);
+  background: var(--tint);
+  color: var(--teal);
+  font-weight: 600;
 }
 @media (hover: hover) and (pointer: fine) {
   .nav__item:hover:not([aria-current="page"]) {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--hover);
   }
 }
 
+/* The foot: Settings, Help and Sign out are quieter than the four places, and under them is who is signed in. */
 .sidebar__foot {
   margin-top: auto;
   padding-top: var(--sp-1);
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline);
+}
+.sidebar__foot .nav__item {
+  min-height: var(--tap-small);
+  color: var(--ink-2);
+  font-size: var(--fs-small);
+  font-weight: 400;
+}
+.sidebar__foot .nav__item[aria-current="page"] {
+  color: var(--teal);
+  font-weight: 600;
+}
+.sidebar__me {
+  margin-top: -0.75rem;
+  padding-top: var(--sp-1);
+  border-top: 1px solid var(--hairline);
+}
+.me {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: var(--row);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--r-m);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.me__badge {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.375rem;
+  height: 2.375rem;
+  border-radius: 50%;
+  background: var(--tint);
+  color: var(--teal);
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+.me__badge::before {
+  content: attr(data-initials);
+}
+.me__name {
+  min-width: 0;
+}
+@media (hover: hover) and (pointer: fine) {
+  .me:hover {
+    background: var(--hover);
+  }
 }
 
 /* Wide: the sidebar stays on screen. Narrow: a top bar, and the sidebar is a drawer. */
@@ -272,12 +364,15 @@ button {
 @media (min-width: 64rem) {
   .shell {
     display: grid;
-    grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+    grid-template-columns: calc(var(--sidebar-w) + var(--frame)) minmax(0, 1fr);
   }
   .sidebar {
     position: sticky;
-    top: 0;
-    height: 100dvh;
+    top: var(--frame);
+    height: calc(100dvh - 2 * var(--frame));
+    margin: var(--frame) 0 var(--frame) var(--frame);
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-panel);
   }
 }
 
@@ -296,7 +391,10 @@ button {
     gap: var(--sp-1) var(--sp-2);
     min-height: 4.5rem;
     padding: var(--sp-1) var(--sp-2);
-    background: var(--deep);
+    background: var(--surface);
+    box-shadow: 0 1px 0 var(--hairline);
+    --quiet: var(--tint);
+    --quiet-edge: 0 0 transparent;
   }
   .topbar .brand__link {
     padding: 0;
@@ -305,8 +403,9 @@ button {
     position: fixed;
     inset: 0 auto 0 0;
     z-index: 40;
-    width: min(20rem, calc(100vw - 3rem));
-    box-shadow: 0 0 3rem rgba(10, 46, 55, 0.6);
+    width: min(19rem, calc(100vw - 3rem));
+    border-radius: 0 var(--r-xl) var(--r-xl) 0;
+    box-shadow: var(--shadow-window);
     transform: translateX(-100%);
     visibility: hidden;
     /* Closing: quick and plain. Opening (below): the smooth spring. */
@@ -335,7 +434,7 @@ button {
     position: fixed;
     inset: 0;
     z-index: 35;
-    background: rgba(10, 46, 55, 0.7);
+    background: rgba(13, 42, 50, 0.36);
     opacity: 0;
     visibility: hidden;
     transition:
@@ -357,45 +456,51 @@ button {
 }
 /*
  * A lesson is running: said on every page but Today, in the sidebar on a laptop and in the top bar where the sidebar is a
- * drawer. A white edge, the icon and the words make it stand out from the menu; it is never yellow (the yellow of a screen is
- * one button's) and it does not move. The top bar then has room for a second row, so tabbing back up keeps clear of it, and
- * in a window too short or too narrow to spare it (a zoomed one) it scrolls away with the page instead of covering a third of it.
+ * drawer. It is a quiet block with the one yellow mark of the frame, the sign that something is live; the words say what, and
+ * it does not move. The top bar then has room for a second row, so tabbing back up keeps clear of it, and in a window too short
+ * or too narrow to spare it (a zoomed one) it scrolls away with the page instead of covering a third of it.
  */
 .running {
   display: grid;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border: 2px solid var(--text);
+  gap: 0.625rem;
+  padding: 0.625rem;
   border-radius: var(--r-m);
-  background: var(--panel);
+  background: var(--well);
+  --quiet: var(--surface);
+  --quiet-edge: inset 0 0 0 1px var(--edge);
 }
 .running__tag {
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
   margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
-  font-weight: 700;
+  padding: 0.125rem 0.125rem 0;
+  font-size: var(--fs-small);
+  font-weight: 600;
   line-height: 1.25;
 }
+/* The mark: the broadcast icon in ink on a yellow disc. */
 .running__tag svg {
   flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: -0.125rem;
+  padding: 0.1875rem;
+  border-radius: 50%;
+  background: var(--yellow);
+  color: var(--on-yellow);
 }
 .running__back {
   width: 100%;
 }
-/* The way back and End side by side: each has a word, and End is the short one, so the tile is no taller than it was. */
+/* The way back, and End under it: each as wide as the tile, so its words keep one line in either language. */
 .running__actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
+  gap: 0.375rem;
 }
 .running__actions .btn {
   width: 100%;
   min-width: 0;
-  padding-inline: 0.5rem;
-  gap: 0.375rem;
 }
 .nowrap {
   white-space: nowrap;
@@ -424,13 +529,18 @@ button {
   }
   .running--top .running__tag {
     align-items: center;
+    padding: 0;
     white-space: nowrap;
+  }
+  .running--top .running__tag svg {
+    margin-top: 0;
   }
   .running--top .running__actions {
     grid-template-columns: auto auto;
   }
   .running--top .running__actions .btn {
     width: auto;
+    padding-inline: 0.875rem;
   }
   html:has(.topbar--running) {
     scroll-padding-top: 9.5rem;
@@ -463,7 +573,7 @@ button {
   }
 }
 
-/* A short window: the rows stay 56px, the space between them gives way. About 480px is enough. */
+/* A short window: the rows keep their height, the space between them gives way. */
 @media (max-height: 40rem) {
   .sidebar {
     gap: var(--sp-1);
@@ -475,20 +585,18 @@ button {
   .sidebar .brand {
     gap: var(--sp-1);
   }
-  .sidebar .brand__link {
-    min-height: var(--tap-small);
+  .sidebar__me {
+    margin-top: 0;
   }
 }
 
 .main:focus {
   outline: none;
-  box-shadow: none;
 }
 .main {
   min-width: 0;
   min-height: 100dvh;
-  padding: var(--sp-4) var(--sp-5) var(--sp-6);
-  background: linear-gradient(180deg, var(--ground-top) 0%, var(--ground) 100%);
+  padding: 2.5rem var(--sp-5) var(--sp-6) 2.5rem;
 }
 @media (max-width: 63.9375rem) {
   .main {
@@ -507,61 +615,56 @@ button {
   max-width: var(--page-w);
   margin: 0 auto var(--sp-4);
 }
+/* A column: the way back, a small line that places the page (the date), the title, and one line under it. */
 .head__text {
   flex: 1 1 18rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   min-width: 0;
 }
 .head__title {
   margin: 0;
-  font-family: var(--font-display);
   font-size: var(--fs-title);
-  font-weight: 700;
-  line-height: var(--lh-tight);
-  letter-spacing: -0.015em;
+  font-weight: 650;
+  line-height: 1.1;
+  letter-spacing: -0.022em;
   overflow-wrap: anywhere;
 }
-/* 24px and up, so it may sit on the ground. */
 .head__sub {
   margin: var(--sp-1) 0 0;
   max-width: var(--measure);
-  font-size: var(--fs-lead);
-  font-weight: 500;
-  line-height: 1.3;
+  color: var(--ink-2);
+  font-size: var(--fs-row);
+  line-height: 1.4;
 }
-.head .back {
-  margin-bottom: var(--sp-2);
+/* The page's own button: level with the title where there is room, under the header's words where there is not. */
+.head__action {
+  flex: none;
+  align-self: center;
 }
-
-.me {
+/* The way back is a quiet line above the title, not a button: 44px to press, and its words line up with the title's. */
+.back {
   display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
-  min-height: var(--tap);
-  padding: var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-1);
+  gap: 0.25rem;
+  min-height: var(--tap-small);
+  margin: -0.625rem 0 0.25rem -0.625rem;
+  padding: 0 0.875rem 0 0.5rem;
   border-radius: var(--r-pill);
-  background: var(--panel);
-  font-weight: 600;
-  line-height: 1.2;
-  transition: background-color var(--dur) var(--ease);
-}
-.me__badge {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 50%;
-  background: var(--deep);
-  font-family: var(--font-display);
+  color: var(--ink-2);
   font-size: var(--fs-small);
-  font-weight: 700;
+  font-weight: 500;
+  line-height: 1.2;
+  order: -2;
 }
-.me__badge::before {
-  content: attr(data-initials);
+.back svg {
+  flex: none;
 }
 @media (hover: hover) and (pointer: fine) {
-  .me:hover {
-    background: var(--deep);
+  .back:hover {
+    background: var(--hover);
+    color: var(--ink);
   }
 }
 
@@ -574,20 +677,21 @@ button {
 
 /* ---- cards ---- */
 .card {
-  background: var(--panel);
+  background: var(--surface);
   border-radius: var(--r-l);
-  padding: var(--sp-4);
+  padding: var(--sp-3);
+  box-shadow: var(--ring);
 }
 .card h2 {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h2);
-  font-weight: 700;
-  line-height: var(--lh-tight);
+  font-size: var(--fs-section);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
 }
 .card p {
   margin: 0;
-  color: var(--text-2);
+  color: var(--ink-2);
   max-width: var(--measure);
 }
 .card--stack {
@@ -598,73 +702,86 @@ button {
 .card__icon {
   display: grid;
   place-items: center;
-  width: 4rem;
-  height: 4rem;
+  width: 3.5rem;
+  height: 3.5rem;
   border-radius: 50%;
-  background: var(--deep);
+  background: var(--tint);
+  color: var(--teal);
 }
 @media (max-width: 40rem) {
   .card {
-    padding: var(--sp-3);
+    padding: 1.25rem;
   }
 }
 
 /* A card that is one or two lines of words, not a place of its own: less air, so it does not push the work down. */
 .card--compact {
-  padding: var(--sp-2) var(--sp-3);
+  padding: var(--sp-2) 1.25rem;
 }
 .card__icon--small {
   flex: none;
-  width: 3rem;
-  height: 3rem;
+  width: 2.75rem;
+  height: 2.75rem;
 }
 
 /* ---- buttons ---- */
+/*
+ * Four kinds. The main button is teal and there is one on a screen. A quiet button is the tint (or white with a thin edge
+ * where the tint would not show). A text button is words in the accent with a line under them. End is red words in a red
+ * edge. All of them are pills, 44px tall and the main one 48px; a button whose words take two lines grows and keeps its
+ * rounded corners. The transparent border is what Windows' high-contrast colours draw the shape with.
+ */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
-  min-height: var(--tap);
-  padding: 0.75rem var(--sp-4);
-  border: 2px solid transparent;
-  border-radius: var(--r-m);
-  font-family: var(--font-display);
-  font-size: var(--fs-button);
-  font-weight: 700;
+  gap: 0.5rem;
+  min-height: var(--tap-small);
+  padding: 0.4375rem 1.25rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-btn);
+  font-size: var(--fs-body);
+  font-weight: 600;
   line-height: 1.2;
   text-align: center;
 }
+/* An icon in a button is 20px beside 17px words, whatever size the component asked for. */
 .btn svg {
   flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 .btn--primary {
-  background: var(--yellow);
-  color: var(--ink);
+  min-height: var(--tap);
+  padding-inline: 1.5rem;
+  background: var(--teal);
+  color: var(--on-teal);
 }
 .btn--primary:active {
-  background: var(--yellow-deep);
+  background: var(--teal-active);
 }
 .btn--secondary {
-  background: var(--deep);
-  border-color: var(--line-strong);
-  color: var(--text);
+  background: var(--quiet);
+  box-shadow: var(--quiet-edge);
+  color: var(--teal);
 }
-/* End, the one red control (FR-END-04). White on red is 4.4:1, so the label is bold and 19px or larger, always with a word and an icon. */
+.btn--secondary:active {
+  background: var(--tint-active);
+}
+/* Beside the main button a quiet one is as tall as it, so the pair sits level. */
+.btn--primary ~ .btn--secondary,
+.btn--secondary:has(~ .btn--primary) {
+  min-height: var(--tap);
+}
+/* End, the one red control (FR-END-04): red words and a stop icon in a red edge, never a red block, so the main button of
+   the screen stays the one that leads. Red on white is 6.6:1. */
 .btn--danger {
-  background: var(--red);
-  border-color: var(--red);
-  color: var(--text);
-  font-size: 1.1875rem;
-  font-weight: 800;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--red-edge);
+  color: var(--red);
 }
 .btn--danger:active {
-  background: #b81513;
-}
-@media (hover: hover) and (pointer: fine) {
-  .btn--danger:hover {
-    background: #d11d1a;
-  }
+  background: var(--red-tint-hover);
 }
 /* A button that cannot be pressed now (the refinements while one is being made, "Повеќе прашања" at the most): dimmer, and it says so. */
 .btn[aria-disabled="true"] {
@@ -675,42 +792,60 @@ button {
   cursor: progress;
 }
 .btn--small {
-  min-height: var(--tap-small);
-  padding: var(--sp-1) var(--sp-3);
-  font-size: var(--fs-body);
+  padding-inline: var(--sp-2);
+  font-size: var(--fs-small);
 }
 @media (hover: hover) and (pointer: fine) {
   .btn--primary:hover {
-    background: color-mix(in srgb, var(--yellow) 86%, white);
+    background: var(--teal-hover);
   }
   .btn--primary:hover:active {
-    background: var(--yellow-deep);
+    background: var(--teal-active);
   }
   .btn--secondary:hover {
-    background: var(--shadow);
+    background: var(--tint-hover);
   }
+  .btn--secondary:hover:active {
+    background: var(--tint-active);
+  }
+  .btn--danger:hover {
+    background: var(--red-tint);
+  }
+  .btn--danger:hover:active {
+    background: var(--red-tint-hover);
+  }
+}
+/* What a quiet button sits on. A white surface: the tint, no edge. A well inside one: white again, with the edge. */
+:is(.card, .dialog, .lesson, .question, .band, .savebar, .states, .qpanel, .qitem, .rpanel, .live__end, .inbox) {
+  --quiet: var(--tint);
+  --quiet-edge: 0 0 transparent;
+  --box: var(--well);
+  --box-ring: 0 0 transparent;
+}
+:is(.note-box, .problem, .callout, .question__why, .person, .inbox__item, .rlist__item, .drop, .load-problem) {
+  --quiet: var(--surface);
+  --quiet-edge: inset 0 0 0 1px var(--edge);
 }
 
 /* ---- settings: large radio choices ---- */
 .choices {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 .choices h2 {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.375rem;
 }
 .choice {
   position: relative;
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
-  min-height: 4rem;
-  padding: 0.75rem var(--sp-3);
-  border: 2px solid var(--line);
+  gap: 0.75rem;
+  min-height: var(--row);
+  padding: 0.75rem 1.25rem;
+  border: 1px solid var(--edge);
   border-radius: var(--r-m);
-  background: var(--deep);
-  font-size: var(--fs-button);
-  transition: background-color var(--dur) var(--ease);
+  background: var(--surface);
+  font-size: var(--fs-row);
 }
 .choice input {
   position: absolute;
@@ -724,32 +859,36 @@ button {
 .choice svg {
   flex: none;
 }
-/* The chosen row has a filled tick, a bold label and a white edge. */
+/* The chosen row has a filled tick, a heavier label, the tint and a teal edge twice as thick: never colour alone. */
 .choice[data-checked="true"] {
-  border-color: var(--text);
-  background: var(--shadow);
-  font-weight: 700;
+  border-color: var(--teal);
+  box-shadow: inset 0 0 0 1px var(--teal);
+  background: var(--tint);
+  color: var(--teal);
+  font-weight: 600;
 }
 .choice:has(input:focus-visible) {
-  outline: 3px solid var(--yellow);
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
-  box-shadow: 0 0 0 2px var(--shadow);
 }
 @media (hover: hover) and (pointer: fine) {
   .choice[data-checked="false"]:hover {
-    background: var(--shadow);
+    background: var(--hover);
   }
 }
 
+/* A small label beside a name: grey words on a grey chip. */
 .tag {
   display: inline-block;
   margin-left: var(--sp-1);
-  padding: 0.125rem 0.75rem;
-  border: 2px solid var(--text-2);
+  padding: 0.125rem 0.625rem;
+  border: 1px solid transparent;
   border-radius: var(--r-pill);
-  font-family: var(--font);
+  background: var(--well-2);
+  color: var(--ink-2);
   font-size: var(--fs-small);
-  font-weight: 600;
+  font-weight: 500;
+  line-height: 1.375;
   vertical-align: middle;
 }
 
@@ -764,32 +903,33 @@ button {
 .steps li {
   counter-increment: step;
   display: flex;
-  gap: var(--sp-2);
+  gap: 0.75rem;
   align-items: flex-start;
-  color: var(--text);
+  color: var(--ink);
 }
 .steps li::before {
   content: counter(step);
   display: grid;
   place-items: center;
   flex: none;
-  width: 2rem;
-  height: 2rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-top: -0.0625rem;
   border-radius: 50%;
-  background: var(--deep);
-  font-family: var(--font-display);
+  background: var(--tint);
+  color: var(--teal);
   font-size: var(--fs-small);
-  font-weight: 700;
+  font-weight: 600;
 }
 .card .note {
-  color: var(--text-2);
+  color: var(--ink-2);
 }
 .card .status {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  color: var(--text);
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 500;
 }
 
 /* ---- help: questions ---- */
@@ -804,8 +944,8 @@ button {
   min-height: 4rem;
   padding: var(--sp-2) var(--sp-3);
   border-radius: var(--r-l);
-  font-size: var(--fs-button);
-  font-weight: 700;
+  font-size: var(--fs-row);
+  font-weight: 600;
   list-style: none;
   cursor: pointer;
 }
@@ -814,6 +954,7 @@ button {
 }
 .faq summary svg {
   flex: none;
+  color: var(--ink-2);
 }
 .faq[open] .faq__plus,
 .faq:not([open]) .faq__minus {
@@ -833,48 +974,51 @@ button {
 }
 .faq__steps h3 {
   margin: 0 0 var(--sp-1);
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: 700;
+  font-size: var(--fs-row);
+  font-weight: 600;
 }
 
 .address {
-  color: var(--text);
+  color: var(--ink);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 
-/* ---- logout dialog ---- */
+/* ---- a question in a window (sign out, end, delete, start) ---- */
 .dialog {
   width: min(32rem, calc(100vw - 2rem));
-  padding: var(--sp-4);
-  border: 0;
-  border-radius: var(--r-l);
-  background: var(--panel);
-  color: var(--text);
-  box-shadow: 0 1.5rem 4rem rgba(10, 46, 55, 0.6);
+  padding: 1.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-window);
 }
 .dialog::backdrop {
-  background: rgba(10, 46, 55, 0.75);
+  background: rgba(13, 42, 50, 0.36);
 }
 .dialog__title {
   margin: 0 0 var(--sp-3);
-  font-family: var(--font-display);
-  font-size: var(--fs-h2);
-  font-weight: 700;
-  line-height: var(--lh-tight);
+  font-size: var(--fs-large);
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.012em;
 }
 .dialog__title:has(+ .dialog__body) {
   margin-bottom: var(--sp-1);
 }
 .dialog__body {
   margin: 0 0 var(--sp-3);
-  color: var(--text-2);
+  color: var(--ink-2);
   text-wrap: pretty;
 }
+/* The answers are one under the other, the safe one first, and both as tall as a main button. */
 .dialog__actions {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.625rem;
+}
+.dialog__actions .btn {
+  min-height: var(--tap);
 }
 
 /* ---- a screen with no sidebar: signed out, errors ---- */
@@ -883,18 +1027,18 @@ button {
   display: grid;
   place-items: center;
   padding: var(--sp-3) var(--sp-2);
-  background: linear-gradient(180deg, var(--ground-top) 0%, var(--ground) 100%);
+  color: var(--teal);
 }
 .solo .card {
   width: min(100%, 36rem);
+  color: var(--ink);
 }
 .solo .card h1 {
   margin: 0;
-  font-family: var(--font-display);
   font-size: var(--fs-title);
-  font-weight: 700;
-  line-height: var(--lh-tight);
-  letter-spacing: -0.015em;
+  font-weight: 650;
+  line-height: 1.1;
+  letter-spacing: -0.022em;
 }
 .solo .btn {
   margin-top: var(--sp-1);
@@ -907,7 +1051,6 @@ button {
   flex-direction: column;
   gap: var(--sp-4);
   padding: var(--sp-3) var(--sp-3) var(--sp-5);
-  background: linear-gradient(180deg, var(--ground-top) 0%, var(--ground) 100%);
 }
 .entry__top {
   display: flex;
@@ -926,47 +1069,61 @@ button {
 }
 .entry__card {
   width: min(100%, 36rem);
+  padding: var(--sp-4);
 }
 .entry h1 {
   margin: 0;
-  font-family: var(--font-display);
   font-size: var(--fs-title);
-  font-weight: 700;
-  line-height: var(--lh-tight);
-  letter-spacing: -0.015em;
+  font-weight: 650;
+  line-height: 1.1;
+  letter-spacing: -0.022em;
 }
 .card .entry__sub {
-  color: var(--text);
-  font-size: var(--fs-button);
+  font-size: var(--fs-row);
+}
+@media (max-width: 40rem) {
+  .entry__card {
+    padding: var(--sp-3);
+  }
 }
 
-/* The language switch: two toggle buttons, the chosen one bold with a white edge, never colour alone. */
+/* The language switch: a track with two buttons in it. The chosen one is a white tile raised off the track, with heavier,
+   darker words; the other is grey words on the track. A difference of light and weight, not of hue, so it shows to everyone. */
 .lang {
   display: inline-flex;
-  gap: 0.5rem;
+  gap: 0.125rem;
+  padding: 0.1875rem;
+  border-radius: var(--r-pill);
+  background: var(--well-2);
 }
 .pill {
-  min-width: 3.5rem;
-  min-height: var(--tap-small);
-  padding: 0 var(--sp-2);
-  border: 2px solid var(--line-strong);
+  position: relative;
+  min-width: 3.25rem;
+  min-height: 2.375rem;
+  padding: 0 0.875rem;
+  border: 1px solid transparent;
   border-radius: var(--r-pill);
-  background: var(--deep);
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
-  font-weight: 600;
-  transition: background-color var(--dur) var(--ease);
+  color: var(--ink-2);
+  font-size: var(--fs-small);
+  font-weight: 500;
 }
-/* The chosen one is filled and the other is not: a difference of light, not of hue, so it shows to everyone. */
+/* The tile is 38px in a 44px track; the place that takes the press is the whole height of the track. */
+.pill::before {
+  content: "";
+  position: absolute;
+  inset: -0.25rem 0;
+}
 .pill[aria-pressed="true"] {
-  border-color: var(--text);
-  background: var(--text);
+  background: var(--surface);
+  box-shadow:
+    0 1px 2px rgba(13, 42, 50, 0.18),
+    0 0 0 1px rgba(13, 42, 50, 0.04);
   color: var(--ink);
-  font-weight: 700;
+  font-weight: 600;
 }
 @media (hover: hover) and (pointer: fine) {
   .pill[aria-pressed="false"]:hover {
-    background: var(--shadow);
+    color: var(--ink);
   }
 }
 
@@ -979,54 +1136,54 @@ button {
   width: 100%;
   padding: var(--sp-2);
   border-radius: var(--r-m);
-  background: var(--deep);
-  color: var(--text);
-  font-weight: 600;
+  background: var(--box);
+  box-shadow: var(--box-ring);
+  color: var(--ink);
 }
 .note-box svg {
   flex: none;
   margin-top: 0.125rem;
+  color: var(--ink-2);
 }
-/* A warning: a red badge with a white mark leads it (4.4:1, the white is what is read), and the words say what is wrong. */
+/* A warning: a red badge with a white mark leads it (white on the red is 6.6:1), and the words say what is wrong. */
 .problem__badge {
   display: grid;
   place-items: center;
   flex: none;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.25rem;
+  height: 2.25rem;
   border-radius: 50%;
   background: var(--red);
-  color: var(--text);
+  color: #ffffff;
 }
 .problem p {
   margin: 0;
   max-width: var(--measure);
-  color: var(--text);
+  color: var(--ink);
 }
 .problem__title {
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: 700;
-  line-height: var(--lh-tight);
+  font-size: var(--fs-row);
+  font-weight: 600;
+  line-height: 1.25;
 }
 .problem__body {
-  font-weight: 500;
+  font-weight: 400;
 }
 .problem__title + .problem__body {
   margin-top: 0.25rem;
 }
 .problem__body:only-child {
-  /* No title: the badge is 40px, so the words line up with its middle. */
-  padding-block: 0.4rem;
+  /* No title: the badge is 36px, so the words line up with its middle. */
+  padding-block: 0.3125rem;
 }
 
 /*
  * The provider buttons keep each provider's own look, as their guidelines ask: a white button, a thin grey edge, the
- * provider's logo and its words in its own grey, nothing recoloured. They are as tall and as wide as the app's buttons.
+ * provider's logo and its words in its own grey, nothing recoloured. They are as tall and as round as the app's main button.
  */
 .providers {
   display: grid;
-  gap: var(--sp-2);
+  gap: 0.75rem;
   width: 100%;
 }
 .provider {
@@ -1036,11 +1193,11 @@ button {
   gap: 0.75rem;
   width: 100%;
   min-height: var(--tap);
-  padding: 0.75rem var(--sp-3);
+  padding: 0.625rem var(--sp-3);
   border: 1px solid;
-  border-radius: var(--r-m);
+  border-radius: var(--r-btn);
   background: #ffffff;
-  font-size: var(--fs-button);
+  font-size: var(--fs-body);
   line-height: 1.2;
   text-align: center;
 }
@@ -1082,16 +1239,17 @@ button {
   gap: 0 var(--sp-2);
   width: 100%;
   padding-top: var(--sp-2);
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline);
 }
 .entry__help a {
   display: inline-flex;
   align-items: center;
   min-height: var(--tap-small);
-  color: var(--text);
-  font-weight: 700;
+  color: var(--teal);
+  font-weight: 600;
   text-decoration: underline;
-  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
 }
 .entry__help span {
   overflow-wrap: anywhere;
@@ -1099,23 +1257,24 @@ button {
 
 /* ---- the welcome guide ---- */
 .card .guide__step {
-  color: var(--text);
-  font-weight: 600;
+  color: var(--ink-2);
+  font-size: var(--fs-small);
+  font-weight: 500;
 }
 .guide__bars {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.375rem;
   width: 100%;
 }
 .guide__bars span {
   flex: 1;
-  height: 0.5rem;
+  height: 0.375rem;
   border-radius: var(--r-pill);
-  background: var(--deep);
+  background: var(--well-2);
   transition: background-color var(--dur) var(--ease);
 }
 .guide__bars span[data-on="true"] {
-  background: var(--text);
+  background: var(--teal);
 }
 .guide__head {
   display: flex;
@@ -1127,26 +1286,26 @@ button {
   flex: none;
 }
 .guide h2.guide__title {
-  font-size: var(--fs-h2);
+  font-size: var(--fs-large);
+  font-weight: 650;
 }
 .guide__title:focus {
   outline: none;
-  box-shadow: none;
 }
 .card .guide__body {
-  color: var(--text);
-  font-size: var(--fs-button);
+  color: var(--ink);
+  font-size: var(--fs-row);
   /* Keeps a word such as е-Дневник from being left alone at the start of a line. */
   text-wrap: pretty;
 }
-/* The last step's yellow button, "Подготви ја првата лекција", is the longest label of the guide and is read on one line. */
+/* The last step's main button, "Подготви ја првата лекција", is the longest label of the guide and is read on one line. */
 .guide.entry__card {
   width: min(100%, 40rem);
 }
 .guide__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-2);
+  gap: 0.75rem;
   width: 100%;
   margin-top: var(--sp-1);
 }
@@ -1157,24 +1316,30 @@ button {
   display: flex;
   flex-wrap: wrap;
   /* The words, not the padding, line up with the text above. */
-  margin-left: calc(var(--sp-2) * -1);
+  margin-left: -0.75rem;
 }
 .card .guide__note {
   margin-top: calc(var(--sp-1) * -1);
   font-size: var(--fs-small);
 }
+/* A text button: words in the accent, heavier, with a thin line under them, because the accent and the ink are too close
+   for colour alone to say "this can be pressed". */
 .btn--quiet {
-  min-height: var(--tap-small);
-  padding: var(--sp-1) var(--sp-2);
+  padding-inline: 0.75rem;
   background: transparent;
-  font-size: var(--fs-body);
-  font-weight: 600;
+  color: var(--teal);
   text-decoration: underline;
-  text-underline-offset: 0.2em;
+  text-decoration-color: color-mix(in srgb, currentColor 36%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
+}
+.btn--quiet:active {
+  background: var(--pressed);
 }
 @media (hover: hover) and (pointer: fine) {
   .btn--quiet:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--hover);
+    text-decoration-color: currentColor;
   }
 }
 
@@ -1182,15 +1347,14 @@ button {
 .public {
   min-height: 100dvh;
   padding-top: var(--sp-3);
-  background: linear-gradient(180deg, var(--ground-top) 0%, var(--ground) 100%);
 }
-/* The top row lines up with the page under it: the same side padding as .main, inside the same column. */
+/* The top row lines up with the page under it: the same side padding as the page, inside the same column. */
 .public .entry__top {
   max-width: calc(var(--page-w) + 2 * var(--sp-5));
   padding-inline: var(--sp-5);
 }
 .public .brand__link {
-  margin-left: calc(var(--sp-1) * -1);
+  margin-left: -0.75rem;
 }
 @media (max-width: 63.9375rem) {
   .public .entry__top {
@@ -1199,7 +1363,11 @@ button {
 }
 .main--public {
   min-height: 0;
-  background: none;
+}
+@media (min-width: 64rem) {
+  .main--public {
+    padding-inline: var(--sp-5);
+  }
 }
 
 /* ---- the demo's stand-in for the provider's page ---- */
@@ -1220,14 +1388,14 @@ button {
 }
 .sheet__label {
   margin: var(--sp-2) 0 var(--sp-1);
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: 700;
-  line-height: var(--lh-tight);
+  color: var(--ink-2);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  line-height: 1.25;
 }
 .sheet__group {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 .sheet__group--grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1241,37 +1409,57 @@ button {
   width: 100%;
   margin-top: var(--sp-2);
 }
+/* A person to sign in as: the name, and under it who they are. A rounded box, since it has two lines. */
 .btn--who {
   flex-direction: column;
   align-items: flex-start;
   gap: 0.125rem;
+  min-height: var(--row);
+  padding: 0.5rem 1.125rem;
+  border-radius: var(--r-m);
   text-align: left;
 }
 .btn--who small {
-  font-family: var(--font);
   font-size: var(--fs-small);
-  font-weight: 500;
+  font-weight: 400;
+}
+/* The quiet one: its name in ink, the line under it softer. The main one: white, and its line a paler white (8.2:1). */
+.btn--secondary.btn--who {
+  color: var(--ink);
+}
+.btn--secondary.btn--who small {
+  color: var(--ink-2);
+}
+.btn--primary.btn--who small {
+  color: #d9e7ea;
 }
 .dialog .problem {
   margin: 0 0 var(--sp-3);
 }
 
 /* ---- Today ---- */
+/* The date is a small line above the title: it places the page before the title names it. In the markup it comes after the
+   title, which is the order a screen reader wants. */
 .head__date {
-  font-weight: 700;
+  order: -1;
+  margin: 0 0 0.375rem;
+  font-size: var(--fs-small);
+  font-weight: 500;
+  line-height: 1.3;
 }
 
-/* A lesson is running: the band at the top of Today. The yellow edge is the live lesson's colour; the tag says it in words. */
+/* A lesson is running: the band at the top of Today. Yellow is the colour of what is live, here the edge of the band and the
+   ground of its tag; the tag says it in words. */
 .band {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-3) var(--sp-4);
-  padding: var(--sp-4);
-  border: 3px solid var(--yellow);
+  padding: var(--sp-3) var(--sp-4);
+  border: 2px solid var(--yellow);
   border-radius: var(--r-l);
-  background: var(--deep);
+  background: var(--surface);
 }
 .band__text {
   flex: 1 1 22rem;
@@ -1282,28 +1470,31 @@ button {
 .band__tag {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-  color: var(--yellow);
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
-  font-weight: 700;
+  gap: 0.375rem;
+  justify-self: start;
+  margin: 0 0 0.25rem;
+  padding: 0.1875rem 0.75rem 0.1875rem 0.5rem;
+  border-radius: var(--r-pill);
+  background: var(--yellow);
+  color: var(--on-yellow);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  line-height: 1.375;
 }
 .band__course {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h2);
-  font-weight: 700;
-  line-height: var(--lh-tight);
+  font-size: var(--fs-large);
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.012em;
   overflow-wrap: anywhere;
 }
 .band__line {
   margin: 0;
-  color: var(--text-2);
-  font-size: var(--fs-button);
+  color: var(--ink-2);
   text-wrap: pretty;
 }
-/* The yellow way back, and beside it the one red control. */
+/* The way back, which is the main button here, and beside it the one red control. */
 .band__actions {
   display: flex;
   flex-wrap: wrap;
@@ -1317,7 +1508,6 @@ button {
   max-width: 100%;
 }
 
-/* A section of a page: a heading on the ground (28px, so white is fine there) and what it holds. */
 /* The draft's note and the sentence the teacher asked to stress: a line or two each, above the questions and not in front of them. */
 .draft__note {
   display: flex;
@@ -1328,7 +1518,7 @@ button {
   max-width: 48rem;
 }
 .draft__note strong {
-  color: var(--text);
+  color: var(--ink);
 }
 .draft__emphasis {
   display: flex;
@@ -1337,7 +1527,7 @@ button {
   gap: 0.25rem var(--sp-2);
 }
 .card.draft__emphasis h2 {
-  font-size: var(--fs-h3);
+  font-size: var(--fs-row);
 }
 /* What the teacher typed may be one long word or a link: it breaks, and the page does not grow sideways. */
 .card.draft__emphasis p {
@@ -1345,66 +1535,135 @@ button {
   overflow-wrap: anywhere;
 }
 
+/* A section of a page: a heading on the ground and what it holds. */
 .section__title {
-  margin: 0 0 var(--sp-2);
-  font-family: var(--font-display);
-  font-size: var(--fs-h2);
-  font-weight: 700;
-  line-height: var(--lh-tight);
+  margin: 0 0 0.75rem;
+  font-size: var(--fs-section);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
 }
 
+/* A list is rows on one white surface, parted by hairlines: nothing is boxed twice. A row is a title and one line of what it
+   is; where the row opens something its title is the link and the whole row is pressed with it, and an arrow at its end says
+   that it goes somewhere. A row has at most one button, at the right, and it is quiet: the main button of the page is in
+   the header. */
 .lessons {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: var(--sp-2);
+  border-radius: var(--r-l);
+  background: var(--surface);
+  box-shadow: var(--ring);
 }
 .lesson {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-2) var(--sp-3);
-  min-height: 9.5rem;
-  padding: var(--sp-3) var(--sp-4);
-  border-radius: var(--r-l);
-  background: var(--panel);
+  gap: var(--sp-1) var(--sp-2);
+  min-height: 4.5rem;
+  padding: 0.875rem var(--sp-2) 0.875rem var(--sp-3);
+}
+.lesson + .lesson {
+  border-top: 1px solid var(--hairline);
+}
+/* The corners of the first and the last row are the surface's, so the ground of a row that is pointed at, and the ring of
+   one that has the focus, follow them. */
+.lesson:first-child {
+  border-top-left-radius: var(--r-l);
+  border-top-right-radius: var(--r-l);
+}
+.lesson:last-child {
+  border-bottom-left-radius: var(--r-l);
+  border-bottom-right-radius: var(--r-l);
 }
 .lesson__text {
-  flex: 1 1 20rem;
+  flex: 1 1 0;
   min-width: 0;
   display: grid;
-  gap: 0.25rem;
+  gap: 0.125rem;
 }
 .lesson__title {
-  margin: 0 0 0.25rem;
-  font-family: var(--font-display);
-  font-size: var(--fs-lead);
-  font-weight: 700;
-  line-height: var(--lh-tight);
+  margin: 0;
+  font-size: var(--fs-row);
+  font-weight: 600;
+  line-height: 1.3;
   overflow-wrap: anywhere;
-  text-wrap: balance;
 }
 .lesson__text p {
   margin: 0;
-  color: var(--text-2);
+  color: var(--ink-2);
+  font-size: var(--fs-small);
+  line-height: 1.45;
   /* A line that has to wrap does not leave one word alone on the second. */
   text-wrap: pretty;
 }
+/* The link that opens the row: its words are where they are, and what is pressed is the row. */
+.lesson__open::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.lesson__open:focus-visible {
+  outline: none;
+}
+.lesson:has(.lesson__open:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+.lesson:has(.lesson__open:active) {
+  background: var(--pressed);
+}
+@media (hover: hover) and (pointer: fine) {
+  .lesson:has(.lesson__open:hover) {
+    background: var(--hover);
+  }
+  .lesson:has(.lesson__open:hover):has(.lesson__open:active) {
+    background: var(--pressed);
+  }
+}
 .lesson__actions {
+  flex: none;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-1) var(--sp-2);
+}
+/* A button in a row is above the link that covers the row, so it is the button that is pressed. */
+.lesson__actions > .btn {
+  position: relative;
+  z-index: 1;
+}
+/* "Продолжи": the row's own link, said in words at its end. Words and no button, since the row is what is pressed. */
+.lesson__go {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-small);
+  color: var(--teal);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.lesson__chev {
+  flex: none;
+  color: var(--ink-3);
 }
 .lessons__all {
   margin-top: var(--sp-2);
 }
 @media (max-width: 40rem) {
-  .lesson,
   .band {
-    padding: var(--sp-3);
+    padding: 1.25rem;
+  }
+  /* The words take the width and the button goes under them; the arrow stays at the end of the first line. */
+  .lesson {
+    flex-wrap: wrap;
+    padding-left: 1.25rem;
+  }
+  .lesson__text {
+    flex-basis: calc(100% - 2.25rem);
+  }
+  .lesson__actions {
+    order: 1;
+    flex: 1 0 100%;
   }
 }
 
@@ -1414,7 +1673,7 @@ button {
   gap: var(--sp-2);
   justify-items: start;
 }
-.loading > .lesson,
+.loading > .lessons,
 .loading > .question,
 .loading > .card {
   width: 100%;
@@ -1423,10 +1682,10 @@ button {
   display: block;
   max-width: 100%;
   border-radius: var(--r-s);
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--well-2);
 }
 .skeleton--button {
-  border-radius: var(--r-m);
+  border-radius: var(--r-btn);
 }
 .skeleton--row {
   border-radius: var(--r-m);
@@ -1439,10 +1698,7 @@ button {
   margin-top: 0.5rem;
 }
 .lesson--skeleton .lesson__text {
-  gap: 0.75rem;
-}
-.dialog .skeleton {
-  background: rgba(255, 255, 255, 0.12);
+  gap: 0.625rem;
 }
 .dialog .loading {
   margin-bottom: var(--sp-3);
@@ -1473,25 +1729,89 @@ button {
 .choice__detail {
   flex: none;
   margin-left: auto;
-  color: var(--text-2);
-  font-size: var(--fs-body);
-  font-weight: 500;
+  color: var(--ink-2);
+  font-size: var(--fs-small);
+  font-weight: 400;
 }
 
-/* ---- a lesson, to read ---- */
+/* ---- a lesson, to read: the questions are rows of one surface ---- */
 .questions {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: var(--sp-3);
+  border-radius: var(--r-l);
+  background: var(--surface);
+  box-shadow: var(--ring);
 }
 .question {
   display: grid;
   gap: var(--sp-2);
-  padding: var(--sp-4);
-  border-radius: var(--r-l);
-  background: var(--panel);
+  padding: var(--sp-3);
+}
+.question + .question {
+  border-top: 1px solid var(--hairline);
+}
+/*
+ * A question to read: its number in the first column, then the prompt, with the editor's "Уреди" at the right end of the same line.
+ * The kind and the timer are a quiet line under the prompt; the picture, the answers and the explanation follow in the wide column.
+ * The rows are named, so a part that is not there (no picture, no explanation) leaves no gap behind.
+ */
+.question--read {
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  gap: 0 var(--sp-2);
+  align-items: start;
+}
+.question--read > * {
+  grid-column: 2 / -1;
+}
+.question__num {
+  grid-column: 1;
+  grid-row: 1;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  margin-top: -0.125rem;
+  border-radius: 50%;
+  background: var(--tint);
+  color: var(--ink);
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+/* The heading is heard and not seen; the kind and the timer are the line under the prompt. */
+.question--read > .question__top {
+  display: contents;
+}
+.question--read > .question__prompt {
+  grid-column: 2;
+  grid-row: 1;
+  padding-top: 0.125rem;
+}
+.question--read .question__meta {
+  grid-column: 2;
+  grid-row: 2;
+  padding-top: 0.25rem;
+}
+.question--read > .question__actions {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  margin-top: -0.375rem;
+}
+.question--read > .question__figure {
+  grid-row: 3;
+  margin-top: var(--sp-2);
+}
+.question--read > .options {
+  grid-row: 4;
+  margin-top: 0.75rem;
+}
+.question--read > .question__note {
+  grid-row: 5;
+  margin-top: 0.5rem;
+}
+.question--read > .question__why {
+  grid-row: 6;
+  margin-top: 0.75rem;
 }
 .question__top {
   display: flex;
@@ -1502,22 +1822,23 @@ button {
 }
 .question__n {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: 700;
-  line-height: var(--lh-tight);
+  color: var(--ink-2);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  line-height: 1.3;
 }
 .question__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem var(--sp-3);
+  gap: 0.25rem var(--sp-2);
   margin: 0;
-  color: var(--text-2);
+  color: var(--ink-2);
+  font-size: var(--fs-small);
 }
 .question__meta span {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.375rem;
 }
 .question__image {
   max-width: 100%;
@@ -1528,17 +1849,20 @@ button {
 }
 .question__prompt {
   margin: 0;
-  font-size: var(--fs-lead);
+  font-size: var(--fs-row);
   font-weight: 600;
   line-height: 1.35;
+  letter-spacing: -0.006em;
   overflow-wrap: anywhere;
 }
+/* The answers, two side by side where there is room: each a quiet line with its number in a ring. */
 .options {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.25rem var(--sp-2);
   counter-reset: option;
 }
 .option {
@@ -1546,66 +1870,86 @@ button {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-2);
-  min-height: var(--tap);
-  padding: 0.75rem var(--sp-2);
-  border: 2px solid var(--line);
+  gap: 0.25rem 0.625rem;
+  min-height: 2.75rem;
+  padding: 0.375rem 0.75rem 0.375rem 0.5rem;
   border-radius: var(--r-m);
-  background: var(--deep);
-  font-size: var(--fs-button);
 }
 .option::before {
   content: counter(option);
   display: grid;
   place-items: center;
   flex: none;
-  width: 2rem;
-  height: 2rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid var(--edge-strong);
   border-radius: 50%;
-  background: var(--shadow);
-  font-family: var(--font-display);
+  color: var(--ink-2);
   font-size: var(--fs-small);
-  font-weight: 700;
+  font-weight: 600;
 }
 .options--plain .option::before {
   display: none;
 }
-/* The words keep at least 12rem beside the tick; in a narrower row (400% zoom) "Точен одговор" goes under them. */
+.options--plain .option {
+  padding-left: 0.75rem;
+}
+/* The words keep at least 8rem beside the tick; in a narrower row (400% zoom) "Точен одговор" goes under them. */
 .option__text {
-  flex: 1 1 12rem;
+  flex: 1 1 8rem;
   min-width: 0;
   overflow-wrap: anywhere;
 }
-/* The right answer: a white edge, bold words, and the tick with "Точен одговор". */
+/* The right answer: the tint under it, heavier words, and the tick with "Точен одговор". Never the colour alone. */
 .option[data-correct="true"] {
-  border-color: var(--text);
-  background: var(--shadow);
-  font-weight: 700;
+  background: var(--tint);
+  font-weight: 600;
+}
+.option[data-correct="true"]::before {
+  border-color: var(--teal);
+  color: var(--teal);
 }
 .option__correct {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.375rem;
   flex: none;
+  color: var(--teal);
+  font-size: var(--fs-small);
 }
-.question__why {
-  padding: var(--sp-2);
-  border-radius: var(--r-m);
-  background: var(--deep);
-}
+/* Why, as one quiet line: the word "Објаснување", then the explanation. */
 .question__why p,
 .question__note {
   margin: 0;
-  color: var(--text-2);
+  color: var(--ink-2);
 }
-.question__label {
-  margin-bottom: 0.25rem !important;
-  color: var(--text) !important;
-  font-weight: 700;
+.question__why p {
+  display: inline;
+}
+.question__why .question__label {
+  color: var(--ink);
+  font-weight: 600;
+}
+.question__why .question__label::after {
+  content: ": ";
+}
+/* A narrow row (a phone, the sidebar and a zoom): the answers one under the other, and the button last, under what it edits. */
+@media (max-width: 52rem) {
+  .question--read {
+    grid-template-columns: 2rem minmax(0, 1fr);
+  }
+  .question--read > .options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .question--read > .question__actions {
+    grid-column: 2;
+    grid-row: 7;
+    margin-top: var(--sp-2);
+  }
 }
 @media (max-width: 40rem) {
   .question {
-    padding: var(--sp-3);
+    padding: 1.25rem;
   }
 }
 
@@ -1616,18 +1960,34 @@ button {
   gap: var(--sp-2);
   width: 100%;
   padding-top: var(--sp-2);
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline);
 }
 
-/* ---- Prepare a lesson: three parts, one yellow button, and the wait on the same page ---- */
+/* ---- Prepare a lesson: three parts, one main button, and the wait on the same page ---- */
+/* One form on one surface, as wide as the page's other panels (the owner asked for the full width, 2026-11-14): the three parts are
+   its rows, and the button with its line of reassurance is the last. */
 .prepare {
   display: grid;
-  gap: var(--sp-3);
+  border-radius: var(--r-l);
+  background: var(--surface);
+  box-shadow: var(--ring);
 }
 .prepare__part {
   display: grid;
-  gap: var(--sp-3);
+  gap: var(--sp-2);
   align-content: start;
+}
+.prepare > .card {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.prepare > .card + .card,
+.prepare > .prepare__go {
+  border-top: 1px solid var(--hairline);
+}
+.prepare > .prepare__go {
+  padding: var(--sp-3);
 }
 .prepare__group {
   display: grid;
@@ -1638,9 +1998,8 @@ button {
   align-items: center;
   gap: 0.75rem;
   margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: 700;
+  font-size: var(--fs-row);
+  font-weight: 600;
   line-height: var(--lh-tight);
 }
 .prepare__label svg {
@@ -1653,7 +2012,7 @@ button {
 }
 /* Choices as tiles side by side where there is room, one under the other where there is not; the second line of a tile is its detail. */
 .prepare__tiles .choices {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
 }
 .prepare__tiles .choice {
   flex-wrap: wrap;
@@ -1664,7 +2023,7 @@ button {
 }
 .prepare__tiles .choice__detail {
   flex: 1 0 100%;
-  margin-left: calc(28px + var(--sp-2));
+  margin-left: calc(28px + 0.75rem);
 }
 /* Subjects have long names and there may be many: one under the other, so they read as a list and not as a ragged grid. */
 .prepare__tiles--rows .choices {
@@ -1677,34 +2036,34 @@ button {
   align-items: baseline;
   gap: 0.25rem 0.75rem;
   max-width: none;
-  color: var(--text);
-  font-size: var(--fs-button);
+  color: var(--ink);
+  font-size: var(--fs-row);
 }
 .prepare__stated-label {
-  color: var(--text-2);
+  color: var(--ink-2);
 }
 .prepare__stated-value {
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: 700;
+  font-size: var(--fs-row);
+  font-weight: 600;
 }
 .prepare__stated-detail {
-  color: var(--text-2);
+  color: var(--ink-2);
 }
 
-/* The two kinds of box the teacher writes in: 18px, a plain edge that reads as a box, the same yellow ring as everything. */
+/* The two kinds of box the teacher writes in: 17px words on white, an edge strong enough to find the box by, and the same
+   ring as everything when it has the focus. */
 .field {
   display: block;
   width: 100%;
   min-height: var(--tap);
-  padding: 0.75rem var(--sp-2);
-  border: 2px solid var(--line-strong);
+  padding: 0.6875rem 0.875rem;
+  border: 1px solid var(--edge-strong);
   border-radius: var(--r-m);
-  background: var(--deep);
-  color: var(--text);
-  font-family: var(--font);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
   font-size: var(--fs-body);
-  line-height: var(--lh-body);
+  line-height: 1.4;
 }
 .field--area {
   min-height: 10rem;
@@ -1712,7 +2071,7 @@ button {
 }
 .card .prepare__count {
   justify-self: end;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* The document: a big button inside an area a file may also be dropped on. The input itself is the real, hidden-but-focusable one. */
@@ -1722,10 +2081,12 @@ button {
   align-items: center;
   gap: var(--sp-2) var(--sp-3);
   padding: var(--sp-3);
-  border: 3px dashed var(--line-strong);
+  border: 2px dashed var(--ink-3);
   border-radius: var(--r-l);
-  background: var(--deep);
-  transition: background-color var(--dur) var(--ease);
+  background: var(--well);
+  transition:
+    background-color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
 }
 .drop[data-chosen="false"] {
   flex-direction: column;
@@ -1734,13 +2095,12 @@ button {
   text-align: center;
 }
 .drop[data-over="true"] {
-  border-color: var(--text);
-  background: var(--shadow);
+  border-color: var(--teal);
+  background: var(--tint);
 }
 .drop:has(.sr:focus-visible) .drop__pick {
-  outline: 3px solid var(--yellow);
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
-  box-shadow: 0 0 0 2px var(--shadow);
 }
 .drop__file {
   display: flex;
@@ -1759,9 +2119,9 @@ button {
   max-width: none;
 }
 .card .drop__name {
-  color: var(--text);
-  font-size: var(--fs-button);
-  font-weight: 700;
+  color: var(--ink);
+  font-size: var(--fs-row);
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 .drop__actions {
@@ -1773,24 +2133,23 @@ button {
   cursor: pointer;
 }
 
-/* On the ground, so the words are 24px: white on the ground is only large-text contrast. */
+/* The main button of the page and the line that says what pressing it does, on the ground under the parts. */
 .prepare__go {
   display: grid;
   justify-items: start;
-  gap: var(--sp-2);
+  gap: 0.75rem;
 }
 .prepare__go p {
   margin: 0;
   max-width: var(--measure);
-  font-size: var(--fs-lead);
-  font-weight: 500;
-  line-height: 1.3;
+  color: var(--ink-2);
   text-wrap: pretty;
 }
+/* The button a whole page leads to: as tall as any main button, wider, with larger words. */
 .btn--big {
-  min-height: 4rem;
-  padding-inline: var(--sp-5);
-  font-size: var(--fs-h3);
+  min-height: var(--tap);
+  padding-inline: var(--sp-4);
+  font-size: var(--fs-row);
 }
 .prepare__actions {
   display: flex;
@@ -1812,11 +2171,10 @@ button {
 /* The wait: what is being done, how long it may take, and a way out. Three dots breathe; with Reduce Motion they stand still. */
 .waiting h2:focus {
   outline: none;
-  box-shadow: none;
 }
 .card .waiting__step {
-  color: var(--text);
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 500;
 }
 .waiting__dots {
   display: flex;
@@ -1826,7 +2184,7 @@ button {
   width: 0.75rem;
   height: 0.75rem;
   border-radius: 50%;
-  background: var(--text);
+  background: var(--teal);
   animation: breathe 1.6s ease-in-out infinite;
 }
 .waiting__dots span:nth-child(2) {
@@ -1847,8 +2205,8 @@ button {
 }
 /* The calm line comes under Cancel, so nothing is held back for it: the card simply grows by a line when it comes. */
 .card .waiting__still p {
-  color: var(--text);
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 500;
 }
 
 /* ---- The editor: a lesson to change, with every change saved as it is made ---- */
@@ -1864,38 +2222,44 @@ button {
   align-items: center;
   gap: 0.5rem;
   margin: 0;
-  color: var(--text-2);
-  font-weight: 600;
+  color: var(--ink-2);
+  font-weight: 500;
 }
 .savestate[data-status="saved"],
 .savestate[data-status="failed"] {
-  color: var(--text);
+  color: var(--ink);
 }
 .savestate[data-status="failed"] {
-  font-weight: 700;
+  font-weight: 600;
 }
 /*
- * The one yellow button of the editor and where saving stands, in a bar. While the window is tall enough for the page to scroll under
+ * The one main button of the editor and where saving stands, in a bar that floats. While the window is tall enough for the page to scroll under
  * it without taking a fifth of it, the bar stays at the bottom, so the way to make this a lesson is never a scroll away; the page
  * keeps its distance (`scroll-padding`) so that a field that takes the focus is never under it. In a short window (a zoomed one) the
  * bar is a part of the page, at its end, like the top bar of a short window is.
  */
 .savebar {
   display: flex;
-  flex-wrap: wrap;
+  flex-flow: row-reverse wrap;
   align-items: center;
+  justify-content: space-between;
   gap: var(--sp-1) var(--sp-3);
-  padding: 0.75rem var(--sp-2);
-  border: 2px solid var(--line-strong);
-  border-radius: var(--r-l);
-  background: var(--deep);
+  padding: 0.625rem;
+  border: 1px solid transparent;
+  border-radius: 1.875rem;
+  background: var(--surface);
+  box-shadow: var(--ring);
+}
+/* The words beside the button keep off the round end of the bar. */
+.savebar > :not(.btn) {
+  margin-inline: 0.625rem;
 }
 @media (min-height: 30rem) {
   .savebar {
     position: sticky;
     bottom: var(--sp-2);
     z-index: 20;
-    box-shadow: 0 0.5rem 1.5rem rgba(10, 46, 55, 0.45);
+    box-shadow: var(--shadow-float);
   }
   html:has(.savebar) {
     scroll-padding-bottom: 6.5rem;
@@ -1913,13 +2277,10 @@ button {
   width: 2rem;
   height: 2rem;
 }
-/* On the ground, so the words are 24px: white on the ground is only large-text contrast. */
 .wait__offline {
   margin: 0;
   max-width: var(--measure);
-  font-size: var(--fs-lead);
-  font-weight: 500;
-  line-height: 1.3;
+  color: var(--ink-2);
 }
 .editor__refined {
   flex-wrap: wrap;
@@ -1931,13 +2292,20 @@ button {
   flex: none;
 }
 
-/* The question that is open: a white edge, so it is told from the ones that are only read. */
+/* The question that is open: a teal edge all round its row, so it is told from the ones that are only read. */
 .question--open {
-  border: 2px solid var(--text);
-  padding: calc(var(--sp-4) - 2px);
+  box-shadow: inset 0 0 0 2px var(--teal);
+}
+.question--open:first-child {
+  border-top-left-radius: var(--r-l);
+  border-top-right-radius: var(--r-l);
+}
+.question--open:last-child {
+  border-bottom-left-radius: var(--r-l);
+  border-bottom-right-radius: var(--r-l);
 }
 .question__blank {
-  color: var(--text-2);
+  color: var(--ink-2);
   font-weight: 400;
 }
 .question__actions {
@@ -1955,13 +2323,19 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-2) var(--sp-3);
-  border: 2px dashed var(--line-strong);
-  background: transparent;
+  background: var(--well);
+}
+.question--removed:first-child {
+  border-top-left-radius: var(--r-l);
+  border-top-right-radius: var(--r-l);
+}
+.question--removed:last-child {
+  border-bottom-left-radius: var(--r-l);
+  border-bottom-right-radius: var(--r-l);
 }
 .question--removed p {
   margin: 0;
-  font-size: var(--fs-lead);
-  font-weight: 600;
+  font-weight: 500;
 }
 .editor__field {
   display: grid;
@@ -1975,14 +2349,13 @@ button {
 }
 .editor__label {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: 700;
-  line-height: var(--lh-tight);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  line-height: 1.3;
 }
 .editor__hint {
   margin: 0;
-  color: var(--text-2);
+  color: var(--ink-2);
   max-width: var(--measure);
   text-wrap: pretty;
 }
@@ -2007,7 +2380,7 @@ button {
 }
 /*
  * One answer: its words, what pressing its choice does ("Означи како точен", or "Точен одговор" on the one that is), and Remove. The
- * right one has a white edge, as the right answer has when it is read, and a tick with the words; the others say what pressing them
+ * right one has a teal edge on the tint, as the right answer has when it is read, and a tick with the words; the others say what pressing them
  * does and carry no tick, so no row reads as right by default. Every row has the same room for that edge, so nothing moves when the
  * choice does.
  */
@@ -2025,8 +2398,8 @@ button {
   border-radius: var(--r-m);
 }
 .opt[data-right="true"] {
-  border-color: var(--text);
-  background: var(--shadow);
+  border-color: var(--teal);
+  background: var(--tint);
 }
 .opt__right {
   min-height: var(--tap);
@@ -2036,6 +2409,7 @@ button {
 .opt[data-right="true"] .opt__right {
   border-color: transparent;
   background: transparent;
+  box-shadow: none;
 }
 /* Where the open question is too narrow for all three side by side (the sidebar is there, or the window is zoomed), the words get the row and the other two share the next. */
 @container question (max-width: 46rem) {
@@ -2087,7 +2461,22 @@ button {
   min-height: 6rem;
 }
 .editor__add {
-  margin-top: var(--sp-3);
+  margin-top: var(--sp-2);
+}
+/* The lesson's name: its label and its box on one line where there is room. */
+.editor__title {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem var(--sp-3);
+  padding-block: var(--sp-2);
+}
+.editor__title > .prepare__hint {
+  grid-column: 1 / -1;
+}
+@media (max-width: 40rem) {
+  .editor__title {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .editor__kinds,
 .editor__refine {
@@ -2095,19 +2484,16 @@ button {
   flex-wrap: wrap;
   gap: var(--sp-2);
 }
-/* On the ground, so the words are 24px: white on the ground is only large-text contrast. */
 .editor__limit {
   margin: 0;
-  font-size: var(--fs-lead);
-  font-weight: 500;
-  line-height: 1.3;
+  color: var(--ink-2);
 }
 .problems__list {
   margin: 0.25rem 0 0;
   padding-left: 1.25rem;
   display: grid;
   gap: 0.25rem;
-  color: var(--text);
+  color: var(--ink);
 }
 .problems__list--links {
   list-style: none;
@@ -2118,8 +2504,10 @@ button {
   display: inline-flex;
   align-items: center;
   min-height: var(--tap-small);
+  color: var(--teal);
   text-decoration: underline;
-  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
   font-weight: 600;
 }
 .problem--list .problem__body {
@@ -2127,26 +2515,22 @@ button {
 }
 .problem h2.problem__title:focus {
   outline: none;
-  box-shadow: none;
 }
 .lesson__title:has(.lesson__badge) {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 .lesson__badge {
   flex: none;
-  width: 2rem;
-  height: 2rem;
+  width: 1.75rem;
+  height: 1.75rem;
 }
 .lesson__text .lesson__edit {
-  color: var(--text);
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 500;
 }
 @media (max-width: 40rem) {
-  .question--open {
-    padding: calc(var(--sp-3) - 2px);
-  }
   .editor__refine .btn,
   .editor__kinds .btn,
   .question__actions--open .btn,
@@ -2156,35 +2540,64 @@ button {
 }
 
 /* ---- Lessons and the Library ---- */
-/* The row of subjects: its label is large, because it sits on the ground, and the choices are the same large rows as everywhere. */
+/* The row of subjects is a segmented control: the choices side by side in one track, the chosen one a white piece with a tick
+   and heavier words (never colour alone). They are still radio buttons, so the arrow keys move between them. With many
+   subjects, or long names, the track takes a second line. Its name is read out and not shown: the choices say what they are. */
 .subjects {
   display: grid;
-  gap: var(--sp-2);
+  justify-items: start;
 }
 .subjects__label {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-lead);
-  font-weight: 700;
-  line-height: var(--lh-tight);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.subjects .choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  max-width: 100%;
+  padding: 0.25rem;
+  border-radius: 1.625rem;
+  background: var(--well-2);
+}
+.subjects .choice {
+  flex: 0 1 auto;
+  gap: 0.375rem;
+  min-height: var(--tap-small);
+  padding: 0.375rem 1.125rem;
+  border: 1px solid transparent;
+  border-radius: 1.375rem;
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--fs-body);
+  font-weight: 500;
+}
+.subjects .choice svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+/* What is not chosen has no mark at all; the chosen one has the tick. */
+.subjects .choice[data-checked="false"] svg {
+  display: none;
+}
+.subjects .choice[data-checked="true"] {
+  border-color: transparent;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px rgba(13, 42, 50, 0.06), 0 1px 3px rgba(13, 42, 50, 0.14);
+  color: var(--teal);
+  font-weight: 600;
+}
+.subjects .choice__text {
+  flex: none;
 }
 /* What differs between a lesson that was held and one that was not: when, and how many times. */
 .lesson__text .lesson__held {
-  color: var(--text);
-  font-weight: 600;
-}
-/* Every card's two actions take the same room, whatever their words, so the buttons of a list stand in one column and the eye goes straight down it. */
-.lesson__actions > .btn:not(.btn--quiet) {
-  min-width: 14.5rem;
-}
-.lesson__actions > .btn--quiet {
-  min-width: 11.5rem;
-  justify-content: flex-start;
-}
-/* A lesson that was held has three lines, not four, and less air above and below them: a teacher with a year of them scrolls a list of them. */
-.lesson--held {
-  min-height: 0;
-  padding-block: var(--sp-2);
+  color: var(--ink);
+  font-weight: 500;
 }
 /* "Веќе ја копиравте": a tick and the words, so it is not told by colour or position alone. */
 .lesson__text .lesson__copied,
@@ -2192,8 +2605,8 @@ button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--text);
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 500;
 }
 .lesson__copied svg {
   flex: none;
@@ -2203,7 +2616,7 @@ button {
   display: grid;
   margin-top: var(--sp-4);
   padding-top: var(--sp-3);
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline);
 }
 .lesson__delete > .btn {
   justify-self: start;
@@ -2222,7 +2635,7 @@ button {
 }
 .question__figure figcaption {
   max-width: var(--measure);
-  color: var(--text-2);
+  color: var(--ink-2);
   overflow-wrap: anywhere;
 }
 .imagefield {
@@ -2232,7 +2645,7 @@ button {
   max-width: 100%;
   max-height: 14rem;
   border-radius: var(--r-m);
-  background: var(--deep);
+  background: var(--well);
   object-fit: contain;
 }
 .imagefield__actions {
@@ -2249,9 +2662,8 @@ button {
 }
 /* The input is the real one but not seen; its button is the label, which shows the ring when the input has the focus. */
 .imagefield:has(input.sr:focus-visible) .imagefield__pick {
-  outline: 3px solid var(--yellow);
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
-  box-shadow: 0 0 0 2px var(--shadow);
 }
 /* The wait is a mark and a line of words, still: nothing moves that does not have to. */
 .imagefield__busy {
@@ -2260,8 +2672,8 @@ button {
   gap: 0.75rem;
   margin: 0;
   min-height: var(--tap);
-  color: var(--text);
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 500;
 }
 .imagefield__busy svg {
   flex: none;
@@ -2284,8 +2696,8 @@ button {
 }
 .imagefield__removed p {
   margin: 0;
-  color: var(--text);
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 500;
 }
 /* How far off an answer may be and whether it may be negative: behind "Повеќе опции" until one of them is set. */
 .editor__more {
@@ -2302,25 +2714,27 @@ button {
 }
 
 /* ---- The live lesson: the console (names, the teacher's own screen) ---- */
-/* Where the lesson stands: four words in order. The current one has a filled mark, a white edge and the word "Сега"; never colour alone. */
+/* Where the lesson stands: four words in order. The current one has a filled mark, a line under its word and the word "Сега"; never colour alone. */
 .states {
   list-style: none;
   margin: 0;
-  padding: var(--sp-1) var(--sp-3);
+  padding: 0.25rem 1.25rem;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0 var(--sp-1);
   border-radius: var(--r-l);
-  background: var(--panel);
+  background: var(--surface);
+  box-shadow: var(--ring);
 }
 .states__item {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   min-height: var(--tap);
-  color: var(--text-2);
-  font-weight: 500;
+  color: var(--ink-2);
+  font-size: var(--fs-small);
+  font-weight: 400;
 }
 .states__item + .states__item::before {
   content: "";
@@ -2328,14 +2742,14 @@ button {
   height: 2px;
   margin-right: var(--sp-1);
   border-radius: 1px;
-  background: var(--line-strong);
+  background: var(--edge);
 }
 .states__item svg {
   flex: none;
 }
 .states__item[data-position="current"] {
-  color: var(--text);
-  font-weight: 700;
+  color: var(--ink);
+  font-weight: 600;
 }
 /* Where the window is not wide enough for the four on one line, the short lines between them go: the filled mark, the word and "Сега" say it. */
 @media (max-width: 69.99rem) {
@@ -2351,15 +2765,15 @@ button {
 }
 .states__item[data-position="current"] .states__word {
   padding-block: 0.25rem;
-  border-bottom: 3px solid var(--text);
+  border-bottom: 2px solid var(--teal);
 }
 .states__now {
-  padding: 0.125rem 0.75rem;
+  padding: 0.125rem 0.625rem;
   border-radius: var(--r-pill);
-  background: var(--text);
-  color: var(--ink);
+  background: var(--teal);
+  color: var(--on-teal);
   font-size: var(--fs-small);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* The code and the controls beside who has joined; one column where the window is not wide enough for both. */
@@ -2387,10 +2801,9 @@ button {
 .card .live__digits {
   margin: 0;
   max-width: none;
-  color: var(--text);
-  font-family: var(--font-display);
+  color: var(--ink);
   font-size: clamp(3rem, 2.2rem + 2.4vw, 4.5rem);
-  font-weight: 800;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
   line-height: 1;
@@ -2420,8 +2833,8 @@ button {
   align-items: center;
   gap: 0.5rem;
   min-height: 1.5em;
-  color: var(--text);
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 500;
 }
 .projector__status svg {
   flex: none;
@@ -2435,8 +2848,8 @@ button {
   gap: 0.75rem;
   padding: var(--sp-2);
   border-radius: var(--r-m);
-  border: 2px solid var(--line-strong);
-  background: var(--deep);
+  border: 1px solid transparent;
+  background: var(--well);
 }
 .callout svg {
   flex: none;
@@ -2445,22 +2858,24 @@ button {
 .callout p,
 .card .callout p {
   margin: 0;
-  color: var(--text);
+  color: var(--ink);
 }
 .card .callout .callout__title {
-  font-weight: 700;
+  font-weight: 600;
 }
 .callout__link {
   display: inline-flex;
   align-items: center;
   min-height: var(--tap-small);
-  font-weight: 700;
+  color: var(--teal);
+  font-weight: 600;
   text-decoration: underline;
+  text-decoration-thickness: 1px;
   text-underline-offset: 0.25em;
 }
 
 .reconnecting p {
-  color: var(--text);
+  color: var(--ink);
 }
 
 /* Who has joined: every student by name, in two groups, each with an icon and a word. */
@@ -2470,12 +2885,12 @@ button {
   gap: var(--sp-2);
 }
 .card .roster__count {
-  color: var(--text);
-  font-size: var(--fs-h3);
-  font-weight: 700;
+  color: var(--ink);
+  font-size: var(--fs-row);
+  font-weight: 600;
 }
 .card .roster__nophone {
-  color: var(--text-2);
+  color: var(--ink-2);
 }
 /* What was done, said once and read out. It has no room of its own until it has something to say, so the list sits close under the count. */
 .card .roster__said {
@@ -2493,16 +2908,15 @@ button {
 }
 .roster__heading {
   margin: var(--sp-1) 0 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: 700;
+  font-size: var(--fs-body);
+  font-weight: 600;
 }
 .card .roster__none {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  color: var(--text);
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 500;
 }
 .roster__list {
   list-style: none;
@@ -2520,12 +2934,12 @@ button {
   min-height: 2.75rem;
   padding: 0.375rem var(--sp-2);
   border-radius: var(--r-m);
-  background: var(--deep);
+  background: var(--well);
 }
 .person__name {
   flex: 1 1 11rem;
   min-width: 0;
-  font-weight: 700;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 /* The parts of what is said about a student are items of the row itself, so the answer stays beside the name and what is longer (when a student came late, that they left the app) goes on a line of its own below. */
@@ -2539,7 +2953,7 @@ button {
   align-items: center;
   gap: 0.375rem;
   margin-left: auto;
-  color: var(--text-2);
+  color: var(--ink-2);
   line-height: 1.3;
 }
 .person__answer {
@@ -2562,15 +2976,15 @@ button {
   flex: none;
 }
 .person__word {
-  font-weight: 600;
-  color: var(--text);
+  font-weight: 500;
+  color: var(--ink);
 }
 .person__detail {
   font-size: var(--fs-small);
 }
 .person__answer {
-  font-weight: 600;
-  color: var(--text);
+  font-weight: 500;
+  color: var(--ink);
 }
 .person__action {
   align-self: center;
@@ -2578,14 +2992,74 @@ button {
 .person__problem {
   grid-column: 1 / -1;
 }
-/* A student whose connection is lost is worth a look: a white edge besides the icon and the words. */
+/* A student whose connection is lost is worth a look: a teal edge besides the icon and the words. */
 .person[data-state="offline"] {
-  box-shadow: inset 0 0 0 2px var(--text);
+  box-shadow: inset 0 0 0 2px var(--teal);
 }
 
 .live__questions {
   display: grid;
   gap: var(--sp-2);
+}
+
+/*
+ * ---- The projected window keeps its own look ----
+ * The rest of the app is light; this one page is read from the back of a classroom on a weak projector, so it stays dark teal
+ * with full-white words, exactly as it was. The names below are its palette and nothing outside .cv reads them. The page
+ * behind it is dark too, so nothing light shows round it or while it loads.
+ */
+.cv {
+  --deep: #124554;
+  --ground-top: #155869;
+  --shadow: #0a2e37;
+  --text: #ffffff;
+  --text-2: #d9e7ea;
+  --ink: #0a2e37;
+  --line-strong: rgba(255, 255, 255, 0.55);
+  --focus: #ffc83e;
+  --quiet-edge: 0 0 transparent;
+  /* The system's own font for running words, as before: the sizes of the window were fitted with it. */
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 1.125rem;
+  line-height: 1.55;
+  color-scheme: dark;
+}
+html:has(.cv) {
+  background: #0a2e37;
+  color-scheme: dark;
+}
+body:has(.cv) {
+  background: #155869;
+  color: #ffffff;
+}
+/* A dark gap between the yellow ring and what is behind it keeps the ring 3:1 on any part of the window. */
+.cv :focus-visible {
+  box-shadow: 0 0 0 2px var(--shadow);
+}
+/* Its one button, "Цел екран": the dark, edged button it always was. */
+.cv .btn {
+  gap: 0.75rem;
+  padding: 0.75rem 2rem;
+  border: 2px solid var(--line-strong);
+  border-radius: 1rem;
+  background: var(--deep);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+/* Its icon is the 28px the page asks for, not the 20px of the app's buttons. */
+.cv .btn svg {
+  width: 28px;
+  height: 28px;
+}
+.cv .btn:active {
+  background: var(--deep);
+}
+@media (hover: hover) and (pointer: fine) {
+  .cv .btn:hover,
+  .cv .btn:hover:active {
+    background: var(--shadow);
+  }
 }
 
 /* ---- The class view: the projected window. Big, high contrast, and nothing small; sized by the height of the window. ---- */
@@ -2852,7 +3326,7 @@ button {
 }
 .head--compact .back {
   grid-row: 1 / span 2;
-  margin-bottom: 0;
+  margin: 0 0 0 -0.625rem;
 }
 .head--compact .head__title {
   grid-column: 2;
@@ -2862,7 +3336,7 @@ button {
   align-self: center;
 }
 .head--compact .head__title {
-  font-size: var(--fs-h2);
+  font-size: var(--fs-xl);
 }
 .head--compact .head__sub {
   grid-column: 2;
@@ -2874,7 +3348,7 @@ button {
   padding: 0 var(--sp-2);
 }
 .states--compact .states__item {
-  min-height: 3rem;
+  min-height: var(--tap-small);
 }
 /* At 1024 wide the four steps and "Сега" must still be one line, so the panel is in the first screen. */
 @media (max-width: 69.99rem) {
@@ -2907,51 +3381,53 @@ button {
   display: grid;
   gap: var(--sp-2);
   justify-items: start;
-  border: 3px solid var(--yellow);
+  /* The question that is open is what is live on this page: the yellow edge. */
+  border: 2px solid var(--yellow);
+  box-shadow: none;
 }
 .card .qpanel__title {
-  font-size: var(--fs-h3);
-  color: var(--text-2);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--ink-2);
   outline-offset: 4px;
 }
 .qpanel .qpanel__label {
-  color: var(--text-2);
-  font-weight: 600;
+  color: var(--ink-2);
+  font-weight: 500;
 }
 .qpanel .qpanel__prompt {
   max-width: 60rem;
-  color: var(--text);
-  font-family: var(--font-display);
-  font-size: var(--fs-h2);
-  font-weight: 700;
-  line-height: 1.25;
+  color: var(--ink);
+  font-size: var(--fs-xl);
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
   overflow-wrap: anywhere;
 }
 .qpanel .qpanel__state {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  color: var(--text);
-  font-family: var(--font-display);
-  font-size: var(--fs-h2);
-  font-weight: 700;
+  color: var(--ink);
+  font-size: var(--fs-large);
+  font-weight: 600;
 }
 .qpanel .qpanel__answer {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  color: var(--text);
-  font-size: var(--fs-lead);
-  font-weight: 700;
+  color: var(--ink);
+  font-size: var(--fs-row);
+  font-weight: 600;
 }
 .qpanel .qpanel__hint {
-  color: var(--text-2);
+  color: var(--ink-2);
   font-size: var(--fs-body);
 }
 .qpanel .qpanel__progress {
-  color: var(--text);
-  font-size: var(--fs-h3);
-  font-weight: 700;
+  color: var(--ink);
+  font-size: var(--fs-row);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 .qpanel__timer {
@@ -2960,10 +3436,9 @@ button {
   gap: 0.75rem;
 }
 .qpanel .qpanel__count {
-  color: var(--text);
-  font-family: var(--font-display);
+  color: var(--ink);
   font-size: clamp(2.25rem, 1.6rem + 2vw, 3.25rem);
-  font-weight: 800;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
@@ -2974,7 +3449,6 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-1) var(--sp-4);
-  font-size: var(--fs-lead);
 }
 .qpanel__counts li {
   display: flex;
@@ -2982,8 +3456,7 @@ button {
   gap: 0.5rem;
 }
 .qpanel__counts strong {
-  font-family: var(--font-display);
-  font-size: var(--fs-h2);
+  font-size: var(--fs-large);
   font-variant-numeric: tabular-nums;
 }
 .qpanel__actions {
@@ -2996,8 +3469,8 @@ button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--text);
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 500;
 }
 .qpanel__more {
   justify-self: start;
@@ -3017,15 +3490,14 @@ button {
 .qlist__head .section__title {
   margin: 0;
 }
-/* One quiet line, only while sending another is not possible: plain weight, no bigger than the list, on the panel colour so it stays readable on the ground. */
+/* One quiet line, only while sending another is not possible: plain weight, no bigger than the list. */
 .qlist__wait {
   margin: 0;
   padding: 0.5rem var(--sp-2);
   border-radius: var(--r-m);
-  background: var(--panel);
-  color: var(--text-2);
-  font-size: var(--fs-body);
-  font-weight: 400;
+  background: var(--surface);
+  box-shadow: var(--ring);
+  color: var(--ink-2);
 }
 .qlist__items {
   list-style: none;
@@ -3043,21 +3515,22 @@ button {
     "status actions";
   align-items: center;
   gap: 0.25rem var(--sp-2);
-  padding: var(--sp-1) var(--sp-2);
+  padding: 0.625rem var(--sp-2);
   border-radius: var(--r-m);
-  background: var(--panel);
+  background: var(--surface);
+  box-shadow: var(--ring);
 }
 .qitem__n {
   grid-area: n;
   margin: 0;
-  color: var(--text-2);
+  color: var(--ink-2);
   font-size: var(--fs-small);
-  font-weight: 600;
+  font-weight: 500;
 }
 .qitem__prompt {
   grid-area: prompt;
   margin: 0;
-  font-weight: 600;
+  font-weight: 500;
   overflow-wrap: anywhere;
 }
 .qitem__status {
@@ -3066,11 +3539,11 @@ button {
   align-items: center;
   gap: 0.5rem;
   margin: 0;
-  color: var(--text-2);
+  color: var(--ink-2);
 }
 .qitem__word {
-  font-weight: 600;
-  color: var(--text);
+  font-weight: 500;
+  color: var(--ink);
 }
 .qitem__actions {
   grid-area: actions;
@@ -3080,10 +3553,11 @@ button {
 }
 /* A question that was skipped is set back, not struck out: a quieter ground, and "Прескокнато" in words. */
 .qitem[data-status="skipped"] {
-  background: var(--deep);
+  background: var(--well-2);
+  box-shadow: none;
 }
 .qitem[data-status="skipped"] .qitem__prompt {
-  color: var(--text-2);
+  color: var(--ink-2);
 }
 @media (max-width: 40rem) {
   .qitem {
@@ -3123,23 +3597,25 @@ button {
   gap: 0.5rem;
   padding: var(--sp-2);
   border-radius: var(--r-m);
-  background: var(--deep);
+  background: var(--well);
 }
+/* One that was answered is set back: it loses its ground and keeps a thin edge. Its words stay as dark as they were. */
 .inbox__item[data-answered="true"] {
-  opacity: 0.72;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--edge);
 }
 .card .inbox__who {
   display: flex;
   flex-wrap: wrap;
   gap: 0 var(--sp-2);
-  color: var(--text-2);
+  color: var(--ink-2);
 }
 .card .inbox__who strong {
-  color: var(--text);
+  color: var(--ink);
 }
 .card .inbox__text {
-  color: var(--text);
-  font-size: var(--fs-lead);
+  color: var(--ink);
+  font-size: var(--fs-row);
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
@@ -3153,8 +3629,8 @@ button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--text);
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 500;
 }
 
 /* The quick question: one short screen. */
@@ -3208,7 +3684,7 @@ button {
   position: sticky;
   bottom: calc(-1 * var(--sp-3));
   padding-block: var(--sp-1) 0;
-  background: var(--panel);
+  background: var(--surface);
 }
 .dialog--adhoc .dialog__actions .btn--primary {
   white-space: nowrap;
@@ -3226,9 +3702,8 @@ button {
   gap: var(--sp-1);
 }
 .adhoc__letter {
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: var(--fs-h3);
+  font-weight: 650;
+  font-size: var(--fs-row);
   text-align: center;
 }
 .adhoc__right {
@@ -3237,16 +3712,18 @@ button {
   align-items: center;
   gap: 0.375rem;
   min-height: var(--tap);
-  padding-inline: var(--sp-1);
-  border: 2px solid var(--line);
+  padding-inline: 0.625rem;
+  border: 1px solid var(--edge);
   border-radius: var(--r-m);
-  background: var(--deep);
+  background: var(--surface);
   white-space: nowrap;
 }
 .adhoc__right[data-checked="true"] {
-  border-color: var(--text);
-  background: var(--shadow);
-  font-weight: 700;
+  border-color: var(--teal);
+  box-shadow: inset 0 0 0 1px var(--teal);
+  background: var(--tint);
+  color: var(--teal);
+  font-weight: 600;
 }
 .adhoc__right input {
   position: absolute;
@@ -3258,7 +3735,7 @@ button {
   cursor: pointer;
 }
 .adhoc__right:has(input:focus-visible) {
-  outline: 3px solid var(--yellow);
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
 .adhoc__number {
@@ -3821,8 +4298,10 @@ button {
   }
 }
 
-/* A press: what can be pressed sinks a little at once and springs back when let go. Wide rows sink less than buttons. */
+/* A press: what can be pressed sinks a little at once and springs back when let go. Wide rows sink less than buttons. Its
+   colours turn on the short ease. This is the one place that says how these move; their own rules set no transition. */
 .btn,
+.back,
 .provider,
 .nav__item,
 .choice,
@@ -3832,22 +4311,25 @@ button {
   transition:
     background-color var(--dur) var(--ease),
     border-color var(--dur) var(--ease),
+    color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease),
     transform var(--spring-press-dur) var(--spring-press);
 }
 .btn:active:not(:disabled, [aria-disabled="true"]),
+.back:active,
 .pill:active,
 .me:active {
   transform: scale(0.97);
-  transition-duration: var(--dur), var(--dur), 90ms;
-  transition-timing-function: var(--ease), var(--ease), var(--ease-out);
+  transition-duration: var(--dur), var(--dur), var(--dur), var(--dur), 90ms;
+  transition-timing-function: var(--ease), var(--ease), var(--ease), var(--ease), var(--ease-out);
 }
 .provider:active:not(:disabled),
 .nav__item:active,
 .choice:active,
 .cres__switch:active {
   transform: scale(0.985);
-  transition-duration: var(--dur), var(--dur), 90ms;
-  transition-timing-function: var(--ease), var(--ease), var(--ease-out);
+  transition-duration: var(--dur), var(--dur), var(--dur), var(--dur), 90ms;
+  transition-timing-function: var(--ease), var(--ease), var(--ease), var(--ease), var(--ease-out);
 }
 
 /* A page arrives: its header first, its content a beat after. Content that comes later (a list after its placeholders, a band, a
@@ -3884,7 +4366,7 @@ button {
 }
 
 /* The selected row of the menu: one ground for the list that slides to the page that opens (NavGlide), so the eye follows the move.
-   While it is there, the row's own ground and bar step aside; the bold label and the filled icon stay with the row. */
+   While it is there, the row's own ground steps aside; the heavier label and the filled icon stay with the row. */
 .sidebar nav {
   position: relative;
 }
@@ -3894,31 +4376,18 @@ button {
   left: 0;
   width: 100%;
   border-radius: var(--r-m);
-  background: var(--panel);
+  background: var(--tint);
   opacity: 0;
   pointer-events: none;
   transition:
     transform 460ms var(--spring-smooth),
     opacity var(--dur) var(--ease);
 }
-.nav__glide::before {
-  content: "";
-  position: absolute;
-  left: 0.25rem;
-  top: 0.75rem;
-  bottom: 0.75rem;
-  width: 0.25rem;
-  border-radius: 2px;
-  background: var(--text);
-}
 .nav__glide[data-on="true"] {
   opacity: 1;
 }
 nav[data-glide="on"] .nav__item[aria-current="page"] {
   background: transparent;
-}
-nav[data-glide="on"] .nav__item[aria-current="page"]::before {
-  content: none;
 }
 
 /* A window rises in on the smooth spring over a backdrop that fades in. It closes at once: a closing window would still be read out,
@@ -4099,6 +4568,7 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
     animation: none !important;
   }
   .btn,
+  .back,
   .provider,
   .nav__item,
   .choice,
@@ -4107,9 +4577,12 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   .cres__switch {
     transition:
       background-color var(--dur) var(--ease),
-      border-color var(--dur) var(--ease);
+      border-color var(--dur) var(--ease),
+      color var(--dur) var(--ease),
+      box-shadow var(--dur) var(--ease);
   }
   .btn:active:not(:disabled, [aria-disabled="true"]),
+  .back:active,
   .pill:active,
   .me:active,
   .provider:active:not(:disabled),
@@ -4163,9 +4636,14 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   }
 }
 
-/* Windows high-contrast: fills are dropped, so the edges of cards, the chosen row and the one main
-   button are drawn as lines. The yellow button gets a thicker edge than the others. */
+/* Windows high-contrast: fills and shadows are dropped, so the edges of cards, buttons, the chosen row and the one main
+   button are drawn as lines. The main button gets a thicker edge than the others. */
 @media (forced-colors: active) {
+  .btn,
+  .tag,
+  .choice {
+    border-width: 2px;
+  }
   .card,
   .dialog,
   .me,
@@ -4173,10 +4651,11 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   .pill,
   .problem,
   .note-box,
-  .lesson,
-  .question,
+  .lessons,
+  .questions,
+  .prepare,
   .running,
-  .option,
+  .option[data-correct="true"],
   .field,
   .states,
   .person,
@@ -4200,16 +4679,25 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   .savebar {
     border: 2px solid CanvasText;
   }
+  /* Rows of one surface: the surface has the edge, a row only the line above it; the open question has its own. */
+  .question + .question,
+  .prepare > .card + .card,
+  .prepare > .prepare__go {
+    border-top: 2px solid CanvasText;
+  }
+  .prepare > .card {
+    border: 0;
+  }
+  .question--open {
+    outline: 3px solid Highlight;
+    outline-offset: -3px;
+  }
   .nav__item[aria-current="page"] {
     border: 2px solid Highlight;
   }
   .btn--primary {
     border-width: 4px;
   }
-}
-
-.btn--danger.btn--small {
-  font-size: 1.1875rem;
 }
 
 /* ---- The review on the projector: one most-missed question, or the questions the class wrote, filling the window ---- */
@@ -4308,23 +4796,22 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   justify-items: start;
 }
 .card .rpanel__title {
-  font-size: var(--fs-h2);
+  font-size: var(--fs-section);
 }
 .rpanel__none {
   margin: 0;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  font-family: var(--font-display);
-  font-size: var(--fs-h2);
-  font-weight: 700;
+  font-size: var(--fs-large);
+  font-weight: 600;
 }
 .rpanel__done {
   display: grid;
   gap: var(--sp-1);
   justify-items: start;
   padding-top: var(--sp-2);
-  border-top: 2px solid var(--line);
+  border-top: 1px solid var(--hairline);
   width: 100%;
 }
 .card .rpanel__done p {
@@ -4343,8 +4830,8 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   gap: 0.25rem;
   padding: var(--sp-1) var(--sp-2);
   border-radius: var(--r-m);
-  background: var(--deep);
-  font-size: var(--fs-lead);
+  background: var(--well);
+  font-size: var(--fs-row);
   line-height: 1.3;
   overflow-wrap: anywhere;
 }
@@ -4364,38 +4851,37 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   grid-template-columns: 2.5rem minmax(0, 1fr);
   gap: 0.25rem var(--sp-2);
   padding: var(--sp-2);
-  border: 3px solid transparent;
+  border: 2px solid transparent;
   border-radius: var(--r-m);
-  background: var(--deep);
+  background: var(--well);
 }
-/* The one on the projector: a white outline and its words, never the colour alone. */
+/* The one on the projector: a teal edge on the tint and its words, never the colour alone. */
 .rlist__item[data-now="true"] {
-  border-color: var(--text);
-  background: var(--shadow);
+  border-color: var(--teal);
+  background: var(--tint);
 }
 .card .rlist__item p {
   margin: 0;
 }
 .rlist__n {
   grid-row: 1 / span 3;
-  font-family: var(--font-display);
-  font-size: var(--fs-h2);
-  font-weight: 800;
-  color: var(--text-2);
+  font-size: var(--fs-large);
+  font-weight: 650;
+  color: var(--ink-2);
 }
 .rlist__prompt {
-  font-size: var(--fs-lead);
-  font-weight: 700;
+  font-size: var(--fs-row);
+  font-weight: 600;
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
 .rlist__answer,
 .rlist__count {
-  color: var(--text);
+  color: var(--ink);
   font-size: var(--fs-body);
 }
 .rlist__count {
-  font-weight: 700;
+  font-weight: 600;
 }
 .card .rlist__item .rlist__on,
 .inbox__on {
@@ -4403,8 +4889,8 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   align-items: center;
   gap: 0.375rem;
   font-size: var(--fs-body);
-  font-weight: 800;
-  color: var(--text);
+  font-weight: 650;
+  color: var(--ink);
 }
 .card .rlist__item .rlist__on {
   grid-column: 2;
@@ -4419,10 +4905,10 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 .inbox__item[data-now="true"] {
-  outline: 3px solid var(--text);
+  outline: 3px solid var(--focus);
   outline-offset: -3px;
 }
 .qpanel__early {
@@ -4436,15 +4922,14 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   display: grid;
   gap: var(--sp-1);
   justify-items: start;
-  padding: var(--sp-3);
+  padding: 1.25rem var(--sp-3);
   border-radius: var(--r-l);
-  /* On the panel, not on the ground: the hint is small text, and white on the ground fails at the foot of a long page. */
-  background: var(--panel);
+  background: var(--surface);
+  box-shadow: var(--ring);
 }
 .live__endhint {
   margin: 0;
-  color: var(--text);
-  font-size: var(--fs-body);
+  color: var(--ink-2);
 }
 
 /* ---- The end page ---- */
@@ -4459,7 +4944,7 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
 }
 .att__hint {
   margin: 0;
-  color: var(--text-2);
+  color: var(--ink-2);
   max-width: var(--measure);
 }
 .att-print__title {
@@ -4479,17 +4964,18 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   align-content: start;
   padding: var(--sp-1) var(--sp-2);
   border-radius: var(--r-m);
-  background: var(--deep);
+  background: var(--well);
 }
 .att__counts strong {
-  font-family: var(--font-display);
-  font-size: var(--fs-title);
+  font-size: var(--fs-figure);
+  font-weight: 650;
   line-height: 1.1;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 .att__counts span {
-  font-size: var(--fs-body);
-  font-weight: 600;
+  color: var(--ink-2);
+  font-size: var(--fs-small);
   line-height: 1.25;
 }
 .att__actions {
@@ -4502,28 +4988,28 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 .att__table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--fs-lead);
 }
 .att__table th,
 .att__table td {
   padding: 0.5rem var(--sp-2);
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline);
   text-align: left;
 }
 .att__table thead th {
-  font-size: var(--fs-body);
-  color: var(--text-2);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--ink-2);
 }
 .att__table tbody th {
-  font-weight: 600;
+  font-weight: 500;
 }
 .att__table tr[data-status="absent"] td {
-  font-weight: 700;
+  font-weight: 600;
 }
 .endpage__way {
   display: grid;
@@ -4540,12 +5026,11 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: var(--fs-lead);
+  font-weight: 600;
 }
 .card .practice__sub {
   margin: var(--sp-1) 0 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
+  font-size: var(--fs-body);
 }
 .practice__list {
   list-style: none;
@@ -4556,12 +5041,10 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
 }
 .practice__list li {
   display: flex;
-  font-size: var(--fs-lead);
-  font-weight: 600;
   justify-content: space-between;
   gap: var(--sp-2);
   padding: 0.5rem 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline);
 }
 
 /* The attendance list on paper: only the list, black on white. */
@@ -4640,17 +5123,18 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   gap: 0.25rem;
   padding: var(--sp-2);
   border-radius: var(--r-m);
-  background: var(--deep);
+  background: var(--well);
 }
 .cres__tiles strong {
-  font-family: var(--font-display);
-  font-size: var(--fs-title);
+  font-size: var(--fs-figure);
+  font-weight: 650;
   line-height: 1.1;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 .cres__tiles span {
-  font-size: var(--fs-body);
-  font-weight: 600;
+  color: var(--ink-2);
+  font-size: var(--fs-small);
   line-height: 1.3;
 }
 /* One quiet line of links, not a row of buttons. */
@@ -4660,8 +5144,9 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   flex-wrap: wrap;
   align-items: center;
   gap: 0 var(--sp-2);
-  font-size: var(--fs-body);
-  font-weight: 700;
+  color: var(--ink-2);
+  font-size: var(--fs-small);
+  font-weight: 500;
 }
 .cres__jump ul {
   list-style: none;
@@ -4677,28 +5162,28 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   align-items: center;
   gap: 0.375rem;
   min-height: var(--tap-small);
+  color: var(--teal);
   font-weight: 600;
   text-decoration: underline;
-  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, currentColor 36%, transparent);
+  text-underline-offset: 0.25em;
 }
 /* A table sizes to its container, so it can turn into short stacked rows when the room is narrow (a small window, or the page at 200%). */
 .cres__scroll {
   width: 100%;
   container-type: inline-size;
 }
-.cres__table {
-  font-size: var(--fs-button);
-}
 .cres__table td,
 .cres__table th {
   vertical-align: top;
 }
 .cres__table thead th {
-  font-size: var(--fs-body);
-  font-weight: 700;
+  font-size: var(--fs-small);
+  font-weight: 500;
 }
 .cres__table tbody th {
-  font-weight: 600;
+  font-weight: 500;
 }
 .cres__table tbody td,
 .cres__table tbody th {
@@ -4743,7 +5228,7 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
     align-items: baseline;
     gap: 0.25rem var(--sp-3);
     padding: 0.75rem 0;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--hairline);
   }
   .cres__table th,
   .cres__table td {
@@ -4762,7 +5247,7 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   .cres__table td[data-label]::before {
     content: attr(data-label) ": ";
     font-weight: 400;
-    color: var(--text-2);
+    color: var(--ink-2);
   }
   .cres__table td[data-label] {
     order: 2;
@@ -4781,12 +5266,12 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   margin-top: 0.125rem;
   font-size: var(--fs-small);
   font-weight: 400;
-  color: var(--text-2);
+  color: var(--ink-2);
 }
 .cres__meta,
 .cres__list .cres__note {
   font-size: var(--fs-body);
-  color: var(--text-2);
+  color: var(--ink-2);
 }
 .cres__topics,
 .cres__asked,
@@ -4803,7 +5288,7 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   display: grid;
   gap: 0.25rem;
   padding: var(--sp-2) 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline);
 }
 .cres__topics li p,
 .cres__asked li p,
@@ -4815,14 +5300,15 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.25rem 1rem;
-  font-size: var(--fs-lead);
+  font-size: var(--fs-row);
 }
 .cres__tag {
-  padding: 0.125rem 0.75rem;
+  padding: 0.125rem 0.625rem;
   border-radius: var(--r-pill);
-  background: var(--deep);
+  background: var(--well-2);
+  color: var(--ink-2);
   font-size: var(--fs-small);
-  font-weight: 700;
+  font-weight: 500;
 }
 .cres__topic-share {
   display: flex;
@@ -4835,24 +5321,22 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   display: block;
   flex: 0 1 16rem;
   min-width: 8rem;
-  height: 0.75rem;
+  height: 0.5rem;
   border-radius: var(--r-pill);
-  background: var(--deep);
+  background: var(--well-2);
   overflow: hidden;
 }
 .cres__bar span {
   display: block;
   height: 100%;
-  background: var(--text);
+  background: var(--teal);
 }
 .cres__asked-text {
-  font-size: var(--fs-lead);
-  color: var(--text) !important;
+  color: var(--ink) !important;
 }
 .cres__sets h3 {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
+  font-size: var(--fs-row);
   line-height: var(--lh-tight);
 }
 .cres__who {
@@ -4863,9 +5347,12 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   align-items: center;
   gap: 0.5rem;
   min-height: var(--tap-small);
-  font-weight: 700;
+  color: var(--teal);
+  font-weight: 600;
   text-decoration: underline;
-  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, currentColor 36%, transparent);
+  text-underline-offset: 0.25em;
   cursor: pointer;
   list-style: none;
 }
@@ -4885,51 +5372,54 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
 .cres__switch {
   width: 100%;
   max-width: 46rem;
-  min-height: 4.5rem;
+  min-height: 4rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-2);
   padding: var(--sp-1) var(--sp-2);
   border-radius: var(--r-m);
-  background: var(--deep);
-  color: var(--text);
+  background: var(--well);
+  color: var(--ink);
   text-align: left;
   cursor: pointer;
 }
 .cres__switch-name {
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: 700;
+  font-weight: 600;
 }
 .cres__switch-state {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-1);
-  font-size: var(--fs-lead);
+  color: var(--ink-2);
 }
+/* Off: an empty track with a grey edge and a grey knob. On: the track fills with the accent and the knob turns white and
+   moves over. The state is also said in words beside it, so the colour is never alone. */
 .cres__track {
   display: inline-flex;
   align-items: center;
-  width: 4rem;
-  height: 2.25rem;
-  padding: 0.25rem;
-  border: 2px solid var(--text);
+  width: 3.5rem;
+  height: 2rem;
+  padding: 0.1875rem;
+  border: 2px solid var(--edge-strong);
   border-radius: var(--r-pill);
-  background: transparent;
-  transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  background: var(--surface);
+  transition:
+    background-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 .cres__track[data-on="true"] {
-  background: var(--text);
+  border-color: var(--teal);
+  background: var(--teal);
 }
 .cres__thumb {
   display: grid;
   place-items: center;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.375rem;
+  height: 1.375rem;
   border-radius: 50%;
-  background: var(--text);
-  color: var(--ink);
+  background: var(--ink-2);
+  color: var(--on-teal);
   /* The knob slides over on the snappy spring (see "Motion"), its colours turning with the track. */
   transition:
     transform var(--spring-snappy-dur) var(--spring-snappy),
@@ -4937,9 +5427,9 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
     color var(--dur) var(--ease-out);
 }
 .cres__track[data-on="true"] .cres__thumb {
-  background: var(--deep);
-  color: var(--text);
-  transform: translateX(1.75rem);
+  background: var(--surface);
+  color: var(--teal);
+  transform: translateX(1.5rem);
 }
 .cres__saved {
   display: flex;
@@ -4947,7 +5437,7 @@ nav[data-glide="on"] .nav__item[aria-current="page"]::before {
   gap: 0.5rem;
   min-height: 1.75rem;
   margin: 0;
-  font-weight: 700;
+  font-weight: 600;
 }
 .cres__saved:empty {
   min-height: 0;

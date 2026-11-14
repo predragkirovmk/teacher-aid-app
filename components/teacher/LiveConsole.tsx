@@ -29,10 +29,10 @@ import { ReviewPanel } from "./ReviewPanel";
 
 /**
  * The teacher's own screen of a lesson that is running (F-06, FR-CON-*), with the sidebar. It says which lesson, class and subject
- * this is; where the lesson stands; and, in the lobby, the one yellow button that starts it, the code to read out, the button that opens
+ * this is; where the lesson stands; and, in the lobby, the one main button that starts it, the code to read out, the button that opens
  * the projected window, and who has joined. Everything comes from `GET /sessions/{id}/console`, kept up to date by the stream, so a
  * reload or a window closed and opened again brings it all back (FR-SES-08), and a lost connection is said calmly and mended by itself.
- * While teaching it is the panel "Прашањето сега" with the one yellow button, the list of questions, the inbox of anonymous questions and the class.
+ * While teaching it is the panel "Прашањето сега" with the one main button, the list of questions, the inbox of anonymous questions and the class.
  */
 export function LiveConsole() {
   const { t } = useT();
@@ -129,7 +129,7 @@ export function LiveConsole() {
 }
 
 /**
- * In the lobby, the page's one yellow button. The question before it is the app's own kind: the lesson cannot be taken back to the lobby
+ * In the lobby, the page's one main button. The question before it is the app's own kind: the lesson cannot be taken back to the lobby
  * (4.1), and everyone who joins afterwards is late, so it asks first, with the safe answer as the default. The code to read out is shown only
  * while a student can type it (`STUDENTS_CAN_TYPE_CODE`, OPEN-03); until then the QR on the projector is the one way in, and a code here
  * would only invite the teacher to read out what nobody can use.

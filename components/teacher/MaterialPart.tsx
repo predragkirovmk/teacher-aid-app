@@ -18,7 +18,7 @@ const ABOUT_TEXT: readonly MaterialProblem[] = ["text_none", "text_too_short", "
 /**
  * Part 2, "Материјал": a document or a few typed sentences, as two large choices and, under the one chosen, what it needs.
  * Nothing is chosen at first. The document has a button on a real file input (a file may also be dropped on the area, never
- * only that); once chosen it shows its name and size, with "Избери друг" and "Отстрани". The sentences are an 18px box with a
+ * only that); once chosen it shows its name and size, with "Избери друг" and "Отстрани". The sentences are a box in the size of the text round it, with a
  * hint and no live count. What is wrong is said under the thing it is about, in words, and the page moves the focus there.
  */
 export function MaterialPart({

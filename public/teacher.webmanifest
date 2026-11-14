@@ -7,8 +7,8 @@
   "start_url": "/teacher",
   "scope": "/teacher",
   "display": "standalone",
-  "background_color": "#124554",
-  "theme_color": "#124554",
+  "background_color": "#eef2f2",
+  "theme_color": "#eef2f2",
   "icons": [
     {
       "src": "/teacher-icons/icon-192.png",

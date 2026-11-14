@@ -1,5 +1,5 @@
 import type { BrowserContext, Page } from "@playwright/test";
-import { expect, MOCK_KEY, SETTINGS_KEY, test } from "./fixtures";
+import { expect, MOCK_KEY, SETTINGS_KEY, tall, test } from "./fixtures";
 
 /**
  * Today, the window that starts a lesson, the read-only lesson, and the guide shown again from Settings, in mock mode, in
@@ -11,7 +11,7 @@ import { expect, MOCK_KEY, SETTINGS_KEY, test } from "./fixtures";
 const NOW = new Date("2026-10-29T09:30:00+01:00");
 const title = (page: Page) => page.getByRole("heading", { level: 1 });
 const mainMenu = (page: Page) => page.getByRole("navigation").first();
-const yellow = (page: Page) => page.locator(".btn--primary:visible");
+const mainButton = (page: Page) => page.locator(".btn--primary:visible");
 const cards = (page: Page) => page.locator(".lessons > li");
 const startDialog = (page: Page) => page.getByRole("dialog", { name: /^Со кој(а)? (клас|група)\?$/ });
 const runningDialog = (page: Page) => page.getByRole("dialog", { name: "Веќе имате час во тек" });
@@ -94,37 +94,42 @@ test.describe("Today with lessons prepared", () => {
     await expect(cards(page).nth(1).getByRole("heading", { level: 3 })).toHaveText("Проценти и пропорции");
     await expect(cards(page).nth(1)).toContainText("Математика · II година");
     await expect(cards(page).nth(1)).toContainText("6 прашања · Последна промена: пред 3 дена");
-    // Two labelled actions on each, a word beside every icon.
+    // One button on each, in words; the row itself opens the lesson: its title is the link, and it is the only one.
     for (const card of await cards(page).all()) {
-      await expect(card.getByRole("button", { name: "Започни час" })).toBeVisible();
-      await expect(card.getByRole("link", { name: "Отвори" })).toBeVisible();
+      await expect(card.getByRole("button")).toHaveText("Започни час");
+      await expect(card.getByRole("link")).toHaveText(await card.getByRole("heading", { level: 3 }).innerText());
+      await expect(card.getByRole("link")).toHaveAttribute("href", /\/teacher\/lessons\/l-.*from=today/);
     }
     // Nothing is running, so no band.
     await expect(page.getByText("Час во тек", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Сите лекции" })).toHaveCount(0);
   });
 
-  test("has one yellow button, \"Подготви лекција\", at the top above the lessons; the lessons' own buttons are not yellow", async ({ page }) => {
+  test("has one main button, \"Подготви лекција\", in the header at the right of the title; the lessons' own buttons are quiet ones", async ({ page }) => {
     await page.goto("/teacher");
     await expect(cards(page)).toHaveCount(2);
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
     const prepare = page.getByRole("link", { name: "Подготви лекција" });
     await expect(prepare).toHaveClass(/btn--primary/);
     await expect(prepare).toHaveAttribute("href", "/teacher/lessons/new?from=today");
-    const [button, list] = [(await prepare.boundingBox())!, (await cards(page).first().boundingBox())!];
-    expect(button.y).toBeLessThan(list.y);
+    const [button, list, title] = [(await prepare.boundingBox())!, (await cards(page).first().boundingBox())!, (await page.getByRole("heading", { level: 1 }).boundingBox())!];
+    expect(button.y + button.height).toBeLessThan(list.y);
+    // Beside the title, not under it: to its right, and ending where the list ends.
+    expect(button.x).toBeGreaterThan(title.x + title.width);
+    expect(Math.abs(button.x + button.width - (list.x + list.width))).toBeLessThanOrEqual(1);
     // Where the eye starts: under the title, inside the first screen of a 1280 x 720 window.
     expect(button.y + button.height).toBeLessThan(720);
     for (const card of await cards(page).all()) await expect(card.getByRole("button", { name: "Започни час" })).toHaveClass(/btn--secondary/);
   });
 
-  test("the buttons are big enough: 56px, and 48px for the quiet link", async ({ page }) => {
+  test("the buttons are big enough: 48px for the main one, 44px for the others", async ({ page }) => {
     await page.goto("/teacher");
-    const heights = async (locator: ReturnType<Page["locator"]>) => Promise.all((await locator.all()).map(async (b) => (await b.boundingBox())!.height));
-    for (const h of await heights(page.getByRole("button", { name: "Започни час" }))) expect(h).toBeGreaterThanOrEqual(56);
-    for (const h of await heights(page.getByRole("link", { name: "Отвори" }))) expect(h).toBeGreaterThanOrEqual(48);
-    expect((await page.getByRole("link", { name: "Подготви лекција" }).boundingBox())!.height).toBeGreaterThanOrEqual(56);
-    // And the type: 18px or more everywhere on the cards.
+    const heights = async (locator: ReturnType<Page["locator"]>) => Promise.all((await locator.all()).map((b) => tall(b)));
+    for (const h of await heights(page.getByRole("button", { name: "Започни час" }))) expect(h).toBeGreaterThanOrEqual(44);
+    // A row is pressed to open its lesson: 56px or more of it.
+    for (const h of await heights(page.locator(".lesson"))) expect(h).toBeGreaterThanOrEqual(56);
+    expect(await tall(page.getByRole("link", { name: "Подготви лекција" }))).toBeGreaterThanOrEqual(48);
+    // And the type: 16px or more everywhere on the cards.
     const small = await page.locator(".lesson").evaluateAll((els) =>
       els.flatMap((el) => [el, ...el.querySelectorAll("*")]).filter((e) => e.childNodes.length && parseFloat(getComputedStyle(e).fontSize) < 16).length,
     );
@@ -169,7 +174,7 @@ test.describe("Today with lessons prepared", () => {
     await expect(cards(page).nth(1)).toContainText("Last changed: 3 days ago");
     await expect(page.getByRole("link", { name: "Prepare a lesson" })).toBeVisible();
     await expect(cards(page).first().getByRole("button", { name: "Start lesson" })).toBeVisible();
-    await expect(cards(page).first().getByRole("link", { name: "Open" })).toBeVisible();
+    await expect(cards(page).first().getByRole("link")).toHaveText(await cards(page).first().getByRole("heading", { level: 3 }).innerText());
   });
 
   test("at a faculty it is groups and study years", async ({ page }) => {
@@ -185,7 +190,7 @@ test.describe("Today with lessons prepared", () => {
 test.describe("Today with nothing prepared", () => {
   test.use({ account: "novice" });
 
-  test("keeps the empty state, with the one yellow button in it", async ({ page }) => {
+  test("keeps the empty state, with the one main button in it", async ({ page }) => {
     await page.goto("/teacher");
     await page.getByRole("button", { name: "Прескокни го водичот" }).click();
     await expect(title(page)).toHaveText("Денес");
@@ -193,11 +198,11 @@ test.describe("Today with nothing prepared", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Немате подготвени лекции" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Подготвени лекции", exact: true })).toHaveCount(0);
     await expect(cards(page)).toHaveCount(0);
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
     await expect(page.getByRole("link", { name: "Подготви лекција" })).toHaveClass(/btn--primary/);
   });
 
-  test("with a lesson running, the empty state stays and its button is not yellow; the band's is", async ({ page }) => {
+  test("with a lesson running, the empty state stays and its button is not the main one; the band's is", async ({ page }) => {
     // A new teacher is taken to the guide first; skipping it comes to the page that was asked for.
     await page.goto("/teacher/settings");
     await page.getByRole("button", { name: "Прескокни го водичот" }).click();
@@ -207,7 +212,7 @@ test.describe("Today with nothing prepared", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Немате подготвени лекции" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Врати се на часот" })).toHaveClass(/btn--primary/);
     await expect(page.getByRole("link", { name: "Подготви лекција" })).toHaveClass(/btn--secondary/);
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
   });
 });
 
@@ -220,7 +225,7 @@ test.describe("Today with a lesson running", () => {
     await expect(title(page)).toHaveText("Денес");
   }
 
-  test("puts a band at the top: the subject and class, the lesson, how long, and the way back; and the yellow moves to it", async ({ page }) => {
+  test("puts a band at the top: the subject and class, the lesson, how long, and the way back; and the main button moves to it", async ({ page }) => {
     await simulate(page);
     const band = page.getByRole("region", { name: "Час во тек" });
     await expect(band).toBeVisible();
@@ -229,12 +234,13 @@ test.describe("Today with a lesson running", () => {
     await expect(band).toContainText("Трае 12 минути");
     const back = band.getByRole("link", { name: "Врати се на часот" });
     await expect(back).toHaveClass(/btn--primary/);
-    // The one yellow button of the screen; "Подготви лекција" is secondary.
-    await expect(yellow(page)).toHaveCount(1);
+    // The one main button of the screen; "Подготви лекција" is secondary.
+    await expect(mainButton(page)).toHaveCount(1);
     await expect(page.getByRole("link", { name: "Подготви лекција" })).toHaveClass(/btn--secondary/);
-    // The band is above everything else but the header.
-    const [bandBox, listBox] = [(await band.boundingBox())!, (await page.getByRole("link", { name: "Подготви лекција" }).boundingBox())!];
-    expect(bandBox.y).toBeLessThan(listBox.y);
+    // The band is above everything else but the header, where the quiet "Подготви лекција" stays at the right of the title.
+    const [bandBox, headBox, listBox] = [(await band.boundingBox())!, (await page.getByRole("link", { name: "Подготви лекција" }).boundingBox())!, (await cards(page).first().boundingBox())!];
+    expect(headBox.y + headBox.height).toBeLessThan(bandBox.y);
+    expect(bandBox.y + bandBox.height).toBeLessThan(listBox.y);
     // The running lesson is not offered again below.
     await expect(cards(page)).toHaveCount(1);
     await expect(cards(page).first().getByRole("heading", { level: 3 })).toHaveText("Проценти и пропорции");
@@ -294,7 +300,7 @@ test.describe("Today with a lesson running", () => {
     await expect(page.getByRole("region", { name: "Час во тек" })).toBeVisible();
   });
 
-  test("ending the lesson from the band takes the band away and gives the yellow back; the lesson is then a held one", async ({ page }) => {
+  test("ending the lesson from the band takes the band away and gives the main button back; the lesson is then a held one", async ({ page }) => {
     await simulate(page);
     await page.goto("/teacher/settings");
     await expect(demoButton(page, "Симулирај час во тек")).toHaveCount(0);
@@ -359,11 +365,11 @@ test.describe("starting a lesson", () => {
     await expect(dialog.locator(".choice")).toHaveText([/^II-4\s*26 ученици$/, /^III-5\s*24 ученици$/, /^IV-1\s*28 ученици$/, /^IV-2\s*25 ученици$/]);
     for (const radio of await rows.all()) await expect(radio).not.toBeChecked();
     // Large rows, and a window that fits the screen whole.
-    for (const row of await dialog.locator(".choice").all()) expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(56);
+    for (const row of await dialog.locator(".choice").all()) expect(await tall(row)).toBeGreaterThanOrEqual(56);
     const box = (await dialog.boundingBox())!;
     expect(box.y).toBeGreaterThanOrEqual(0);
     expect(box.y + box.height).toBeLessThanOrEqual(720);
-    // Start is the window's yellow button. The focus is on the choices, on the first one, which is not chosen by it, so Enter
+    // Start is the window's main button. The focus is on the choices, on the first one, which is not chosen by it, so Enter
     // starts nothing.
     await expect(dialog.getByRole("button", { name: /^Започни( со .+)?$/ })).toHaveClass(/btn--primary/);
     await expect(rows.first()).toBeFocused();
@@ -412,7 +418,7 @@ test.describe("starting a lesson", () => {
     await page.goto("/teacher");
     await procenti(page).getByRole("button", { name: "Започни час" }).click();
     const dialog = startDialog(page);
-    // The yellow button says plainly what it will do: with nothing chosen it names no class, and it names the one that is chosen.
+    // The main button says plainly what it will do: with nothing chosen it names no class, and it names the one that is chosen.
     await expect(dialog.getByRole("button", { name: /^Започни/ })).toHaveText("Започни");
     await dialog.getByRole("radio", { name: /III-5/ }).check();
     await expect(dialog.getByRole("radio", { name: /III-5/ })).toBeChecked();
@@ -433,7 +439,7 @@ test.describe("starting a lesson", () => {
     await page.getByRole("link", { name: "Назад кон Денес" }).click();
     const band = page.getByRole("region", { name: "Час во тек" });
     await expect(band.getByRole("heading", { level: 2 })).toHaveText("Математика, III-5");
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
     await expect(cards(page)).toHaveCount(1);
     await expect(procenti(page)).toHaveCount(0);
   });
@@ -547,7 +553,7 @@ test.describe("starting a lesson", () => {
     // And the page behind it has the band.
     await runningDialog(page).getByRole("button", { name: "Затвори" }).click();
     await expect(page.getByRole("region", { name: "Час во тек" })).toBeVisible();
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
   });
 
   test("the very lesson being asked about, started in another window, turns the question into that message and does not just vanish", async ({ page, context }: { page: Page; context: BrowserContext }) => {
@@ -606,7 +612,7 @@ test.describe("starting a lesson", () => {
 test.describe("a lesson, to read", () => {
   test("opened from Today: its title, subject and year, and the questions in order, each with its kind, answers, timer and why", async ({ page }) => {
     await page.goto("/teacher");
-    await cards(page).filter({ hasText: "Проценти и пропорции" }).getByRole("link", { name: "Отвори" }).click();
+    await cards(page).filter({ hasText: "Проценти и пропорции" }).getByRole("link").click();
     await expect(page).toHaveURL(/\/teacher\/lessons\/l-procenti\?from=today$/);
     await expect(title(page)).toHaveText("Проценти и пропорции");
     await expect(page).toHaveTitle("Проценти и пропорции · TeacherAid");
@@ -660,18 +666,18 @@ test.describe("a lesson, to read", () => {
     await expect(page.getByRole("link", { name: "Назад кон Лекции" })).toBeVisible();
   });
 
-  test("Back is a labelled button the size of the others, at the top of the page", async ({ page }) => {
+  test("Back is a labelled link with an arrow, 44px tall, at the top of the page", async ({ page }) => {
     await page.goto("/teacher/lessons/l-procenti?from=today");
     const back = page.getByRole("link", { name: "Назад кон Денес" });
-    expect((await back.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+    expect(await tall(back)).toBeGreaterThanOrEqual(44);
     await expect(back.locator("svg")).toHaveCount(1);
   });
 
-  test("has the same \"Започни час\" as Today, and it is the screen's yellow button", async ({ page }) => {
+  test("has the same \"Започни час\" as Today, and it is the screen's main button", async ({ page }) => {
     await page.goto("/teacher/lessons/l-procenti?from=today");
     const start = page.getByRole("button", { name: "Започни час" });
     await expect(start).toHaveClass(/btn--primary/);
-    await expect(yellow(page)).toHaveCount(1);
+    await expect(mainButton(page)).toHaveCount(1);
     await start.click();
     const dialog = startDialog(page);
     await expect(dialog).toContainText("Лекција: Проценти и пропорции");
@@ -681,13 +687,13 @@ test.describe("a lesson, to read", () => {
     await expect(page.getByText("Математика, II-4: Проценти и пропорции")).toBeVisible();
   });
 
-  test("with a lesson running its start button is not yellow, and says so when pressed", async ({ page }) => {
+  test("with a lesson running its start button is not the main one, and says so when pressed", async ({ page }) => {
     await page.goto("/teacher/settings");
     await demoButton(page, "Симулирај час во тек").click();
     await page.goto("/teacher/lessons/l-procenti");
     const start = page.getByRole("button", { name: "Започни час" });
     await expect(start).toHaveClass(/btn--secondary/);
-    await expect(yellow(page)).toHaveCount(0);
+    await expect(mainButton(page)).toHaveCount(0);
     await start.click();
     await expect(runningDialog(page)).toBeVisible();
   });
@@ -724,7 +730,7 @@ test.describe("a lesson, to read", () => {
   test("is in English, at a faculty", async ({ page }) => {
     await page.addInitScript((key) => localStorage.setItem(key, JSON.stringify({ locale: "en", schoolType: "university", schoolSeen: true })), SETTINGS_KEY);
     await page.goto("/teacher");
-    await cards(page).first().getByRole("link", { name: "Open" }).click();
+    await cards(page).first().getByRole("link").click();
     await expect(page.getByRole("link", { name: "Back to Today" })).toBeVisible();
     await expect(page.locator(".head__sub")).toHaveText("Математичка анализа 1 · Year 1");
     await expect(page.getByRole("heading", { level: 2, name: "Questions" })).toBeVisible();

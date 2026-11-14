@@ -7,7 +7,7 @@ export type Choice<V extends string> = { value: V; label: string; /** A second, 
 
 /**
  * A few large radio choices on one card. Real radio buttons, so the arrow keys work; the chosen
- * row has a filled tick, a bold label and a white edge, never colour alone. With `labelledBy` (the id
+ * row has a filled tick, a heavier label and an edge, never colour alone. With `labelledBy` (the id
  * of a heading that is already there, such as a window's title) the choices come bare, with no card
  * and no heading of their own, and with no `value` yet none is chosen.
  */

@@ -17,7 +17,7 @@ import { Bar, Loading } from "./Skeleton";
 
 /**
  * A colleague's lesson, to read and copy (FR-LIB-01 to -04): the same questions as a lesson of the teacher's own, with nothing to change,
- * and one yellow button, "Копирај во моите лекции". It is read with `GET /lessons/{id}`, which answers a library lesson as a preview; who made
+ * and one main button, "Копирај во моите лекции". It is read with `GET /lessons/{id}`, which answers a library lesson as a preview; who made
  * it, and whether the teacher has copied it before, come from the library's list. Copying again stays possible, and the page says that
  * the teacher has done it. After a copy the teacher lands on the new lesson, which is theirs, with a line to say so.
  */
@@ -61,14 +61,15 @@ export function LibraryPreview() {
               <Bar width="80%" height="1.5rem" />
               <Bar width="14rem" height="3.5rem" className="skeleton--button" />
             </div>
-            {[0, 1].map((i) => (
-              <div key={i} className="question" aria-hidden="true">
-                <Bar width="30%" height="1.75rem" />
-                <Bar width="80%" height="2rem" />
-                <Bar height="3.5rem" className="skeleton--row" />
-                <Bar height="3.5rem" className="skeleton--row" />
-              </div>
-            ))}
+            <div className="questions" aria-hidden="true">
+              {[0, 1].map((i) => (
+                <div key={i} className="question">
+                  <Bar width="60%" height="1.75rem" />
+                  <Bar width="80%" height="1.5rem" />
+                  <Bar width="40%" height="1.5rem" />
+                </div>
+              ))}
+            </div>
           </Loading>
         )}
         {missing && (

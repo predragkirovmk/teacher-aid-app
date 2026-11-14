@@ -19,7 +19,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import "@/lib/app/install";
 import { Mark } from "@/components/app/Mark";
 import { ConfirmDialog } from "@/components/teacher/ConfirmDialog";
-import { signOut, useAuth, useOpenSessionAnywhere, useSchoolWording } from "@/lib/teacher/api/hooks";
+import { signOut, useAuth, useOpenSessionAnywhere, useSchoolWording, useTeacherName } from "@/lib/teacher/api/hooks";
 import { useT, type Key } from "@/lib/teacher/i18n";
 import { useNarrow } from "@/lib/teacher/media";
 import { showsOpenLesson } from "@/lib/teacher/routes";
@@ -46,9 +46,10 @@ const MORE: Destination[] = [
 const FOCUSABLE = "a[href], button:not([disabled])";
 
 /**
- * The frame of every page of a signed-in teacher: the sidebar and the top bar, and, while a lesson is running, the way back
- * to it on every page that does not already say so. Help is open to anyone, and without a teacher it has no sidebar, because
- * every place the sidebar leads to needs one.
+ * The frame of every page of a signed-in teacher: the sidebar and, in a narrow window, the top bar that opens it; while a lesson
+ * is running, the way back to it on every page that does not already say so. The sidebar is the one place that says who is
+ * signed in, at its foot, where the name leads to Settings. Help is open to anyone, and without a teacher it has no sidebar,
+ * because every place the sidebar leads to needs one.
  */
 export function Shell({ children }: { children: ReactNode }) {
   const { status } = useAuth();
@@ -60,6 +61,7 @@ function Frame({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { t, te } = useT();
   useSchoolWording();
+  const teacher = useTeacherName();
   const running = useOpenSessionAnywhere(pathname).data?.session ?? null;
   const reminder = running && showsOpenLesson(pathname, running.id) ? running : null;
   const narrow = useNarrow();
@@ -120,8 +122,8 @@ function Frame({ children }: { children: ReactNode }) {
           // From a running lesson Help opens beside it, so the console is never left.
           {...(href === "/teacher/help" && pathname.startsWith("/teacher/live/") ? { target: "_blank", rel: "noopener" } : {})}
         >
-          {/* The selected row shows the filled icon, as well as the bar and the bold label. */}
-          <Icon size={28} weight={current ? "fill" : "regular"} aria-hidden="true" />
+          {/* The selected row shows the filled icon, as well as its own ground and the heavier label. */}
+          <Icon size={22} weight={current ? "fill" : "regular"} aria-hidden="true" />
           {t(label)}
           {href === "/teacher/help" && pathname.startsWith("/teacher/live/") && <span className="sr">{`, ${t("link.newtab")}`}</span>}
         </Link>
@@ -144,11 +146,11 @@ function Frame({ children }: { children: ReactNode }) {
           aria-controls="sidebar"
           onClick={() => setOpenAt(pathname)}
         >
-          <ListIcon size={24} aria-hidden="true" />
+          <ListIcon size={20} aria-hidden="true" />
           {t("nav.menu")}
         </button>
         <Link href="/teacher" className="brand__link" aria-label={t("nav.home")}>
-          <Mark size={36} />
+          <Mark size={28} />
           <span className="brand__word">TeacherAid</span>
         </Link>
         {reminder && <OpenLesson session={reminder} where="top" />}
@@ -165,11 +167,11 @@ function Frame({ children }: { children: ReactNode }) {
       >
         <div className="brand">
           <button ref={closeButton} type="button" className="btn btn--secondary btn--small sidebar__close" onClick={() => setOpenAt(null)}>
-            <XIcon size={24} aria-hidden="true" />
+            <XIcon size={20} aria-hidden="true" />
             {t("close")}
           </button>
           <Link href="/teacher" className="brand__link" aria-label={t("nav.home")} onClick={() => setOpenAt(null)}>
-            <Mark size={40} />
+            <Mark size={28} />
             <span className="brand__word">TeacherAid</span>
           </Link>
         </div>
@@ -185,12 +187,21 @@ function Frame({ children }: { children: ReactNode }) {
             {MORE.map(row)}
             <li>
               <button type="button" className="nav__item" onClick={() => setSigningOut(true)}>
-                <SignOutIcon size={28} aria-hidden="true" />
+                <SignOutIcon size={22} aria-hidden="true" />
                 {t("nav.logout")}
               </button>
             </li>
           </ul>
         </nav>
+        {teacher && (
+          <div className="sidebar__me">
+            <Link href="/teacher/settings" className="me" aria-label={t("user.link", { name: teacher.full })} onClick={() => setOpenAt(null)}>
+              {/* The initials are drawn by the style sheet, so the name the link has is the name that can be read on it. */}
+              <span className="me__badge" aria-hidden="true" data-initials={teacher.initials} />
+              <span className="me__name">{teacher.full}</span>
+            </Link>
+          </div>
+        )}
       </aside>
       <div className="scrim" data-open={open} aria-hidden="true" onClick={() => setOpenAt(null)} />
 

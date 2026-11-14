@@ -51,7 +51,7 @@ const PROBLEM = "signin-problem";
  * where to go.
  *
  * The two buttons follow each provider's own sign-in button guidelines (a white button, its logo, its words), not the app's
- * yellow: the screen has no other action to compete with. There is nothing to type.
+ * main button: the screen has no other action to compete with. There is nothing to type.
  */
 export function SignIn() {
   const { t, te, locale } = useT();

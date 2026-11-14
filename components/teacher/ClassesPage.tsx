@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightIcon, UsersThreeIcon } from "@phosphor-icons/react";
+import { CaretRightIcon, UsersThreeIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useMemo } from "react";
 import { useCourses } from "@/lib/teacher/api/hooks";
@@ -19,7 +19,7 @@ export const classLine = (className: string, subjectName: string): string => `${
 
 /**
  * The teacher's classes (`GET /teacher/courses`): the one taught most recently first, then those not taught yet by name. Each says how many students it
- * has, how many lessons were held and when the last one was, and opens its results. A teacher the school has not given a class to is told who gives them.
+ * has, how many lessons were held and when the last one was, and the whole row opens its results. A teacher the school has not given a class to is told who gives them.
  */
 export function ClassesPage() {
   const { t, locale } = useT();
@@ -33,15 +33,16 @@ export function ClassesPage() {
       <div className="content">
         {courses.status === "loading" && (
           <Loading>
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="lesson lesson--skeleton" aria-hidden="true">
-                <div className="lesson__text">
-                  <Bar width="12rem" height="1.75rem" />
-                  <Bar width="18rem" />
+            <div className="lessons" aria-hidden="true">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="lesson lesson--skeleton">
+                  <div className="lesson__text">
+                    <Bar width="45%" height="1.5rem" />
+                    <Bar width="65%" height="1.25rem" />
+                  </div>
                 </div>
-                <Bar width="12rem" height="3.5rem" className="skeleton--button" />
-              </div>
-            ))}
+              ))}
+            </div>
           </Loading>
         )}
         {courses.status === "error" && <LoadProblem title={t("classes.error.title")} error={courses.error} onRetry={courses.refetch} />}
@@ -63,20 +64,18 @@ export function ClassesPage() {
                 <li key={c.id} className="lesson" data-testid="class-card">
                   <div className="lesson__text">
                     <h2 className="lesson__title" id={heading}>
-                      {classLine(c.class.name, c.subject.name)}
+                      <Link href={classUrl(c.id)} prefetch={false} className="lesson__open">
+                        {classLine(c.class.name, c.subject.name)}
+                      </Link>
                     </h2>
-                    <p>{t(isOne(c.student_count, locale) ? "classes.students.one" : "classes.students", { n: c.student_count })}</p>
                     <p>
+                      {t(isOne(c.student_count, locale) ? "classes.students.one" : "classes.students", { n: c.student_count })}
+                      {" · "}
                       {t(c.lessons_run === 0 ? "classes.lessons.none" : isOne(c.lessons_run, locale) ? "classes.lessons.one" : "classes.lessons", { n: c.lessons_run })}
                       {last ? ` · ${t("classes.last", { when: last })}` : ""}
                     </p>
                   </div>
-                  <div className="lesson__actions">
-                    <Link href={classUrl(c.id)} prefetch={false} className="btn btn--secondary" aria-describedby={heading}>
-                      {t("classes.open")}
-                      <ArrowRightIcon size={24} aria-hidden="true" />
-                    </Link>
-                  </div>
+                  <CaretRightIcon className="lesson__chev" size={20} weight="bold" aria-hidden="true" />
                 </li>
               );
             })}

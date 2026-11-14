@@ -1,0 +1,1332 @@
+<title>TeacherAid Redesign</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400..900&display=swap">
+<style>
+/* Layout: one calm reading column (max 1120px). The product mockups are the widest objects on the page and carry the argument;
+   everything else is plain text around them. */
+:root {
+  --bg: #f3f5f5;
+  --surface: #ffffff;
+  --ink: #0d2a32;
+  --ink-2: #4a6068;
+  --line: rgba(13, 42, 50, 0.12);
+  --accent: #124554;
+  --on-accent: #ffffff;
+  --tint: #dfeaec;
+  --live: #ffc83e;
+  --on-live: #0a2e37;
+  --warn-bg: #fff3d1;
+  --warn-ink: #5a4200;
+  --frame: rgba(13, 42, 50, 0.14);
+  --shadow: 0 30px 60px -30px rgba(13, 42, 50, 0.35);
+  --font: "Golos Text", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a1f26; --surface: #102d36; --ink: #edf4f5; --ink-2: #a8bec4; --line: rgba(255, 255, 255, 0.14);
+    --accent: #e9f3f4; --on-accent: #0a1f26; --tint: rgba(255, 255, 255, 0.1); --live: #ffc83e; --on-live: #0a2e37;
+    --warn-bg: #3a2f0b; --warn-ink: #ffe08a; --frame: rgba(255, 255, 255, 0.16); --shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a1f26; --surface: #102d36; --ink: #edf4f5; --ink-2: #a8bec4; --line: rgba(255, 255, 255, 0.14);
+  --accent: #e9f3f4; --on-accent: #0a1f26; --tint: rgba(255, 255, 255, 0.1); --live: #ffc83e; --on-live: #0a2e37;
+  --warn-bg: #3a2f0b; --warn-ink: #ffe08a; --frame: rgba(255, 255, 255, 0.16); --shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.7);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 1.0625rem/1.6 var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+.page {
+  max-width: 70rem;
+  margin: 0 auto;
+  padding-block: 1.5rem 5rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: clamp(3.5rem, 8vw, 6rem);
+}
+h1, h2, h3, p, ul, ol, figure { margin: 0; }
+h1, h2, h3 { text-wrap: balance; }
+p, li { text-wrap: pretty; }
+h1 { font-size: clamp(2.5rem, 7vw, 4.25rem); line-height: 1.02; font-weight: 650; letter-spacing: -0.035em; }
+h2 { font-size: clamp(1.75rem, 4vw, 2.5rem); line-height: 1.08; font-weight: 650; letter-spacing: -0.025em; }
+h3 { font-size: 1.1875rem; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; }
+.measure { max-width: 40rem; }
+.muted { color: var(--ink-2); }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--live); outline-offset: 2px; border-radius: 6px; }
+
+/* ---- top ---- */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.wordmark { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 650; font-size: 1.125rem; letter-spacing: -0.01em; }
+.wordmark svg { width: 1.6rem; height: 1.6rem; fill: currentColor; }
+.chip {
+  display: inline-flex; align-items: center; gap: 0.5rem; min-height: 2rem; padding: 0.25rem 0.8rem; border-radius: 999px;
+  background: var(--tint); color: var(--ink); font-size: 0.9375rem; font-weight: 600; line-height: 1.25;
+}
+.chip[data-tone="decide"] { background: var(--live); color: var(--on-live); }
+.chip[data-tone="done"] { background: var(--accent); color: var(--on-accent); }
+.chip[data-tone="changes"] { background: var(--warn-bg); color: var(--warn-ink); }
+
+.hero { display: flex; flex-direction: column; gap: 1.5rem; }
+.hero .lead { font-size: clamp(1.1875rem, 2.2vw, 1.4375rem); line-height: 1.45; max-width: 44rem; }
+.how { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1.25rem 2rem; margin-top: 1rem; counter-reset: how; }
+.how li { counter-increment: how; padding-top: 1rem; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 0.25rem; }
+.how li::before { content: counter(how); font-weight: 650; font-size: 0.9375rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+section { display: flex; flex-direction: column; gap: 2rem; }
+.section-head { display: flex; flex-direction: column; gap: 0.75rem; }
+.eyebrow { font-size: 0.9375rem; font-weight: 600; color: var(--ink-2); }
+
+/* ---- findings ---- */
+.found { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 2.5rem 3.5rem; align-items: start; }
+@media (max-width: 56rem) { .found { grid-template-columns: minmax(0, 1fr); } }
+.facts { list-style: none; padding: 0; display: flex; flex-direction: column; }
+.facts li { display: grid; grid-template-columns: 7.25rem minmax(0, 1fr); gap: 1.25rem; padding: 1.15rem 0; border-top: 1px solid var(--line); align-items: baseline; }
+.facts li:last-child { border-bottom: 1px solid var(--line); }
+.facts b { font-size: 1.875rem; line-height: 1; font-weight: 650; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.facts b small { display: block; margin-top: 0.3rem; font-size: 0.9375rem; font-weight: 600; letter-spacing: 0; color: var(--ink-2); }
+@media (max-width: 30rem) { .facts li { grid-template-columns: minmax(0, 1fr); gap: 0.4rem; } }
+
+.lengths { display: flex; flex-direction: column; gap: 0.9rem; min-width: 0; }
+.strip { overflow-x: auto; padding-bottom: 0.5rem; }
+.strip-in { position: relative; display: grid; grid-template-columns: repeat(4, 7.5rem); gap: 1rem; width: max-content; align-items: start; }
+.strip figure { display: flex; flex-direction: column; gap: 0.5rem; }
+.strip img { display: block; width: 7.5rem; height: auto; border-radius: 6px; box-shadow: 0 0 0 1px var(--frame); }
+.strip figcaption { font-size: 0.9375rem; line-height: 1.3; }
+.strip figcaption b { display: block; font-weight: 600; }
+/* One 1280 x 800 screen at the thumbnails' scale (7.5rem wide): 7.5rem x 800 / 1280 = 4.6875rem. */
+.one-screen { position: absolute; left: -0.25rem; right: -0.25rem; top: 0; height: 4.6875rem; border: 2px solid var(--live); border-radius: 8px; pointer-events: none; }
+.one-screen span { position: absolute; right: 0.35rem; top: 0.35rem; padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--live); color: var(--on-live); font-size: 0.8125rem; font-weight: 650; white-space: nowrap; }
+
+/* ---- principles ---- */
+.principles { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 0 2.5rem; }
+.principles li { padding: 1.1rem 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 0.2rem; }
+
+/* ---- look switch and the per-figure switch ---- */
+.switch { display: inline-grid; grid-auto-flow: column; gap: 2px; padding: 3px; border-radius: 999px; background: var(--tint); }
+.switch button {
+  appearance: none; border: 0; cursor: pointer; min-height: 2.5rem; padding: 0.3rem 1.1rem; border-radius: 999px; background: transparent;
+  color: var(--ink-2); font: 600 1rem/1.2 var(--font); white-space: nowrap;
+  transition: background-color 0.2s cubic-bezier(0.2, 0, 0, 1), color 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+.switch button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(13, 42, 50, 0.16); }
+.lookbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; padding: 0.75rem 0; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+.lookbar .muted { font-size: 0.9375rem; }
+
+.shot { display: flex; flex-direction: column; gap: 1.1rem; }
+.shot-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 0.75rem 2rem; }
+.shot-text { display: flex; flex-direction: column; gap: 0.4rem; max-width: 44rem; min-width: 0; }
+.swipe { display: none; font-size: 0.9375rem; }
+@media (max-width: 44rem) { .swipe { display: block; } }
+.scroller { overflow-x: auto; margin-inline: -4px; padding: 4px; }
+.frame {
+  position: relative; overflow: hidden; min-width: 42rem; aspect-ratio: 1280 / 800; border-radius: 14px;
+  box-shadow: 0 0 0 1px var(--frame), var(--shadow); background: var(--surface);
+}
+.frame--phone { min-width: 0; width: min(100%, 21rem); aspect-ratio: 585 / 1266; border-radius: 22px; }
+.frame > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.shot[data-show="new"] .frame > img, .shot[data-show="old"] .frame > .mock { visibility: hidden; }
+/* A built screen, before and after: two pictures in one frame, one shown. */
+.shot[data-show="after"] .frame > .is-before, .shot[data-show="before"] .frame > .is-after { visibility: hidden; }
+.pairs { display: flex; flex-direction: column; gap: clamp(2.5rem, 5vw, 3.5rem); }
+.review-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.5rem; }
+.review-bar p { max-width: 34rem; font-size: 0.9375rem; }
+
+/* ---- tables and lists ---- */
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 38rem; }
+th, td { text-align: left; vertical-align: top; padding: 0.9rem 1.25rem 0.9rem 0; border-top: 1px solid var(--line); }
+th { font-size: 0.9375rem; font-weight: 600; color: var(--ink-2); border-top: 0; padding-bottom: 0.6rem; }
+td:first-child { color: var(--ink-2); }
+td:nth-child(2) { font-weight: 600; }
+.stays { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 0.6rem 2.5rem; }
+.stays li { display: grid; grid-template-columns: 1.4rem minmax(0, 1fr); gap: 0.5rem; }
+.stays svg { width: 1.25rem; height: 1.25rem; margin-top: 0.25rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---- steps ---- */
+.steps { list-style: none; padding: 0; display: flex; flex-direction: column; }
+.step { display: grid; grid-template-columns: 3rem minmax(0, 1fr); gap: 0 1rem; padding: 1.5rem 0; border-top: 1px solid var(--line); }
+.step:last-child { border-bottom: 1px solid var(--line); }
+.step-n { font-size: 1.5rem; font-weight: 650; line-height: 1.2; letter-spacing: -0.02em; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.step-body { display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; }
+.step-title { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; }
+.step[data-status="decide"] .step-n, .step[data-status="review"] .step-n { color: var(--ink); }
+
+.decide { margin-top: 0.75rem; padding: 1.25rem; border-radius: 18px; background: var(--surface); box-shadow: 0 0 0 1px var(--line); display: flex; flex-direction: column; gap: 1rem; }
+.decide label { font-weight: 600; font-size: 1rem; }
+.decide textarea {
+  display: block; width: 100%; margin-top: 0.4rem; padding: 0.75rem 0.9rem; border-radius: 12px; border: 1px solid var(--ink-2); background: var(--bg);
+  color: var(--ink); font: 400 1.0625rem/1.5 var(--font); resize: vertical; min-height: 5rem;
+}
+.buttons { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.btn {
+  appearance: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; min-height: 3rem; padding: 0.5rem 1.35rem;
+  border-radius: 999px; border: 1px solid var(--ink-2); background: transparent; color: var(--ink); font: 600 1.0625rem/1.2 var(--font); text-decoration: none;
+  transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1), background-color 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+.btn:active { transform: scale(0.98); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn[disabled] { opacity: 0.55; cursor: progress; }
+.saved { display: none; padding: 0.9rem 1rem; border-radius: 12px; background: var(--tint); }
+.saved b { display: block; }
+.decide[data-saved] .saved { display: block; }
+.decide-msg { font-size: 1rem; }
+.decide-msg:empty { display: none; }
+.decide-off { display: none; }
+body[data-db="off"] .decide-on { display: none; }
+body[data-db="off"] .decide-off { display: block; }
+
+footer { color: var(--ink-2); font-size: 0.9375rem; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* =====================================================================================================================
+   The mockups. Each is a 1280 x 800 drawing of the proposed app, scaled to its frame. Two skins: light (default) and dark.
+   These are the tokens the build would use.
+   ===================================================================================================================== */
+.mock {
+  --m-bg: #eef2f2; --m-panel: #ffffff; --m-surface: #ffffff; --m-ink: #0d2a32; --m-ink2: #4a6068; --m-ink3: #8a9ba1;
+  --m-hair: rgba(13, 42, 50, 0.09); --m-hair2: rgba(13, 42, 50, 0.2); --m-accent: #124554; --m-on-accent: #ffffff; --m-accent-text: #124554;
+  --m-accent-bar: #124554; --m-tint: #e1ecee; --m-well: #eef2f2; --m-well2: #e2e9ea; --m-seg-on: #ffffff; --m-live: #ffc83e; --m-red: #b42318;
+  --m-shadow: 0 0 0 1px rgba(13, 42, 50, 0.05), 0 12px 32px -20px rgba(13, 42, 50, 0.3);
+  --m-card: 0 0 0 1px rgba(13, 42, 50, 0.06);
+  --m-float: 0 0 0 1px rgba(13, 42, 50, 0.07), 0 18px 44px -14px rgba(13, 42, 50, 0.32);
+  position: absolute; left: 0; top: 0; width: 1280px; height: 800px; transform-origin: 0 0; transform: scale(var(--s, 0.5));
+  background: var(--m-bg); color: var(--m-ink); font: 400 17px/1.4 var(--font); letter-spacing: 0; text-align: left; overflow: hidden;
+}
+.mock[data-skin="dark"] {
+  --m-bg: #0c303b; --m-panel: #103c49; --m-surface: #124554; --m-ink: #ffffff; --m-ink2: #c3d8dc; --m-ink3: #8fb0b7;
+  --m-hair: rgba(255, 255, 255, 0.11); --m-hair2: rgba(255, 255, 255, 0.3); --m-accent: #ffc83e; --m-on-accent: #0a2e37; --m-accent-text: #ffffff;
+  --m-accent-bar: #ffffff; --m-tint: rgba(255, 255, 255, 0.12); --m-well: rgba(4, 24, 30, 0.34); --m-well2: rgba(4, 24, 30, 0.34); --m-seg-on: rgba(255, 255, 255, 0.16);
+  --m-live: #ffc83e; --m-red: #ff9b8e;
+  --m-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 12px 32px -20px rgba(0, 0, 0, 0.6);
+  --m-card: 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --m-float: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 18px 44px -14px rgba(0, 0, 0, 0.6);
+}
+.mock * { box-sizing: border-box; margin: 0; }
+.mock .ic { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.mock .ic.s { width: 18px; height: 18px; }
+.mock .ic.fill { fill: currentColor; stroke: none; }
+
+.m-app { display: grid; grid-template-columns: 248px minmax(0, 1fr); gap: 12px; height: 100%; padding: 12px; }
+.m-side { display: flex; flex-direction: column; padding: 18px 12px 14px; border-radius: 22px; background: var(--m-panel); box-shadow: var(--m-shadow); }
+.m-brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 20px; font-weight: 650; font-size: 19px; letter-spacing: -0.01em; }
+.m-brand svg { width: 28px; height: 28px; fill: currentColor; }
+.m-nav { display: grid; gap: 2px; }
+.m-nav span { display: flex; align-items: center; gap: 12px; height: 46px; padding: 0 12px; border-radius: 13px; font-weight: 500; }
+.m-nav span.on { background: var(--m-tint); color: var(--m-accent-text); font-weight: 650; }
+.m-foot { margin-top: auto; display: grid; gap: 0; }
+.m-foot span.l { display: flex; align-items: center; gap: 12px; height: 42px; padding: 0 12px; font-size: 16px; color: var(--m-ink2); }
+.m-me { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 14px 8px 2px; border-top: 1px solid var(--m-hair); font-size: 16px; line-height: 1.25; }
+.m-ava { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border-radius: 50%; background: var(--m-tint); color: var(--m-accent-text); font-weight: 650; font-size: 15px; }
+.m-me b { display: block; font-weight: 600; }
+.m-me small { display: block; font-size: 16px; color: var(--m-ink2); white-space: nowrap; }
+
+.m-main { position: relative; padding: 40px 48px 0 40px; overflow: hidden; }
+.m-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
+.m-eyebrow { font-size: 16px; color: var(--m-ink2); }
+.m-h1 { margin-top: 2px; font-size: 40px; line-height: 1.1; font-weight: 650; letter-spacing: -0.026em; }
+.m-sub { margin-top: 6px; font-size: 18px; color: var(--m-ink2); }
+.m-back { display: inline-flex; align-items: center; gap: 4px; margin: 0 0 10px -5px; font-size: 16px; color: var(--m-ink2); }
+.m-btn { display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 22px; border-radius: 999px; font-weight: 600; font-size: 17px; white-space: nowrap; flex: none; }
+.m-btn.pri { background: var(--m-accent); color: var(--m-on-accent); }
+.m-btn.tint { height: 44px; padding: 0 18px 0 14px; background: var(--m-tint); color: var(--m-accent-text); font-size: 16px; }
+.m-btn.plain { height: 44px; padding: 0 6px; color: var(--m-accent-text); font-size: 16px; }
+.m-btn.line { height: 44px; padding: 0 18px; box-shadow: inset 0 0 0 1px var(--m-hair2); font-size: 16px; }
+.m-sec { margin: 34px 0 12px 4px; font-size: 20px; font-weight: 600; letter-spacing: -0.012em; }
+.m-group { border-radius: 20px; background: var(--m-surface); box-shadow: var(--m-card); }
+.m-row { position: relative; display: flex; align-items: center; gap: 14px; padding: 17px 18px 17px 24px; }
+.m-row + .m-row::before { content: ""; position: absolute; left: 24px; right: 0; top: 0; height: 1px; background: var(--m-hair); }
+.m-row .grow { flex: 1; min-width: 0; }
+.m-row .t { font-size: 18px; font-weight: 600; letter-spacing: -0.006em; }
+.m-row .d { margin-top: 2px; font-size: 16px; color: var(--m-ink2); }
+.m-chev { color: var(--m-ink3); }
+.m-chip { display: inline-flex; align-items: center; height: 26px; margin-left: 10px; padding: 0 10px; border-radius: 999px; background: var(--m-well); color: var(--m-ink2); font-size: 16px; font-weight: 500; vertical-align: 1px; }
+
+/* editor */
+.m-tools { display: flex; align-items: center; gap: 8px; margin-top: 22px; }
+.m-tools .lbl { margin-right: 6px; font-size: 16px; color: var(--m-ink2); }
+.m-pill { display: inline-flex; align-items: center; height: 44px; padding: 0 18px; border-radius: 999px; background: var(--m-surface); box-shadow: inset 0 0 0 1px var(--m-hair2); font-size: 16px; font-weight: 500; }
+.m-q { position: relative; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 0 16px; padding: 22px 24px; }
+.m-q + .m-q::before { content: ""; position: absolute; left: 70px; right: 0; top: 0; height: 1px; background: var(--m-hair); }
+.m-q .n { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--m-well); color: var(--m-ink2); font-weight: 650; font-size: 16px; }
+.m-q .top { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; }
+.m-q .p { font-size: 19px; font-weight: 600; letter-spacing: -0.008em; }
+.m-q .meta { display: inline-flex; align-items: center; gap: 14px; font-size: 16px; color: var(--m-ink2); white-space: nowrap; }
+.m-q .meta u { text-decoration: none; font-weight: 600; color: var(--m-accent-text); }
+.m-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 28px; margin-top: 12px; }
+.m-opt { display: flex; align-items: center; gap: 10px; }
+.m-opt .ic { color: var(--m-ink3); }
+.m-opt.right { font-weight: 600; }
+.m-opt.right .ic { color: var(--m-accent-text); }
+.m-opt em { font-style: normal; font-weight: 400; font-size: 16px; color: var(--m-ink2); }
+.m-exp { margin-top: 12px; font-size: 16px; color: var(--m-ink2); }
+.m-savebar { position: absolute; left: 40px; right: 48px; bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 9px 9px 9px 22px; border-radius: 999px; background: color-mix(in srgb, var(--m-panel) 84%, transparent); -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4); box-shadow: var(--m-float); }
+.m-savebar .note { display: inline-flex; align-items: center; gap: 8px; font-size: 16px; color: var(--m-ink2); }
+
+/* live lesson */
+.m-live { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 12px; height: 100%; padding: 12px; }
+.m-bar { display: flex; align-items: center; gap: 16px; height: 64px; padding: 0 10px 0 16px; border-radius: 20px; background: var(--m-panel); box-shadow: var(--m-shadow); }
+.m-bar .m-back { margin: 0; }
+.m-bar .sep { width: 1px; height: 24px; background: var(--m-hair2); }
+.m-onair { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 13px 0 11px; border-radius: 999px; background: var(--m-live); color: #0a2e37; font-weight: 650; font-size: 16px; }
+.m-onair i { width: 8px; height: 8px; border-radius: 50%; background: #0a2e37; }
+.m-bar .ttl { font-weight: 600; }
+.m-bar .sp { flex: 1; }
+.m-end { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px 0 14px; border-radius: 999px; color: var(--m-red); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--m-red) 45%, transparent); font-weight: 600; font-size: 16px; }
+.m-cols { display: grid; grid-template-columns: minmax(0, 1fr) 432px; gap: 12px; min-height: 0; }
+.m-stage { display: flex; flex-direction: column; padding: 30px 44px 28px; border-radius: 22px; background: var(--m-panel); box-shadow: var(--m-shadow); }
+.m-steps { display: flex; align-items: center; gap: 10px; font-size: 16px; color: var(--m-ink2); }
+.m-steps b { color: var(--m-ink); font-weight: 650; }
+.m-steps .ic { width: 16px; height: 16px; color: var(--m-ink3); }
+.m-prompt { margin-top: 6px; font-size: 46px; line-height: 1.08; font-weight: 650; letter-spacing: -0.028em; }
+.m-count { display: flex; align-items: center; gap: 28px; margin-top: 36px; }
+.m-ring { position: relative; flex: none; width: 116px; height: 116px; }
+.m-ring svg { width: 116px; height: 116px; transform: rotate(-90deg); }
+.m-ring b { position: absolute; inset: 0; display: grid; place-items: center; font-size: 40px; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.m-count .big { font-size: 24px; font-weight: 600; letter-spacing: -0.012em; }
+.m-prog { width: 360px; height: 8px; margin-top: 14px; border-radius: 4px; background: var(--m-well2); overflow: hidden; }
+.m-prog i { display: block; width: 50%; height: 100%; border-radius: 4px; background: var(--m-accent-bar); }
+.m-acts { display: flex; align-items: center; gap: 16px; margin-top: 34px; font-size: 16px; color: var(--m-ink2); }
+.m-next { display: flex; align-items: baseline; gap: 16px; margin-top: auto; padding-top: 20px; border-top: 1px solid var(--m-hair); font-size: 16px; color: var(--m-ink2); }
+.m-next b { flex: none; color: var(--m-ink); font-weight: 600; }
+.m-panelr { position: relative; display: flex; flex-direction: column; padding: 14px; border-radius: 22px; background: var(--m-panel); box-shadow: var(--m-shadow); overflow: hidden; }
+.m-seg { display: grid; grid-template-columns: 1.35fr 1fr 1fr; gap: 2px; padding: 3px; border-radius: 13px; background: var(--m-well); }
+.m-seg span { display: flex; align-items: center; justify-content: center; gap: 6px; height: 38px; border-radius: 10px; font-size: 16px; font-weight: 500; color: var(--m-ink2); }
+.m-seg span.on { background: var(--m-seg-on); color: var(--m-ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), 0 0 0 0.5px rgba(0, 0, 0, 0.05); }
+.m-glabel { margin: 18px 6px 4px; font-size: 16px; font-weight: 600; }
+.m-p { position: relative; display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 6px; }
+.m-p + .m-p::before { content: ""; position: absolute; left: 6px; right: 0; top: 0; height: 1px; background: var(--m-hair); }
+.m-p .st { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; font-size: 16px; color: var(--m-ink2); }
+.m-p .st.act { color: var(--m-accent-text); font-weight: 600; }
+.m-p .st.ok { color: var(--m-ink); }
+.m-fade { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; background: linear-gradient(transparent, var(--m-panel)); }
+
+/* class results */
+.m-tabs { display: inline-grid; grid-auto-flow: column; gap: 2px; margin-top: 22px; padding: 3px; border-radius: 13px; background: var(--m-well2); }
+.m-tabs span { display: flex; align-items: center; height: 38px; padding: 0 17px; border-radius: 10px; font-size: 16px; font-weight: 500; color: var(--m-ink2); }
+.m-tabs span.on { background: var(--m-seg-on); color: var(--m-ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), 0 0 0 0.5px rgba(0, 0, 0, 0.05); }
+.m-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; }
+.m-stat { padding: 22px 24px; border-radius: 20px; background: var(--m-surface); box-shadow: var(--m-card); }
+.m-stat b { display: block; font-size: 46px; line-height: 1; font-weight: 650; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; }
+.m-stat span { display: block; margin-top: 10px; font-size: 16px; color: var(--m-ink2); }
+.m-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+.m-card { padding: 20px 24px 12px; border-radius: 20px; background: var(--m-surface); box-shadow: var(--m-card); }
+.m-card h4 { display: flex; justify-content: space-between; align-items: baseline; font-size: 18px; font-weight: 600; letter-spacing: -0.006em; }
+.m-card h4 span { display: inline-flex; align-items: center; gap: 2px; font-size: 16px; font-weight: 600; color: var(--m-accent-text); }
+.m-li { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 16px; padding: 12px 0; }
+.m-li + .m-li::before { content: ""; position: absolute; left: 0; right: -24px; top: 0; height: 1px; background: var(--m-hair); }
+.m-li .v { font-variant-numeric: tabular-nums; font-weight: 600; }
+.m-li .d { font-size: 16px; color: var(--m-ink2); }
+.m-meter { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--m-well2); overflow: hidden; }
+.m-meter i { display: block; height: 100%; border-radius: 3px; background: var(--m-accent-bar); }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="logo" viewBox="0 0 427.41 437.93"><path d="M287.21 7.07L258.06 82.68L174.53 80.56L149.62 3.68L0 0V437.93L177.72 434.41V283.16L72.91 261.54V167.04L213.95 203.72L354.98 167.04V261.54L250.17 283.16V432.98L425.3 429.51L427.41 10.53Z"/><circle cx="123.19" cy="225.98" r="26.7"/><circle cx="309.77" cy="225.98" r="26.7"/></symbol>
+    <symbol id="i-today" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3.2"/><path d="M8 3v4M16 3v4M3.5 10h17M9 15.2l2.1 2.1 4.2-4.4"/></symbol>
+    <symbol id="i-lessons" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12" rx="2.6"/><path d="M12 16.5V20M8 20h8"/></symbol>
+    <symbol id="i-classes" viewBox="0 0 24 24"><circle cx="9" cy="9" r="3.2"/><path d="M3 19c.6-3 3-4.8 6-4.8s5.4 1.8 6 4.8M15.6 6.1a3.2 3.2 0 0 1 0 5.8M17.6 14.5c1.9.6 3 2.1 3.4 4.5"/></symbol>
+    <symbol id="i-library" viewBox="0 0 24 24"><rect x="3.5" y="4" width="4.6" height="16" rx="1.3"/><rect x="8.1" y="4" width="4.6" height="16" rx="1.3"/><path d="M14.4 6.6l3.6-1 3 13.5-3.6 1z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7.5h9M18 7.5h2M4 16.5h3M12 16.5h8"/><circle cx="15.5" cy="7.5" r="2.4"/><circle cx="9.5" cy="16.5" r="2.4"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.5a2.5 2.5 0 1 1 3.7 2.2c-.8.5-1.3 1-1.3 1.9M12 16.9v.1"/></symbol>
+    <symbol id="i-out" viewBox="0 0 24 24"><path d="M10 4H6.6A2.6 2.6 0 0 0 4 6.6v10.8A2.6 2.6 0 0 0 6.6 20H10M15 8l4 4-4 4M19 12H9.5"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.6v12.8a1 1 0 0 0 1.5.86l10.3-6.4a1 1 0 0 0 0-1.72L9.5 4.74A1 1 0 0 0 8 5.6z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M9.5 5.5L16 12l-6.5 6.5"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M14.5 5.5L8 12l6.5 6.5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.6l4.4 4.4L19 7.4"/></symbol>
+    <symbol id="i-okc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.4l2.7 2.7 5.3-5.6"/></symbol>
+    <symbol id="i-ring" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20l1-4.6L16.4 4a1.8 1.8 0 0 1 2.6 0l1 1a1.8 1.8 0 0 1 0 2.6L8.6 19zM14.4 6l3.6 3.6"/></symbol>
+    <symbol id="i-screen" viewBox="0 0 24 24"><path d="M3 4.5h18M12 15v3.4"/><rect x="4.5" y="4.5" width="15" height="10.5" rx="1.6"/><circle cx="12" cy="19.6" r="1.1"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><rect x="9.2" y="9.2" width="5.6" height="5.6" rx="1"/></symbol>
+    <symbol id="i-wait" viewBox="0 0 24 24"><path d="M7 4h10M7 20h10M8 4c0 4 4 5 4 8s-4 4-4 8M16 4c0 4-4 5-4 8s4 4 4 8"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.2V12l3 2"/></symbol>
+    <symbol id="i-skip" viewBox="0 0 24 24"><path d="M6 5.6v12.8l9-6.4zM18 5v14"/></symbol>
+  </defs>
+</svg>
+
+<div class="page">
+
+  <div class="top">
+    <span class="wordmark"><svg aria-hidden="true"><use href="#logo"/></svg>TeacherAid</span>
+    <span class="chip" id="status" data-tone="decide">Step 3 is ready for your review.</span>
+  </div>
+
+  <header class="hero">
+    <p class="eyebrow">Teacher app, teacheraid.education/teacher</p>
+    <h1>A calmer teacher app</h1>
+    <p class="lead">You said the app feels crowded and confusing to use. I opened every screen and measured it. No feature needs to go. Too much is on screen at once, and all of it is equally loud. This plan keeps every feature and changes how the screens are arranged and how they look.</p>
+    <ol class="how">
+      <li><h3>You approved the look and steps 1 and 2</h3><p class="muted">The light look on 12 November, the new colours, type and sidebar on 13 November, the four lists as rows on 14 November.</p></li>
+      <li><h3>Step 3 of 7 is built</h3><p class="muted">Preparing a lesson: the form, the editor, the lesson page and the Library's preview. It is below, with a preview you can click through.</p></li>
+      <li><h3>Your decision starts step 4</h3><p class="muted">Approve step 3 or send it back. Nothing more is built until you do.</p></li>
+    </ol>
+  </header>
+
+  <section aria-labelledby="s3-h" id="step-3-review">
+    <div class="section-head">
+      <p class="eyebrow">Step 3 of 7 · built 14 November 2026</p>
+      <h2 id="s3-h">Preparing a lesson is one calm page at each stop</h2>
+      <p class="muted measure">The form where a lesson starts, the editor where you check the questions, the lesson's own page and the Library's preview. Every field, button and feature is still there. A question is no longer a box full of boxes.</p>
+    </div>
+
+    <div class="review-bar">
+      <a class="btn btn-primary" href="https://teacher-aid-git-ccr-65507c3f-cbceas-predragkirovmks-projects.vercel.app/teacher" target="_blank" rel="noopener">Open the preview</a>
+      <p class="muted">The preview is the real app with the demo school. On the sign-in screen press “Најави се со Google”, then choose Марија Петровска. No password is asked. If Vercel asks you to log in before the app opens, use your own Vercel account: the preview is private to it.</p>
+    </div>
+
+    <ul class="principles">
+      <li><h3>Questions are rows</h3><p class="muted">One white panel, a hairline between questions. The number, the question, then its answers. The same on the lesson page, in the Library and in the editor.</p></li>
+      <li><h3>Answers two side by side</h3><p class="muted">Four answers take two lines, not four boxes. The right one is tinted, ticked and named.</p></li>
+      <li><h3>Much less scrolling</h3><p class="muted">The editor of the demo's six questions is about a third shorter: 3,921 px before, 2,611 px now, measured at 1280 wide.</p></li>
+      <li><h3>“Уреди” at the end of the row</h3><p class="muted">In the editor every question has its one button in the same place, at the right of its first line. The save bar has the button at its right too.</p></li>
+      <li><h3>The form is one panel</h3><p class="muted">Year, material, emphasis and the button read from top to bottom in one panel, across the full width.</p></li>
+      <li><h3>Nothing else moved</h3><p class="muted">The live lesson, the end of a lesson, the class results and the projector are as they were. They are steps 4 to 7.</p></li>
+    </ul>
+
+    <div class="pairs">
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>The editor</h3>
+            <p class="muted">Six questions were six boxes with every answer in a box of its own. They are rows of one panel now: the number, the question, its kind and time on one quiet line, the answers two side by side. “Уреди” is at the right end of the row. “Промени ги сите прашања” is still under the last question, which is now much nearer.</p>
+          </div>
+          <div class="switch" role="group" aria-label="The editor: after or before">
+            <button type="button" id="s3-editor-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s3-editor-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s3-before-editor.webp" width="1920" height="1200" alt="The editor before step 3: a title card, then one tall card for the first question with four boxed answers stacked under each other." loading="lazy">
+          <img class="is-after" src="img/s3-after-editor.webp" width="1920" height="1200" alt="The editor after step 3: the lesson's name on one row, then one panel where the first question shows its answers in two columns and an Edit button at the right.">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>A question you are editing</h3>
+            <p class="muted">Opening a question works as it did and its fields are where they were. It opens inside the same panel, marked by a teal edge. The form itself is not part of this step.</p>
+          </div>
+          <div class="switch" role="group" aria-label="A question you are editing: after or before">
+            <button type="button" id="s3-open-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s3-open-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s3-before-open.webp" width="1920" height="1200" alt="A question open for editing before step 3: a separate card with a thick outline between the other question cards." loading="lazy">
+          <img class="is-after" src="img/s3-after-open.webp" width="1920" height="1200" alt="A question open for editing after step 3: the same form inside the list's panel, marked by a teal edge." loading="lazy">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>A lesson's page</h3>
+            <p class="muted">The same rows, to read. The right answer has a tint under it, a tick and the words “Точен одговор”. The explanation is one quiet line under the answers.</p>
+          </div>
+          <div class="switch" role="group" aria-label="A lesson's page: after or before">
+            <button type="button" id="s3-lesson-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s3-lesson-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s3-before-lesson.webp" width="1920" height="1200" alt="A lesson's page before step 3: each question in its own card with stacked, boxed answers and the explanation in another box." loading="lazy">
+          <img class="is-after" src="img/s3-after-lesson.webp" width="1920" height="1200" alt="A lesson's page after step 3: the questions as rows of one panel, answers in two columns, the right one tinted with a tick and the words that say so." loading="lazy">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>A Library lesson</h3>
+            <p class="muted">The preview of a ready lesson reads the same way, so a teacher learns one shape for a question and meets it everywhere.</p>
+          </div>
+          <div class="switch" role="group" aria-label="A Library lesson: after or before">
+            <button type="button" id="s3-library-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s3-library-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s3-before-library.webp" width="1920" height="1200" alt="A Library lesson before step 3: a long stack of question cards." loading="lazy">
+          <img class="is-after" src="img/s3-after-library.webp" width="1920" height="1200" alt="A Library lesson after step 3: one panel of question rows, about a third shorter." loading="lazy">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>Prepare a lesson</h3>
+            <p class="muted">Three boxes and a fourth for the button became one panel: year, material, emphasis, then the button with its one line of reassurance. Nothing was removed. It was narrower when you first saw it; it now uses the full width, as you asked.</p>
+          </div>
+          <div class="switch" role="group" aria-label="Prepare a lesson: after or before">
+            <button type="button" id="s3-prepare-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s3-prepare-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s3-before-prepare.webp" width="1920" height="1200" alt="The prepare form before step 3: three wide cards, one under the other, across the whole page." loading="lazy">
+          <img class="is-after" src="img/s3-after-prepare.webp" width="1920" height="1200" alt="The prepare form after step 3: one white panel across the page with a hairline between its three parts." loading="lazy">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>On a phone</h3>
+            <p class="muted">Answers go back to one column and “Уреди” goes under the question it edits. The save bar stays at the bottom of the screen.</p>
+          </div>
+          <div class="switch" role="group" aria-label="On a phone: after or before">
+            <button type="button" id="s3-phone-editor-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s3-phone-editor-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <div><div class="frame frame--phone">
+          <img class="is-before" src="img/s3-before-phone-editor.webp" width="585" height="1266" alt="The editor on a phone before step 3: one question card fills the screen." loading="lazy">
+          <img class="is-after" src="img/s3-after-phone-editor.webp" width="585" height="1266" alt="The editor on a phone after step 3: the question as a row with its answers in one column and Edit under them." loading="lazy">
+        </div></div>
+      </figure>
+    </div>
+
+    <div class="decide" data-for="step-3">
+      <h3>Your decision on step 3</h3>
+      <div class="saved" aria-live="polite"><b data-saved-title></b><span data-saved-detail></span></div>
+      <div class="decide-on">
+        <label for="note-step-3">Notes for Claude (optional)</label>
+        <textarea id="note-step-3" rows="3" placeholder="Anything that is harder to read now, a button you want back where it was, a question row that says too little"></textarea>
+      </div>
+      <div class="buttons decide-on">
+        <button type="button" class="btn btn-primary" id="approve-step-3" data-choice="approved">Approve step 3</button>
+        <button type="button" class="btn" id="changes-step-3" data-choice="changes">Ask for changes</button>
+      </div>
+      <p class="decide-msg decide-on muted" role="status"></p>
+      <p class="decide-off muted">Decisions cannot be saved from this view. Tell Claude your decision in the chat instead.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="s2-h" id="step-2-review">
+    <div class="section-head">
+      <p class="eyebrow">Step 2 of 7 · approved 14 November 2026</p>
+      <h2 id="s2-h">Step 2: the four lists are rows</h2>
+      <p class="muted measure">Today, Lessons, Classes and the Library were stacks of boxes, each with a button and a link. Each is now one list. Every lesson, class and feature is still there; what changed is how much you have to read and choose between.</p>
+    </div>
+
+    <ul class="principles">
+      <li><h3>The row opens</h3><p class="muted">Press a row anywhere and it opens. The separate “Отвори”, “Прегледај” and “Види резултати” said the same thing and are gone.</p></li>
+      <li><h3>One button a row, at the most</h3><p class="muted">A lesson has “Започни час”. A class, a Library lesson and a draft have none.</p></li>
+      <li><h3>One main button, beside the title</h3><p class="muted">“Подготви лекција” sits at the right of the title on Today and on Lessons, always in the same place.</p></li>
+      <li><h3>Less to read</h3><p class="muted">A title and one line a row. The Lessons page is more than a third shorter than it was.</p></li>
+      <li><h3>“Фрли” moved off the lists</h3><p class="muted">Throwing a draft away is on the draft's own page, at its end, and still asks first.</p></li>
+      <li><h3>Nothing else moved</h3><p class="muted">The lesson page, the editor's questions, the class results, the live lesson and the projector are as step 1 left them. They are steps 3 to 7.</p></li>
+    </ul>
+
+    <div class="pairs">
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>Today</h3>
+            <p class="muted">Two lessons, two rows. The title and one line say what the lesson is; “Започни час” is the one button. Pressing the row anywhere opens the lesson, so “Отвори” is gone. “Подготви лекција” moved up beside the title.</p>
+          </div>
+          <div class="switch" role="group" aria-label="Today: after or before">
+            <button type="button" id="s2-today-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s2-today-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s2-before-today.webp" width="1920" height="1200" alt="Today before step 2: a teal button under the title, then two separate white cards, each with a button and an Open link." loading="lazy">
+          <img class="is-after" src="img/s2-after-today.webp" width="1920" height="1200" alt="Today after step 2: the teal button at the right of the title, and one white panel with two rows, each with a title, one line, a Start button and a chevron.">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>Lessons</h3>
+            <p class="muted">The long stack of cards is one list in two groups. The same button stands in the same place on every row, so the eye runs down one column. A held lesson says first when it was held.</p>
+          </div>
+          <div class="switch" role="group" aria-label="Lessons: after or before">
+            <button type="button" id="s2-lessons-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s2-lessons-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s2-before-lessons.webp" width="1920" height="1200" alt="Lessons before step 2: a stack of separate cards, each with three lines of text, a button and a link." loading="lazy">
+          <img class="is-after" src="img/s2-after-lessons.webp" width="1920" height="1200" alt="Lessons after step 2: prepared and held lessons as rows on two white panels, each row with one Start button and a chevron." loading="lazy">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>Classes</h3>
+            <p class="muted">A class had a card and a button, “Види резултати”. It is a row now, and the row opens the results.</p>
+          </div>
+          <div class="switch" role="group" aria-label="Classes: after or before">
+            <button type="button" id="s2-classes-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s2-classes-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s2-before-classes.webp" width="1920" height="1200" alt="Classes before step 2: four cards, each with a results button." loading="lazy">
+          <img class="is-after" src="img/s2-after-classes.webp" width="1920" height="1200" alt="Classes after step 2: four rows on one white panel, each with the class, one line about it and a chevron." loading="lazy">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>Library</h3>
+            <p class="muted">The subjects are one control with the chosen one marked, not three loose tiles. A colleague's lesson is a row: what it is, then whose it is and when. Copying stays on the lesson's own page, as before.</p>
+          </div>
+          <div class="switch" role="group" aria-label="Library: after or before">
+            <button type="button" id="s2-library-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s2-library-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s2-before-library.webp" width="1920" height="1200" alt="The Library before step 2: three subject tiles and a stack of cards, each with a Preview button." loading="lazy">
+          <img class="is-after" src="img/s2-after-library.webp" width="1920" height="1200" alt="The Library after step 2: a segmented subject control with All subjects chosen, and five rows on one white panel." loading="lazy">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>An unfinished lesson</h3>
+            <p class="muted">A draft's row says “Продолжи” and nothing else. The “Фрли” button that sat beside it on every list is gone from the lists.</p>
+          </div>
+          <div class="switch" role="group" aria-label="An unfinished lesson: after or before">
+            <button type="button" id="s2-today-draft-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s2-today-draft-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s2-before-today-draft.webp" width="1920" height="1200" alt="Today before step 2 with an unfinished lesson: its card has a Continue button and a Throw away button." loading="lazy">
+          <img class="is-after" src="img/s2-after-today-draft.webp" width="1920" height="1200" alt="Today after step 2 with an unfinished lesson: its row has the word Continue and a chevron." loading="lazy">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>Throwing a lesson away</h3>
+            <p class="muted">It is now the last thing on the draft's own page, under the save bar: “Фрли ја лекцијата”. It asks first, as it always did. A destructive button no longer sits one finger away from “Продолжи”.</p>
+          </div>
+          <div class="switch" role="group" aria-label="Throwing a lesson away: after or before">
+            <button type="button" id="s2-editor-end-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s2-editor-end-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s2-before-editor-end.webp" width="1920" height="1200" alt="The end of the lesson editor before step 2: the save bar and two lines of help." loading="lazy">
+          <img class="is-after" src="img/s2-after-editor-end.webp" width="1920" height="1200" alt="The end of the lesson editor after step 2: under the save bar and the help there is a quiet button, Throw this lesson away." loading="lazy">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>On a phone</h3>
+            <p class="muted">A row keeps its text and chevron on one line and puts the button under them. The rows are shorter than the cards were, so more lessons fit on a screen.</p>
+          </div>
+          <div class="switch" role="group" aria-label="On a phone: after or before">
+            <button type="button" id="s2-phone-lessons-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s2-phone-lessons-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <div><div class="frame frame--phone">
+          <img class="is-before" src="img/s2-before-phone-lessons.webp" width="585" height="1266" alt="Lessons on a phone before step 2: tall cards with a button and a link stacked under the text." loading="lazy">
+          <img class="is-after" src="img/s2-after-phone-lessons.webp" width="585" height="1266" alt="Lessons on a phone after step 2: shorter rows, each with one button under its text." loading="lazy">
+        </div></div>
+      </figure>
+    </div>
+
+    <div class="decide" data-for="step-2">
+      <h3>Your decision on step 2</h3>
+      <div class="saved" aria-live="polite"><b data-saved-title></b><span data-saved-detail></span></div>
+      <div class="decide-on">
+        <label for="note-step-2">Notes for Claude (optional)</label>
+        <textarea id="note-step-2" rows="3" placeholder="Anything that is harder to find now, a button you want back, a row that says too little"></textarea>
+      </div>
+      <div class="buttons decide-on">
+        <button type="button" class="btn btn-primary" id="approve-step-2" data-choice="approved">Approve step 2</button>
+        <button type="button" class="btn" id="changes-step-2" data-choice="changes">Ask for changes</button>
+      </div>
+      <p class="decide-msg decide-on muted" role="status"></p>
+      <p class="decide-off muted">Decisions cannot be saved from this view. Tell Claude your decision in the chat instead.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="s1-h" id="step-1-review">
+    <div class="section-head">
+      <p class="eyebrow">Step 1 of 7 · approved 13 November 2026</p>
+      <h2 id="s1-h">Step 1: the new look on every screen</h2>
+      <p class="muted measure">This step changes the skin and the frame, not the arrangement. Every button, word and feature is where it was, so you can judge the look by itself. The calmer layouts from the drawings further down come in steps 2 to 5.</p>
+    </div>
+
+    <ul class="principles">
+      <li><h3>Light and quiet</h3><p class="muted">White panels on a pale ground with dark teal ink. The three close dark teals and their white outlines are gone.</p></li>
+      <li><h3>One main button</h3><p class="muted">Deep teal, one a screen. Every other button is pale and smaller. End lesson is white with a red edge.</p></li>
+      <li><h3>Yellow means live</h3><p class="muted">Only a running lesson carries yellow: the band on Today, the mark in the sidebar, the open question.</p></li>
+      <li><h3>Your name moved</h3><p class="muted">It sat at the top right of every page. It is now once, at the foot of the sidebar, and still opens Settings.</p></li>
+      <li><h3>One typeface</h3><p class="muted">Golos Text everywhere, 17 px for reading, nothing under 16 px. A Windows laptop and a Mac show the same letters.</p></li>
+      <li><h3>The projector did not change</h3><p class="muted">The class view stays dark teal. Its pictures are the same as before, pixel for pixel.</p></li>
+    </ul>
+
+    <div class="pairs">
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>Today</h3>
+            <p class="muted">The same two lessons and the same buttons. The sidebar floats, the ground is light, and one teal button leads.</p>
+          </div>
+          <div class="switch" role="group" aria-label="Today: after or before">
+            <button type="button" id="s1-today-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s1-today-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s1-before-today.webp" width="1920" height="1200" alt="Today before: dark teal, a yellow main button, the teacher's name at the top right, two outlined lesson cards." loading="lazy">
+          <img class="is-after" src="img/s1-after-today.webp" width="1920" height="1200" alt="Today in the new look: a white floating sidebar with the teacher's name at its foot, a large title, one teal button and two white lesson cards on a pale ground.">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>Lessons</h3>
+            <p class="muted">Still one long list for now. It reads lighter; turning the cards into rows is step 2.</p>
+          </div>
+          <div class="switch" role="group" aria-label="Lessons: after or before">
+            <button type="button" id="s1-lessons-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s1-lessons-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s1-before-lessons.webp" width="1920" height="1200" alt="Lessons before: dark teal cards with white outlines, each with an outlined button and a link." loading="lazy">
+          <img class="is-after" src="img/s1-after-lessons.webp" width="1920" height="1200" alt="Lessons in the new look: white cards on a pale ground, each with a pale button and a link." loading="lazy">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>Lesson editor</h3>
+            <p class="muted">Questions sit on white panels with hairlines, not outlined boxes. The save bar floats at the bottom.</p>
+          </div>
+          <div class="switch" role="group" aria-label="Lesson editor: after or before">
+            <button type="button" id="s1-editor-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s1-editor-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s1-before-editor.webp" width="1920" height="1200" alt="The lesson editor before: dark teal panels, each question in outlined boxes." loading="lazy">
+          <img class="is-after" src="img/s1-after-editor.webp" width="1920" height="1200" alt="The lesson editor in the new look: a title field and question cards on white panels, with a floating save bar." loading="lazy">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>Live lesson</h3>
+            <p class="muted">Yellow is only on the open question. The steps of the lesson are a quiet line of words. The arrangement on one screen is step 4.</p>
+          </div>
+          <div class="switch" role="group" aria-label="Live lesson: after or before">
+            <button type="button" id="s1-live-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s1-live-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s1-before-live.webp" width="1920" height="1200" alt="The live lesson before: dark teal with a white-outlined panel for the open question." loading="lazy">
+          <img class="is-after" src="img/s1-after-live.webp" width="1920" height="1200" alt="The live lesson in the new look: a white panel with a yellow edge holds the open question and its countdown; the class list and the questions are on white panels below." loading="lazy">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>Class results</h3>
+            <p class="muted">The numbers are larger and the labels quieter. Splitting the eight sections into tabs is step 5.</p>
+          </div>
+          <div class="switch" role="group" aria-label="Class results: after or before">
+            <button type="button" id="s1-class-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s1-class-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s1-before-class.webp" width="1920" height="1200" alt="Class results before: the same figures on dark teal panels with white outlines." loading="lazy">
+          <img class="is-after" src="img/s1-after-class.webp" width="1920" height="1200" alt="Class results in the new look: figures in large dark type with quiet labels, on white panels." loading="lazy">
+        </div></div>
+      </figure>
+    </div>
+
+    <div class="decide" data-for="step-1">
+      <h3>Your decision on step 1</h3>
+      <div class="saved" aria-live="polite"><b data-saved-title></b><span data-saved-detail></span></div>
+      <div class="decide-on">
+        <label for="note-step-1">Notes for Claude (optional)</label>
+        <textarea id="note-step-1" rows="3" placeholder="Anything that looks wrong, too pale, too big, or that you want back"></textarea>
+      </div>
+      <div class="buttons decide-on">
+        <button type="button" class="btn btn-primary" id="approve-step-1" data-choice="approved">Approve step 1</button>
+        <button type="button" class="btn" id="changes-step-1" data-choice="changes">Ask for changes</button>
+      </div>
+      <p class="decide-msg decide-on muted" role="status"></p>
+      <p class="decide-off muted">Decisions cannot be saved from this view. Tell Claude your decision in the chat instead.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="found-h">
+    <div class="section-head">
+      <h2 id="found-h">Why it feels crowded</h2>
+      <p class="muted measure">Measured on the app as it is today, in a 1280 by 800 laptop window, with the demo school's data.</p>
+    </div>
+    <div class="found">
+      <ul class="facts">
+        <li><b>82%<small>of the text is bold</small></b><p>On the live lesson screen, 82% of the labels and lines of text are bold or semi-bold. On Lessons it is 79%. When everything is emphasised, nothing leads the eye.</p></li>
+        <li><b>26<small>buttons for 13 lessons</small></b><p>Every lesson is its own box with two buttons, and clicking the box itself does nothing. The same pattern repeats on Today, Classes and the Library.</p></li>
+        <li><b>4<small>screens down</small></b><p>That is where End lesson sits while a question is open. The busiest moment of a class has one of the longest pages: six panels stacked over 4.2 screens.</p></li>
+        <li><b>6.9<small>screens of scrolling</small></b><p>A class's results put eight sections on one page. The lesson editor runs to 5.7 screens, with every question drawn as a stack of boxes.</p></li>
+        <li><b>3<small>shades of dark teal</small></b><p>Sidebar, background and cards are three close teals held apart by white outlines. It reads as heavy, and a dark screen is harder to read on a laptop in a bright classroom.</p></li>
+      </ul>
+      <div class="lengths">
+        <h3>How long the screens are today</h3>
+        <p class="muted">All four at the same scale. The yellow frame is one screen.</p>
+        <div class="strip" tabindex="0" role="group" aria-label="Four screens of the current app, drawn at the same scale">
+          <div class="strip-in">
+            <figure><img src="img/tall-lessons.webp" width="560" height="1048" alt="The Lessons page today: thirteen lesson cards in a column." loading="lazy"><figcaption><b>Lessons</b><span class="muted">3 screens</span></figcaption></figure>
+            <figure><img src="img/tall-live.webp" width="560" height="1483" alt="The live lesson page today: the question panel, the question list, the inbox, the class list, the projector panel and End lesson, one under the other." loading="lazy"><figcaption><b>Live lesson</b><span class="muted">4.2 screens</span></figcaption></figure>
+            <figure><img src="img/tall-editor.webp" width="560" height="1995" alt="The lesson editor today: six questions, each a tall card of boxed answers." loading="lazy"><figcaption><b>Lesson editor</b><span class="muted">5.7 screens</span></figcaption></figure>
+            <figure><img src="img/tall-class.webp" width="560" height="2408" alt="A class's results today: eight sections on one long page." loading="lazy"><figcaption><b>Class results</b><span class="muted">6.9 screens</span></figcaption></figure>
+            <div class="one-screen" aria-hidden="true"><span>one screen</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="dir-h">
+    <div class="section-head">
+      <h2 id="dir-h">The direction</h2>
+      <p class="muted measure">Five rules, applied to every screen. The four drawings below show where the screens are heading. Step 1 gave them the colours and type and step 2 built the first drawing, Today; the other arrangements are built in steps 3 to 5.</p>
+    </div>
+    <ul class="principles">
+      <li><h3>One job per screen</h3><p class="muted">Each screen shows what you do now. The rest is one labelled click away, never hidden behind hover or a shortcut.</p></li>
+      <li><h3>Lists, not stacks of boxes</h3><p class="muted">Rows on one calm surface. Click a row to open it. One button per row.</p></li>
+      <li><h3>One accent</h3><p class="muted">Deep teal for the main action. Yellow only while a lesson is live, so it means something.</p></li>
+      <li><h3>Type carries the hierarchy</h3><p class="muted">One large title, regular text, bold only for names and numbers. Nothing smaller than 16 px.</p></li>
+      <li><h3>The live lesson fits one screen</h3><p class="muted">The question and the next step stay put. The class, the questions and End lesson sit beside them, not below.</p></li>
+    </ul>
+
+    <div class="lookbar">
+      <div class="switch" role="group" aria-label="Look of the mockups">
+        <button type="button" id="look-light" data-look="light" aria-pressed="true">Light (recommended)</button>
+        <button type="button" id="look-dark" data-look="dark" aria-pressed="false">Dark teal</button>
+      </div>
+      <span class="muted">The layout is the same in both. Only the colours differ. The projector screen stays dark teal either way.</span>
+    </div>
+
+    <!-- ============================== Today ============================== -->
+    <figure class="shot" data-show="new">
+      <div class="shot-head">
+        <div class="shot-text">
+          <h3>Today</h3>
+          <p class="muted">The date sits above the title and the main action moves to the top right. Lessons become rows: click one to open it, or press Start. An unfinished lesson keeps one action, Continue; Discard moves inside the lesson.</p>
+        </div>
+        <div class="switch" role="group" aria-label="Today: proposed or current">
+          <button type="button" id="today-new" data-show="new" aria-pressed="true">Proposed</button>
+          <button type="button" id="today-old" data-show="old" aria-pressed="false">Today</button>
+        </div>
+      </div>
+      <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+      <div class="scroller"><div class="frame">
+        <img src="img/before-today.webp" width="1280" height="800" alt="The Today screen as it is now: dark teal, two large lesson cards, each with an outlined button and a link." loading="lazy">
+        <div class="mock" data-skin="light" role="img" aria-label="Proposed Today screen: a floating sidebar, a large title, a teal Prepare lesson button at the top right, and lessons as rows in one white list.">
+          <div class="m-app">
+            <div class="m-side">
+              <div class="m-brand"><svg><use href="#logo"/></svg>TeacherAid</div>
+              <div class="m-nav">
+                <span class="on"><svg class="ic"><use href="#i-today"/></svg>Денес</span>
+                <span><svg class="ic"><use href="#i-lessons"/></svg>Лекции</span>
+                <span><svg class="ic"><use href="#i-classes"/></svg>Класови</span>
+                <span><svg class="ic"><use href="#i-library"/></svg>Библиотека</span>
+              </div>
+              <div class="m-foot">
+                <span class="l"><svg class="ic"><use href="#i-settings"/></svg>Поставки</span>
+                <span class="l"><svg class="ic"><use href="#i-help"/></svg>Помош</span>
+                <span class="l"><svg class="ic"><use href="#i-out"/></svg>Одјави се</span>
+                <div class="m-me"><span class="m-ava">МП</span><span><b>Марија Петровска</b><small>Гимназија „Светлина“</small></span></div>
+              </div>
+            </div>
+            <div class="m-main">
+              <div class="m-head">
+                <div>
+                  <div class="m-eyebrow">четврток, 29 октомври</div>
+                  <div class="m-h1">Денес</div>
+                  <div class="m-sub">Добро утро, Марија</div>
+                </div>
+                <span class="m-btn pri"><svg class="ic s"><use href="#i-plus"/></svg>Подготви лекција</span>
+              </div>
+              <div class="m-sec">Подготвени лекции</div>
+              <div class="m-group">
+                <div class="m-row"><div class="grow"><div class="t">Основи на веројатноста</div><div class="d">Математика · IV година · 7 прашања · изменета вчера</div></div><span class="m-btn tint"><svg class="ic s fill"><use href="#i-play"/></svg>Започни час</span><svg class="ic m-chev"><use href="#i-right"/></svg></div>
+                <div class="m-row"><div class="grow"><div class="t">Проценти и пропорции</div><div class="d">Математика · II година · 6 прашања · изменета пред 3 дена</div></div><span class="m-btn tint"><svg class="ic s fill"><use href="#i-play"/></svg>Започни час</span><svg class="ic m-chev"><use href="#i-right"/></svg></div>
+              </div>
+              <div class="m-sec">Недовршени лекции</div>
+              <div class="m-group">
+                <div class="m-row"><div class="grow"><div class="t">Квадратни равенки<span class="m-chip">Нацрт</span></div><div class="d">Математика · II година · 6 прашања · зачувана пред 5 минути</div></div><span class="m-btn plain">Продолжи</span><svg class="ic m-chev"><use href="#i-right"/></svg></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- ============================== Editor ============================== -->
+    <figure class="shot" data-show="new">
+      <div class="shot-head">
+        <div class="shot-text">
+          <h3>Lesson editor</h3>
+          <p class="muted">Questions read like a page instead of a stack of forms. The right answer is marked by a tick and the words, never by colour alone. The four ways to change all questions become one row, and Save stays in view.</p>
+        </div>
+        <div class="switch" role="group" aria-label="Lesson editor: proposed or current">
+          <button type="button" id="editor-new" data-show="new" aria-pressed="true">Proposed</button>
+          <button type="button" id="editor-old" data-show="old" aria-pressed="false">Today</button>
+        </div>
+      </div>
+      <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+      <div class="scroller"><div class="frame">
+        <img src="img/before-editor.webp" width="1280" height="800" alt="The lesson editor as it is now: a title field in a card, then each question as a card of outlined answer boxes with an Edit button." loading="lazy">
+        <div class="mock" data-skin="light" role="img" aria-label="Proposed lesson editor: the lesson title, one row of four actions that change all questions, and the questions as a clean list with the right answer ticked. A floating bar at the bottom holds Save lesson.">
+          <div class="m-app">
+            <div class="m-side">
+              <div class="m-brand"><svg><use href="#logo"/></svg>TeacherAid</div>
+              <div class="m-nav">
+                <span><svg class="ic"><use href="#i-today"/></svg>Денес</span>
+                <span class="on"><svg class="ic"><use href="#i-lessons"/></svg>Лекции</span>
+                <span><svg class="ic"><use href="#i-classes"/></svg>Класови</span>
+                <span><svg class="ic"><use href="#i-library"/></svg>Библиотека</span>
+              </div>
+              <div class="m-foot">
+                <span class="l"><svg class="ic"><use href="#i-settings"/></svg>Поставки</span>
+                <span class="l"><svg class="ic"><use href="#i-help"/></svg>Помош</span>
+                <span class="l"><svg class="ic"><use href="#i-out"/></svg>Одјави се</span>
+                <div class="m-me"><span class="m-ava">МП</span><span><b>Марија Петровска</b><small>Гимназија „Светлина“</small></span></div>
+              </div>
+            </div>
+            <div class="m-main">
+              <div class="m-back"><svg class="ic s"><use href="#i-left"/></svg>Денес</div>
+              <div class="m-head">
+                <div>
+                  <div class="m-h1" style="display:flex;align-items:center;gap:12px">Квадратни равенки<svg class="ic" style="color:var(--m-ink3)"><use href="#i-pencil"/></svg></div>
+                  <div class="m-sub">Математика · II година · 6 прашања</div>
+                </div>
+              </div>
+              <div class="m-tools">
+                <span class="lbl">Промени ги сите прашања</span>
+                <span class="m-pill">Полесни</span><span class="m-pill">Потешки</span><span class="m-pill">Повеќе прашања</span><span class="m-pill">Пократко време</span>
+              </div>
+              <div class="m-group" style="margin-top:18px">
+                <div class="m-q">
+                  <span class="n">1</span>
+                  <div>
+                    <div class="top"><span class="p">Која од равенките е квадратна?</span><span class="meta">Понудени одговори · 25 сек <u>Уреди</u></span></div>
+                    <div class="m-opts">
+                      <div class="m-opt"><svg class="ic"><use href="#i-ring"/></svg>2x + 5 = 0</div>
+                      <div class="m-opt right"><svg class="ic"><use href="#i-okc"/></svg>x² − 4x + 3 = 0 <em>точен одговор</em></div>
+                      <div class="m-opt"><svg class="ic"><use href="#i-ring"/></svg>x³ − 1 = 0</div>
+                      <div class="m-opt"><svg class="ic"><use href="#i-ring"/></svg>3/x = 6</div>
+                    </div>
+                    <div class="m-exp">Објаснување: Квадратна е равенка во која најголемиот степен на непознатата е 2.</div>
+                  </div>
+                </div>
+                <div class="m-q">
+                  <span class="n">2</span>
+                  <div>
+                    <div class="top"><span class="p">Равенката x² + 4 = 0 нема реални решенија.</span><span class="meta">Точно или неточно · 15 сек <u>Уреди</u></span></div>
+                    <div class="m-opts">
+                      <div class="m-opt right"><svg class="ic"><use href="#i-okc"/></svg>Точно <em>точен одговор</em></div>
+                      <div class="m-opt"><svg class="ic"><use href="#i-ring"/></svg>Неточно</div>
+                    </div>
+                    <div class="m-exp">Објаснување: x² никогаш не е помало од 0, па x² + 4 е секогаш најмалку 4.</div>
+                  </div>
+                </div>
+                <div class="m-q">
+                  <span class="n">3</span>
+                  <div>
+                    <div class="top"><span class="p">Колку е дискриминантата на равенката x² − 5x + 6 = 0?</span><span class="meta">Одговор со број · 45 сек <u>Уреди</u></span></div>
+                    <div class="m-opts">
+                      <div class="m-opt right"><svg class="ic"><use href="#i-okc"/></svg>1 <em>точен одговор</em></div>
+                    </div>
+                    <div class="m-exp">Објаснување: D = b² − 4ac = 25 − 24 = 1.</div>
+                  </div>
+                </div>
+              </div>
+              <div class="m-savebar">
+                <span class="note"><svg class="ic s"><use href="#i-check"/></svg>Промените се зачувуваат сами</span>
+                <span class="m-btn pri">Зачувај лекција</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- ============================== Live ============================== -->
+    <figure class="shot" data-show="new">
+      <div class="shot-head">
+        <div class="shot-text">
+          <h3>Live lesson</h3>
+          <p class="muted">Today this page is 4.2 screens long. Proposed: one. The question, the countdown and the next step take the stage and never scroll away. The class, the question list and anonymous questions are tabs beside it. The projector and End lesson are always in the top bar. The menu steps aside until the lesson ends; the way back to Today stays.</p>
+        </div>
+        <div class="switch" role="group" aria-label="Live lesson: proposed or current">
+          <button type="button" id="live-new" data-show="new" aria-pressed="true">Proposed</button>
+          <button type="button" id="live-old" data-show="old" aria-pressed="false">Today</button>
+        </div>
+      </div>
+      <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+      <div class="scroller"><div class="frame">
+        <img src="img/before-live.webp" width="1280" height="800" alt="The live lesson as it is now: the menu, a stepper, a yellow-outlined question panel, and the start of the question list and the class list below it." loading="lazy">
+        <div class="mock" data-skin="light" role="img" aria-label="Proposed live lesson: a top bar with a yellow Live mark, the lesson's name, the projector button and End lesson. Below, the open question with a countdown of 18 seconds and 6 of 12 answered, and beside it the class list with tabs for questions and anonymous questions.">
+          <div class="m-live">
+            <div class="m-bar">
+              <span class="m-back"><svg class="ic s"><use href="#i-left"/></svg>Денес</span>
+              <span class="sep"></span>
+              <span class="m-onair"><i></i>Во живо</span>
+              <span class="ttl">II-4 · Проценти и пропорции</span>
+              <span class="sp"></span>
+              <span class="m-btn tint"><svg class="ic s"><use href="#i-screen"/></svg>Екран за проектор · отворен</span>
+              <span class="m-end"><svg class="ic s"><use href="#i-stop"/></svg>Заврши го часот</span>
+            </div>
+            <div class="m-cols">
+              <div class="m-stage">
+                <div class="m-steps"><svg class="ic"><use href="#i-check"/></svg>Чекаме ученици<svg class="ic"><use href="#i-right"/></svg><b>Предавање</b><svg class="ic"><use href="#i-right"/></svg>Преглед<svg class="ic"><use href="#i-right"/></svg>Крај</div>
+                <div class="m-eyebrow" style="margin-top:34px">Прашање 1 од 6 · одговор со број</div>
+                <div class="m-prompt">Колку е 15% од 240?</div>
+                <div class="m-count">
+                  <div class="m-ring">
+                    <svg viewBox="0 0 116 116"><circle cx="58" cy="58" r="50" fill="none" stroke="var(--m-well2)" stroke-width="10"/><circle cx="58" cy="58" r="50" fill="none" stroke="var(--m-live)" stroke-width="10" stroke-linecap="round" stroke-dasharray="314.16" stroke-dashoffset="125.66"/></svg>
+                    <b>18</b>
+                  </div>
+                  <div>
+                    <div class="big">Уште 18 секунди</div>
+                    <div class="m-sub" style="margin-top:4px;font-size:17px">6 од 12 одговорија</div>
+                    <div class="m-prog"><i></i></div>
+                  </div>
+                </div>
+                <div class="m-acts"><span class="m-btn line"><svg class="ic s"><use href="#i-skip"/></svg>Прескокни</span>Точниот одговор се прикажува кога ќе истече времето.</div>
+                <div class="m-next"><b>Следно</b><span>Цената на еден производ од 800 денари е намалена за 25%. Новата цена е …</span></div>
+              </div>
+              <div class="m-panelr">
+                <div class="m-seg"><span class="on">Класот · 19 од 26</span><span>Прашања · 6</span><span>Анонимни · 0</span></div>
+                <div class="m-glabel">Уште не се тука · 7</div>
+                <div class="m-p">Игор Ангелов<span class="st act">Без телефон</span></div>
+                <div class="m-p">Стефан Атанасовски<span class="st act">Без телефон</span></div>
+                <div class="m-p">Миа Блажевска<span class="st act">Без телефон</span></div>
+                <div class="m-p">Мартина Илиевска<span class="st act">Без телефон</span></div>
+                <div class="m-glabel">Тука се · 19</div>
+                <div class="m-p">Матеја Ангелов<span class="st ok"><svg class="ic s"><use href="#i-okc"/></svg>Одговори</span></div>
+                <div class="m-p">Теодор Ангелов<span class="st"><svg class="ic s"><use href="#i-wait"/></svg>Уште не одговори</span></div>
+                <div class="m-p">Дамјан Атанасовски<span class="st"><svg class="ic s"><use href="#i-clock"/></svg>Задоцни, 09:30</span></div>
+                <div class="m-p">Дарија Блажевска<span class="st ok"><svg class="ic s"><use href="#i-okc"/></svg>Одговори</span></div>
+                <div class="m-p">Симона Блажевска<span class="st"><svg class="ic s"><use href="#i-wait"/></svg>Уште не одговори</span></div>
+                <div class="m-p">Ана Димитриевска<span class="st"><svg class="ic s"><use href="#i-wait"/></svg>Уште не одговори</span></div>
+                <div class="m-p">Јован Јаневски<span class="st ok"><svg class="ic s"><use href="#i-okc"/></svg>Одговори</span></div>
+                <div class="m-p">Никола Костов<span class="st"><svg class="ic s"><use href="#i-wait"/></svg>Уште не одговори</span></div>
+                <div class="m-p">Стефан Милевски<span class="st ok"><svg class="ic s"><use href="#i-okc"/></svg>Одговори</span></div>
+                <div class="m-fade"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- ============================== Class results ============================== -->
+    <figure class="shot" data-show="new">
+      <div class="shot-head">
+        <div class="shot-text">
+          <h3>Class results</h3>
+          <p class="muted">Six tabs replace one page of eight sections. Overview answers the three questions first: how many lessons, who comes, how well they answer. Each tab fits a screen or close to it.</p>
+        </div>
+        <div class="switch" role="group" aria-label="Class results: proposed or current">
+          <button type="button" id="class-new" data-show="new" aria-pressed="true">Proposed</button>
+          <button type="button" id="class-old" data-show="old" aria-pressed="false">Today</button>
+        </div>
+      </div>
+      <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+      <div class="scroller"><div class="frame">
+        <img src="img/before-class.webp" width="1280" height="800" alt="A class's results as they are now: summary tiles, a row of in-page links, and the first of eight sections, the attendance table." loading="lazy">
+        <div class="mock" data-skin="light" role="img" aria-label="Proposed class results: the class name, six tabs with Overview selected, three large figures, and two short lists for the weakest topics and the latest lessons.">
+          <div class="m-app">
+            <div class="m-side">
+              <div class="m-brand"><svg><use href="#logo"/></svg>TeacherAid</div>
+              <div class="m-nav">
+                <span><svg class="ic"><use href="#i-today"/></svg>Денес</span>
+                <span><svg class="ic"><use href="#i-lessons"/></svg>Лекции</span>
+                <span class="on"><svg class="ic"><use href="#i-classes"/></svg>Класови</span>
+                <span><svg class="ic"><use href="#i-library"/></svg>Библиотека</span>
+              </div>
+              <div class="m-foot">
+                <span class="l"><svg class="ic"><use href="#i-settings"/></svg>Поставки</span>
+                <span class="l"><svg class="ic"><use href="#i-help"/></svg>Помош</span>
+                <span class="l"><svg class="ic"><use href="#i-out"/></svg>Одјави се</span>
+                <div class="m-me"><span class="m-ava">МП</span><span><b>Марија Петровска</b><small>Гимназија „Светлина“</small></span></div>
+              </div>
+            </div>
+            <div class="m-main">
+              <div class="m-back"><svg class="ic s"><use href="#i-left"/></svg>Класови</div>
+              <div class="m-h1">II-4 · Математика</div>
+              <div class="m-sub">26 ученици</div>
+              <div class="m-tabs"><span class="on">Преглед</span><span>Присуство</span><span>Часови</span><span>Теми</span><span>Прашања</span><span>Вежби</span></div>
+              <div class="m-stats">
+                <div class="m-stat"><b>10</b><span>одржани часа</span></div>
+                <div class="m-stat"><b>94%</b><span>од учениците доаѓаат на час, во просек</span></div>
+                <div class="m-stat"><b>59%</b><span>од одговорите беа точни</span></div>
+              </div>
+              <div class="m-two">
+                <div class="m-card">
+                  <h4>Најслаби теми<span>Сите теми<svg class="ic s"><use href="#i-right"/></svg></span></h4>
+                  <div class="m-li" style="margin-top:6px"><span>Планиметрија</span><span class="v">54%</span><div class="m-meter"><i style="width:54%"></i></div></div>
+                  <div class="m-li"><span>Квадратна функција</span><span class="v">54%</span><div class="m-meter"><i style="width:54%"></i></div></div>
+                  <div class="m-li"><span>Статистика</span><span class="v">59%</span><div class="m-meter"><i style="width:59%"></i></div></div>
+                </div>
+                <div class="m-card">
+                  <h4>Последни часови<span>Сите часови<svg class="ic s"><use href="#i-right"/></svg></span></h4>
+                  <div class="m-li" style="margin-top:6px"><span>Системи линеарни равенки<div class="d">26 октомври · дојдоа 24 од 26</div></span><span class="v">57% точни</span></div>
+                  <div class="m-li"><span>Квадратна функција<div class="d">19 октомври · дојдоа 21 од 26</div></span><span class="v">54% точни</span></div>
+                  <div class="m-li"><span>Квадратни равенки<div class="d">12 октомври · дојдоа 24 од 26</div></span><span class="v">63% точни</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+  </section>
+
+  <section aria-labelledby="rules-h">
+    <div class="section-head">
+      <h2 id="rules-h">Earlier decisions this changes</h2>
+      <p class="muted measure">The first build followed rules you set in October. The proposal replaces six of them. Approving the direction approves these too; if you want to keep any of them, say so in the notes.</p>
+    </div>
+    <div class="table-wrap" tabindex="0" role="group" aria-label="Earlier decisions and what replaces them">
+      <table>
+        <thead><tr><th scope="col">Rule today</th><th scope="col">Proposed</th><th scope="col">Why</th></tr></thead>
+        <tbody>
+          <tr><td>Dark teal only, no light mode</td><td>Light by default. The projector stays dark teal.</td><td>Easier to read in a bright room, lighter on the eye, and the same paper and teal as the website.</td></tr>
+          <tr><td>One yellow button on every screen</td><td>The main button is deep teal. Yellow marks a live lesson.</td><td>Yellow on white is too weak for a button. Kept for one meaning, it is noticed when it appears.</td></tr>
+          <tr><td>Buttons 56 px tall, small ones 48 px</td><td>Main buttons 48 px, others 44 px</td><td>Still large for a mouse or trackpad, and each screen gains room.</td></tr>
+          <tr><td>A button and a link on every card</td><td>The whole row opens. One button per row.</td><td>Half as many controls to read, and a bigger target to hit.</td></tr>
+          <tr><td>Body text 18 px</td><td>17 px. The 16 px minimum stays.</td><td>Lighter weights need less size to stay readable.</td></tr>
+          <tr><td>The menu is on every screen</td><td>The menu steps aside during a live lesson</td><td>The class and the question get the full width, and nothing invites a wrong click in front of students.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="section-head">
+      <h3>What does not change</h3>
+    </div>
+    <ul class="stays">
+      <li><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12.6l4.4 4.4L19 7.4"/></svg><span>Every feature and every flow. Nothing is removed.</span></li>
+      <li><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12.6l4.4 4.4L19 7.4"/></svg><span>Macedonian first, English second, the same plain wording.</span></li>
+      <li><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12.6l4.4 4.4L19 7.4"/></svg><span>Right and wrong are an icon and a word, never colour alone. Red stays for End and warnings.</span></li>
+      <li><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12.6l4.4 4.4L19 7.4"/></svg><span>A word beside every icon. Nothing hidden behind hover, drag or shortcuts.</span></li>
+      <li><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12.6l4.4 4.4L19 7.4"/></svg><span>Work saves itself. Anything that cannot be undone asks first.</span></li>
+      <li><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12.6l4.4 4.4L19 7.4"/></svg><span>Readable contrast, keyboard use, 200% zoom and Reduce Motion, checked on every step.</span></li>
+      <li><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12.6l4.4 4.4L19 7.4"/></svg><span>The backend contract. No screen needs new data, so the developer's spec is untouched.</span></li>
+      <li><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12.6l4.4 4.4L19 7.4"/></svg><span>The student app and the website. This work is the teacher app only.</span></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="steps-h">
+    <div class="section-head">
+      <h2 id="steps-h">Steps and approvals</h2>
+      <p class="muted measure">Each step is built on its own, checked against the app's tests, and put here with a preview link. Your decision is saved on this page. After you press a button, tell Claude “go” in the chat and work continues from what you decided.</p>
+    </div>
+    <ol class="steps">
+      <li class="step" data-step="direction" data-status="done">
+        <span class="step-n">0</span>
+        <div class="step-body">
+          <div class="step-title"><h3>Direction</h3><span class="chip" data-chip data-tone="done">Approved</span></div>
+          <p class="muted measure">The plan and the light look, approved on 12 November 2026.</p>
+        </div>
+      </li>
+      <li class="step" data-step="step-1" data-status="done">
+        <span class="step-n">1</span>
+        <div class="step-body">
+          <div class="step-title"><h3>Foundation and frame</h3><span class="chip" data-chip data-tone="done">Approved</span></div>
+          <p class="muted measure">New colours, type, buttons, fields, dialogs and the sidebar. Every screen changes skin at once; layouts stay where they are for now. Approved on 13 November 2026. <a href="#step-1-review">See it again.</a></p>
+        </div>
+      </li>
+      <li class="step" data-step="step-2" data-status="done">
+        <span class="step-n">2</span>
+        <div class="step-body">
+          <div class="step-title"><h3>Today, Lessons, Classes, Library</h3><span class="chip" data-chip data-tone="done">Approved</span></div>
+          <p class="muted measure">Stacks of cards became lists. Whole rows open. One action per row. Approved on 14 November 2026. <a href="#step-2-review">See it again.</a></p>
+        </div>
+      </li>
+      <li class="step" data-step="step-3" data-status="review">
+        <span class="step-n">3</span>
+        <div class="step-body">
+          <div class="step-title"><h3>Preparing a lesson</h3><span class="chip" data-chip data-tone="decide">Ready for your review</span></div>
+          <p class="muted measure">The form, the wait while questions are written, the editor, the lesson page and the library preview. <a href="#step-3-review">See it and decide at the top of the page.</a></p>
+        </div>
+      </li>
+      <li class="step" data-step="step-4" data-status="planned">
+        <span class="step-n">4</span>
+        <div class="step-body">
+          <div class="step-title"><h3>The live lesson</h3><span class="chip" data-chip>Not started</span></div>
+          <p class="muted measure">The one-screen console: waiting for students, teaching, review. The start window, the quick question and marking a student present without a phone.</p>
+        </div>
+      </li>
+      <li class="step" data-step="step-5" data-status="planned">
+        <span class="step-n">5</span>
+        <div class="step-body">
+          <div class="step-title"><h3>After the lesson</h3><span class="chip" data-chip>Not started</span></div>
+          <p class="muted measure">The end of lesson page with the attendance list, and class results with tabs.</p>
+        </div>
+      </li>
+      <li class="step" data-step="step-6" data-status="planned">
+        <span class="step-n">6</span>
+        <div class="step-body">
+          <div class="step-title"><h3>Settings, Help, sign-in and first run</h3><span class="chip" data-chip>Not started</span></div>
+          <p class="muted measure">The remaining screens, and every loading, empty and error state.</p>
+        </div>
+      </li>
+      <li class="step" data-step="step-7" data-status="planned">
+        <span class="step-n">7</span>
+        <div class="step-body">
+          <div class="step-title"><h3>Projector polish and final checks</h3><span class="chip" data-chip>Not started</span></div>
+          <p class="muted measure">Small refinements to the projected screen, then the whole app again: accessibility, window sizes from 1024 to 1920, 200% zoom, English, and every test green. The website's pictures of the teacher app are refreshed if you want them to match.</p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <footer>
+    <p>Prepared 12 November 2026, updated 14 November for step 3. The pictures under steps 1 to 3 are the built app with the demo school's data. The mockups under “The direction” are drawings of the proposal.</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
+
+  // ---- Mockups scale to their frames (each is drawn at 1280 x 800).
+  var frames = $$(".frame");
+  var fit = function (frame) {
+    var mock = frame.querySelector(".mock");
+    if (mock) mock.style.setProperty("--s", String(frame.clientWidth / 1280));
+  };
+  frames.forEach(fit);
+  if ("ResizeObserver" in window) {
+    var ro = new ResizeObserver(function (entries) { entries.forEach(function (e) { fit(e.target); }); });
+    frames.forEach(function (f) { ro.observe(f); });
+  } else {
+    window.addEventListener("resize", function () { frames.forEach(fit); });
+  }
+
+  // ---- Light or dark teal, for every mockup at once. Remembered for this viewer only.
+  var LOOK_KEY = "teacheraid-redesign-look";
+  var setLook = function (look) {
+    $$(".mock").forEach(function (m) { m.dataset.skin = look; });
+    $$("[data-look]", document.querySelector(".lookbar")).forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.look === look)); });
+    try { localStorage.setItem(LOOK_KEY, look); } catch (e) { /* private window: not remembered */ }
+  };
+  $$(".lookbar [data-look]").forEach(function (b) { b.addEventListener("click", function () { setLook(b.dataset.look); }); });
+  try { if (localStorage.getItem(LOOK_KEY) === "dark") setLook("dark"); } catch (e) { /* default stays */ }
+
+  // ---- Proposed or current, per mockup.
+  $$(".shot").forEach(function (shot) {
+    var sw = shot.querySelector(".switch");
+    if (!sw) return;
+    $$("[data-show]", sw).forEach(function (b) {
+      b.addEventListener("click", function () {
+        shot.dataset.show = b.dataset.show;
+        $$("[data-show]", shot.querySelector(".switch")).forEach(function (o) { o.setAttribute("aria-pressed", String(o === b)); });
+      });
+    });
+  });
+
+  // ---- Decisions. Each step's decision is one document, decisions/<step>, in this page's own store.
+  var LOOKS = { light: "light look", dark: "dark teal look" };
+  var when = function (iso) {
+    try { return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }); } catch (e) { return ""; }
+  };
+  var paint = function (stepId, d) {
+    var step = document.querySelector('.step[data-step="' + stepId + '"]');
+    if (!step || !d) return;
+    var approved = d.choice === "approved";
+    var chip = step.querySelector("[data-chip]");
+    chip.textContent = approved ? "Approved" : "Changes requested";
+    chip.dataset.tone = approved ? "done" : "changes";
+    var box = document.querySelector('.decide[data-for="' + stepId + '"]') || step.querySelector(".decide");
+    if (box) {
+      box.setAttribute("data-saved", "");
+      box.querySelector("[data-saved-title]").textContent =
+        (approved ? "Approved" + (d.look && LOOKS[d.look] ? ", " + LOOKS[d.look] : "") : "Changes requested") + (d.at ? " · " + when(d.at) : "");
+      box.querySelector("[data-saved-detail]").textContent =
+        (d.note ? "Your note: " + d.note + " " : "") + "Tell Claude “go” in the chat to continue. You can change this by pressing another button.";
+    }
+    if (stepId === "direction" && approved && d.look) setLook(d.look);
+    if (stepId === "step-3") {
+      var status = document.getElementById("status");
+      status.textContent = approved ? "Step 3 approved. Step 4 is next." : "Changes requested on step 3.";
+      status.dataset.tone = approved ? "done" : "changes";
+    }
+  };
+
+  // The store arrives a moment after the page. The buttons work from the start: a press waits for it.
+  var store = (async function () {
+    try { return window.claude && window.claude.use ? await window.claude.use("db") : null; } catch (e) { return null; }
+  })();
+
+  store.then(function (db) {
+    if (!db) { document.body.dataset.db = "off"; return; }
+    document.body.dataset.db = "on";
+    db.collection("decisions").onSnapshot(
+      function (snap) { snap.docs.forEach(function (doc) { if (doc.exists) paint(doc.id, doc.data()); }); },
+      function () { /* the buttons still save; only live updates stop */ }
+    );
+  });
+
+  $$(".decide").forEach(function (box) {
+    var step = box.dataset.for || box.closest(".step").dataset.step;
+    var msg = box.querySelector(".decide-msg");
+    var note = box.querySelector("textarea");
+    $$("button[data-choice]", box).forEach(function (button) {
+      button.addEventListener("click", async function () {
+        var buttons = $$("button[data-choice]", box);
+        buttons.forEach(function (b) { b.disabled = true; });
+        msg.textContent = "Saving…";
+        var decision = { choice: button.dataset.choice, note: (note && note.value.trim()) || "", at: new Date().toISOString() };
+        if (button.dataset.look) decision.look = button.dataset.look;
+        try {
+          var db = await store;
+          if (!db) throw new Error("no store");
+          await db.doc("decisions/" + step).set(decision);
+          msg.textContent = "";
+          paint(step, decision);
+        } catch (e) {
+          msg.textContent = "This could not be saved. Try again, or tell Claude your decision in the chat.";
+        }
+        buttons.forEach(function (b) { b.disabled = false; });
+      });
+    });
+  });
+})();
+</script>

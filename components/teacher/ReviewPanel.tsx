@@ -18,7 +18,7 @@ import { Bar, Loading } from "./Skeleton";
 /**
  * The review on the console (FR-REV-01, FR-REV-02), laid out like the teaching panel: one panel at the top that says what the projector shows now (the most-missed
  * question with its right answer and how many missed it, or the questions the class wrote with the sender's name, which only this screen shows), the place in
- * the review, and the page's one yellow button, "Следно на проекторот"; going back one is a quiet control beside it. When the last screen is up the panel says the
+ * the review, and the page's one main button, "Следно на проекторот"; going back one is a quiet control beside it. When the last screen is up the panel says the
  * review is done and points to End. Below it the whole review as a list, the item on the projector marked, and the projector's own controls beside it.
  * The place is kept (`useReviewScreenController`), so a reload of either window brings the other back to agree with it. No explanation by a machine.
  */
