@@ -70,14 +70,15 @@ export function LessonView() {
         {q.status === "loading" && (
           <Loading>
             <Bar width="14rem" height="3.5rem" className="skeleton--button" />
-            {[0, 1].map((i) => (
-              <div key={i} className="question" aria-hidden="true">
-                <Bar width="30%" height="1.75rem" />
-                <Bar width="80%" height="2rem" />
-                <Bar height="3.5rem" className="skeleton--row" />
-                <Bar height="3.5rem" className="skeleton--row" />
-              </div>
-            ))}
+            <div className="questions" aria-hidden="true">
+              {[0, 1].map((i) => (
+                <div key={i} className="question">
+                  <Bar width="60%" height="1.75rem" />
+                  <Bar width="80%" height="1.5rem" />
+                  <Bar width="40%" height="1.5rem" />
+                </div>
+              ))}
+            </div>
           </Loading>
         )}
         {q.status === "error" && <LoadProblem title={t("lesson.error.title")} error={q.error} onRetry={q.refetch} />}
@@ -134,15 +135,20 @@ export function QuestionList({ questions }: { questions: readonly DraftQuestion[
 }
 
 /**
- * One question to read: its number, kind and timer, its prompt, its answers with the right one marked, and why. A question that is
- * not finished (a draft's) says what is missing in grey words instead of showing nothing. `actions` are the buttons under it.
+ * One question to read, a row of the list: its number at the left, its prompt, its kind and timer at the right, its answers with the
+ * right one marked, and why. The number is drawn alone; a screen reader hears the whole "Прашање 2 од 6" from the heading. A question
+ * that is not finished (a draft's) says what is missing in grey words instead of showing nothing. `actions` is the button at the
+ * row's right end (the editor's "Уреди").
  */
 export function QuestionCard({ question, n, total, actions, headingId }: { question: DraftQuestion; n: number; total: number; actions?: ReactNode; headingId?: string }) {
   const { t, locale } = useT();
   return (
-    <li className="question" id={`q-${question.id}`}>
+    <li className="question question--read" id={`q-${question.id}`}>
+      <span className="question__num" aria-hidden="true">
+        {n}
+      </span>
       <div className="question__top">
-        <h3 className="question__n" id={headingId}>
+        <h3 className="question__n sr" id={headingId}>
           {t("question.n", { n, total })}
         </h3>
         <p className="question__meta">

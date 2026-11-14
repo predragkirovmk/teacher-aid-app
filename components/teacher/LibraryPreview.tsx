@@ -61,14 +61,15 @@ export function LibraryPreview() {
               <Bar width="80%" height="1.5rem" />
               <Bar width="14rem" height="3.5rem" className="skeleton--button" />
             </div>
-            {[0, 1].map((i) => (
-              <div key={i} className="question" aria-hidden="true">
-                <Bar width="30%" height="1.75rem" />
-                <Bar width="80%" height="2rem" />
-                <Bar height="3.5rem" className="skeleton--row" />
-                <Bar height="3.5rem" className="skeleton--row" />
-              </div>
-            ))}
+            <div className="questions" aria-hidden="true">
+              {[0, 1].map((i) => (
+                <div key={i} className="question">
+                  <Bar width="60%" height="1.75rem" />
+                  <Bar width="80%" height="1.5rem" />
+                  <Bar width="40%" height="1.5rem" />
+                </div>
+              ))}
+            </div>
           </Loading>
         )}
         {missing && (
