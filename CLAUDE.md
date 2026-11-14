@@ -31,10 +31,9 @@ Running the teacher tests quickly while you work:
     pnpm exec next start -p 3100 &
     E2E_SKIP_BUILD=1 pnpm exec playwright test --project=teacher tests/e2e/teacher/today.spec.ts
 
-In a cloud container the browser is already installed: do not run `playwright install`; point a
-copy of the config at it (`launchOptions.executablePath: "/opt/pw-browsers/chromium"`,
-`channel: undefined`) and pass `--trace off`. Rebuild after every CSS or component change; the
-tests run against the build, not against `next dev`.
+In a cloud container the browser is already installed: do not run `playwright install`; use the
+config made for it, `-c scripts/teacher-redesign/playwright.cloud.config.ts`. Rebuild after every
+CSS or component change; the tests run against the build, not against `next dev`.
 
 ## The work in progress: the teacher redesign
 
@@ -42,6 +41,9 @@ The owner finds the teacher app crowded and confusing and wants it simple, with 
 calm. Every feature stays; the UI and UX change. The plan, the status and the record of each step
 are in `docs/teacher-redesign-plan.md`. Read it first, every session. `docs/teacher-plan.md` holds
 the rules of the app itself ("Simplicity first", "Design tokens"); keep the two in step.
+`docs/teacher-redesign-handoff.md` says how a step is actually carried out (the commands, the
+review page, the records, what each remaining step asks for and what went wrong before): a
+session that picks the work up reads it before it builds anything.
 
 How the work moves, and this is not optional:
 
