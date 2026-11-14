@@ -2807,18 +2807,20 @@ button {
   padding-inline: var(--sp-2);
 }
 
-/* The projector, in the console's top bar: the button, beside it where its window stands, and under them the one warning that matters. */
+/* The projector, in the console's top bar: the button, under it one line that says where its window stands, and the one warning that
+   matters. The line keeps its room while it has nothing to say, so the bar is the same height before and after the window is opened. */
 .projector {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-1) var(--sp-2);
+  display: grid;
+  justify-items: start;
+  gap: 0.25rem;
 }
 .projector__status {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-height: 1.5rem;
   margin: 0;
+  padding-left: var(--sp-1);
   color: var(--ink);
   font-size: var(--fs-small);
   font-weight: 500;
@@ -2826,8 +2828,10 @@ button {
 .projector__status svg {
   flex: none;
 }
+/* The warning is as wide as the button above it and does not widen the bar. */
 .projector .callout {
-  flex: 1 1 100%;
+  width: 0;
+  min-width: 100%;
 }
 .projector__hint {
   margin: 0;
@@ -4965,8 +4969,8 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
 .live__tools {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-2) var(--sp-3);
+  align-items: flex-start;
+  gap: var(--sp-1) var(--sp-3);
 }
 
 /* The stage beside the panel; one column where the window is not wide enough for both. */
