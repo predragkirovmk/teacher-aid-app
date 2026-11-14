@@ -41,6 +41,8 @@ for review", its preview link and the pictures, and wait.
 - 2026-11-14, 14:43 UTC: the owner approved step 3 (`decisions/step-3`) with one note: the
   prepare form "is not on the full screen". The form and the wait were made as wide as the
   page's other panels the same day. Step 4 is being built.
+- 2026-11-14: step 4 (the live lesson) is built and waits for the owner on the review page
+  (`decisions/step-4`). What it changed is under "Step 4 as built" below.
 
 A decision made on the page does not reach the session by itself. Read the store before
 every message that says what is being waited for, and, while a step waits for the owner,
@@ -155,6 +157,58 @@ Every feature is where it was; nothing new is asked of the API.
 - **No library was added.** No words were changed.
 - **Not touched:** the question's own form (its fields are as they were, inside the new row),
   the live lesson, the class results, the projector: steps 4 to 7.
+
+## Step 4 as built (2026-11-14)
+
+The live lesson: the teacher's console in the lobby, while teaching and in the review. Every
+feature is where a teacher can reach it; nothing new is asked of the API.
+
+- **No sidebar on the console.** The lesson has the whole window. "Назад кон Денес" is the way
+  out; the lesson keeps running, and the reminder on every other page brings the teacher back.
+  The end page, at the same address, is a page like any other and has the sidebar. The console
+  says so itself (`data-focus="live"` on the root, set by `LiveConsole`), and where the browser
+  can tell from the markup alone (`:has`), the sidebar is gone before the first paint.
+- **A top bar.** Back, the title, the course and the lesson at the left; at the right the button
+  that opens the projected window, with one line under it that says where that window stands
+  (the line keeps its room, so the bar does not move when the window opens), and the red End.
+  The projector control was a card with a button as wide as the card; End was a card at the foot
+  of a long page.
+- **The stage, at the left**, under the line that says where the lesson stands: the one thing to
+  do now. In the lobby "Почни го часот"; while teaching the question, its countdown, how many
+  answered and the next step. It keeps its place as the lesson moves on. At its foot, quiet: the
+  warning that the projector must show its own window, how to place that window, and Help (which
+  opens in a new window, so the console is never left).
+- **Tabs, at the right.** While teaching, who is here ("Класот"), the lesson's questions
+  ("Прашања", with "Брзо прашање") and the anonymous questions ("Анонимни (2)") share one place,
+  one at a time. The class is shown first. The count of anonymous questions is in the tab's own
+  words, and a new one is read out whichever tab is open. In the lobby the class stands alone,
+  with no tabs. What the roster says of a student who left the app stays quiet by decision
+  (FR-FOC) and is not raised to the tab.
+- **One screen.** At 1280 x 720 and at 1024 x 768 the top bar, the state line, the stage and the
+  panel are in the first screen; a long class or a long list scrolls inside the panel. Measured
+  the same way before and after (one scripted walk, 1280 x 800, the projector's window
+  open, the demo's class of 26): the page was 2,424px tall in the lobby, 3,121px while teaching
+  and 3,083px with a question open; it is 804px, 828px and 846px (the last lines of the stage's
+  notes are what pass the first screen). Under 1024 wide and at 200% zoom it is one column that scrolls as a page, with no
+  sideways scroll.
+- **The projected view is the same, pixel for pixel**, in five states (lobby, teaching, a question
+  open, closed, its answer shown), compared at 1280 x 720 between the build before this step and
+  the build after it.
+- **The tabs are hand-written** (`components/teacher/Tabs.tsx`): `tablist`, `tab`, `tabpanel`,
+  one stop for the keyboard, the arrows, Home and End move and show the panel at once. The chosen
+  tab is a raised white pill with heavier words; in high contrast it has an outline. **No library
+  was added.**
+- **New words** (Macedonian, English): "Класот" / "Class" ("Групата" / "Group" at a faculty),
+  "Прашања" / "Questions", "Анонимни ({n})" / "Anonymous ({n})", and the name of the row of tabs.
+  Nothing else was reworded.
+- **Tests rewritten** because they described the old arrangement: the sidebar on the console, End
+  at the foot, the projector button as a big one in a card, and the list and the inbox on the page
+  at once. They now say: no menu on the console, End in the top bar after the projector button,
+  the three tabs and their keyboard, a new anonymous question announced while another tab is
+  open. A test that reads the list or the inbox opens its tab first, as a teacher would.
+- **Not changed:** the start window, the quick question, "present without a phone" and the
+  windows that ask before starting and ending (they took the new look in step 1 and read well);
+  the review's own panel; the projected view (`.cv`), compared before and after.
 
 ## What was measured
 

@@ -8,8 +8,8 @@ what went wrong before and what the remaining steps ask for.
 ## Where things stand
 
 Read "Status" in `docs/teacher-redesign-plan.md`: it is the record. On 2026-11-14 it said: the
-direction and steps 1 and 2 are approved, step 3 is built and waits for the owner. Steps 4 to 7 are
-not started. Nothing after a waiting step is built until the owner approves it.
+direction and steps 1, 2 and 3 are approved, step 4 is built and waits for the owner. Steps 5 to 7
+are not started. Nothing after a waiting step is built until the owner approves it.
 
 - Branch `ccr-65507c3f-cbceas` in both repositories; draft pull request #8 in the app repo and #5
   in the brain repo. Never `main`, never a merge.
@@ -174,6 +174,10 @@ For each: the plan's lines ("Screen by screen" in `docs/teacher-redesign-plan.md
 What follows is where to look and what to be careful of.
 
 ### Step 4: the live lesson
+
+Built on 2026-11-14; see "Step 4 as built" in the plan. What follows was its brief, kept for the
+reasons it gives. `components/teacher/Tabs.tsx` and the helpers `showClass`, `showQuestions` and
+`showInbox` in `live-helpers.ts` are there to reuse.
 
 The biggest step, and the screen a teacher uses in front of a class. Plan: no sidebar; a top bar
 (back, "Во живо", class and lesson, the projector button with its state, End); the stage at the

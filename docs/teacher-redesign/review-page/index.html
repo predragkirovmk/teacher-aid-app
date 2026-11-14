@@ -361,7 +361,7 @@ footer { color: var(--ink-2); font-size: 0.9375rem; }
 
   <div class="top">
     <span class="wordmark"><svg aria-hidden="true"><use href="#logo"/></svg>TeacherAid</span>
-    <span class="chip" id="status" data-tone="decide">Step 3 is ready for your review.</span>
+    <span class="chip" id="status" data-tone="decide">Step 4 is ready for your review.</span>
   </div>
 
   <header class="hero">
@@ -369,22 +369,143 @@ footer { color: var(--ink-2); font-size: 0.9375rem; }
     <h1>A calmer teacher app</h1>
     <p class="lead">You said the app feels crowded and confusing to use. I opened every screen and measured it. No feature needs to go. Too much is on screen at once, and all of it is equally loud. This plan keeps every feature and changes how the screens are arranged and how they look.</p>
     <ol class="how">
-      <li><h3>You approved the look and steps 1 and 2</h3><p class="muted">The light look on 12 November, the new colours, type and sidebar on 13 November, the four lists as rows on 14 November.</p></li>
-      <li><h3>Step 3 of 7 is built</h3><p class="muted">Preparing a lesson: the form, the editor, the lesson page and the Library's preview. It is below, with a preview you can click through.</p></li>
-      <li><h3>Your decision starts step 4</h3><p class="muted">Approve step 3 or send it back. Nothing more is built until you do.</p></li>
+      <li><h3>You approved the look and steps 1 to 3</h3><p class="muted">The light look on 12 November, the new colours, type and sidebar on 13 November, the four lists as rows and preparing a lesson on 14 November.</p></li>
+      <li><h3>Step 4 of 7 is built</h3><p class="muted">The live lesson: the screen you use in front of the class. It is below, with a preview you can click through.</p></li>
+      <li><h3>Your decision starts step 5</h3><p class="muted">Approve step 4 or send it back. Nothing more is built until you do.</p></li>
     </ol>
   </header>
 
-  <section aria-labelledby="s3-h" id="step-3-review">
+  <section aria-labelledby="s4-h" id="step-4-review">
     <div class="section-head">
-      <p class="eyebrow">Step 3 of 7 · built 14 November 2026</p>
-      <h2 id="s3-h">Preparing a lesson is one calm page at each stop</h2>
-      <p class="muted measure">The form where a lesson starts, the editor where you check the questions, the lesson's own page and the Library's preview. Every field, button and feature is still there. A question is no longer a box full of boxes.</p>
+      <p class="eyebrow">Step 4 of 7 · built 14 November 2026</p>
+      <h2 id="s4-h">The live lesson fits one screen</h2>
+      <p class="muted measure">This is the screen you use in front of the class. It was a long page you had to scroll while teaching. Now everything you need during a lesson is in the first screen, and every feature is still there.</p>
     </div>
 
     <div class="review-bar">
       <a class="btn btn-primary" href="https://teacher-aid-git-ccr-65507c3f-cbceas-predragkirovmks-projects.vercel.app/teacher" target="_blank" rel="noopener">Open the preview</a>
       <p class="muted">The preview is the real app with the demo school. On the sign-in screen press “Најави се со Google”, then choose Марија Петровска. No password is asked. If Vercel asks you to log in before the app opens, use your own Vercel account: the preview is private to it.</p>
+    </div>
+
+    <ul class="principles">
+      <li><h3>The whole window</h3><p class="muted">No sidebar during a lesson. “Назад кон Денес” is the way out; the lesson keeps running and the yellow reminder on every other page brings you back.</p></li>
+      <li><h3>A top bar</h3><p class="muted">The projector button, with where its window stands, and the red “Заврши го часот”. End was at the bottom of a long page before.</p></li>
+      <li><h3>The question stays put</h3><p class="muted">At the left, always in the same place: the one thing to do now. Start the lesson, send the question, show the answer.</p></li>
+      <li><h3>Three tabs beside it</h3><p class="muted">“Класот”, “Прашања” and “Анонимни (2)”. One is shown at a time. A long class scrolls inside its panel, not the page.</p></li>
+      <li><h3>No more scrolling</h3><p class="muted">With the demo's class of 26, at 1280 by 800: the page was 3,121 px tall while teaching. It is 828 px now, one screen.</p></li>
+      <li><h3>The projector is untouched</h3><p class="muted">What the class sees is the same, pixel for pixel, in five states. It gets its own step, the last one.</p></li>
+    </ul>
+
+    <div class="pairs">
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>Waiting for the class</h3>
+            <p class="muted">The sidebar is gone: the lesson has the whole window, and “Назад кон Денес” takes you out while the lesson keeps running. The projector button, with a line under it that says whether its window is open, and the red “Заврши го часот” are in the top bar. Under it, one big button to start, and beside it who has joined. Before, this page was almost three screens long, with End at the very bottom.</p>
+          </div>
+          <div class="switch" role="group" aria-label="Waiting for the class: after or before">
+            <button type="button" id="s4-lobby-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s4-lobby-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s4-before-lobby.webp" width="1920" height="1200" alt="The lobby before step 4: the sidebar, a projector card, the start card and the list of who joined, on a page that continues far below the screen." loading="lazy">
+          <img class="is-after" src="img/s4-after-lobby.webp" width="1920" height="1200" alt="The lobby after step 4: no sidebar, a top bar with the projector button and End, the start button at the left and who has joined at the right, all in one screen.">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>A question is running</h3>
+            <p class="muted">The question, the seconds left, how many answered and the next step stay in one place at the left. At the right, the class: who answered and who has not. The yellow edge still means the lesson is live.</p>
+          </div>
+          <div class="switch" role="group" aria-label="A question is running: after or before">
+            <button type="button" id="s4-open-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s4-open-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s4-before-open.webp" width="1920" height="1200" alt="A running question before step 4: the sidebar, the question across the page, and the class, the list of questions and the inbox further down a long page." loading="lazy">
+          <img class="is-after" src="img/s4-after-open.webp" width="1920" height="1200" alt="A running question after step 4: the question and its countdown at the left, the class at the right under three tabs, in one screen." loading="lazy">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>The lesson's questions</h3>
+            <p class="muted">The list of questions, with “Брзо прашање”, is the second tab. Before, it was under the question, pushing the class and the anonymous questions further down the page.</p>
+          </div>
+          <div class="switch" role="group" aria-label="The lesson's questions: after or before">
+            <button type="button" id="s4-questions-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s4-questions-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s4-before-questions.webp" width="1920" height="1200" alt="The questions before step 4: the list under the question panel, in a long page with the sidebar." loading="lazy">
+          <img class="is-after" src="img/s4-after-questions.webp" width="1920" height="1200" alt="The questions after step 4: the tab Прашања is open at the right, with the list and the quick question button; the question to send stays at the left." loading="lazy">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>Anonymous questions</h3>
+            <p class="muted">The third tab. Its name says how many there are, “Анонимни (2)”, so you see a new one arrive while you look at the class; a screen reader reads it out too. Before, you had to scroll down to find them.</p>
+          </div>
+          <div class="switch" role="group" aria-label="Anonymous questions: after or before">
+            <button type="button" id="s4-anon-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s4-anon-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s4-before-anon.webp" width="1920" height="1200" alt="Anonymous questions before step 4: reached by scrolling to the lower part of a long page." loading="lazy">
+          <img class="is-after" src="img/s4-after-anon.webp" width="1920" height="1200" alt="Anonymous questions after step 4: the third tab at the right, with two questions and a button to mark each answered." loading="lazy">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>On a phone</h3>
+            <p class="muted">One column: the top bar's two buttons, where the lesson stands, the question, then the tabs. The menu bar is gone here too.</p>
+          </div>
+          <div class="switch" role="group" aria-label="On a phone: after or before">
+            <button type="button" id="s4-phone-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s4-phone-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <div><div class="frame frame--phone">
+          <img class="is-before" src="img/s4-before-phone.webp" width="585" height="1266" alt="The live lesson on a phone before step 4, with the app's menu bar on top." loading="lazy">
+          <img class="is-after" src="img/s4-after-phone.webp" width="585" height="1266" alt="The live lesson on a phone after step 4: Back, the title, the projector button and End, then the question." loading="lazy">
+        </div></div>
+      </figure>
+    </div>
+
+    <p class="muted measure">Not changed in this step, because they already read well in the new look: the window that asks which class, the quick question, “Без телефон”, and the windows that ask before a lesson starts and ends. To try the tabs in the preview: start “Проценти и пропорции” with II-4 from Today, then press “Почни го часот”.</p>
+
+    <div class="decide" data-for="step-4">
+      <h3>Your decision on step 4</h3>
+      <div class="saved" aria-live="polite"><b data-saved-title></b><span data-saved-detail></span></div>
+      <div class="decide-on">
+        <label for="note-step-4">Notes for Claude (optional)</label>
+        <textarea id="note-step-4" rows="3" placeholder="A tab you would rather see first, something you still have to look for during a lesson, a button you want back where it was"></textarea>
+      </div>
+      <div class="buttons decide-on">
+        <button type="button" class="btn btn-primary" id="approve-step-4" data-choice="approved">Approve step 4</button>
+        <button type="button" class="btn" id="changes-step-4" data-choice="changes">Ask for changes</button>
+      </div>
+      <p class="decide-msg decide-on muted" role="status"></p>
+      <p class="decide-off muted">Decisions cannot be saved from this view. Tell Claude your decision in the chat instead.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="s3-h" id="step-3-review">
+    <div class="section-head">
+      <p class="eyebrow">Step 3 of 7 · approved 14 November 2026</p>
+      <h2 id="s3-h">Preparing a lesson is one calm page at each stop</h2>
+      <p class="muted measure">The form where a lesson starts, the editor where you check the questions, the lesson's own page and the Library's preview. Every field, button and feature is still there. A question is no longer a box full of boxes.</p>
     </div>
 
     <ul class="principles">
@@ -1178,18 +1299,18 @@ footer { color: var(--ink-2); font-size: 0.9375rem; }
           <p class="muted measure">Stacks of cards became lists. Whole rows open. One action per row. Approved on 14 November 2026. <a href="#step-2-review">See it again.</a></p>
         </div>
       </li>
-      <li class="step" data-step="step-3" data-status="review">
+      <li class="step" data-step="step-3" data-status="done">
         <span class="step-n">3</span>
         <div class="step-body">
-          <div class="step-title"><h3>Preparing a lesson</h3><span class="chip" data-chip data-tone="decide">Ready for your review</span></div>
-          <p class="muted measure">The form, the wait while questions are written, the editor, the lesson page and the library preview. <a href="#step-3-review">See it and decide at the top of the page.</a></p>
+          <div class="step-title"><h3>Preparing a lesson</h3><span class="chip" data-chip data-tone="done">Approved</span></div>
+          <p class="muted measure">Questions became rows of one panel; the form is one panel across the full width, as you asked. Approved on 14 November 2026. <a href="#step-3-review">See it again.</a></p>
         </div>
       </li>
-      <li class="step" data-step="step-4" data-status="planned">
+      <li class="step" data-step="step-4" data-status="review">
         <span class="step-n">4</span>
         <div class="step-body">
-          <div class="step-title"><h3>The live lesson</h3><span class="chip" data-chip>Not started</span></div>
-          <p class="muted measure">The one-screen console: waiting for students, teaching, review. The start window, the quick question and marking a student present without a phone.</p>
+          <div class="step-title"><h3>The live lesson</h3><span class="chip" data-chip data-tone="decide">Ready for your review</span></div>
+          <p class="muted measure">The one-screen console: waiting for students, teaching, review. A top bar, the question at the left, three tabs at the right. <a href="#step-4-review">See it and decide at the top of the page.</a></p>
         </div>
       </li>
       <li class="step" data-step="step-5" data-status="planned">
@@ -1217,7 +1338,7 @@ footer { color: var(--ink-2); font-size: 0.9375rem; }
   </section>
 
   <footer>
-    <p>Prepared 12 November 2026, updated 14 November for step 3. The pictures under steps 1 to 3 are the built app with the demo school's data. The mockups under “The direction” are drawings of the proposal.</p>
+    <p>Prepared 12 November 2026, updated 14 November for step 4. The pictures under steps 1 to 4 are the built app with the demo school's data. The mockups under “The direction” are drawings of the proposal.</p>
   </footer>
 </div>
 
@@ -1283,9 +1404,9 @@ footer { color: var(--ink-2); font-size: 0.9375rem; }
         (d.note ? "Your note: " + d.note + " " : "") + "Tell Claude “go” in the chat to continue. You can change this by pressing another button.";
     }
     if (stepId === "direction" && approved && d.look) setLook(d.look);
-    if (stepId === "step-3") {
+    if (stepId === "step-4") {
       var status = document.getElementById("status");
-      status.textContent = approved ? "Step 3 approved. Step 4 is next." : "Changes requested on step 3.";
+      status.textContent = approved ? "Step 4 approved. Step 5 is next." : "Changes requested on step 4.";
       status.dataset.tone = approved ? "done" : "changes";
     }
   };

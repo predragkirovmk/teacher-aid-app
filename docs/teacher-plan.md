@@ -45,6 +45,10 @@ the owner approved the light look on 2026-11-12):
 - The sidebar is always visible on a laptop, with four labelled destinations, and at its foot
   Settings, Help, Sign out and who is signed in. Nothing hidden behind hover, right-click, drag,
   double-click or keyboard shortcuts; shortcuts may exist as an extra, never as the only way.
+  (Revised 2026-11-14 by step 4 of the redesign, `docs/teacher-redesign-plan.md`: the console of a running lesson is the one page
+  without the sidebar. The lesson has the whole window; "Назад кон Денес" is the way out, the lesson keeps running, and the reminder on
+  every other page brings the teacher back. The projector button and the red End are in the console's top bar; who is here, the
+  lesson's questions and the anonymous questions are three tabs beside the question. The end page, at the same address, has the sidebar.)
 - Every screen has a plain title saying where you are. Deep screens have a labelled Back, a quiet
   line above the title.
 - Anything that cannot be undone asks first, in plain words, with the safe choice as the default.
