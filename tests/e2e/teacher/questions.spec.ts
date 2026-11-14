@@ -1,6 +1,6 @@
 import { expect, settled, SETTINGS_KEY, tall, test } from "./fixtures";
 import {
-  at, cards, go, joinedWhenTeaching, listItem, listSend, next, openProjector, panel, reveal, send, skipInPanel, start, T0, TEACHING_AT, teach, mainButton,
+  at, cards, classTab, go, inboxTab, joinedWhenTeaching, listItem, listSend, next, openProjector, panel, questionsTab, reveal, send, showClass, showInbox, showQuestions, skipInPanel, start, T0, TEACHING_AT, teach, mainButton,
 } from "./live-helpers";
 
 /**
@@ -62,6 +62,7 @@ test.describe("the life of a question", () => {
 
   test("choices: letters on the projector, and after the reveal a bar for each with the count and the share, the right one by an icon and words", async ({ page, context }) => {
     const projector = await teach(page, context);
+    await showQuestions(page);
     await listSend(page, 2).click();
     await expect(panel(page).getByTestId("countdown")).toHaveText("Уште 25 секунди");
     await expect(projector.locator(".cvq__letter")).toHaveText(["A", "B", "C", "D"]);
@@ -89,6 +90,7 @@ test.describe("the life of a question", () => {
 
   test("true or false: Точно and Неточно on the projector, two bars at the reveal", async ({ page, context }) => {
     const projector = await teach(page, context);
+    await showQuestions(page);
     await listSend(page, 3).click();
     await expect(projector.getByTestId("cv-option")).toHaveText(["Точно", "Неточно"]);
     await expect(panel(page).getByTestId("countdown")).toHaveText("Уште 15 секунди");
@@ -101,6 +103,7 @@ test.describe("the life of a question", () => {
 
   test("a number with a unit says the unit, and the answer shown has it", async ({ page, context }) => {
     const projector = await teach(page, context);
+    await showQuestions(page);
     await listSend(page, 4).click();
     await expect(projector.getByText("Единица: %")).toBeVisible();
     await go(context, TEACHING_AT + 46);
@@ -119,6 +122,7 @@ test.describe("the life of a question", () => {
 
   test("when the last question has its answer shown, the panel says plainly that none is left, and the one main button goes on to the review", async ({ page, context }) => {
     await teach(page, context);
+    await showQuestions(page);
     const times = [30, 25, 15, 45, 25, 45];
     let t = TEACHING_AT;
     for (const [i, timer] of times.entries()) {
@@ -140,6 +144,7 @@ test.describe("the life of a question", () => {
 test.describe("the list of questions", () => {
   test("each question says where it stands in words, any one not sent can be sent with a quiet button, and only the panel has the main one", async ({ page, context }) => {
     await teach(page, context);
+    await showQuestions(page);
     await expect(page.locator(".qitem")).toHaveCount(6);
     await expect(page.locator(".qitem .qitem__word")).toHaveText(Array(6).fill("Не е испратено"));
     await expect(mainButton(page)).toHaveCount(1);
@@ -149,6 +154,7 @@ test.describe("the list of questions", () => {
 
   test("out of order: question 3 first; its answer shown, the panel offers question 1 as next, and the list says sent, answer shown", async ({ page, context }) => {
     const projector = await teach(page, context);
+    await showQuestions(page);
     await listSend(page, 3).click();
     await expect(listItem(page, 3)).toContainText("Испратено");
     await expect(panel(page)).toContainText("Прашање 3 од 6");
@@ -172,6 +178,7 @@ test.describe("the list of questions", () => {
 test.describe("skipping", () => {
   test("asks first in plain words that the question will not count, with the safe answer as the default; saying no changes nothing", async ({ page, context }) => {
     await teach(page, context);
+    await showQuestions(page);
     await skipInPanel(page).click();
     const dialog = page.getByRole("alertdialog", { name: "Да го прескокнеме ли прашањето?" });
     await expect(dialog).toContainText("Прашањето не е испратено. Ако го прескокнете, нема да се испрати и нема да се брои.");
@@ -185,6 +192,7 @@ test.describe("skipping", () => {
 
   test("a question not sent is skipped from the panel or the list: it is listed as skipped, the panel moves to the next, and the projector says nothing of it", async ({ page, context }) => {
     const projector = await teach(page, context);
+    await showQuestions(page);
     await skipInPanel(page).click();
     await page.getByRole("button", { name: "Да, прескокни го" }).click();
     await expect(listItem(page, 1)).toContainText("Прескокнато");
@@ -200,6 +208,7 @@ test.describe("skipping", () => {
 
   test("a skipped question stays readable: not struck through, set back by its ground, and said in words", async ({ page, context }) => {
     await teach(page, context);
+    await showQuestions(page);
     await skipInPanel(page).click();
     await page.getByRole("button", { name: "Да, прескокни го" }).click();
     const item = listItem(page, 1);
@@ -212,6 +221,7 @@ test.describe("skipping", () => {
 
   test("an open question is skipped: the projector says it does not count, nobody scores, and the next may be sent", async ({ page, context }) => {
     const projector = await teach(page, context);
+    await showQuestions(page);
     await send(page).click();
     await go(context, TEACHING_AT + 10);
     await skipInPanel(page).click();
@@ -226,6 +236,7 @@ test.describe("skipping", () => {
 
   test("a closed question can be skipped before its answer is shown", async ({ page, context }) => {
     await teach(page, context);
+    await showQuestions(page);
     await send(page).click();
     await go(context, TEACHING_AT + 31);
     await expect(mainButton(page)).toHaveText("Прикажи го точниот одговор");
@@ -239,6 +250,7 @@ test.describe("skipping", () => {
 test.describe("the note above the list", () => {
   test("is a quiet line of plain weight, there only while another question cannot be sent", async ({ page, context }) => {
     await teach(page, context);
+    await showQuestions(page);
     const note = page.locator(".qlist__wait");
     await expect(note).toHaveCount(0);
     await send(page).click();
@@ -258,6 +270,7 @@ test.describe("the quick question", () => {
 
   test("true or false: one short screen, the checks said in plain words, then it is sent at once and the panel takes it over", async ({ page, context }) => {
     const projector = await teach(page, context);
+    await showQuestions(page);
     const dialog = await open(page);
     await expect(dialog.getByRole("radiogroup").first()).toBeVisible();
     await expect(dialog.getByLabel("Време, во секунди")).toHaveValue("15");
@@ -288,6 +301,7 @@ test.describe("the quick question", () => {
 
   test("choices: two to four answers and which is right", async ({ page, context }) => {
     const projector = await teach(page, context);
+    await showQuestions(page);
     const dialog = await open(page);
     await dialog.getByRole("radio", { name: "Понудени одговори" }).check();
     await dialog.getByLabel("Прашањето").fill("Главниот град на Македонија е ...");
@@ -311,6 +325,7 @@ test.describe("the quick question", () => {
 
   test("a number, with a unit if there is one", async ({ page, context }) => {
     const projector = await teach(page, context);
+    await showQuestions(page);
     const dialog = await open(page);
     await dialog.getByRole("radio", { name: "Број" }).check();
     await expect(dialog.getByLabel("Време, во секунди")).toHaveValue("45");
@@ -331,6 +346,7 @@ test.describe("the quick question", () => {
 
   test("Cancel sends nothing, and the form is one screen at 1280 x 720 and 1024 x 768 even with four answers", async ({ page, context }) => {
     await teach(page, context);
+    await showQuestions(page);
     for (const size of [{ width: 1280, height: 720 }, { width: 1024, height: 768 }]) {
       await page.setViewportSize(size);
       const dialog = await open(page);
@@ -378,9 +394,16 @@ test.describe("the inbox of anonymous questions", () => {
   // The class writes to the teacher 20 to 28 s after teaching begins, then every 40 s or so.
   test("a question arrives with the sender's name, the text and the time; it is announced once, politely, and never as a window", async ({ page, context }) => {
     const projector = await teach(page, context);
+    await showInbox(page);
     await expect(page.getByRole("heading", { name: "Анонимни прашања (0)" })).toBeVisible();
     await expect(page.getByText("Уште нема прашања.")).toBeVisible();
+    // The teacher is looking at the class when the question comes: the tab says how many there are, and the line is read out all the same.
+    await showClass(page);
     await go(context, TEACHING_AT + 30);
+    await expect(inboxTab(page)).toHaveText("Анонимни (1)");
+    await expect(page.getByTestId("inbox-said")).toHaveText(/^Ново прашање од /);
+    await expect(page.getByRole("heading", { name: "Анонимни прашања (1)" })).toBeHidden();
+    await showInbox(page);
     const first = page.getByTestId("anon").first();
     await expect(page.getByRole("heading", { name: "Анонимни прашања (1)" })).toBeVisible();
     await expect(first.locator(".inbox__who strong")).not.toBeEmpty();
@@ -397,6 +420,7 @@ test.describe("the inbox of anonymous questions", () => {
 
   test("newest first; marking one answered moves it down and dims it; taking it back puts it where its time puts it", async ({ page, context }) => {
     await teach(page, context);
+    await showInbox(page);
     await go(context, TEACHING_AT + 80);
     const items = page.getByTestId("anon");
     await expect(items).toHaveCount(2);
@@ -423,6 +447,7 @@ test.describe("the inbox of anonymous questions", () => {
 
   test("the text goes to the projector never, not in its page and not in what it keeps; and a reload of the console keeps what was marked", async ({ page, context }) => {
     const projector = await teach(page, context);
+    await showInbox(page);
     await go(context, TEACHING_AT + 80);
     const items = page.getByTestId("anon");
     await expect(items).toHaveCount(2);
@@ -434,6 +459,7 @@ test.describe("the inbox of anonymous questions", () => {
       expect(await projector.evaluate(() => JSON.stringify([sessionStorage, ...Object.values(window)].filter((v) => typeof v === "string"))).catch(() => "")).not.toContain(text);
     }
     await page.reload();
+    await showInbox(page);
     await expect(page.getByTestId("anon")).toHaveCount(2);
     await expect(page.getByTestId("anon").last()).toHaveAttribute("data-answered", "true");
   });
@@ -442,6 +468,7 @@ test.describe("the inbox of anonymous questions", () => {
 test.describe("flags and the nudge", () => {
   test("a student who leaves the app during a question is shown quietly in the roster, in an icon and words, never as a warning", async ({ page, context }) => {
     await teach(page, context);
+    await showQuestions(page);
     // Questions are sent and closed until a student has left the app: it happens in most of them, and the same way every time.
     let t = TEACHING_AT;
     for (let n = 1; n <= 3; n++) {
@@ -454,6 +481,7 @@ test.describe("flags and the nudge", () => {
       await go(context, t);
       await reveal(page).click();
     }
+    await showClass(page);
     const flag = page.getByTestId("focus").first();
     await expect(flag).toBeVisible();
     await expect(flag).toHaveText(/^Излезе од апликацијата (1 пат|\d+ пати)$/);
@@ -510,6 +538,7 @@ test.describe("coming back", () => {
     await page.reload();
     await expect(panel(page).getByTestId("countdown")).toHaveText("Уште 20 секунди");
     await expect(panel(page).getByTestId("progress")).toHaveText(progress);
+    await showQuestions(page);
     await expect(listItem(page, 1)).toContainText("Испратено");
     await expect(mainButton(page)).toHaveCount(0);
     await go(context, TEACHING_AT + 31);
@@ -551,6 +580,7 @@ test.describe("coming back", () => {
 test.describe("the projector shows no private thing", () => {
   test("not the answer before the reveal, not the names of the class but in the ranking, and nothing of the inbox", async ({ page, context }) => {
     const projector = await teach(page, context);
+    await showQuestions(page);
     await listSend(page, 2).click();
     await go(context, TEACHING_AT + 26);
     await expect(projector.getByText("Времето истече")).toBeVisible();
@@ -559,6 +589,7 @@ test.describe("the projector shows no private thing", () => {
     expect(html).not.toContain("data-right");
     expect(html).not.toContain("25% од 800 е 200");
     await go(context, TEACHING_AT + 90);
+    await showInbox(page);
     await expect(page.getByTestId("anon")).not.toHaveCount(0);
     for (const text of await page.getByTestId("anon").locator(".inbox__text").allInnerTexts()) expect(await projector.content()).not.toContain(text);
     await expect(projector.getByText("Анонимни")).toHaveCount(0);
@@ -586,6 +617,7 @@ test.describe("the projector uses the window", () => {
 
   test("a long question with four long answers: open, closed and shown, nothing is cut, nothing collides, and the content reaches the foot of the window", async ({ page, context }) => {
     const projector = await teach(page, context);
+    await showQuestions(page);
     await page.getByRole("button", { name: "Брзо прашање" }).click();
     const dialog = page.getByRole("dialog", { name: "Брзо прашање" });
     await dialog.getByRole("radio", { name: "Понудени одговори" }).check();
@@ -685,6 +717,7 @@ test.describe("the projector uses the window", () => {
 
   test("the question on the projector fills the height at all three sizes in every state, with a picture and when skipped", async ({ page, context }) => {
     const projector = await teach(page, context);
+    await showQuestions(page);
     await listSend(page, 3).click();
     const reaches = async (label: string) => {
       for (const size of SIZES) {
@@ -717,6 +750,7 @@ test.describe("a picture on a projected question", () => {
     const projector = await openProjector(page, context);
     await page.getByRole("button", { name: "Почни го часот" }).click();
     await page.getByRole("button", { name: "Да, почни го часот" }).click();
+    await showQuestions(page);
     const item = page.locator(".qitem", { hasText: "хипотенузата" });
     await item.getByRole("button", { name: /^Испрати го прашањето/ }).click();
     const picture = projector.getByTestId("cv-picture");
@@ -765,6 +799,11 @@ test.describe("the keyboard alone", () => {
 
   test("the quick question and the inbox work with the keyboard", async ({ page, context }) => {
     await teach(page, context);
+    // The tabs are one stop: the arrows move between them, and the panel they name is shown at once.
+    await classTab(page).focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(questionsTab(page)).toBeFocused();
+    await expect(questionsTab(page)).toHaveAttribute("aria-selected", "true");
     await go(context, TEACHING_AT + 30);
     await page.getByRole("button", { name: "Брзо прашање" }).focus();
     await page.keyboard.press("Enter");
@@ -777,6 +816,9 @@ test.describe("the keyboard alone", () => {
     await page.keyboard.press("Enter");
     await expect(dialog).toBeHidden();
     await expect(panel(page)).toContainText("Брзо прашање");
+    await questionsTab(page).focus();
+    await page.keyboard.press("End");
+    await expect(inboxTab(page)).toBeFocused();
     const mark = page.getByTestId("anon").first().getByRole("button", { name: /^Означи како одговорено/ });
     await mark.focus();
     await page.keyboard.press("Enter");
@@ -799,9 +841,13 @@ test.describe("words and zoom", () => {
     await expect(page.getByRole("heading", { name: "The question now" })).toBeVisible();
     await expect(panel(page)).toContainText("Next question: Question 1 of 6, answer with a number");
     await expect(page.getByRole("button", { name: "Send the question", exact: true })).toBeVisible();
+    await expect(page.getByRole("tablist", { name: "The class and the questions" }).getByRole("tab")).toHaveText(["Class", "Questions", "Anonymous (0)"]);
+    await page.getByRole("tab", { name: "Questions", exact: true }).click();
     await expect(page.getByRole("heading", { name: "The questions of this lesson" })).toBeVisible();
     await expect(listItem(page, 1)).toContainText("Not sent");
+    await page.getByRole("tab", { name: "Anonymous (0)", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Anonymous questions (0)" })).toBeVisible();
+    await page.getByRole("tab", { name: "Questions", exact: true }).click();
     await page.getByRole("button", { name: "Quick question" }).click();
     await expect(page.getByRole("dialog", { name: "Quick question" }).getByRole("radio", { name: "True or false" })).toBeVisible();
     await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
@@ -828,6 +874,8 @@ test.describe("words and zoom", () => {
     await page.getByRole("button", { name: "Почни го часот" }).click();
     await page.getByRole("button", { name: "Да, почни го часот" }).click();
     await expect(panel(page).getByText(/Вашите студенти го гледаат на телефон/)).toBeVisible();
+    await expect(page.getByRole("tab").first()).toHaveText("Групата");
+    await page.getByRole("tab", { name: /^Анонимни/ }).click();
     await expect(page.getByText(/Вашите студенти Ви пишуваат овде/)).toBeVisible();
   });
 
@@ -864,6 +912,7 @@ test.describe("words and zoom", () => {
 
   test("the projector fits 1920 x 1080, 1280 x 720 and 1024 x 768 in every state with no scroll, and nothing on it is under 20px", async ({ page, context }) => {
     const projector = await teach(page, context);
+    await showQuestions(page);
     await listSend(page, 2).click();
     const check = async (label: string) => {
       for (const size of [{ width: 1920, height: 1080 }, { width: 1280, height: 720 }, { width: 1024, height: 768 }]) {

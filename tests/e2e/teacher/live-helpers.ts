@@ -100,6 +100,20 @@ export const skipInPanel = (page: Page) => panel(page).getByRole("button", { nam
 export const listSend = (page: Page, n: number) => page.getByRole("button", { name: `Испрати го прашањето ${n}`, exact: true });
 export const listItem = (page: Page, n: number) => page.locator(".qitem").nth(n - 1);
 
+// ---- The tabs of the console (redesign step 4) ----
+
+/**
+ * While teaching, who is here, the lesson's questions and the anonymous questions share one place, one at a time, as tabs. The class is the
+ * one shown first; a test opens the one it reads, as a teacher would.
+ */
+export const tabs = (page: Page) => page.getByRole("tablist", { name: "Класот и прашањата" });
+export const classTab = (page: Page) => page.getByRole("tab", { name: "Класот", exact: true });
+export const questionsTab = (page: Page) => page.getByRole("tab", { name: "Прашања", exact: true });
+export const inboxTab = (page: Page) => page.getByRole("tab", { name: /^Анонимни \(\d+\)$/ });
+export const showClass = (page: Page) => classTab(page).click();
+export const showQuestions = (page: Page) => questionsTab(page).click();
+export const showInbox = (page: Page) => inboxTab(page).click();
+
 /** Start the lesson, open the projector, let the class join, and begin teaching: the console and the projector, both at the panel's first state. */
 export async function teach(page: Page, context: BrowserContext): Promise<Page> {
   await start(page, context);

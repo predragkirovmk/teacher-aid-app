@@ -1,7 +1,7 @@
 import { simulate, tokenAt } from "../../../lib/teacher/api/mock-live";
 import { expect, SETTINGS_KEY, tall, test } from "./fixtures";
 import {
-  at, cards, classCode, code, comesLater, count, joinedAt, nextEdge, openProjector, people, PLANS, readQr, row, SESSION, start, T0, title, mainButton,
+  at, cards, classCode, code, comesLater, count, joinedAt, nextEdge, openProjector, people, PLANS, readQr, row, SESSION, start, T0, title, mainButton, classTab, inboxTab, questionsTab, tabs,
 } from "./live-helpers";
 
 /**
@@ -16,8 +16,13 @@ test.describe("starting", () => {
     await start(page, context);
     await expect(title(page)).toHaveText("Час во тек");
     await expect(page.getByText("Математика, II-4: Проценти и пропорции")).toBeVisible();
-    // The sidebar stays: this is a page of the app, not a window of its own.
-    await expect(page.getByRole("navigation", { name: "Главно мени" })).toBeVisible();
+    // The lesson has the whole window: no sidebar and no menu, and the way out is the Back to Today. Before teaching the class stands alone, with no tabs.
+    await expect(page.locator(".sidebar, .topbar")).toHaveCount(2);
+    for (const part of await page.locator(".sidebar, .topbar").all()) await expect(part).toBeHidden();
+    await expect(page.getByRole("navigation", { name: "Главно мени" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Назад кон Денес" })).toBeVisible();
+    await expect(page.getByRole("tablist")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Кој се приклучи" })).toBeVisible();
     await expect(page).toHaveTitle("Час во тек · TeacherAid");
   });
 
@@ -430,7 +435,7 @@ test.describe("starting the lesson, and teaching", () => {
     await expect(page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]")).toContainText("Чекаме ученици");
   });
 
-  test("moves to teaching: the state line says so, the panel for the question now has the one main button, the questions are listed, and the only way to end is the red one at the foot", async ({ page, context }) => {
+  test("moves to teaching: the state line says so, the panel for the question now has the one main button, the class, the questions and the anonymous questions are tabs, and the only way to end is the red one in the top bar", async ({ page, context }) => {
     await start(page, context);
     await at(context, 30, page);
     await page.getByRole("button", { name: "Почни го часот" }).click();
@@ -443,12 +448,41 @@ test.describe("starting the lesson, and teaching", () => {
     await expect(mainButton(page)).toHaveText("Испрати го прашањето");
     await expect(page.getByRole("button", { name: "Почни го часот" })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Прашањето сега" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Прашања на часот" })).toBeVisible();
+    // Who is here, the lesson's questions and the anonymous questions share one place: three tabs, the class first, one panel shown.
+    await expect(tabs(page).getByRole("tab")).toHaveText(["Класот", "Прашања", "Анонимни (0)"]);
+    await expect(classTab(page)).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tabpanel", { name: "Класот" }).getByRole("heading", { name: "Кој се приклучи" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Прашања на часот" })).toBeHidden();
+    await questionsTab(page).click();
+    await expect(questionsTab(page)).toHaveAttribute("aria-selected", "true");
+    await expect(classTab(page)).toHaveAttribute("aria-selected", "false");
+    await expect(page.getByRole("tabpanel", { name: "Прашања" }).getByRole("heading", { name: "Прашања на часот" })).toBeVisible();
     await expect(page.locator(".qitem").first()).toContainText("Прашање 1 од");
-    await expect(page.getByRole("button", { name: /Заврши|Крај/ })).toHaveCount(1);
-    await expect(page.getByRole("button", { name: "Заврши го часот", exact: true })).toHaveClass(/btn--danger/);
+    await expect(page.getByRole("heading", { name: "Кој се приклучи" })).toBeHidden();
+    await expect(page.getByRole("tabpanel")).toHaveCount(1);
+    // The chosen tab is told apart by more than colour: its words are heavier and it stands on its own ground.
+    const look = (tab: typeof classTab) => tab(page).evaluate((el) => [getComputedStyle(el).fontWeight, getComputedStyle(el).backgroundColor]);
+    expect((await look(questionsTab))[0]).not.toBe((await look(classTab))[0]);
+    expect((await look(questionsTab))[1]).not.toBe((await look(classTab))[1]);
+    // The row of tabs is one stop for the keyboard: the arrows, Home and End move between the tabs and show the panel at once.
+    await page.keyboard.press("ArrowRight");
+    await expect(inboxTab(page)).toBeFocused();
+    await expect(page.getByRole("tabpanel", { name: /^Анонимни/ }).getByRole("heading", { name: "Анонимни прашања (0)" })).toBeVisible();
+    await page.keyboard.press("ArrowRight");
+    await expect(classTab(page)).toBeFocused();
+    await page.keyboard.press("End");
+    await expect(inboxTab(page)).toBeFocused();
+    await page.keyboard.press("Home");
+    await expect(classTab(page)).toBeFocused();
     // The joined list is still there, and keeps working.
     await expect(page.getByRole("heading", { name: "Кој се приклучи" })).toBeVisible();
+    // One way to end, red, in the top bar: above the question, after the projector button.
+    await expect(page.getByRole("button", { name: /Заврши|Крај/ })).toHaveCount(1);
+    const end = page.getByRole("button", { name: "Заврши го часот", exact: true });
+    await expect(end).toHaveClass(/btn--danger/);
+    const [endBox, panelBox, projectorBox] = [(await end.boundingBox())!, (await page.locator(".qpanel").boundingBox())!, (await page.getByRole("button", { name: "Отвори го екранот за проектор" }).boundingBox())!];
+    expect(endBox.y + endBox.height).toBeLessThanOrEqual(panelBox.y);
+    expect(endBox.x).toBeGreaterThan(projectorBox.x + projectorBox.width);
   });
 
   test("a student who joins after the lesson has begun is late, with the time, and the ones who were in before are not", async ({ page, context }) => {
@@ -711,13 +745,15 @@ test.describe("the reminder", () => {
   test("is not shown on the console, which says it itself, and is shown on every other page", async ({ page, context }) => {
     await start(page, context);
     await expect(page.getByRole("group", { name: /Час во тек/ })).toHaveCount(0);
+    // The console has no menu: the way to another page is the Back to Today, and from there the menu.
+    await page.getByRole("link", { name: "Назад кон Денес" }).click();
     await page.getByRole("link", { name: "Библиотека" }).click();
     await expect(page.getByRole("group", { name: /Час во тек/ })).toBeVisible();
   });
 });
 
 test.describe("what the review of step 8 changed", () => {
-  test("the projector button comes first and is in the first screen at 1280 x 720 and 1024 x 768, above the one main button", async ({ page, context }) => {
+  test("the projector button comes first, in the top bar, and is in the first screen at 1280 x 720 and 1024 x 768, above the one main button", async ({ page, context }) => {
     await start(page, context);
     await at(context, 40, page);
     for (const size of [{ width: 1280, height: 720 }, { width: 1024, height: 768 }]) {
@@ -726,9 +762,10 @@ test.describe("what the review of step 8 changed", () => {
       await expect(projector).toBeInViewport({ ratio: 1 });
       const start = page.getByRole("button", { name: "Почни го часот" });
       expect((await projector.boundingBox())!.y).toBeLessThan((await start.boundingBox())!.y);
-      // The projector button is a quiet one and big, and the page has one main button.
+      // It is the first button of the top bar, before the red End, a quiet one of 44px; and the page has one main button.
+      expect((await projector.boundingBox())!.x).toBeLessThan((await page.getByRole("button", { name: "Заврши го часот", exact: true }).boundingBox())!.x);
       await expect(projector).toHaveClass(/btn--secondary/);
-      await expect(projector).toHaveClass(/btn--big/);
+      expect(await tall(projector)).toBe(44);
       await expect(mainButton(page)).toHaveCount(1);
     }
   });

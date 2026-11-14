@@ -9,7 +9,7 @@ import { openProjector, useClassViewStatus } from "@/lib/teacher/windows";
 
 /**
  * The first thing to do in a lesson: the projected window, opened with one click, in a window of its own and under a fixed name, so a
- * second press brings back the same one. It is the card at the top of the console, with the one quiet button that is as wide as the card. The
+ * second press brings back the same one. It is in the console's top bar: the one quiet button and, beside it, where the window stands. The
  * console knows whether the window is open (the two windows beat to each other) and says so, in an icon and words, with "Отвори повторно"
  * when it has been closed. A browser that stops the new window is told in words, with a plain link that opens it in a new window.
  */
@@ -22,10 +22,12 @@ export function ProjectorControl({ sessionId }: { sessionId: string }) {
   const open = () => setBlocked(openProjector(sessionId) === "blocked");
 
   return (
-    <section className="card projector" aria-labelledby="live-projector">
-      <h2 id="live-projector">{t("live.projector.title")}</h2>
-      <button type="button" className="btn btn--secondary btn--big" onClick={open}>
-        <ProjectorScreenIcon size={28} aria-hidden="true" />
+    <section className="projector" aria-labelledby="live-projector">
+      <h2 id="live-projector" className="sr">
+        {t("live.projector.title")}
+      </h2>
+      <button type="button" className="btn btn--secondary" onClick={open}>
+        <ProjectorScreenIcon size={24} aria-hidden="true" />
         {closed ? t("live.projector.again") : t("live.projector.open")}
       </button>
       {/* A line that says where the window stands, and is read out when it changes. A window never opened has nothing to say, and keeps its room. */}
@@ -56,7 +58,6 @@ export function ProjectorControl({ sessionId }: { sessionId: string }) {
           </div>
         </div>
       )}
-      <p className="projector__hint">{t("live.projector.hint")}</p>
     </section>
   );
 }

@@ -1,14 +1,23 @@
 "use client";
 
-import { PlayIcon } from "@phosphor-icons/react";
+import { PlayIcon, QuestionIcon } from "@phosphor-icons/react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { advanceSession, useConsole, useFreshCode } from "@/lib/teacher/api/hooks";
+import { useEffect, useLayoutEffect, useState } from "react";
+import {
+  advanceSession,
+  useConsole,
+  useFreshCode,
+} from "@/lib/teacher/api/hooks";
 import { isApiError } from "@/lib/teacher/api/errors";
 import type { ConsoleSnapshot } from "@/lib/teacher/api/types";
 import { isOne } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
-import { formatShortCode, missingCount, STUDENTS_CAN_TYPE_CODE } from "@/lib/teacher/live";
+import {
+  formatShortCode,
+  missingCount,
+  STUDENTS_CAN_TYPE_CODE,
+} from "@/lib/teacher/live";
 import { forgetReviewScreen } from "@/lib/teacher/review-screen";
 import { courseLabel } from "@/lib/teacher/start";
 import { TODAY } from "@/lib/teacher/signin";
@@ -22,15 +31,20 @@ import { Problem } from "./Problem";
 import { MirrorWarning, ProjectorControl } from "./ProjectorControl";
 import { Bar, Loading } from "./Skeleton";
 import { StateLine } from "./StateLine";
+import { TabPanel, Tabs } from "./Tabs";
 import { AnonInbox } from "./AnonInbox";
 import { QuestionList } from "./QuestionList";
 import { QuestionPanel } from "./QuestionPanel";
 import { ReviewPanel } from "./ReviewPanel";
 
+type PanelTab = "class" | "questions" | "anon";
+
 /**
- * The teacher's own screen of a lesson that is running (F-06, FR-CON-*), with the sidebar. It says which lesson, class and subject
- * this is; where the lesson stands; and, in the lobby, the one main button that starts it, the code to read out, the button that opens
- * the projected window, and who has joined. Everything comes from `GET /sessions/{id}/console`, kept up to date by the stream, so a
+ * The teacher's own screen of a lesson that is running (F-06, FR-CON-*). It is the one page without the sidebar: in front of a class the
+ * window belongs to the lesson, and Back leads to Today. The top bar says which lesson, class and subject this is and holds the button
+ * that opens the projected window, with where that window stands, and the red End. Under it, where the lesson stands; then, at the left,
+ * the stage: the one thing to do now (start it in the lobby, the question while teaching). At the right, who has joined; while teaching it
+ * shares its place with the list of questions and the anonymous questions, as tabs, so the whole lesson is one screen. Everything comes from `GET /sessions/{id}/console`, kept up to date by the stream, so a
  * reload or a window closed and opened again brings it all back (FR-SES-08), and a lost connection is said calmly and mended by itself.
  * While teaching it is the panel "Прашањето сега" with the one main button, the list of questions, the inbox of anonymous questions and the class.
  */
@@ -40,6 +54,7 @@ export function LiveConsole() {
   const { query, connection } = useConsole(sessionId);
   const snapshot = query.data;
   useFreshCode(snapshot?.server_now, snapshot?.join?.valid_to, query.refetch);
+  const [tab, setTab] = useState<PanelTab>("class");
   const teaching = snapshot?.session.state === "teaching";
   const reviewing = snapshot?.session.state === "review";
   // A lesson that has ended (this window pressed End, another did, or the page was opened afterwards) is no longer a console: the answer is `ended` or
@@ -48,17 +63,51 @@ export function LiveConsole() {
   useEffect(() => {
     if (state && state !== "review") forgetReviewScreen(sessionId);
   }, [state, sessionId]);
-  const over = snapshot?.session.state === "ended" || (isApiError(query.error) && query.error.code === "not_found");
+  const over =
+    snapshot?.session.state === "ended" ||
+    (isApiError(query.error) && query.error.code === "not_found");
+  // The frame hides its sidebar while this screen is the console (app/(teacher)/teacher.css, `data-focus`). The end page is a page like any other.
+  useLayoutEffect(() => {
+    if (over) return;
+    const root = document.documentElement;
+    root.dataset.focus = "live";
+    return () => {
+      delete root.dataset.focus;
+    };
+  }, [over]);
   if (over) return <EndPage sessionId={sessionId} />;
 
   return (
     <>
       <PageHeader
         title={t("live.title")}
-        subtitle={snapshot ? `${courseLabel(snapshot.session.subject_name, snapshot.session.class_name)}: ${snapshot.session.lesson.title}` : undefined}
+        subtitle={
+          snapshot
+            ? `${courseLabel(snapshot.session.subject_name, snapshot.session.class_name)}: ${snapshot.session.lesson.title}`
+            : undefined
+        }
         back={TODAY}
         backLabel={t("back.today")}
         compact
+        action={
+          snapshot ? (
+            <div className="live__tools">
+              {/* First, as it is the first thing to do: the projected window. Last, apart and red: the one way to end. */}
+              <ProjectorControl sessionId={snapshot.session.id} />
+              <section
+                id="live-end-section"
+                className="live__end"
+                aria-labelledby="live-end"
+              >
+                <h2 id="live-end" className="sr" tabIndex={-1}>
+                  {t("end.button")}
+                </h2>
+                <EndLesson sessionId={snapshot.session.id} />
+                <p className="sr">{t("end.hint")}</p>
+              </section>
+            </div>
+          ) : undefined
+        }
       />
       <div className="content live">
         {query.status === "loading" && (
@@ -73,54 +122,100 @@ export function LiveConsole() {
             </div>
           </Loading>
         )}
-        {query.status === "error" && <LoadProblem title={t("live.error.title")} error={query.error} onRetry={query.refetch} />}
+        {query.status === "error" && (
+          <LoadProblem
+            title={t("live.error.title")}
+            error={query.error}
+            onRetry={query.refetch}
+          />
+        )}
         {snapshot && (
           <>
             {connection === "reconnecting" && (
               <div className="card card--compact reconnecting" role="status">
                 <p>
-                  <strong>{t("live.connecting.title")}</strong> {t("live.connecting.body")}
+                  <strong>{t("live.connecting.title")}</strong>{" "}
+                  {t("live.connecting.body")}
                 </p>
               </div>
             )}
             <StateLine state={snapshot.session.state} compact />
             {reviewing ? (
               <ReviewPanel snapshot={snapshot} />
-            ) : teaching ? (
-              <>
-                {/* The panel first: what is happening to the question now and the one thing to press. Then the questions and what the class writes, beside who is here. */}
-                <QuestionPanel snapshot={snapshot} />
-                <div className="live__teach">
-                  <div className="live__main">
-                    <QuestionList snapshot={snapshot} />
-                    <AnonInbox sessionId={snapshot.session.id} items={snapshot.anon_questions} />
-                  </div>
-                  <div className="live__side">
-                    <LiveRoster sessionId={snapshot.session.id} students={snapshot.students} />
-                    <ProjectorControl sessionId={snapshot.session.id} />
-                    <JoinCard snapshot={snapshot} />
-                    <MirrorWarning />
-                  </div>
-                </div>
-              </>
             ) : (
-              <div className="live__grid">
-                {/* In the order a teacher does them: open the projector, then wait for the class, then start. */}
-                <div className="live__side">
-                  <ProjectorControl sessionId={snapshot.session.id} />
+              <div className="live__frame">
+                {/* The stage: the one thing to do now. It keeps its place when the lesson moves on. */}
+                <div className="live__stage">
+                  {teaching && <QuestionPanel snapshot={snapshot} />}
                   <JoinCard snapshot={snapshot} />
-                  <MirrorWarning />
+                  <div className="live__notes">
+                    <MirrorWarning />
+                    <p className="projector__hint">
+                      {t("live.projector.hint")}
+                    </p>
+                    <Link
+                      href="/teacher/help"
+                      className="btn btn--quiet"
+                      target="_blank"
+                      rel="noopener"
+                    >
+                      <QuestionIcon size={24} aria-hidden="true" />
+                      {t("nav.help")}
+                      <span className="sr">{`, ${t("link.newtab")}`}</span>
+                    </Link>
+                  </div>
                 </div>
-                <LiveRoster sessionId={snapshot.session.id} students={snapshot.students} />
+                {/* Who is here keeps its place from the lobby on; while teaching the questions and what the class writes share it, one at a time. */}
+                <div className="live__panel">
+                  {teaching && (
+                    <Tabs
+                      name="live"
+                      label={t("live.tabs.label")}
+                      value={tab}
+                      onChange={setTab}
+                      tabs={[
+                        { id: "class", label: t("live.tab.class") },
+                        { id: "questions", label: t("live.tab.questions") },
+                        {
+                          id: "anon",
+                          label: t("live.tab.anon", {
+                            n: snapshot.anon_questions.length,
+                          }),
+                        },
+                      ]}
+                    />
+                  )}
+                  <TabPanel
+                    name="live"
+                    id="class"
+                    active={!teaching || tab === "class"}
+                    tabbed={teaching}
+                  >
+                    <LiveRoster
+                      sessionId={snapshot.session.id}
+                      students={snapshot.students}
+                    />
+                  </TabPanel>
+                  {teaching && (
+                    <TabPanel
+                      name="live"
+                      id="questions"
+                      active={tab === "questions"}
+                    >
+                      <QuestionList snapshot={snapshot} />
+                    </TabPanel>
+                  )}
+                  {teaching && (
+                    <TabPanel name="live" id="anon" active={tab === "anon"}>
+                      <AnonInbox
+                        sessionId={snapshot.session.id}
+                        items={snapshot.anon_questions}
+                      />
+                    </TabPanel>
+                  )}
+                </div>
               </div>
             )}
-            <section id="live-end-section" className="live__end" aria-labelledby="live-end">
-              <h2 id="live-end" className="sr" tabIndex={-1}>
-                {t("end.button")}
-              </h2>
-              <EndLesson sessionId={snapshot.session.id} />
-              <p className="live__endhint">{t("end.hint")}</p>
-            </section>
           </>
         )}
       </div>
@@ -155,7 +250,9 @@ function JoinCard({ snapshot }: { snapshot: ConsoleSnapshot }) {
 
   return (
     <section className="card live__code" aria-labelledby="live-code">
-      <h2 id="live-code">{t(STUDENTS_CAN_TYPE_CODE ? "live.code.label" : "live.start.title")}</h2>
+      <h2 id="live-code">
+        {t(STUDENTS_CAN_TYPE_CODE ? "live.code.label" : "live.start.title")}
+      </h2>
       {STUDENTS_CAN_TYPE_CODE &&
         (snapshot.join ? (
           <>
@@ -169,16 +266,32 @@ function JoinCard({ snapshot }: { snapshot: ConsoleSnapshot }) {
         ))}
       {lobby && (
         <>
-          <button type="button" className="btn btn--primary btn--big" aria-haspopup="dialog" onClick={() => setAsking(true)}>
+          <button
+            type="button"
+            className="btn btn--primary btn--big"
+            aria-haspopup="dialog"
+            onClick={() => setAsking(true)}
+          >
             <PlayIcon size={28} weight="fill" aria-hidden="true" />
             {t("live.start")}
           </button>
           <p className="live__starthint">{t("live.start.hint")}</p>
-          {problem && <Problem title={t("live.start.failed")}>{problem}</Problem>}
+          {problem && (
+            <Problem title={t("live.start.failed")}>{problem}</Problem>
+          )}
           <ConfirmDialog
             open={asking}
             title={t("live.start.confirm.title")}
-            body={waiting > 0 ? t(isOne(waiting, locale) ? "live.start.confirm.waiting.one" : "live.start.confirm.waiting", { n: waiting }) : t("live.start.confirm.all")}
+            body={
+              waiting > 0
+                ? t(
+                    isOne(waiting, locale)
+                      ? "live.start.confirm.waiting.one"
+                      : "live.start.confirm.waiting",
+                    { n: waiting },
+                  )
+                : t("live.start.confirm.all")
+            }
             stay={t("live.start.confirm.stay")}
             confirm={t("live.start.confirm.yes")}
             onStay={() => setAsking(false)}

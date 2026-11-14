@@ -816,7 +816,7 @@ button {
   }
 }
 /* What a quiet button sits on. A white surface: the tint, no edge. A well inside one: white again, with the edge. */
-:is(.card, .dialog, .lesson, .question, .band, .savebar, .states, .qpanel, .qitem, .rpanel, .live__end, .inbox) {
+:is(.card, .dialog, .lesson, .question, .band, .savebar, .states, .qpanel, .qitem, .rpanel, .inbox) {
   --quiet: var(--tint);
   --quiet-edge: 0 0 transparent;
   --box: var(--well);
@@ -2776,20 +2776,9 @@ button {
   font-weight: 600;
 }
 
-/* The code and the controls beside who has joined; one column where the window is not wide enough for both. */
-.live__grid {
-  display: grid;
-  gap: var(--sp-3);
-  align-items: start;
-}
 .live__side {
   display: grid;
   gap: var(--sp-3);
-}
-@media (min-width: 70rem) {
-  .live__grid {
-    grid-template-columns: 26rem minmax(0, 1fr);
-  }
 }
 
 .live__code {
@@ -2818,28 +2807,32 @@ button {
   padding-inline: var(--sp-2);
 }
 
-/* The projector: the button, where its window stands, and the one warning that matters. */
+/* The projector, in the console's top bar: the button, beside it where its window stands, and under them the one warning that matters. */
 .projector {
-  display: grid;
-  gap: var(--sp-2);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-2);
 }
-.projector .btn {
-  width: 100%;
-  padding-inline: var(--sp-2);
-  text-wrap: balance;
-}
-.card .projector__status {
+.projector__status {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  min-height: 1.5em;
+  margin: 0;
   color: var(--ink);
+  font-size: var(--fs-small);
   font-weight: 500;
 }
 .projector__status svg {
   flex: none;
 }
-.card .projector__hint {
+.projector .callout {
+  flex: 1 1 100%;
+}
+.projector__hint {
+  margin: 0;
+  max-width: var(--measure);
+  color: var(--ink-2);
   font-size: var(--fs-small);
 }
 .callout {
@@ -4919,17 +4912,169 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   margin-left: calc(var(--sp-2) * -1);
 }
 .live__end {
-  display: grid;
-  gap: var(--sp-1);
-  justify-items: start;
-  padding: 1.25rem var(--sp-3);
-  border-radius: var(--r-l);
-  background: var(--surface);
-  box-shadow: var(--ring);
+  display: flex;
 }
-.live__endhint {
-  margin: 0;
+
+/* ---- Live lesson 3: the lesson has the whole window ---- */
+
+/* The console is the one page without the sidebar. The page says so itself (`data-focus`, set by LiveConsole); where the browser can tell
+   from the markup alone, the sidebar is gone before the first paint as well. The end page is a page like any other. */
+:is(:root[data-focus="live"], :root:has(.content.live:not(.endpage))) :is(.sidebar, .topbar, .scrim) {
+  display: none;
+}
+:is(:root[data-focus="live"], :root:has(.content.live:not(.endpage))) .shell {
+  display: block;
+}
+:is(:root[data-focus="live"], :root:has(.content.live:not(.endpage))) .main {
+  min-height: 100dvh;
+  padding-block: var(--sp-3);
+}
+
+/* A window that is not wide (a school laptop at 1024): less margin, and the way back goes above the title, so the title and the course keep
+   one line each beside the two buttons. */
+@media (max-width: 74.99rem) {
+  :is(:root[data-focus="live"], :root:has(.content.live:not(.endpage))) .main {
+    padding-inline: var(--sp-3);
+  }
+  .head--compact:has(.live__tools) .head__text,
+  :root[data-focus="live"] .head--compact .head__text {
+    display: flex;
+    align-items: flex-start;
+  }
+  .head--compact:has(.live__tools) .head__text > *,
+  :root[data-focus="live"] .head--compact .head__text > * {
+    align-self: auto;
+  }
+  .head--compact:has(.live__tools) .back,
+  :root[data-focus="live"] .head--compact .back {
+    margin: -0.375rem 0 0 -0.625rem;
+  }
+}
+@media (max-width: 63.9375rem) {
+  :is(:root[data-focus="live"], :root:has(.content.live:not(.endpage))) .main {
+    padding-inline: var(--sp-2);
+  }
+}
+
+/* The top bar's right side: the projector first, the red End last and apart. In a narrow window it takes a row of its own and wraps. */
+.head--compact .head__action {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.live__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+}
+
+/* The stage beside the panel; one column where the window is not wide enough for both. */
+.live__frame {
+  display: grid;
+  gap: var(--sp-3);
+  align-items: start;
+}
+.live__stage {
+  display: grid;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.live__stage .qpanel {
+  margin-top: 0;
+}
+/* What a teacher reads once: how to place the projected window, and where help is. Quiet, at the foot of the stage. */
+.live__notes {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-1);
+  padding-inline: var(--sp-2);
+}
+.live__notes .btn--quiet {
+  margin-left: calc(var(--sp-2) * -1);
+}
+.live__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+@media (min-width: 64rem) {
+  .live__frame {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  }
+}
+/* On a laptop the lesson is one screen: the panel is as tall as the window allows and a long class or a long list scrolls inside it. */
+@media (min-width: 64rem) and (min-height: 40rem) {
+  .live__panel {
+    position: sticky;
+    top: var(--sp-3);
+    max-height: calc(100dvh - 12.5rem);
+  }
+  .live__panel .tabs__panel[data-active="true"] {
+    /* Positioned, so the lines only a screen reader meets scroll with the list and do not make the page longer. */
+    position: relative;
+    min-height: 0;
+    /* Room for the card's hairline ring, which a scrolling box would cut. */
+    margin: -1px;
+    padding: 1px;
+    overflow-y: auto;
+    border-radius: var(--r-l);
+  }
+}
+
+/* ---- Tabs: one row of names over panels, of which one is shown ---- */
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: var(--r-pill);
+  background: var(--well);
+}
+.tabs__tab {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: var(--tap-small);
+  padding: 0 var(--sp-1);
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
   color: var(--ink-2);
+  font: inherit;
+  font-size: var(--fs-small);
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+}
+/* The chosen tab is a raised white pill with heavier words: told apart by shape and weight, not by colour. */
+.tabs__tab[aria-selected="true"] {
+  background: var(--surface);
+  box-shadow: var(--shadow-panel);
+  color: var(--ink);
+  font-weight: 650;
+}
+@media (hover: hover) and (pointer: fine) {
+  .tabs__tab[aria-selected="false"]:hover {
+    background: var(--hover);
+    color: var(--ink);
+  }
+}
+/* A panel that is not shown keeps only the line it reads out. */
+.tabs__panel[data-active="false"] {
+  display: contents;
+}
+.tabs__panel[data-active="false"] > :not([role="status"]) {
+  display: none;
+}
+@media (forced-colors: active) {
+  .tabs__tab {
+    border: 1px solid transparent;
+  }
+  .tabs__tab[aria-selected="true"] {
+    border-color: Highlight;
+    outline: 2px solid Highlight;
+    outline-offset: -4px;
+  }
 }
 
 /* ---- The end page ---- */

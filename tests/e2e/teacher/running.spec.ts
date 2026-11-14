@@ -91,6 +91,9 @@ test.describe("with a lesson running, on a laptop", () => {
     await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
     await expect(reminder(page)).toHaveCount(0);
 
+    // The lesson's own screen has no menu: Back leads to Today, and the menu is there.
+    await page.getByRole("link", { name: "Назад кон Денес" }).click();
+    await expect(title(page)).toHaveText("Денес");
     await mainMenu(page).getByRole("link", { name: "Класови" }).click();
     await expect(title(page)).toHaveText("Класови");
     await expect(reminder(page, /^Час во тек\s*,\s*III-5$/)).toBeVisible();
