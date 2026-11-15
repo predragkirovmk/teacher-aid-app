@@ -239,6 +239,12 @@ teal: read "the yellow button" as "the main button". Yellow now only marks a liv
   questions, practice, leaving the app and the speed-bonus switch. Lists show five rows first;
   narrow tables become stacked rows. No text under 16px. FR-DASH-02 is not built (no cross-course
   read). The empty course's yellow stays "Оди на Денес".
+  (Revised 2026-11-15 by step 5 of the redesign, `docs/teacher-redesign-plan.md`: a course's page is six tabs, one shown at a time:
+  "Накратко" (the three figures and the weakest topic), "Кој доаѓа" (attendance, and leaving the app under it), "Часови", "Слаби
+  теми", "Прашања", "Вежби". The row of in-page links is gone; each tab has its own address (`#attendance`, `#points`, `#topics`,
+  `#questions`, `#practice`; `#focus` opens "Кој доаѓа", `#settings` opens the settings), kept on reload. The speed-bonus switch is in
+  a dialog behind a quiet "Поставки" button at the right of the title. The end page has "Оди на Денес" at the right of its title,
+  copy and print in the head of the list, the counts as one row, and what was missed and the practice beside the list on a laptop.)
 - Step 12: the attendance table's headers wrap at 1280 ("Присутен/ а"); use plain column words
   that fit.
 - Step 12 (owner, 2026-11-06): after the code review, a last pass over the whole app with

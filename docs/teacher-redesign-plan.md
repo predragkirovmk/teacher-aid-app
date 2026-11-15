@@ -45,6 +45,9 @@ for review", its preview link and the pictures, and wait.
   (`decisions/step-4`). What it changed is under "Step 4 as built" below.
 - 2026-11-15, 18:50 UTC: the owner approved step 4 (`decisions/step-4`, no note) and said so in
   the chat. Step 5 is being built.
+- 2026-11-15: step 5 (after the lesson: the end page and a class's results) is built and waits
+  for the owner on the review page (`decisions/step-5`). What it changed is under "Step 5 as built"
+  below.
 
 A decision made on the page does not reach the session by itself. Read the store before
 every message that says what is being waited for, and, while a step waits for the owner,
@@ -211,6 +214,55 @@ feature is where a teacher can reach it; nothing new is asked of the API.
 - **Not changed:** the start window, the quick question, "present without a phone" and the
   windows that ask before starting and ending (they took the new look in step 1 and read well);
   the review's own panel; the projected view (`.cv`), compared before and after.
+
+## Step 5 as built (2026-11-15)
+
+After the lesson: the end page and a class's results. Every feature is where it was asked to be;
+nothing new is asked of the API (the speed-bonus switch makes the same call from its new place).
+
+- **The end page.** The one main button, "Оди на Денес", is at the right of the title, where it
+  is found without reading the page; it was in a card at the foot. The line that says the lesson
+  is saved sits under the state line. The attendance list has its name and what it is for at the
+  left of its head and "Копирај го списокот" and "Печати го списокот" at the right; the counts are
+  one row of figures, not five grey tiles, above the names. On a laptop (64rem and wider) the most
+  missed questions and the practice stand in a column beside the list and stay in view while the
+  list scrolls; under that width everything is one column in the old order. "Испрати вежби на
+  класот" is a quiet 44px button like every other. The end page has the ordinary header now (it
+  had the console's compact one), so on a phone the title is not squeezed beside the Back. Print
+  is unchanged: on paper only the list, black on white.
+- **A class's results: six tabs.** "Накратко", "Кој доаѓа", "Часови", "Слаби теми", "Прашања",
+  "Вежби", one shown at a time; the row of in-page links is gone. "Накратко" holds the three
+  figures and the weakest topic. Leaving the app ("Излегување од апликацијата") is under the
+  attendance in "Кој доаѓа": both are about who is there. The tabs are the ones of step 4
+  (`components/teacher/Tabs.tsx`); where the window is narrow they take two rows, never a sideways
+  scroll.
+- **A tab has its own address.** Choosing a tab writes `#attendance`, `#points`, `#topics`,
+  `#questions` or `#practice` (the first tab, none) without adding a step to Back, so a reload, a
+  shared link and Back from a lesson's end page come back to it. Every link of the old page still
+  works: `#focus` opens "Кој доаѓа" at that section, `#settings` opens the settings.
+- **The class's own settings button.** "Поставки", quiet, at the right of the class's title,
+  opens a dialog "Поставки за класот" with the speed-bonus switch, its line of explanation, the
+  saved line and "Затвори". The switch saves at once as before. A class with no lesson held has
+  the same button; the page says so and points to Today as before.
+- **Measured** at 1280 x 800, the same scripted walk on the build before and after: a class's
+  results were one page 4,564px tall; now the first tab is 800px (one screen) and the longest,
+  "Кој доаѓа" with its first five rows, 1,492px. The end page of a lesson just ended (one question
+  asked, 26 students) was 2,313px with the way on at the foot; it is 1,813px, with the way on, the
+  most missed and the practice in the first screen.
+- **New words** (Macedonian, English): the name of the row of tabs, "Резултатите на класот" / "The
+  results of the class" ("на групата" / "of the group" at a faculty). The words of the in-page
+  links ("На оваа страница", "Одете до", "Излегување") left with the links. Nothing was reworded.
+- **No library was added.**
+- **Tests rewritten** because they described the old arrangement: the jump links, every section
+  on one page, the switch in a section of its own, the way on at the foot of the end page. They
+  now say: six tabs in order, one shown, the address per tab kept on reload and followed by the
+  keyboard, every old link opening its place, the settings behind a 44px quiet button in a dialog
+  that gives the focus back when it closes, the tabs and settings in English, the end page's main
+  button in its header, copy and print above the counts, the counts on one row, what was missed
+  beside the list. A test that reads a section opens its tab first, as a teacher would. The
+  accessibility check now also runs on "Кој доаѓа" and on the open settings.
+- **Not changed:** the review, the console and the projected view; the tables' stacked rows at
+  200% zoom; print; copying the list; the practice set's flow.
 
 ## What was measured
 

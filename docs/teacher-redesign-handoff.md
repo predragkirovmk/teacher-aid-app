@@ -8,7 +8,8 @@ what went wrong before and what the remaining steps ask for.
 ## Where things stand
 
 Read "Status" in `docs/teacher-redesign-plan.md`: it is the record. On 2026-11-15 it said: the
-direction and steps 1 to 4 are approved, step 5 is being built. Steps 6 and 7 are not started. Nothing after a waiting step is built until the owner approves it.
+direction and steps 1 to 4 are approved, step 5 is built and waits for the owner. Steps 6 and 7
+are not started. Nothing after a waiting step is built until the owner approves it.
 
 - Branch `ccr-65507c3f-cbceas` in both repositories; draft pull request #8 in the app repo and #5
   in the brain repo. Never `main`, never a merge.
@@ -151,7 +152,8 @@ The owner decides there, so it has to be right, short and true.
   `Daily/YYYY-MM-DD.md` and `Areas/product/teacher-app-redesign.md` (Status line and "Step N as
   built"). Commit and push it too.
 - If a step changes what the API must provide, both backend handoff documents in the brain, the
-  same session. Steps 1 to 3 changed nothing there. Step 5 might (see below).
+  same session. Steps 1 to 5 changed nothing there (step 5 moved the speed-bonus switch; it makes
+  the same `PATCH /courses/{id}` call from its dialog).
 
 ## Waiting for the owner
 
@@ -220,6 +222,10 @@ settings button.
 - Printing and copying the attendance list are features with tests; they stay one press away.
 - Moving the speed-bonus switch is a move of a control, not a change of rule. If the place it
   moves to needs a call the API does not have, record it in the backend handoff documents.
+- Built 2026-11-15 (see "Step 5 as built" in the plan). Leaving the app went into "Кој доаѓа";
+  the settings are a `<dialog>` behind "Поставки" in the header. Helpers in `classes.spec.ts`:
+  `openTab(page, name)` and `settingsDialog(page)`. The tab is written to the address with
+  `history.replaceState`, so it is read on mount and on `hashchange` only.
 
 ### Step 6: Settings, Help, sign-in, first run, and every loading, empty and error state
 
