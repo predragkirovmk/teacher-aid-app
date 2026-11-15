@@ -361,7 +361,7 @@ footer { color: var(--ink-2); font-size: 0.9375rem; }
 
   <div class="top">
     <span class="wordmark"><svg aria-hidden="true"><use href="#logo"/></svg>TeacherAid</span>
-    <span class="chip" id="status" data-tone="decide">Step 5 is ready for your review.</span>
+    <span class="chip" id="status" data-tone="decide">Step 6 is ready for your review.</span>
   </div>
 
   <header class="hero">
@@ -369,23 +369,128 @@ footer { color: var(--ink-2); font-size: 0.9375rem; }
     <h1>A calmer teacher app</h1>
     <p class="lead">You said the app feels crowded and confusing to use. I opened every screen and measured it. No feature needs to go. Too much is on screen at once, and all of it is equally loud. This plan keeps every feature and changes how the screens are arranged and how they look.</p>
     <ol class="how">
-      <li><h3>You approved the look and steps 1 to 4</h3><p class="muted">The light look on 12 November, the new colours, type and sidebar on 13 November, the four lists as rows and preparing a lesson on 14 November, the live lesson on 15 November.</p></li>
-      <li><h3>Step 5 of 7 is built</h3><p class="muted">After the lesson: the page a lesson ends on, and a class's results. It is below, with a preview you can click through.</p></li>
-      <li><h3>Your decision starts step 6</h3><p class="muted">Approve step 5 or send it back. Nothing more is built until you do.</p></li>
+      <li><h3>You approved the look and steps 1 to 5</h3><p class="muted">The light look on 12 November, the new colours, type and sidebar on 13 November, the four lists as rows and preparing a lesson on 14 November, the live lesson and what comes after it on 15 November.</p></li>
+      <li><h3>Step 6 of 7 is built</h3><p class="muted">Settings, Help, and what a page says when it is empty, slow or could not load. It is below, with a preview you can click through.</p></li>
+      <li><h3>Your decision starts step 7</h3><p class="muted">Approve step 6 or send it back. Nothing more is built until you do.</p></li>
     </ol>
   </header>
 
-  <section aria-labelledby="s5-h" id="step-5-review">
+  <section aria-labelledby="s6-h" id="step-6-review">
     <div class="section-head">
-      <p class="eyebrow">Step 5 of 7 · built 15 November 2026</p>
-      <h2 id="s5-h">After the lesson: one thing to read at a time</h2>
-      <p class="muted measure">The page a lesson ends on, and a class's results. Both were long pages of boxes. The end page now has the way on at the top and the list beside what was missed; a class's results are six tabs. Every feature is still there.</p>
+      <p class="eyebrow">Step 6 of 7 · built 15 November 2026</p>
+      <h2 id="s6-h">Settings, Help and the quiet moments</h2>
+      <p class="muted measure">The pages a teacher visits now and then, and what any page says when it is empty, slow or cannot load. Settings and Help were stacks of cards; now they are short lists of rows with each control at the right. Every feature is still there.</p>
     </div>
 
     <div class="review-bar">
       <a class="btn btn-primary" href="https://teacher-aid-git-ccr-65507c3f-cbceas-predragkirovmks-projects.vercel.app/teacher" target="_blank" rel="noopener">Open the preview</a>
       <p class="muted">The preview is the real app with the demo school. On the sign-in screen press “Најави се со Google”, then choose Марија Петровска. No password is asked. If Vercel asks you to log in before the app opens, use your own Vercel account: the preview is private to it.</p>
     </div>
+
+    <ul class="principles">
+      <li><h3>Settings in rows</h3><p class="muted">Each setting is one row, its control at the right where the eye looks. Half the height it was.</p></li>
+      <li><h3>Instructions when you ask</h3><p class="muted">The steps to install the app open under “Како?”, which says “Сокриј ги чекорите” while they are shown.</p></li>
+      <li><h3>Help on one screen</h3><p class="muted">Six questions as one list that opens in place; writing to us is the one main button.</p></li>
+      <li><h3>Every state says what happened</h3><p class="muted">I walked no lessons, no classes, a slow page, a failed page, no internet and a session that ended. Each says what happened and offers one way on; only the failed page needed a change.</p></li>
+      <li><h3>Sign-in and the guide stay</h3><p class="muted">They were already calm, so they are as you know them.</p></li>
+      <li><h3>Same words</h3><p class="muted">Two new: “Како?” and “Сокриј ги чекорите”. Nothing else was reworded.</p></li>
+    </ul>
+
+    <div class="pairs">
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>Settings</h3>
+            <p class="muted">Three groups of rows: the name and what it does on the left, the control at the right. Language and type of institution are two-piece switches. The install steps wait behind “Како?”. Before, Settings was five tall cards, 1,935 px; it is 973 px now.</p>
+          </div>
+          <div class="switch" role="group" aria-label="Settings: after or before">
+            <button type="button" id="s6-settings-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s6-settings-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s6-before-settings.webp" width="1920" height="1200" alt="Settings before step 6: tall cards, each with an icon, the language and institution as large stacked choices." loading="lazy">
+          <img class="is-after" src="img/s6-after-settings.webp" width="1920" height="1200" alt="Settings after step 6: two white groups of rows with the controls at the right, and the demo group under them." loading="lazy">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>Help</h3>
+            <p class="muted">The questions are rows of one list that open in place, and “Пишете ни” is a row under them with the address beside it. Before, each question was a card of its own; the page now fits one screen.</p>
+          </div>
+          <div class="switch" role="group" aria-label="Help: after or before">
+            <button type="button" id="s6-help-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s6-help-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s6-before-help.webp" width="1920" height="1200" alt="Help before step 6: six separate question cards and a contact card under them." loading="lazy">
+          <img class="is-after" src="img/s6-after-help.webp" width="1920" height="1200" alt="Help after step 6: the six questions as rows of one white list, and the contact row with Пишете ни at the right." loading="lazy">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>When a page cannot load</h3>
+            <p class="muted">What went wrong and “Обиди се повторно” are one white panel, the words on the left and the button at the right. Before, the button sat loose under a grey box.</p>
+          </div>
+          <div class="switch" role="group" aria-label="When a page cannot load: after or before">
+            <button type="button" id="s6-fail-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s6-fail-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s6-before-fail.webp" width="1920" height="1200" alt="A failed load before step 6: a grey box with the message and the try-again button under it." loading="lazy">
+          <img class="is-after" src="img/s6-after-fail.webp" width="1920" height="1200" alt="A failed load after step 6: one white panel with the message on the left and Обиди се повторно at the right." loading="lazy">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>Settings on a phone</h3>
+            <p class="muted">The control goes under its words, and each choice takes the full width, so nothing breaks into a ragged line.</p>
+          </div>
+          <div class="switch" role="group" aria-label="Settings on a phone: after or before">
+            <button type="button" id="s6-phone-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s6-phone-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <div><div class="frame frame--phone">
+          <img class="is-before" src="img/s6-before-phone.webp" width="585" height="1266" alt="Settings on a phone before step 6: the large stacked choices in cards." loading="lazy">
+          <img class="is-after" src="img/s6-after-phone.webp" width="585" height="1266" alt="Settings on a phone after step 6: rows with the choices full width under their names." loading="lazy">
+        </div></div>
+      </figure>
+    </div>
+
+    <p class="muted measure">Not changed: the sign-in screen, the demo's sign-in window, the welcome guide, the page for an address that does not exist, the offline page, and the window that asks before the demo is reset. To try it in the preview: open “Поставки” and “Помош” at the foot of the sidebar.</p>
+
+    <div class="decide" data-for="step-6">
+      <h3>Your decision on step 6</h3>
+      <div class="saved" aria-live="polite"><b data-saved-title></b><span data-saved-detail></span></div>
+      <div class="decide-on">
+        <label for="note-step-6">Notes for Claude (optional)</label>
+        <textarea id="note-step-6" rows="3" placeholder="A setting you cannot find, a question you would add to Help, something you want back as it was"></textarea>
+      </div>
+      <div class="buttons decide-on">
+        <button type="button" class="btn btn-primary" id="approve-step-6" data-choice="approved">Approve step 6</button>
+        <button type="button" class="btn" id="changes-step-6" data-choice="changes">Ask for changes</button>
+      </div>
+      <p class="decide-msg decide-on muted" role="status"></p>
+      <p class="decide-off muted">Decisions cannot be saved from this view. Tell Claude your decision in the chat instead.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="s5-h" id="step-5-review">
+    <div class="section-head">
+      <p class="eyebrow">Step 5 of 7 · approved 15 November 2026</p>
+      <h2 id="s5-h">After the lesson: one thing to read at a time</h2>
+      <p class="muted measure">The page a lesson ends on, and a class's results. Both were long pages of boxes. The end page now has the way on at the top and the list beside what was missed; a class's results are six tabs. Every feature is still there.</p>
+    </div>
+
 
     <ul class="principles">
       <li><h3>The way on at the top</h3><p class="muted">“Оди на Денес” is at the right of “Часот заврши”, where you find it without reading the page. Before, it was at the very bottom.</p></li>
@@ -1435,18 +1540,18 @@ footer { color: var(--ink-2); font-size: 0.9375rem; }
           <p class="muted measure">The one-screen console: waiting for students, teaching, review. A top bar, the question at the left, three tabs at the right. Approved on 15 November 2026. <a href="#step-4-review">See it again.</a></p>
         </div>
       </li>
-      <li class="step" data-step="step-5" data-status="review">
+      <li class="step" data-step="step-5" data-status="done">
         <span class="step-n">5</span>
         <div class="step-body">
-          <div class="step-title"><h3>After the lesson</h3><span class="chip" data-chip data-tone="decide">Ready for your review</span></div>
-          <p class="muted measure">The end of lesson page with the attendance list, and class results with tabs. <a href="#step-5-review">See it and decide at the top of the page.</a></p>
+          <div class="step-title"><h3>After the lesson</h3><span class="chip" data-chip data-tone="done">Approved</span></div>
+          <p class="muted measure">The end of lesson page with the attendance list, and class results with tabs. Approved on 15 November 2026. <a href="#step-5-review">See it again.</a></p>
         </div>
       </li>
-      <li class="step" data-step="step-6" data-status="planned">
+      <li class="step" data-step="step-6" data-status="review">
         <span class="step-n">6</span>
         <div class="step-body">
-          <div class="step-title"><h3>Settings, Help, sign-in and first run</h3><span class="chip" data-chip>Not started</span></div>
-          <p class="muted measure">The remaining screens, and every loading, empty and error state.</p>
+          <div class="step-title"><h3>Settings, Help, sign-in and first run</h3><span class="chip" data-chip data-tone="decide">Ready for your review</span></div>
+          <p class="muted measure">The remaining screens, and every loading, empty and error state. <a href="#step-6-review">See it and decide at the top of the page.</a></p>
         </div>
       </li>
       <li class="step" data-step="step-7" data-status="planned">
@@ -1460,7 +1565,7 @@ footer { color: var(--ink-2); font-size: 0.9375rem; }
   </section>
 
   <footer>
-    <p>Prepared 12 November 2026, updated 15 November for step 5. The pictures under steps 1 to 5 are the built app with the demo school's data. The mockups under “The direction” are drawings of the proposal.</p>
+    <p>Prepared 12 November 2026, updated 15 November for step 6. The pictures under steps 1 to 6 are the built app with the demo school's data. The mockups under “The direction” are drawings of the proposal.</p>
   </footer>
 </div>
 
@@ -1526,9 +1631,9 @@ footer { color: var(--ink-2); font-size: 0.9375rem; }
         (d.note ? "Your note: " + d.note + " " : "") + "Tell Claude “go” in the chat to continue. You can change this by pressing another button.";
     }
     if (stepId === "direction" && approved && d.look) setLook(d.look);
-    if (stepId === "step-5") {
+    if (stepId === "step-6") {
       var status = document.getElementById("status");
-      status.textContent = approved ? "Step 5 approved. Step 6 is next." : "Changes requested on step 5.";
+      status.textContent = approved ? "Step 6 approved. Step 7 is next." : "Changes requested on step 6.";
       status.dataset.tone = approved ? "done" : "changes";
     }
   };
