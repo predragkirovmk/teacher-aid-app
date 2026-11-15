@@ -48,6 +48,8 @@ for review", its preview link and the pictures, and wait.
 - 2026-11-15: step 5 (after the lesson: the end page and a class's results) is built and waits
   for the owner on the review page (`decisions/step-5`). What it changed is under "Step 5 as built"
   below.
+- 2026-11-15, 19:36 UTC: the owner approved step 5 (`decisions/step-5`, no note). Step 6 is
+  being built.
 
 A decision made on the page does not reach the session by itself. Read the store before
 every message that says what is being waited for, and, while a step waits for the owner,
