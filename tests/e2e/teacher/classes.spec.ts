@@ -363,6 +363,14 @@ test.describe("failure, waiting and a class that is not the teacher's", () => {
     await seed(page, { dashboard_failures: 1 }, `/teacher/classes/${II4}`);
     await expect(page.locator(".problem")).toContainText("Не успеавме да ги вчитаме резултатите");
     await expect(page.getByTestId("summary")).toHaveCount(0);
+    // What went wrong and the way on are one panel: the words on the left, the button at the right of them.
+    const panel = page.locator(".load-problem");
+    const retry = panel.getByRole("button", { name: "Обиди се повторно" });
+    const words = (await panel.locator(".problem").boundingBox())!;
+    const button = (await retry.boundingBox())!;
+    expect(button.x).toBeGreaterThan(words.x + words.width - 1);
+    expect(button.y).toBeLessThan(words.y + words.height);
+    expect(await panel.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(255, 255, 255)");
     await page.getByRole("button", { name: "Обиди се повторно" }).click();
     await expect(page.getByTestId("sum-lessons")).toHaveText("10");
     await expect(page.locator(".problem")).toHaveCount(0);

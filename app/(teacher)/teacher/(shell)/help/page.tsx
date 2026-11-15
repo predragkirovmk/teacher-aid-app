@@ -3,6 +3,7 @@
 import { EnvelopeSimpleIcon, MinusIcon, PlusIcon } from "@phosphor-icons/react";
 import { useEffect, useRef } from "react";
 import { PageHeader } from "@/components/teacher/PageHeader";
+import { SettingRow } from "@/components/teacher/SettingRow";
 import { useT, type Key } from "@/lib/teacher/i18n";
 import { PROJECTOR_HELP_ID } from "@/lib/teacher/routes";
 
@@ -43,45 +44,55 @@ export default function HelpPage() {
     <>
       <PageHeader title={t("help.title")} subtitle={t("help.what")} />
       <div className="content">
-        {FAQ.map(([q, a]) => (
-          <details key={q} className="card faq">
+        {/* The questions are rows of one list, each opening in place; the way to write to us is a row of its own under them. */}
+        <div className="setgroup">
+          {FAQ.map(([q, a]) => (
+            <details key={q} className="faq">
+              <summary>
+                {t(q)}
+                <PlusIcon className="faq__plus" size={24} aria-hidden="true" />
+                <MinusIcon className="faq__minus" size={24} aria-hidden="true" />
+              </summary>
+              <p>{t(a)}</p>
+            </details>
+          ))}
+          <details ref={projector} id={PROJECTOR_HELP_ID} className="faq">
             <summary>
-              {t(q)}
-              <PlusIcon className="faq__plus" size={28} aria-hidden="true" />
-              <MinusIcon className="faq__minus" size={28} aria-hidden="true" />
+              {t("help.projector.q")}
+              <PlusIcon className="faq__plus" size={24} aria-hidden="true" />
+              <MinusIcon className="faq__minus" size={24} aria-hidden="true" />
             </summary>
-            <p>{t(a)}</p>
+            <div className="faq__steps">
+              <p>{t("help.projector.why")}</p>
+              {PROJECTOR_STEPS.map(({ title, steps }) => (
+                <section key={title}>
+                  <h3>{t(title)}</h3>
+                  <ol className="steps">
+                    {steps.map((step) => (
+                      <li key={step}>{t(step)}</li>
+                    ))}
+                  </ol>
+                </section>
+              ))}
+              <p>{t("help.projector.last")}</p>
+            </div>
           </details>
-        ))}
-        <details ref={projector} id={PROJECTOR_HELP_ID} className="card faq">
-          <summary>
-            {t("help.projector.q")}
-            <PlusIcon className="faq__plus" size={28} aria-hidden="true" />
-            <MinusIcon className="faq__minus" size={28} aria-hidden="true" />
-          </summary>
-          <div className="faq__steps">
-            <p>{t("help.projector.why")}</p>
-            {PROJECTOR_STEPS.map(({ title, steps }) => (
-              <section key={title}>
-                <h3>{t(title)}</h3>
-                <ol className="steps">
-                  {steps.map((step) => (
-                    <li key={step}>{t(step)}</li>
-                  ))}
-                </ol>
-              </section>
-            ))}
-            <p>{t("help.projector.last")}</p>
-          </div>
-        </details>
-        <div className="card card--stack">
-          <h2>{t("help.contact.title")}</h2>
-          <p>{t("help.contact.body")}</p>
-          <a href={`mailto:${t("help.contact.email")}`} className="btn btn--primary">
-            <EnvelopeSimpleIcon size={24} weight="bold" aria-hidden="true" />
-            {t("help.contact.cta")}
-          </a>
-          <p className="address">{t("help.contact.email")}</p>
+        </div>
+        <div className="setgroup">
+          <SettingRow
+            title={t("help.contact.title")}
+            hint={
+              <>
+                {t("help.contact.body")} <span className="address">{t("help.contact.email")}</span>
+              </>
+            }
+            control={() => (
+              <a href={`mailto:${t("help.contact.email")}`} className="btn btn--primary">
+                <EnvelopeSimpleIcon size={24} weight="bold" aria-hidden="true" />
+                {t("help.contact.cta")}
+              </a>
+            )}
+          />
         </div>
       </div>
     </>

@@ -387,6 +387,8 @@ const en = {
   "install.step3": "Confirm with “Install”.",
   "install.nothing":
     "Cannot see the icon? Open the browser menu (three dots, top right) and look for “Install”.",
+  "install.how": "How?",
+  "install.how.hide": "Hide the steps",
 
   "demo.title": "Demo data",
   "demo.hint": "The lessons you prepare here are kept on this computer only. Reset puts the demo school back as it was at the start. Your language and type of institution stay as they are.",
@@ -1358,6 +1360,8 @@ const mk: Record<Key, Entry> = {
   "install.step2": "На десната страна од лентата кликнете на малата икона за инсталирање (монитор со стрелка надолу).",
   "install.step3": "Потврдете со „Инсталирај“.",
   "install.nothing": "Не ја гледате иконата? Отворете го менито на прелистувачот (три точки горе десно) и побарајте „Инсталирај“.",
+  "install.how": "Како?",
+  "install.how.hide": "Сокриј ги чекорите",
 
   "demo.title": "Демо податоци",
   "demo.hint": "Лекциите што ги подготвувате тука се чуваат само на овој компјутер. Ресетирањето го враќа демо училиштето како на почеток. Јазикот и типот на установа остануваат.",

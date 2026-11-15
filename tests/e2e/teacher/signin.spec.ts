@@ -539,6 +539,8 @@ test.describe("when the session ends while the teacher is working", () => {
 
   test("a button pressed after the session ended is refused, and sends the teacher to sign in without losing the page", async ({ page }) => {
     await page.goto("/teacher/settings");
+    // The teacher is working: the page is there, which means the app has heard who is signed in. Only then does the session end.
+    await expect(page.getByRole("link", { name: "Марија Петровска, поставки" })).toBeVisible();
     await page.evaluate((key) => localStorage.removeItem(key), SESSION_KEY);
     await page.getByRole("button", { name: "Ресетирај ги демо податоците" }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Да, ресетирај" }).click();

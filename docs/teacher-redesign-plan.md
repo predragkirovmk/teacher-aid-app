@@ -50,6 +50,9 @@ for review", its preview link and the pictures, and wait.
   below.
 - 2026-11-15, 19:36 UTC: the owner approved step 5 (`decisions/step-5`, no note). Step 6 is
   being built.
+- 2026-11-15: step 6 (Settings, Help, sign-in, the first run and the states) is built and waits
+  for the owner on the review page (`decisions/step-6`). What it changed is under "Step 6 as built"
+  below.
 
 A decision made on the page does not reach the session by itself. Read the store before
 every message that says what is being waited for, and, while a step waits for the owner,
@@ -216,6 +219,53 @@ feature is where a teacher can reach it; nothing new is asked of the API.
 - **Not changed:** the start window, the quick question, "present without a phone" and the
   windows that ask before starting and ending (they took the new look in step 1 and read well);
   the review's own panel; the projected view (`.cv`), compared before and after.
+
+## Step 6 as built (2026-11-15)
+
+Settings, Help, sign-in, the first run, and the states a page can be in. Every feature is where it
+was; nothing new is asked of the API.
+
+- **Settings is three groups of rows**, each row with its name and a line of what it does on the
+  left and its control at the right: how the app speaks (language, type of institution), what it
+  does for this computer (the guide again, install), the demo's own (reset, a lesson running). It
+  was five tall cards, each with an icon. The two choices are segmented controls, the same as the
+  subject row of step 2: real radio buttons, the chosen piece white with a tick and heavier words,
+  44px. Every control on Settings is quiet; the page has no main button. In a window under 48rem
+  (a phone, or 200% zoom) the control goes under the words; on a phone a choice of two takes the
+  row's width, its pieces one under the other.
+- **Install: the steps wait behind "Како?"**, a real button (`aria-expanded`) whose words change to
+  "Сокриј ги чекорите" while they are shown, with a caret that turns. They open under the row,
+  across its width. Where the browser offers its own install dialog, the row has "Инсталирај"
+  instead, as before.
+- **Help is one list.** The six questions are rows of one panel that open in place, split by a
+  hairline (they were six cards); the projector's steps and `#projector` work as before. "Не го
+  најдовте одговорот?" is a row of its own under them, with "Пишете ни", the page's one main button,
+  at the right and the address as words beside the line.
+- **A page that could not load** says what went wrong and offers "Обиди се повторно" in one white
+  panel, the words on the left and the button at the right (they were a grey box with the button
+  loose under it). In a window the problem keeps its box, as before.
+- **Walked on purpose, at 1280 x 800 and on a phone:** a failed read (a class's results), a slow
+  read (the placeholders keep the page's shape), a new teacher with nothing yet (Today, Lessons,
+  Classes each say so and offer one way on), the offline page, a session that ended (the sign-in
+  says why), a sign-in that failed. Each says what happened and offers one way on; only the failed
+  read needed a change. Sign-in, the guide, the demo's sign-in sheet and the not-found page were
+  already in the calm language and are unchanged. The offline page, the manifest and the icons are
+  unchanged, so `public/teacher-sw.js` is too.
+- **Measured** at 1280 x 800: Settings was 1,935px tall; it is 973px. Help was 960px; it is one
+  screen, 800px.
+- **New words** (Macedonian, English): "Како?" / "How?", "Сокриј ги чекорите" / "Hide the steps".
+  Nothing was reworded.
+- **No library was added.** `components/teacher/SettingRow.tsx` is the row; `GuideCard`,
+  `InstallCard` and `DemoCard` became `GuideRow`, `InstallRow` and `DemoRows`.
+- **Tests.** New: Settings is three groups whose controls end at the right of their rows, the
+  chosen piece is 44px with a tick, no main button, the arrow keys still move the choice; "Како?"
+  says its state, shows and hides the steps, keeps the focus; on a phone the control goes under the
+  words with no ragged track and no sideways scroll; Help's questions are rows of one list that
+  open in place and "Пишете ни" is the one main button; a failed read is one panel with the button
+  at the right. One test changed: "a button pressed after the session ended" now waits for the page
+  to be there before it ends the session, as its sibling test does. It failed one run in four
+  because the session sometimes ended before the app had heard who was signed in, which is a
+  different case (a visitor who was never signed in) from the one it describes.
 
 ## Step 5 as built (2026-11-15)
 

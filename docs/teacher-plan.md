@@ -49,6 +49,8 @@ the owner approved the light look on 2026-11-12):
   without the sidebar. The lesson has the whole window; "Назад кон Денес" is the way out, the lesson keeps running, and the reminder on
   every other page brings the teacher back. The projector button and the red End are in the console's top bar; who is here, the
   lesson's questions and the anonymous questions are three tabs beside the question. The end page, at the same address, has the sidebar.)
+  (Revised 2026-11-15 by step 6 of the redesign: Settings and Help are groups of rows on white panels, the control of each row at
+  its right; long instructions open under their row behind a button that says in words whether they are shown, "Како?".)
 - Every screen has a plain title saying where you are. Deep screens have a labelled Back, a quiet
   line above the title.
 - Anything that cannot be undone asks first, in plain words, with the safe choice as the default.

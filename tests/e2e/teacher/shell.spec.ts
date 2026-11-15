@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, MOCK_KEY, SETTINGS_KEY, test } from "./fixtures";
+import { expect, MOCK_KEY, SETTINGS_KEY, tall, test } from "./fixtures";
 
 /**
  * Smoke tests of the teacher shell, in mock mode, in Macedonian unless a test changes the language. They read like what a
@@ -216,6 +216,116 @@ test.describe("settings", () => {
     expect(after.v).toBe(1);
     await expect(title(page)).toHaveText("Settings");
     await expect(mainMenu(page).getByRole("link", { name: "Groups" })).toBeVisible();
+  });
+
+  test("is a few groups of rows, each with its words on the left and its control at the right", async ({ page }) => {
+    await page.goto("/teacher/settings");
+    // Three groups: how the app speaks, what it does for this computer, the demo's own.
+    await expect(page.locator(".setgroup")).toHaveCount(3);
+    const rows = [
+      { name: "Јазик", control: page.getByRole("radiogroup", { name: "Јазик" }) },
+      { name: "Тип на установа", control: page.getByRole("radiogroup", { name: /^Тип на установа/ }) },
+      { name: "Водич за почеток", control: page.getByRole("link", { name: "Прикажи го водичот повторно" }) },
+      { name: "Инсталирај на компјутерот", control: page.getByRole("button", { name: "Како?" }) },
+      { name: "Демо податоци", control: page.getByRole("button", { name: "Ресетирај ги демо податоците" }) },
+    ];
+    for (const { name, control } of rows) {
+      const heading = page.getByRole("heading", { level: 2, name: new RegExp(`^${name}`) });
+      const row = page.locator(".setrow").filter({ has: heading });
+      await expect(row, name).toHaveCount(1);
+      await expect(row.locator(".setrow__control"), name).toContainText(/\S/);
+      const r = (await row.boundingBox())!;
+      const h = (await heading.boundingBox())!;
+      const c = (await control.boundingBox())!;
+      // The control ends near the row's right edge, right of the words, and sits within the row's height.
+      expect(r.x + r.width - (c.x + c.width), name).toBeLessThan(30);
+      expect(c.x, name).toBeGreaterThan(h.x + h.width);
+      expect(c.y, name).toBeGreaterThanOrEqual(r.y);
+      expect(c.y + c.height, name).toBeLessThanOrEqual(r.y + r.height);
+    }
+    // The choices are one track with the chosen piece marked by a tick and heavier words, and they are quiet: 44px.
+    const chosen = page.locator(".seg .choice[data-checked=true]").first();
+    await expect(chosen).toContainText("Македонски");
+    await expect(chosen.locator("svg")).toBeVisible();
+    expect(await tall(chosen)).toBe(44);
+    expect(await tall(page.getByRole("button", { name: "Ресетирај ги демо податоците" }))).toBe(44);
+    // Nothing on Settings is the main button: every control here is quiet.
+    await expect(page.locator(".btn--primary:visible")).toHaveCount(0);
+    // The arrow keys still move between the choices: they are real radio buttons.
+    await page.getByRole("radio", { name: "Македонски" }).focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(title(page)).toHaveText("Settings");
+    await expect(page.getByRole("radio", { name: "English" })).toBeChecked();
+  });
+
+  test("the steps to install wait behind 'Како?', a real button that says in words whether they are shown", async ({ page }) => {
+    await page.goto("/teacher/settings");
+    const how = page.getByRole("button", { name: "Како?" });
+    const step = page.getByText("Погледнете ја адресната лента");
+    await expect(how).toHaveAttribute("aria-expanded", "false");
+    await expect(step).toBeHidden();
+    expect(await tall(how)).toBe(44);
+
+    await how.click();
+    const hide = page.getByRole("button", { name: "Сокриј ги чекорите" });
+    await expect(hide).toHaveAttribute("aria-expanded", "true");
+    await expect(hide).toBeFocused();
+    await expect(step).toBeVisible();
+    await expect(page.locator(`#${await hide.getAttribute("aria-controls")}`)).toContainText("Потврдете со „Инсталирај“.");
+    // The steps open under the row, across its width, and the rest of the page moves down for them.
+    const row = (await page.locator(".setrow").filter({ has: hide }).boundingBox())!;
+    const list = (await page.locator(".setrow__more").boundingBox())!;
+    expect(list.y).toBeGreaterThan((await hide.boundingBox())!.y);
+    expect(list.width).toBeGreaterThan(row.width * 0.8);
+
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("button", { name: "Како?" })).toHaveAttribute("aria-expanded", "false");
+    await expect(step).toBeHidden();
+  });
+});
+
+test.describe("settings in a phone's width", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("the control goes under the words, and a choice of two takes the row's width without a ragged line", async ({ page }) => {
+    await page.goto("/teacher/settings");
+    const row = page.locator(".setrow").filter({ has: page.getByRole("heading", { name: /^Тип на установа/ }) });
+    const words = (await row.locator(".setrow__text").boundingBox())!;
+    const track = (await row.locator(".choices").boundingBox())!;
+    expect(track.y).toBeGreaterThanOrEqual(words.y + words.height);
+    expect(Math.abs(track.x - words.x)).toBeLessThan(2);
+    expect(Math.abs(track.width - words.width)).toBeLessThan(2);
+    // Each piece takes the track's width: one under the other, never a long one and a short one.
+    const pieces = row.locator(".choice");
+    expect(Math.abs((await pieces.nth(0).boundingBox())!.width - (await pieces.nth(1).boundingBox())!.width)).toBeLessThan(1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  });
+});
+
+test.describe("help", () => {
+  test("the questions are rows of one list that open in place, and writing to us is the one main button", async ({ page }) => {
+    await page.goto("/teacher/help");
+    const list = page.locator(".setgroup").first();
+    await expect(list.locator("details")).toHaveCount(6);
+    const first = list.locator("details").first();
+    await expect(first.locator("summary")).toHaveText("Како да подготвам лекција?");
+    expect(await tall(first.locator("summary"))).toBeGreaterThanOrEqual(56);
+    await expect(page.getByText("Изберете предмет и година", { exact: false })).toBeHidden();
+    await first.locator("summary").click();
+    await expect(first).toHaveAttribute("open", "");
+    await expect(first.getByText("Изберете предмет и година", { exact: false })).toBeVisible();
+    // The rows are one panel: they touch, split by a hairline.
+    const a = (await list.locator("details").nth(1).boundingBox())!;
+    const b = (await list.locator("details").nth(2).boundingBox())!;
+    expect(Math.abs(b.y - (a.y + a.height))).toBeLessThan(2);
+
+    const write = page.getByRole("link", { name: "Пишете ни" });
+    await expect(page.locator(".btn--primary:visible")).toHaveCount(1);
+    await expect(write).toHaveClass(/btn--primary/);
+    expect(await tall(write)).toBe(48);
+    await expect(write).toHaveAttribute("href", "mailto:hello@teacheraid.education");
+    // The address is there as words too, for a teacher whose computer opens no mail program.
+    await expect(page.getByText("hello@teacheraid.education", { exact: true })).toBeVisible();
   });
 });
 
