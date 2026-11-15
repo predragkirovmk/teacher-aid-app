@@ -1055,13 +1055,61 @@ button {
 .faq summary::-webkit-details-marker {
   display: none;
 }
-.faq summary svg {
+/* The mark is a plus drawn with two strokes; opening turns the upright one down onto the other, so it becomes a minus. Strokes are
+   borders, which Windows high contrast keeps. */
+.faq__mark {
+  position: relative;
   flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
   color: var(--ink-2);
 }
-.faq[open] .faq__plus,
-.faq:not([open]) .faq__minus {
-  display: none;
+.faq__mark::before,
+.faq__mark::after {
+  content: "";
+  position: absolute;
+  top: calc(50% - 1px);
+  left: 0;
+  width: 100%;
+  border-top: 2px solid currentColor;
+  border-radius: 1px;
+}
+.faq__mark::after {
+  transform: rotate(90deg);
+  transition: transform var(--spring-smooth-dur) var(--spring-smooth);
+}
+.faq[open] .faq__mark::after {
+  transform: rotate(0deg);
+}
+/* An answer opens in place: its row grows to it and the words fade in as they arrive, and it closes the same way. This is the one
+   move that is not transform or opacity: without it the rows under the question would jump. Where a browser cannot grow a
+   disclosure, the answer still fades in. */
+.faq {
+  interpolate-size: allow-keywords;
+}
+.faq::details-content {
+  block-size: 0;
+  overflow: clip;
+  transition:
+    block-size var(--spring-smooth-dur) var(--spring-smooth),
+    content-visibility var(--spring-smooth-dur) allow-discrete;
+}
+.faq[open]::details-content {
+  block-size: auto;
+}
+.faq[open] > :not(summary) {
+  animation:
+    arrive-fade 240ms var(--ease-out) 60ms backwards,
+    arrive-rise var(--spring-smooth-dur) var(--spring-smooth) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .faq::details-content,
+  .faq__mark::after {
+    transition: none;
+  }
+  .faq[open] > :not(summary) {
+    animation: arrive-fade var(--dur) var(--ease) backwards;
+  }
 }
 .faq > p {
   margin: 0;
@@ -4376,7 +4424,7 @@ body:has(.cv) {
 /*
  * ---- Motion ----
  * Few moves, each for a reason: something was pressed, arrived, changed place or was done. Only transform, opacity and (for a
- * bar that fills) clip-path move. Arrivals rise a little and fade in; the fade is over before the rise, so words are readable at
+ * bar that fills) clip-path move, with one exception: an answer in Help grows its row as it opens (see "Help: the questions"). Arrivals rise a little and fade in; the fade is over before the rise, so words are readable at
  * once. Nothing loops but a wait. With Reduce Motion only short fades are left (the block after this one).
  */
 @keyframes arrive-fade {

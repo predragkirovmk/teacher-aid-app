@@ -314,6 +314,15 @@ test.describe("help", () => {
     await first.locator("summary").click();
     await expect(first).toHaveAttribute("open", "");
     await expect(first.getByText("Изберете предмет и година", { exact: false })).toBeVisible();
+    // It opens with a move (the owner's note on step 6): the row grows to its answer and the plus turns into a minus.
+    const motion = (el: Element) => {
+      const content = getComputedStyle(el, "::details-content");
+      return { property: content.transitionProperty, duration: content.transitionDuration };
+    };
+    expect(await first.evaluate(motion)).toEqual({ property: "block-size, content-visibility", duration: "0.54s, 0.54s" });
+    const upright = (el: Element) => getComputedStyle(el.querySelector(".faq__mark")!, "::after").transform;
+    await expect.poll(() => first.evaluate(upright)).toBe("matrix(1, 0, 0, 1, 0, 0)");
+    expect(await list.locator("details").nth(1).evaluate(upright)).toBe("matrix(0, 1, -1, 0, 0, 0)");
     // The rows are one panel: they touch, split by a hairline.
     const a = (await list.locator("details").nth(1).boundingBox())!;
     const b = (await list.locator("details").nth(2).boundingBox())!;
@@ -326,6 +335,21 @@ test.describe("help", () => {
     await expect(write).toHaveAttribute("href", "mailto:hello@teacheraid.education");
     // The address is there as words too, for a teacher whose computer opens no mail program.
     await expect(page.getByText("hello@teacheraid.education", { exact: true })).toBeVisible();
+  });
+});
+
+test.describe("help with Reduce Motion", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  test("an answer opens at once, with only a short fade", async ({ page }) => {
+    await page.goto("/teacher/help");
+    const first = page.locator(".setgroup details").first();
+    expect(
+      await first.evaluate((el) => [getComputedStyle(el, "::details-content").transitionDuration, getComputedStyle(el.querySelector(".faq__mark")!, "::after").transitionDuration]),
+    ).toEqual(["0s", "0s"]);
+    await first.locator("summary").click();
+    await expect(first.locator("p")).toBeVisible();
+    expect(await first.locator("p").evaluate((el) => getComputedStyle(el).animationName)).toBe("arrive-fade");
   });
 });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { EnvelopeSimpleIcon, MinusIcon, PlusIcon } from "@phosphor-icons/react";
+import { EnvelopeSimpleIcon } from "@phosphor-icons/react";
 import { useEffect, useRef } from "react";
 import { PageHeader } from "@/components/teacher/PageHeader";
 import { SettingRow } from "@/components/teacher/SettingRow";
@@ -50,8 +50,7 @@ export default function HelpPage() {
             <details key={q} className="faq">
               <summary>
                 {t(q)}
-                <PlusIcon className="faq__plus" size={24} aria-hidden="true" />
-                <MinusIcon className="faq__minus" size={24} aria-hidden="true" />
+                <span className="faq__mark" aria-hidden="true" />
               </summary>
               <p>{t(a)}</p>
             </details>
@@ -59,8 +58,7 @@ export default function HelpPage() {
           <details ref={projector} id={PROJECTOR_HELP_ID} className="faq">
             <summary>
               {t("help.projector.q")}
-              <PlusIcon className="faq__plus" size={24} aria-hidden="true" />
-              <MinusIcon className="faq__minus" size={24} aria-hidden="true" />
+              <span className="faq__mark" aria-hidden="true" />
             </summary>
             <div className="faq__steps">
               <p>{t("help.projector.why")}</p>

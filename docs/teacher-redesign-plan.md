@@ -53,6 +53,9 @@ for review", its preview link and the pictures, and wait.
 - 2026-11-15: step 6 (Settings, Help, sign-in, the first run and the states) is built and waits
   for the owner on the review page (`decisions/step-6`). What it changed is under "Step 6 as built"
   below.
+- 2026-11-15, 22:07 UTC: the owner approved step 6 (`decisions/step-6`) with one note: "the faq
+  should have an animation", and said "go on to step 7" in the chat. The note was done the same
+  day (under "Step 6 as built"). Step 7 is being built.
 
 A decision made on the page does not reach the session by itself. Read the store before
 every message that says what is being waited for, and, while a step waits for the owner,
@@ -266,6 +269,21 @@ was; nothing new is asked of the API.
   to be there before it ends the session, as its sibling test does. It failed one run in four
   because the session sometimes ended before the app had heard who was signed in, which is a
   different case (a visitor who was never signed in) from the one it describes.
+
+- **The owner's note, done the same day: Help's answers move.** A question's row grows to its
+  answer and the words fade in as they arrive; it closes the same way. The mark at the right is a
+  plus drawn with two strokes that turns into a minus. The growth is the one move in the app that
+  is not transform or opacity (the rows under the question would otherwise jump); it is one panel
+  of a few lines, 540ms on the app's smooth spring. With Reduce Motion the answer opens at once with
+  a short fade. Where a browser cannot grow a disclosure (`::details-content`), the answer still
+  fades in.
+- **Found on the way: a page whose code failed to load.** A test of the editor failed about one
+  run in twelve under load. The cause was real: the browser fetches a page's code ahead of time,
+  and if that happens while the connection is down the failure is remembered, so pressing "Денес"
+  once the connection is back showed "Нешто не е во ред". The error screen now loads such a page
+  afresh by itself as soon as the connection is there (once for an address in 30 seconds, so a
+  page that is really broken does not reload for ever), and its "Обиди се повторно" loads afresh
+  too (`lib/teacher/chunk.ts`, with unit tests). The editor test passed 32 runs of 32 after it.
 
 ## Step 5 as built (2026-11-15)
 
