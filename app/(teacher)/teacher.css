@@ -5086,10 +5086,51 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   display: grid;
   gap: var(--sp-3);
 }
+.endpage__held {
+  margin: calc(-1 * var(--sp-2)) 0 0;
+  color: var(--ink-2);
+}
+/* The list at the left; what was missed and the practice at the right, where they stay in view beside a long list. */
+.endpage__frame {
+  display: grid;
+  gap: var(--sp-3);
+  align-items: start;
+}
+.endpage__side {
+  display: grid;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+@media (min-width: 64rem) {
+  .endpage__frame {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  }
+  .endpage__side {
+    position: sticky;
+    top: var(--sp-3);
+  }
+}
 .att {
   display: grid;
   gap: var(--sp-2);
-  justify-items: start;
+  min-width: 0;
+}
+/* The list's head: its name and what it is for at the left, the two things done with it at the right. */
+.att__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.att__name {
+  display: grid;
+  gap: 0.25rem;
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+.card .att__name h2 {
+  margin: 0;
 }
 .att__hint {
   margin: 0;
@@ -5099,21 +5140,19 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
 .att-print__title {
   display: none;
 }
+/* The counts as one row of figures, each with its word under it. */
 .att__counts {
   list-style: none;
   margin: 0;
   padding: 0;
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
-  gap: var(--sp-1);
+  grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
+  gap: var(--sp-1) var(--sp-2);
 }
 .att__counts li {
   display: grid;
   align-content: start;
-  padding: var(--sp-1) var(--sp-2);
-  border-radius: var(--r-m);
-  background: var(--well);
 }
 .att__counts strong {
   font-size: var(--fs-figure);
@@ -5130,10 +5169,11 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
 .att__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-2);
+  gap: var(--sp-1);
 }
 .att__note {
   margin: 0;
+  justify-self: start;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -5159,11 +5199,6 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
 }
 .att__table tr[data-status="absent"] td {
   font-weight: 600;
-}
-.endpage__way {
-  display: grid;
-  gap: var(--sp-2);
-  justify-items: start;
 }
 .practice {
   display: grid;
@@ -5286,26 +5321,34 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   font-size: var(--fs-small);
   line-height: 1.3;
 }
-/* One quiet line of links, not a row of buttons. */
-.cres__jump {
-  width: 100%;
-  display: flex;
+/* Six tabs: one row where there is room, two where there is not; nothing scrolls sideways. */
+.cres .tabs {
   flex-wrap: wrap;
-  align-items: center;
-  gap: 0 var(--sp-2);
-  color: var(--ink-2);
-  font-size: var(--fs-small);
-  font-weight: 500;
+  border-radius: var(--r-l);
 }
-.cres__jump ul {
-  list-style: none;
+.cres .tabs__tab {
+  flex: 1 0 auto;
+  padding: 0 var(--sp-2);
+}
+.cres .tabs__panel[data-active="true"] {
+  display: grid;
+  gap: var(--sp-3);
+}
+/* The class's settings, in a dialog over the results. */
+.cres__settings {
+  display: grid;
+  gap: var(--sp-2);
+}
+.cres__settings:not([open]) {
+  display: none;
+}
+.cres__settings .dialog__title,
+.cres__settings .dialog__body {
   margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 var(--sp-3);
 }
-.cres__jump a,
+.cres__settings .dialog__actions {
+  margin-top: var(--sp-1);
+}
 .cres__link {
   display: inline-flex;
   align-items: center;

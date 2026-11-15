@@ -1,5 +1,5 @@
 import type { BrowserContext, Page } from "@playwright/test";
-import { expect, test } from "./fixtures";
+import { expect, tall, test } from "./fixtures";
 import { CLASS_IDS, go, next, openProjector, panel, PLANS, reveal, row, send, SESSION, start, TEACHING_AT, teach, mainButton, at } from "./live-helpers";
 
 /**
@@ -364,9 +364,30 @@ test.describe("the end page", () => {
     // By surname, then name: the first word of each name is the surname, in the Macedonian alphabet.
     const surnames = (await rows.locator("th").allInnerTexts()).map((n) => n.split(" ")[0]);
     expect(surnames).toEqual([...surnames].sort((a, b) => a.localeCompare(b, "mk")));
-    // One main button, the way on.
+    // One main button, the way on, at the right of the title, where it is found without reading the page.
     await expect(mainButton(page)).toHaveText(/Оди на Денес/);
     await expect(mainButton(page)).toHaveCount(1);
+    await expect(page.locator(".head").locator(".btn--primary")).toHaveCount(1);
+    await expect(page.getByText("Часот е зачуван меѓу одржаните часови.")).toBeVisible();
+    // Copy and print in the head of the list, above the counts; the counts one row above the names.
+    const list = page.locator(".att");
+    const copy = list.getByRole("button", { name: "Копирај го списокот" });
+    const print = list.getByRole("button", { name: "Печати го списокот" });
+    const counts = page.locator(".att__counts li");
+    const below = async (a: typeof copy, b: typeof copy) => (await a.boundingBox())!.y + (await a.boundingBox())!.height <= (await b.boundingBox())!.y + 1;
+    expect(await below(copy, counts.first())).toBe(true);
+    // On one row: their tops within a pixel or two (the buttons settle in as the page arrives).
+    expect(Math.abs((await copy.boundingBox())!.y - (await print.boundingBox())!.y)).toBeLessThan(2);
+    const tops = await counts.evaluateAll((items) => items.map((li) => Math.round(li.getBoundingClientRect().top)));
+    expect(new Set(tops).size).toBe(1);
+    expect(await below(counts.first(), rows.first())).toBe(true);
+    expect(await tall(copy)).toBe(44);
+    // What was missed and the practice stand beside the list on a laptop: what was missed is in the first screen, the practice under it.
+    await expect(page.locator(".endpage__missed")).toBeInViewport();
+    const right = async (a: string) => (await page.locator(a).boundingBox())!;
+    expect((await right(".practice")).x).toBeGreaterThanOrEqual((await right(".att")).x + (await right(".att")).width);
+    expect((await right(".practice")).y).toBeGreaterThan((await right(".endpage__missed")).y);
+    expect(await tall(page.getByRole("button", { name: "Испрати вежби на класот" }))).toBe(44);
   });
 
   test("the list is copied as one student a line, and the line that says so takes the focus", async ({ page, context }) => {

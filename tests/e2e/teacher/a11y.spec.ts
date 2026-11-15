@@ -19,6 +19,8 @@ const SCREENS: [string, string][] = [
   ["help", "/teacher/help"],
   ["classes", "/teacher/classes"],
   ["a course", "/teacher/classes/course-ii-4"],
+  ["a course, who comes", "/teacher/classes/course-ii-4#attendance"],
+  ["a course, its settings", "/teacher/classes/course-ii-4#settings"],
   ["not found", "/teacher/nothing-here"],
 ];
 
@@ -91,7 +93,9 @@ void panel; void teach; void T0;
 test.describe("reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
   test("nothing moves: the drawer, the dialogs, the waiting dots and the switches slide, scale and turn no more, and only short colour and opacity fades are left", async ({ page }) => {
-    await page.goto("/teacher/classes/course-ii-4");
+    // The class's settings, open: its dialog and its switch are on the page.
+    await page.goto("/teacher/classes/course-ii-4#settings");
+    await expect(page.getByRole("switch")).toBeVisible();
     await page.waitForLoadState("load");
     const moving = await page.evaluate(() =>
       [...document.querySelectorAll("*")]

@@ -3,7 +3,7 @@ import { createMockApi, memorySource } from "../../../lib/teacher/api/mock";
 import { freshState, MOCK_KEY, startOfDay } from "../../../lib/teacher/api/mock-state";
 import { attendanceByStudent, focusByStudent, newestQuestions, summaryOf, weakestFirst } from "../../../lib/teacher/classes";
 import type { CourseDashboard } from "../../../lib/teacher/api/types";
-import { expect, SETTINGS_KEY, test } from "./fixtures";
+import { expect, SETTINGS_KEY, tall, test } from "./fixtures";
 import { go, next, panel, reveal, send, T0, teach, TEACHING_AT, title, mainButton } from "./live-helpers";
 
 /**
@@ -22,6 +22,14 @@ const dashboardOf = async (courseId: string): Promise<CourseDashboard> => {
 test.beforeEach(async ({ context }) => {
   await context.clock.setFixedTime(T0);
 });
+
+/** The tabs of a class's results, and the one that opens a section. */
+const tabs = (page: Page) => page.getByRole("tablist", { name: "Резултатите на класот" });
+const openTab = async (page: Page, name: string) => {
+  await tabs(page).getByRole("tab", { name, exact: true }).click();
+  await expect(tabs(page).getByRole("tab", { name, exact: true })).toHaveAttribute("aria-selected", "true");
+};
+const settingsDialog = (page: Page) => page.getByRole("dialog", { name: "Поставки за класот" });
 
 const seed = async (page: Page, what: Record<string, unknown>, url: string) => {
   await page.goto("/teacher/help");
@@ -84,7 +92,7 @@ test.describe("the list of classes", () => {
 });
 
 test.describe("the results of a class with a season", () => {
-  test("the summary and the links to the sections", async ({ page }) => {
+  test("the summary first, then six tabs, one shown at a time; a tab has its own address and keeps it after a reload", async ({ page }) => {
     const d = await dashboardOf(II4);
     const s = summaryOf(d);
     await page.goto(`/teacher/classes/${II4}`);
@@ -95,20 +103,64 @@ test.describe("the results of a class with a season", () => {
     await expect(page.getByTestId("sum-right")).toHaveText(`${Math.round((s.right as number) * 100)}%`);
     await expect(page.getByTestId("summary")).toContainText("од одговорите беа точни");
     await expect(page.getByTestId("sum-weakest")).toContainText(`${s.weakest!.topic}: ${s.weakest!.right} од ${s.weakest!.total} точни`);
-    const jump = page.getByRole("navigation", { name: "На оваа страница" });
-    for (const name of ["Кој доаѓа", "Часови", "Слаби теми", "Прашања", "Вежби", "Излегување", "Поставки"]) {
-      await expect(jump.getByRole("link", { name })).toBeVisible();
-    }
-    await jump.getByRole("link", { name: "Слаби теми" }).click();
+    await expect(tabs(page).getByRole("tab")).toHaveText(["Накратко", "Кој доаѓа", "Часови", "Слаби теми", "Прашања", "Вежби"]);
+    await expect(tabs(page).getByRole("tab", { name: "Накратко" })).toHaveAttribute("aria-selected", "true");
+    // One shown at a time: the other sections are not drawn.
+    await expect(page.getByRole("heading", { name: "Слаби теми" })).toBeHidden();
+    await expect(page.getByTestId("attendance-table")).toBeHidden();
+    await openTab(page, "Слаби теми");
     await expect(page).toHaveURL(/#topics$/);
     await expect(page.getByRole("heading", { name: "Слаби теми" })).toBeInViewport();
+    await expect(page.getByTestId("summary")).toBeHidden();
+    await expect(page.getByRole("tabpanel")).toHaveCount(1);
+    await expect(page.getByRole("tabpanel")).toHaveAccessibleName("Слаби теми");
+    await page.reload();
+    await expect(tabs(page).getByRole("tab", { name: "Слаби теми" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("topic-row").first()).toBeVisible();
+    // The keyboard: the arrows move along the tabs and show each at once; the address follows.
+    await tabs(page).getByRole("tab", { name: "Слаби теми" }).focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(tabs(page).getByRole("tab", { name: "Прашања" })).toBeFocused();
+    await expect(page).toHaveURL(/#questions$/);
+    await page.keyboard.press("Home");
+    await expect(tabs(page).getByRole("tab", { name: "Накратко" })).toHaveAttribute("aria-selected", "true");
+    await expect(page).toHaveURL(new RegExp(`/teacher/classes/${II4}$`));
     await expect(mainButton(page)).toHaveCount(0);
+  });
+
+  test("the links of the page before the tabs still open their place: a section opens its tab, leaving the app is in Who comes, the settings open", async ({ page }) => {
+    for (const [hash, tab, heading] of [
+      ["attendance", "Кој доаѓа", "Кој доаѓа"],
+      ["points", "Часови", "Часови"],
+      ["topics", "Слаби теми", "Слаби теми"],
+      ["questions", "Прашања", "Прашања"],
+      ["practice", "Вежби", "Вежби"],
+      ["focus", "Кој доаѓа", "Излегување од апликацијата"],
+    ] as const) {
+      await page.goto(`/teacher/classes/${II4}#${hash}`);
+      await expect(tabs(page).getByRole("tab", { name: tab, exact: true })).toHaveAttribute("aria-selected", "true");
+      await expect(page.getByRole("heading", { name: heading, exact: true })).toBeInViewport();
+    }
+    await page.goto(`/teacher/classes/${II4}`);
+    await page.goto(`/teacher/classes/${II4}#settings`);
+    await expect(settingsDialog(page)).toBeVisible();
+    await expect(settingsDialog(page).getByRole("switch", { name: "Бонус за брз одговор" })).toBeVisible();
+  });
+
+  test("in English the tabs and the settings say it in English", async ({ page }) => {
+    await page.addInitScript(([k]) => localStorage.setItem(k, JSON.stringify({ locale: "en", schoolType: "school", schoolSeen: true })), [SETTINGS_KEY]);
+    await page.goto(`/teacher/classes/${II4}`);
+    const list = page.getByRole("tablist", { name: "The results of the class" });
+    await expect(list.getByRole("tab")).toHaveText(["In short", "Who comes", "Lessons", "Weak topics", "Questions", "Practice"]);
+    await page.getByRole("button", { name: "Settings" }).click();
+    await expect(page.getByRole("dialog", { name: "Settings for the class" }).getByRole("switch", { name: "Bonus for fast answers" })).toBeVisible();
   });
 
   test("attendance: five students, then all; the reasons and the student who joined mid-year", async ({ page }) => {
     const d = await dashboardOf(II4);
     const rows = attendanceByStudent(d);
     await page.goto(`/teacher/classes/${II4}`);
+    await openTab(page, "Кој доаѓа");
     const att = page.getByTestId("course-att-row");
     await expect(att).toHaveCount(5);
     await page.locator("#attendance").getByTestId("show-all").click();
@@ -126,7 +178,7 @@ test.describe("the results of a class with a season", () => {
   });
 
   test("attendance: a name is one line and has the room, the table has a caption and headers", async ({ page }) => {
-    await page.goto(`/teacher/classes/${II4}`);
+    await page.goto(`/teacher/classes/${II4}#attendance`);
     const table = page.getByTestId("attendance-table");
     await expect(table.locator("caption")).toHaveText("Присуство на секој ученик");
     await expect(table.locator("thead th")).toHaveCount(5);
@@ -141,6 +193,10 @@ test.describe("the results of a class with a season", () => {
     await page.goto(`/teacher/classes/${II4}`);
     await expect(page.getByTestId("sum-lessons")).toHaveText("10");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    // The six tabs take two rows rather than run off the side.
+    for (const tab of await tabs(page).getByRole("tab").all()) await expect(tab).toBeInViewport();
+    await openTab(page, "Часови");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     const row = page.getByTestId("points-row").first();
     await expect(row.locator("td").first()).toBeVisible();
     await expect(row.getByRole("link", { name: /^Отвори:/ })).toBeVisible();
@@ -151,22 +207,31 @@ test.describe("the results of a class with a season", () => {
   test("nothing on the page is smaller than 16px", async ({ page }) => {
     await page.goto(`/teacher/classes/${II4}`);
     await expect(page.getByTestId("sum-lessons")).toHaveText("10");
-    for (const b of await page.getByTestId("show-all").all()) await b.click();
-    const small = await page.evaluate(() => {
-      const found: string[] = [];
-      for (const el of document.querySelectorAll(".cres *")) {
-        if (!(el instanceof HTMLElement) || !el.childNodes.length) continue;
-        const own = [...el.childNodes].some((n) => n.nodeType === 3 && (n.textContent ?? "").trim() !== "");
-        if (own && el.offsetParent !== null && parseFloat(getComputedStyle(el).fontSize) < 16) found.push(`${el.tagName}.${el.className}: ${el.textContent?.slice(0, 30)}`);
-      }
-      return found;
-    });
-    expect(small).toEqual([]);
+    const smallWords = () =>
+      page.evaluate(() => {
+        const found: string[] = [];
+        for (const el of document.querySelectorAll("main *")) {
+          if (!(el instanceof HTMLElement) || !el.childNodes.length) continue;
+          const own = [...el.childNodes].some((n) => n.nodeType === 3 && (n.textContent ?? "").trim() !== "");
+          if (own && el.checkVisibility() && parseFloat(getComputedStyle(el).fontSize) < 16) found.push(`${el.tagName}.${el.className}: ${el.textContent?.slice(0, 30)}`);
+        }
+        return found;
+      });
+    // Every tab, each list opened in full; then the settings.
+    for (const name of ["Накратко", "Кој доаѓа", "Часови", "Слаби теми", "Прашања", "Вежби"]) {
+      await openTab(page, name);
+      for (const b of await page.getByTestId("show-all").filter({ visible: true }).all()) await b.click();
+      expect(await smallWords(), name).toEqual([]);
+    }
+    await page.getByRole("button", { name: "Поставки" }).click();
+    await expect(settingsDialog(page)).toBeVisible();
+    expect(await smallWords()).toEqual([]);
   });
 
   test("the lessons: the day, the title, who came and one plain result, five rows then all", async ({ page }) => {
     const d = await dashboardOf(II4);
     await page.goto(`/teacher/classes/${II4}`);
+    await openTab(page, "Часови");
     const rows = page.getByTestId("points-row");
     await expect(rows).toHaveCount(5);
     const newest = d.sessions[0];
@@ -181,6 +246,8 @@ test.describe("the results of a class with a season", () => {
     await expect(page).toHaveURL(new RegExp(`/teacher/live/${newest.id}$`));
     await expect(title(page)).toHaveText("Часот заврши");
     await page.goBack();
+    // Back comes to the tab the teacher left from.
+    await expect(tabs(page).getByRole("tab", { name: "Часови" })).toHaveAttribute("aria-selected", "true");
     await expect(page.locator(".cres__table .btn--primary, .cres__table [style*='red']")).toHaveCount(0);
   });
 
@@ -188,6 +255,7 @@ test.describe("the results of a class with a season", () => {
     const d = await dashboardOf(II4);
     const order = weakestFirst(d.topics);
     await page.goto(`/teacher/classes/${II4}`);
+    await openTab(page, "Слаби теми");
     const rows = page.getByTestId("topic-row");
     await expect(rows.first()).toContainText(order[0].topic);
     await expect(rows.first()).toContainText(`${order[0].right} од ${order[0].total} точни`);
@@ -200,6 +268,8 @@ test.describe("the results of a class with a season", () => {
     const d = await dashboardOf(II4);
     const rows = focusByStudent(d);
     await page.goto(`/teacher/classes/${II4}`);
+    // In the tab of who comes, under the attendance.
+    await openTab(page, "Кој доаѓа");
     const section = page.locator("#focus");
     await expect(section).toContainText("Ова е само информација");
     if (rows.length === 0) {
@@ -216,6 +286,7 @@ test.describe("the results of a class with a season", () => {
     const list = newestQuestions(d.anon_questions);
     expect(list.length).toBeGreaterThan(0);
     await page.goto(`/teacher/classes/${II4}`);
+    await openTab(page, "Прашања");
     const items = page.getByTestId("question-item");
     await expect(items).toHaveCount(Math.min(list.length, 5));
     await expect(items.first()).toContainText(list[0].text);
@@ -227,6 +298,7 @@ test.describe("the results of a class with a season", () => {
   test("practice: how many finished, and who, behind a disclosure", async ({ page }) => {
     const d = await dashboardOf(II4);
     await page.goto(`/teacher/classes/${II4}`);
+    await openTab(page, "Вежби");
     const sets = page.getByTestId("practice-set");
     await expect(sets).toHaveCount(d.practice.length);
     const first = d.practice[0];
@@ -236,24 +308,38 @@ test.describe("the results of a class with a season", () => {
     await expect(page.locator("#practice")).toContainText(`${d.sessions.length - d.practice.length} од ${d.sessions.length}`);
   });
 
-  test("the setting for the class: one switch, in words, saved at once", async ({ page }) => {
+  test("the setting for the class: behind its own quiet button, one switch, in words, saved at once", async ({ page }) => {
     await page.goto(`/teacher/classes/${II4}`);
-    const bonus = page.getByRole("switch", { name: "Бонус за брз одговор" });
+    const open = page.getByRole("button", { name: "Поставки", exact: true });
+    await expect(open).not.toHaveClass(/btn--primary/);
+    expect(await tall(open)).toBe(44);
+    await expect(page.getByRole("switch")).toHaveCount(0);
+    await open.click();
+    const dialog = settingsDialog(page);
+    const bonus = dialog.getByRole("switch", { name: "Бонус за брз одговор" });
     await expect(bonus).toBeChecked();
     await expect(bonus).toContainText("Вклучен");
-    await expect(page.locator("#settings").getByRole("radio")).toHaveCount(0);
-    await expect(page.locator("#settings").getByRole("switch")).toHaveCount(1);
-    await expect(page.locator("#settings").getByRole("button")).toHaveCount(0);
-    await expect(page.locator("#settings")).toContainText("Ученик што одговара побрзо добива неколку поени повеќе.");
+    await expect(dialog.getByRole("radio")).toHaveCount(0);
+    await expect(dialog.getByRole("switch")).toHaveCount(1);
+    await expect(dialog.getByRole("button")).toHaveText(["Затвори"]);
+    await expect(dialog).toContainText("Ученик што одговара побрзо добива неколку поени повеќе.");
     await bonus.click();
     await expect(page.getByTestId("speed-saved")).toHaveText("Зачувано. Бонусот е исклучен.");
     await expect(bonus).not.toBeChecked();
     await expect(bonus).toContainText("Исклучен");
+    // Closed, the focus is back on the button that opened it.
+    await dialog.getByRole("button", { name: "Затвори" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(open).toBeFocused();
     await page.reload();
-    await expect(page.getByRole("switch", { name: "Бонус за брз одговор" })).not.toBeChecked();
-    await page.getByRole("switch", { name: "Бонус за брз одговор" }).click();
+    await page.getByRole("button", { name: "Поставки", exact: true }).click();
+    await expect(settingsDialog(page).getByRole("switch", { name: "Бонус за брз одговор" })).not.toBeChecked();
+    await settingsDialog(page).getByRole("switch", { name: "Бонус за брз одговор" }).click();
     await expect(page.getByTestId("speed-saved")).toHaveText("Зачувано. Бонусот е вклучен.");
-    await expect(page.getByRole("switch", { name: "Бонус за брз одговор" })).toBeChecked();
+    await expect(settingsDialog(page).getByRole("switch", { name: "Бонус за брз одговор" })).toBeChecked();
+    // Escape closes it too.
+    await page.keyboard.press("Escape");
+    await expect(settingsDialog(page)).toHaveCount(0);
   });
 });
 
@@ -265,7 +351,9 @@ test.describe("a class with no lesson held", () => {
     await expect(empty).toContainText("За овој клас уште нема одржан час");
     await expect(mainButton(page)).toHaveCount(1);
     await expect(empty.getByRole("link", { name: "Оди на Денес" })).toHaveAttribute("href", "/teacher");
-    await expect(page.locator("#settings")).toBeVisible();
+    await expect(page.getByRole("tablist")).toHaveCount(0);
+    await page.getByRole("button", { name: "Поставки", exact: true }).click();
+    await expect(settingsDialog(page).getByRole("switch", { name: "Бонус за брз одговор" })).toBeVisible();
     await expect(page.getByTestId("points-row")).toHaveCount(0);
   });
 });
@@ -318,6 +406,7 @@ test.describe("a lesson ended in the demo", () => {
     await expect(card).toContainText("Последниот час беше денес");
     await card.getByRole("link").click();
     await expect(page.getByTestId("sum-lessons")).toHaveText("11");
+    await openTab(page, "Часови");
     const lessons = page.getByTestId("points-row");
     await expect(lessons.first()).toContainText("Проценти и пропорции");
     await lessons.first().getByRole("link", { name: /^Отвори:/ }).click();

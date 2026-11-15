@@ -1,9 +1,9 @@
 "use client";
 
-import { ArrowRightIcon, CaretDownIcon, CheckCircleIcon, CheckIcon } from "@phosphor-icons/react";
+import { ArrowRightIcon, CaretDownIcon, CheckCircleIcon, CheckIcon, GearSixIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { updateCourse, useDashboard, usePracticeResults } from "@/lib/teacher/api/hooks";
 import { isApiError } from "@/lib/teacher/api/errors";
 import type { CourseDashboard, NoDeviceReason } from "@/lib/teacher/api/types";
@@ -31,19 +31,29 @@ import { LoadProblem } from "./LoadProblem";
 import { PageHeader } from "./PageHeader";
 import { Problem } from "./Problem";
 import { Bar, Loading } from "./Skeleton";
+import { TabPanel, Tabs } from "./Tabs";
 
-const SECTIONS = ["attendance", "points", "topics", "questions", "practice", "focus", "settings"] as const;
-type Section = (typeof SECTIONS)[number];
-/** The words of the links to the sections: the heading of each, but short for the two with long headings. */
-const SECTION_KEY = {
+/** The tabs of a class's results, in the order a teacher asks: how it goes, who comes, how the lessons went, which topics are hard, what was asked, the practice. */
+const TABS = ["summary", "attendance", "points", "topics", "questions", "practice"] as const;
+type Tab = (typeof TABS)[number];
+const TAB_KEY = {
+  summary: "course.s.summary",
   attendance: "course.s.attendance",
   points: "course.s.points",
   topics: "course.s.topics",
   questions: "course.s.questions",
   practice: "course.s.practice",
-  focus: "course.jump.focus",
-  settings: "course.jump.settings",
-} as const satisfies Record<Section, string>;
+} as const satisfies Record<Tab, string>;
+
+/**
+ * The tab an address opens. Each tab has its own (`#topics`), so a reload or a shared link comes back to it. The links of the page before the tabs keep
+ * working: `#focus` is a section of the attendance tab, and `#settings` opens the class's settings over the first tab.
+ */
+function tabOf(hash: string): Tab {
+  const h = hash.replace(/^#/, "");
+  if (h === "focus") return "attendance";
+  return (TABS as readonly string[]).includes(h) ? (h as Tab) : "summary";
+}
 
 const REASON_KEY = {
   no_phone: "live.reason.no_phone",
@@ -101,6 +111,7 @@ export function ClassResults() {
         subtitle={d ? t(isOne(d.course.student_count, locale) ? "classes.students.one" : "classes.students", { n: d.course.student_count }) : undefined}
         back={CLASSES}
         backLabel={t("back.classes")}
+        action={d ? <SettingsButton d={d} /> : undefined}
       />
       <div className="content cres">
         {dash.status === "loading" && (
@@ -118,13 +129,13 @@ export function ClassResults() {
           </Loading>
         )}
         {dash.status === "error" && <LoadProblem title={t("course.error.title")} error={dash.error} onRetry={dash.refetch} />}
-        {d && (d.sessions.length === 0 ? <NoLessons d={d} /> : <Season d={d} />)}
+        {d && (d.sessions.length === 0 ? <NoLessons /> : <Season d={d} />)}
       </div>
     </>
   );
 }
 
-function NoLessons({ d }: { d: CourseDashboard }) {
+function NoLessons() {
   const { t } = useT();
   return (
     <>
@@ -136,55 +147,76 @@ function NoLessons({ d }: { d: CourseDashboard }) {
           <ArrowRightIcon size={24} weight="bold" aria-hidden="true" />
         </Link>
       </section>
-      <Settings d={d} />
     </>
   );
 }
 
+/**
+ * A class with lessons held: six tabs, one shown at a time, so a teacher reads one thing and the page stays one or two screens long. The tab is in the
+ * address; it is read when the page opens (this part is drawn only in the browser, once the season is read) and when the address changes.
+ */
 function Season({ d }: { d: CourseDashboard }) {
   const { t, locale } = useT();
+  const [tab, setTab] = useState<Tab>(() => tabOf(window.location.hash));
   const summary = summaryOf(d);
   const weakest = summary.weakest;
+
+  useEffect(() => {
+    const follow = () => setTab(tabOf(window.location.hash));
+    window.addEventListener("hashchange", follow);
+    // An old link to the leaving-the-app section opens its tab and brings the section into view.
+    if (window.location.hash === "#focus") document.getElementById("focus")?.scrollIntoView({ block: "start" });
+    return () => window.removeEventListener("hashchange", follow);
+  }, []);
+
+  const choose = (id: Tab) => {
+    setTab(id);
+    // The address follows the tab without adding a step to Back and without moving the page.
+    window.history.replaceState(window.history.state, "", id === "summary" ? window.location.pathname : `#${id}`);
+  };
+
   return (
     <>
-      <section className="card cres__sum" aria-labelledby="sum-title">
-        <h2 id="sum-title">{t("course.s.summary")}</h2>
-        <ul className="cres__tiles" data-testid="summary">
-          <li>
-            <strong data-testid="sum-lessons">{summary.lessons}</strong>
-            <span>{t(isOne(summary.lessons, locale) ? "course.sum.lessons.one" : "course.sum.lessons")}</span>
-          </li>
-          <li>
-            <strong data-testid="sum-attendance">{summary.attendance === null ? "–" : `${percent(summary.attendance)}%`}</strong>
-            <span>{t("course.sum.attendance")}</span>
-          </li>
-          <li>
-            <strong data-testid="sum-right">{summary.right === null ? "–" : `${percent(summary.right)}%`}</strong>
-            <span>{t("course.sum.right")}</span>
-          </li>
-        </ul>
-        <p data-testid="sum-weakest">
-          <strong>{t("course.sum.weakest")}:</strong>{" "}
-          {weakest ? t("course.sum.weakest.line", { topic: weakest.topic, right: weakest.right, total: weakest.total }) : t("course.sum.weakest.none")}
-        </p>
-        <nav aria-label={t("course.jump")} className="cres__jump">
-          <span>{t("course.jump.lead")}:</span>
-          <ul>
-            {SECTIONS.map((s) => (
-              <li key={s}>
-                <a href={`#${s}`}>{t(SECTION_KEY[s])}</a>
-              </li>
-            ))}
+      <Tabs name="course" label={t("course.tabs")} tabs={TABS.map((id) => ({ id, label: t(TAB_KEY[id]) }))} value={tab} onChange={choose} />
+      <TabPanel name="course" id="summary" active={tab === "summary"}>
+        <section className="card cres__sum" aria-labelledby="sum-title">
+          <h2 id="sum-title">{t("course.s.summary")}</h2>
+          <ul className="cres__tiles" data-testid="summary">
+            <li>
+              <strong data-testid="sum-lessons">{summary.lessons}</strong>
+              <span>{t(isOne(summary.lessons, locale) ? "course.sum.lessons.one" : "course.sum.lessons")}</span>
+            </li>
+            <li>
+              <strong data-testid="sum-attendance">{summary.attendance === null ? "–" : `${percent(summary.attendance)}%`}</strong>
+              <span>{t("course.sum.attendance")}</span>
+            </li>
+            <li>
+              <strong data-testid="sum-right">{summary.right === null ? "–" : `${percent(summary.right)}%`}</strong>
+              <span>{t("course.sum.right")}</span>
+            </li>
           </ul>
-        </nav>
-      </section>
-      <AttendanceSection d={d} locale={locale} />
-      <PointsSection d={d} />
-      <TopicsSection d={d} />
-      <QuestionsSection d={d} />
-      <PracticeSection d={d} />
-      <FocusSection d={d} />
-      <Settings d={d} />
+          <p data-testid="sum-weakest">
+            <strong>{t("course.sum.weakest")}:</strong>{" "}
+            {weakest ? t("course.sum.weakest.line", { topic: weakest.topic, right: weakest.right, total: weakest.total }) : t("course.sum.weakest.none")}
+          </p>
+        </section>
+      </TabPanel>
+      <TabPanel name="course" id="attendance" active={tab === "attendance"}>
+        <AttendanceSection d={d} locale={locale} />
+        <FocusSection d={d} />
+      </TabPanel>
+      <TabPanel name="course" id="points" active={tab === "points"}>
+        <PointsSection d={d} />
+      </TabPanel>
+      <TabPanel name="course" id="topics" active={tab === "topics"}>
+        <TopicsSection d={d} />
+      </TabPanel>
+      <TabPanel name="course" id="questions" active={tab === "questions"}>
+        <QuestionsSection d={d} />
+      </TabPanel>
+      <TabPanel name="course" id="practice" active={tab === "practice"}>
+        <PracticeSection d={d} />
+      </TabPanel>
     </>
   );
 }
@@ -487,11 +519,42 @@ function PracticeWhoList({ sessionId, questions }: { sessionId: string; question
 }
 
 /**
- * The one setting the teacher owns for a class: the bonus for a fast answer (BR-PTS-04, `PATCH /courses/{id}`). One switch, its state said in words
- * beside it; it saves the moment it is pressed and says so. Quiet, last on the page.
+ * The class's own settings, behind one quiet button at the right of the title: they are changed rarely, so they do not take a place among the results.
+ * The address `#settings` (the old link to the section) opens them.
  */
-function Settings({ d }: { d: CourseDashboard }) {
+function SettingsButton({ d }: { d: CourseDashboard }) {
+  const { t } = useT();
+  // Drawn only in the browser, once the class is read, so the address can be read at once.
+  const [open, setOpen] = useState(() => window.location.hash === "#settings");
+  useEffect(() => {
+    const follow = () => {
+      if (window.location.hash === "#settings") setOpen(true);
+    };
+    window.addEventListener("hashchange", follow);
+    return () => window.removeEventListener("hashchange", follow);
+  }, []);
+  const close = () => {
+    setOpen(false);
+    if (window.location.hash === "#settings") window.history.replaceState(window.history.state, "", window.location.pathname);
+  };
+  return (
+    <>
+      <button type="button" className="btn btn--secondary" aria-haspopup="dialog" onClick={() => setOpen(true)} data-testid="settings-open">
+        <GearSixIcon size={24} aria-hidden="true" />
+        {t("course.jump.settings")}
+      </button>
+      {open && <Settings d={d} onClose={close} />}
+    </>
+  );
+}
+
+/**
+ * The one setting the teacher owns for a class: the bonus for a fast answer (BR-PTS-04, `PATCH /courses/{id}`). One switch, its state said in words
+ * beside it; it saves the moment it is pressed and says so.
+ */
+function Settings({ d, onClose }: { d: CourseDashboard; onClose: () => void }) {
   const { t, te } = useT();
+  const dialog = useRef<HTMLDialogElement>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [saved, setSaved] = useState<boolean | null>(null);
@@ -499,6 +562,10 @@ function Settings({ d }: { d: CourseDashboard }) {
   const [local, setLocal] = useState<{ value: boolean; from: boolean } | null>(null);
   const fromServer = d.course.speed_bonus_on;
   const on = local && local.from === fromServer ? local.value : fromServer;
+  useEffect(() => {
+    const el = dialog.current;
+    if (el && !el.open) el.showModal();
+  }, []);
   const flip = async () => {
     if (busy) return;
     setBusy(true);
@@ -515,8 +582,10 @@ function Settings({ d }: { d: CourseDashboard }) {
     }
   };
   return (
-    <section className="card cres__sec" id="settings" aria-labelledby="h-settings" tabIndex={-1}>
-      <h2 id="h-settings">{t("course.s.settings")}</h2>
+    <dialog ref={dialog} className="dialog cres__settings" id="settings" aria-labelledby="h-settings" onClose={onClose}>
+      <h2 id="h-settings" className="dialog__title">
+        {t("course.s.settings")}
+      </h2>
       <button
         type="button"
         role="switch"
@@ -538,7 +607,9 @@ function Settings({ d }: { d: CourseDashboard }) {
           </span>
         </span>
       </button>
-      <p id="speed-body">{t("course.set.speed.body")}</p>
+      <p id="speed-body" className="dialog__body">
+        {t("course.set.speed.body")}
+      </p>
       <p role="status" className="cres__saved" data-testid="speed-saved">
         {saved !== null && (
           <>
@@ -548,6 +619,11 @@ function Settings({ d }: { d: CourseDashboard }) {
         )}
       </p>
       {problem && <Problem title={t("course.set.failed")}>{problem}</Problem>}
-    </section>
+      <div className="dialog__actions">
+        <button type="button" className="btn btn--secondary" onClick={() => dialog.current?.close()}>
+          {t("close")}
+        </button>
+      </div>
+    </dialog>
   );
 }

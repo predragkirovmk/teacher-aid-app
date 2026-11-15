@@ -56,7 +56,14 @@ export function EndPage({ sessionId }: { sessionId: string }) {
         subtitle={data ? `${course ? `${courseLabel(course.subject.name, course.class.name)}: ` : ""}${data.session.lesson.title}` : undefined}
         back={TODAY}
         backLabel={t("back.today")}
-        compact
+        action={
+          data?.attendance ? (
+            <Link href={TODAY} className="btn btn--primary">
+              {t("endpage.today")}
+              <ArrowRightIcon size={24} weight="bold" aria-hidden="true" />
+            </Link>
+          ) : undefined
+        }
       />
       <div className="content live endpage">
         {review.status === "loading" && (
@@ -84,21 +91,19 @@ export function EndPage({ sessionId }: { sessionId: string }) {
         {data && data.attendance && (
           <>
             <StateLine state="ended" compact />
-            <Attendance
-              rows={data.attendance}
-              course={course ? courseLabel(course.subject.name, course.class.name) : null}
-              lesson={data.session.lesson.title}
-              day={data.session.ended_at ?? data.session.started_at}
-            />
-            <Missed missed={data.most_missed} />
-            <Practice sessionId={sessionId} noneMissed={data.most_missed.length === 0} />
-            <section className="card endpage__way" aria-label={t("endpage.today")}>
-              <Link href={TODAY} className="btn btn--primary btn--big">
-                {t("endpage.today")}
-                <ArrowRightIcon size={28} weight="bold" aria-hidden="true" />
-              </Link>
-              <p>{t("endpage.held")}</p>
-            </section>
+            <p className="endpage__held">{t("endpage.held")}</p>
+            <div className="endpage__frame">
+              <Attendance
+                rows={data.attendance}
+                course={course ? courseLabel(course.subject.name, course.class.name) : null}
+                lesson={data.session.lesson.title}
+                day={data.session.ended_at ?? data.session.started_at}
+              />
+              <div className="endpage__side">
+                <Missed missed={data.most_missed} />
+                <Practice sessionId={sessionId} noneMissed={data.most_missed.length === 0} />
+              </div>
+            </div>
           </>
         )}
       </div>
@@ -138,14 +143,34 @@ function Attendance({ rows, course, lesson, day }: { rows: AttendanceRow[]; cour
 
   return (
     <section className="card att att-print" aria-labelledby="att-title">
-      <h2 id="att-title">{t("att.title")}</h2>
-      {/* On paper only: the class, the lesson and the day the list belongs to, above it. */}
-      <p className="att-print__title">
-        {course && <span>{course}</span>}
-        <span>{lesson}</span>
-        <span>{new Date(day).toLocaleDateString(locale === "mk" ? "mk-MK" : "en-GB", { day: "numeric", month: "long", year: "numeric" })}</span>
-      </p>
-      <p className="att__hint">{t("att.hint")}</p>
+      <div className="att__head">
+        <div className="att__name">
+          <h2 id="att-title">{t("att.title")}</h2>
+          {/* On paper only: the class, the lesson and the day the list belongs to, above it. */}
+          <p className="att-print__title">
+            {course && <span>{course}</span>}
+            <span>{lesson}</span>
+            <span>{new Date(day).toLocaleDateString(locale === "mk" ? "mk-MK" : "en-GB", { day: "numeric", month: "long", year: "numeric" })}</span>
+          </p>
+          <p className="att__hint">{t("att.hint")}</p>
+        </div>
+        <div className="att__actions">
+          <button type="button" className="btn btn--secondary" onClick={() => void copy()}>
+            <ClipboardTextIcon size={24} aria-hidden="true" />
+            {t("att.copy")}
+          </button>
+          <button type="button" className="btn btn--secondary" onClick={() => window.print()}>
+            <PrinterIcon size={24} aria-hidden="true" />
+            {t("att.print")}
+          </button>
+        </div>
+      </div>
+      {note && (
+        <p ref={line} className="att__note" role="status" tabIndex={-1} data-note={note}>
+          <CheckCircleIcon size={24} weight="fill" aria-hidden="true" />
+          {t(note === "copied" ? "att.copied" : "att.copy.failed")}
+        </p>
+      )}
       <ul className="att__counts" aria-label={t("att.title")}>
         {ATTENDANCE_STATUSES.map((status) => (
           <li key={status} data-status={status}>
@@ -158,22 +183,6 @@ function Attendance({ rows, course, lesson, day }: { rows: AttendanceRow[]; cour
           <span>{t("att.count.total")}</span>
         </li>
       </ul>
-      <div className="att__actions">
-        <button type="button" className="btn btn--secondary" onClick={() => void copy()}>
-          <ClipboardTextIcon size={24} aria-hidden="true" />
-          {t("att.copy")}
-        </button>
-        <button type="button" className="btn btn--secondary" onClick={() => window.print()}>
-          <PrinterIcon size={24} aria-hidden="true" />
-          {t("att.print")}
-        </button>
-      </div>
-      {note && (
-        <p ref={line} className="att__note" role="status" tabIndex={-1} data-note={note}>
-          <CheckCircleIcon size={24} weight="fill" aria-hidden="true" />
-          {t(note === "copied" ? "att.copied" : "att.copy.failed")}
-        </p>
-      )}
       <table className="att__table">
         <caption className="sr">{t("att.title")}</caption>
         <thead>
@@ -272,8 +281,8 @@ function Practice({ sessionId, noneMissed }: { sessionId: string; noneMissed: bo
         <>
           <p>{t("pr.what")}</p>
           <div>
-            <button type="button" className="btn btn--secondary btn--big" aria-busy={busy} aria-disabled={busy} onClick={() => void send()}>
-              <PaperPlaneTiltIcon size={28} aria-hidden="true" />
+            <button type="button" className="btn btn--secondary" aria-busy={busy} aria-disabled={busy} onClick={() => void send()}>
+              <PaperPlaneTiltIcon size={24} aria-hidden="true" />
               {busy ? t("pr.sending") : t("pr.send")}
             </button>
           </div>
