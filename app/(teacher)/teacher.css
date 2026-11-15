@@ -3332,6 +3332,9 @@ body:has(.cv) {
   line-height: 1.05;
   white-space: nowrap;
 }
+.cv__whole {
+  white-space: nowrap;
+}
 .cv__count {
   margin: 3vh 0 0;
   font-family: var(--font-display);
@@ -4827,7 +4830,11 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   .cv__qr,
   .cv__code,
   .cv__corner,
-  .opt__right {
+  .opt__right,
+  .setgroup,
+  .load-problem:not(.dialog .load-problem),
+  .qitem,
+  .qlist__wait {
     border: 2px solid CanvasText;
   }
   .band {

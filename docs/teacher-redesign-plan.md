@@ -56,6 +56,9 @@ for review", its preview link and the pictures, and wait.
 - 2026-11-15, 22:07 UTC: the owner approved step 6 (`decisions/step-6`) with one note: "the faq
   should have an animation", and said "go on to step 7" in the chat. The note was done the same
   day (under "Step 6 as built"). Step 7 is being built.
+- 2026-11-15: step 7 (the projector and the final gate) is built and waits for the owner on the
+  review page (`decisions/step-7`). What it changed and what the gate found are under "Step 7 as
+  built" below. It is the last step: when it is approved, the redesign is complete.
 
 A decision made on the page does not reach the session by itself. Read the store before
 every message that says what is being waited for, and, while a step waits for the owner,
@@ -222,6 +225,39 @@ feature is where a teacher can reach it; nothing new is asked of the API.
 - **Not changed:** the start window, the quick question, "present without a phone" and the
   windows that ask before starting and ending (they took the new look in step 1 and read well);
   the review's own panel; the projected view (`.cv`), compared before and after.
+
+## Step 7 as built (2026-11-15)
+
+The projector polished and the whole teacher app put through the final gate. Two small changes;
+the rest of the gate passed as it stood.
+
+- **The projector keeps a hyphenated word whole.** At 1024 wide the lobby's line broke
+  "QR-кодот" at its hyphen ("QR-" / "кодот"). Words with a hyphen inside are now wrapped in
+  `span.cv__whole` (`white-space: nowrap`) by `wholeWords()` in `ClassView.tsx`, in the lobby's
+  line and in the corner for those who come late. At 1024 the lobby's line is five balanced lines
+  instead of four with a split word; at 1280 and 1920 it is unchanged. Sizes, colours and the
+  layout of the projector are as they were; `projector-sizes.spec.ts` and the typed-code tests
+  (`live-code.spec.ts`, 4 of 4) pass.
+- **Windows high contrast: every group of rows keeps its edge.** Fills and shadows are dropped in
+  forced colours, and four surfaces drawn only by the soft ring lost their outline: Settings'
+  and Help's groups (`.setgroup`), the page that could not load (`.load-problem` on a page), and
+  the live lesson's question rows (`.qitem`, `.qlist__wait`). They now get a 2px `CanvasText`
+  line, as cards and lists already did. New test: "Settings and Help in Windows high contrast" in
+  `shell.spec.ts`.
+- **The gate**, swept with a script over 15 screens (Today, Lessons, a new lesson, a lesson, the
+  Library and a Library lesson, Settings, Help, Classes, a class in four tabs, a page that does
+  not exist, the first run) in four ways: 1024 x 768, 1920 x 1080, 200% zoom (1280 x 800 at
+  scale 2), and English at 1280. 60 of 60 clean: no sideways scroll, no painted text under 16px
+  outside the projector, the page's language English throughout when English is chosen. The
+  projector was looked at in five states at 1024 x 768, 1280 x 720 and 1920 x 1080.
+- Reduced motion and forced colours were looked at on Today, a class, Help and Settings; axe
+  (`a11y.spec.ts`) stays clean on every screen.
+- Checks: lint, typecheck, 1,539 unit tests, the teacher suite (525 passed, 4 skipped) and the
+  typed-code tests.
+- Not done, by the fence: the website's pictures of the teacher app (`scripts/site-v2-capture.mjs`)
+  still show the old look. They are outside the teacher app; they are refreshed only if the owner
+  asks.
+- Nothing new is asked of the API. No library was added; no words changed.
 
 ## Step 6 as built (2026-11-15)
 

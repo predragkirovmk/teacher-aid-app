@@ -353,6 +353,19 @@ test.describe("help with Reduce Motion", () => {
   });
 });
 
+test.describe("Settings and Help in Windows high contrast", () => {
+  test.use({ forcedColors: "active" });
+
+  test("each group of rows keeps its edge, drawn as a line, since its soft ring is dropped", async ({ page }) => {
+    for (const path of ["/teacher/settings", "/teacher/help"]) {
+      await page.goto(path);
+      const group = page.locator(".setgroup").first();
+      await expect(group).toBeVisible();
+      expect(await group.evaluate((el) => [getComputedStyle(el).borderTopStyle, getComputedStyle(el).borderTopWidth])).toEqual(["solid", "2px"]);
+    }
+  });
+});
+
 test.describe("signing out", () => {
   test("asks first, stays on No and Escape, and leaves on Yes for the sign-in screen", async ({ page }) => {
     await page.goto("/teacher/help");

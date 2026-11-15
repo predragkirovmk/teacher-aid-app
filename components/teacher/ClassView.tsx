@@ -18,6 +18,22 @@ import { ClassReview } from "./ClassReview";
 import { Board, ClosedQuestion, OpenQuestion, RevealedQuestion, SkippedQuestion } from "./ClassQuestion";
 import { PageTitle } from "./PageTitle";
 
+/**
+ * A word with a hyphen in it ("QR-кодот") is kept whole on its line: read from the back of a room, "QR-" at the end of one line and
+ * "кодот" at the start of the next is two words. The sentence is unchanged; only where it may break.
+ */
+function wholeWords(text: string) {
+  return text.split(/(\S+-\S+)/).map((part, i) =>
+    i % 2 === 1 ? (
+      <span key={i} className="cv__whole">
+        {part}
+      </span>
+    ) : (
+      part
+    ),
+  );
+}
+
 /** Whether the page is full screen: the button that asks for it is gone while it is, and back when the teacher leaves it. */
 const subscribeFullscreen = (listener: () => void) => {
   document.addEventListener("fullscreenchange", listener);
@@ -104,7 +120,7 @@ function Lobby({ snapshot }: { snapshot: ClassViewSnapshot }) {
       <h1 className="sr">{session.lesson_title}</h1>
       {join && <Qr token={join.token} label={t("class.qr.label")} />}
       <div className="cv__info">
-        <p className="cv__how">{t(STUDENTS_CAN_TYPE_CODE ? "class.how.type" : "class.how")}</p>
+        <p className="cv__how">{wholeWords(t(STUDENTS_CAN_TYPE_CODE ? "class.how.type" : "class.how"))}</p>
         {/* The code is shown only while a student can type it (OPEN-03): until then the QR is the one way in, and a code would be read out for nothing. */}
         {STUDENTS_CAN_TYPE_CODE && join && (
           <>
@@ -162,7 +178,7 @@ function Teaching({ snapshot }: { snapshot: ClassViewSnapshot }) {
         <aside className="cv__corner">
           <Qr token={join.token} label={t("class.qr.label")} />
           <div>
-            <p className="cv__label">{t(STUDENTS_CAN_TYPE_CODE ? "class.late.type" : "class.late")}</p>
+            <p className="cv__label">{wholeWords(t(STUDENTS_CAN_TYPE_CODE ? "class.late.type" : "class.late"))}</p>
             {STUDENTS_CAN_TYPE_CODE && (
               <p className="cv__code cv__code--small" data-testid="class-code">
                 {formatShortCode(join.short_code)}
