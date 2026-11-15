@@ -59,6 +59,11 @@ for review", its preview link and the pictures, and wait.
 - 2026-11-15: step 7 (the projector and the final gate) is built and waits for the owner on the
   review page (`decisions/step-7`). What it changed and what the gate found are under "Step 7 as
   built" below. It is the last step: when it is approved, the redesign is complete.
+- 2026-11-15, 23:25 UTC: the owner approved step 7 (`decisions/step-7`) with one note: "make the
+  projector the same color as the rest of the app please", and said in the chat: "I approve step
+  7, refresh the website pictures too". Both done the same day (under "Step 7 as built"). **The
+  redesign is complete.** The owner then asked for everything to go to `main` so their partner
+  can build on it.
 
 A decision made on the page does not reach the session by itself. Read the store before
 every message that says what is being waited for, and, while a step waits for the owner,
@@ -254,10 +259,16 @@ the rest of the gate passed as it stood.
   (`a11y.spec.ts`) stays clean on every screen.
 - Checks: lint, typecheck, 1,539 unit tests, the teacher suite (524 passed, 4 skipped) and the
   typed-code tests.
-- Not done, by the fence: the website's pictures of the teacher app (`scripts/site-v2-capture.mjs`)
-  still show the old look. They are outside the teacher app; they are refreshed only if the owner
-  asks.
 - Nothing new is asked of the API. No library was added; no words changed.
+- The owner's note on approving: the projector wears the app's colours. Its palette on `.cv` was
+  redefined under the same names: the pale ground, white panels with a hairline ring, dark teal
+  words, a tint for the right answer and the code, the teal focus ring; a filled mark (a letter, the
+  right mark) carries white (`--on-text`); the bars' track is `--track`. The projector window's
+  browser bar is light too. Sizes and layout are unchanged.
+- The website's pictures of the teacher app (Today and a prepared lesson, Macedonian and English,
+  `public/site-v2/screens/t-*.webp`) were refreshed on the owner's word, with
+  `scripts/site-v2-capture.mjs` and `scripts/site-v2-screens.py`. The student app's pictures are
+  unchanged.
 
 ## Step 6 as built (2026-11-15)
 

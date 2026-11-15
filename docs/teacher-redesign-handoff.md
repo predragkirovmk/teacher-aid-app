@@ -8,8 +8,8 @@ what went wrong before and what the remaining steps ask for.
 ## Where things stand
 
 Read "Status" in `docs/teacher-redesign-plan.md`: it is the record. On 2026-11-15 it said: the
-direction and steps 1 to 6 are approved (step 6 with a note, done), step 7, the last, is built
-and waits for the owner (`decisions/step-7`). Nothing after a waiting step is built until the owner approves it.
+direction and all seven steps are approved (step 7 with a note, done): the redesign is complete
+and is on `main`. A later change to the teacher app follows `CLAUDE.md` as any other change does. Nothing after a waiting step is built until the owner approves it.
 
 - Branch `ccr-65507c3f-cbceas` in both repositories; draft pull request #8 in the app repo and #5
   in the brain repo. Never `main`, never a merge.

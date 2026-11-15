@@ -92,10 +92,11 @@ show the same letters. Title 32 to 40px at weight 650, a section 20px, the name 
 body 17px, secondary 16px. Icons: Phosphor, regular weight, 22px in the menu and 20px in a button,
 filled for the selected sidebar item. Spacing on the 8pt grid. Focus ring 3px teal, offset 2px.
 
-The projected window (`.cv`) is the one dark place: it is read from the back of a classroom on a
-weak projector, so it keeps the dark teal, full-white words and sizes it had, under its own names
-(`--deep` `#124554`, `--ground-top` `#155869`, `--shadow` `#0A2E37`), and a yellow focus ring.
-Step 1 of the redesign left it pixel for pixel as it was.
+The projected window (`.cv`) is read from the back of a classroom, so it keeps the sizes it had,
+under its own names. Since the owner's note on step 7 of the redesign (2026-11-15) it wears the
+app's light colours: the pale ground (`--ground-top` `#EEF2F2`), white panels with a hairline ring
+(`--deep`), dark teal words (`--text` `#0D2A32`), a tinted block for the right answer and the code
+(`--shadow` `#E1ECEE`) and the app's teal focus ring.
 
 Motion (owner, 2026-11-08: simple and luxurious): the student app's springs, no bounce;
 a press sinks and springs back, a page and late content rise in (header first), the menu's selection

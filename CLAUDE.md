@@ -70,9 +70,10 @@ screen by that.
   numbers. Golos Text everywhere.
 - **Calm surfaces**: white panels on the pale ground, a hairline ring, radius 20 to 22px, one soft
   shadow under what floats. No decoration that carries no meaning.
-- **The projected class view (`.cv`) is its own dark world.** It is read from the back of a room.
-  Its palette is set on `.cv` itself; a change to the rest of the app must leave its pictures the
-  same, pixel for pixel, unless the step is about the projector.
+- **The projected class view (`.cv`) wears the app's light colours** (the owner's note on step 7,
+  2026-11-15) but keeps its own names and sizes, set on `.cv` itself, because it is read from the
+  back of a room. A change to the rest of the app must leave its pictures the same, pixel for
+  pixel, unless the change is about the projector.
 - **Words**: Macedonian first, English second, both in `lib/teacher/i18n.ts`. Plain words a teacher
   uses; no jargon, no exclamation, no emoji. Do not reword what already works.
 - **Access is part of the look, not a pass at the end**: text at 4.5:1 or better, never dimmed with

@@ -670,7 +670,8 @@ test.describe("the projector uses the window", () => {
     }
   });
 
-  test("everything that must be read is full white: nothing on the projector's question is dimmed", async ({ page, context }) => {
+  // The projector wears the app's colours (the owner's note on step 7): its words are the app's full ink, never a softer grey.
+  test("everything that must be read is in full ink: nothing on the projector's question is dimmed", async ({ page, context }) => {
     const projector = await teach(page, context);
     await send(page).click();
     // Measured at rest: what arrives fades in, so the arrivals are let finish first.
@@ -679,7 +680,7 @@ test.describe("the projector uses the window", () => {
       return projector.evaluate(() =>
         [...document.querySelectorAll("main *")]
           .filter((el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent?.trim()) && !el.closest(".sr, .cvq__rightmark, .cvq__letter"))
-          .filter((el) => getComputedStyle(el).color !== "rgb(255, 255, 255)" || Number(getComputedStyle(el).opacity) < 1)
+          .filter((el) => getComputedStyle(el).color !== "rgb(13, 42, 50)" || Number(getComputedStyle(el).opacity) < 1)
           .map((el) => `${el.className}: ${getComputedStyle(el).color}`),
       );
     };

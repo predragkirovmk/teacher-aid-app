@@ -1,10 +1,10 @@
 import type { Viewport } from "next";
 import { ClassView } from "@/components/teacher/ClassView";
 
-// The one dark page of the teacher app: the browser's bar and its own controls (a scrollbar) take the dark teal of the window.
+// The projector wears the app's light colours (the owner's note on step 7), so the browser's bar takes the pale ground of the window.
 export const viewport: Viewport = {
-  themeColor: "#124554",
-  colorScheme: "dark",
+  themeColor: "#eef2f2",
+  colorScheme: "light",
 };
 
 /**
