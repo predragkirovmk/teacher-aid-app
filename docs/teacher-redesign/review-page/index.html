@@ -433,7 +433,25 @@ footer { color: var(--ink-2); font-size: 0.9375rem; }
       </figure>
     </div>
 
-    <p class="muted measure">One question for you: the website (teacheraid.education) shows pictures of the teacher app, and they still show the old look. I left them alone because the website is outside this work. If you want them to match, say so in the note below and I will refresh them.</p>
+    <div class="pairs">
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>Your note, done: the projector in the app's colours</h3>
+            <p class="muted">The projected screen now has the pale ground, white panels and dark teal words of the rest of the app. Its sizes did not change, so it reads from the back of the room as before. The website's pictures of the teacher app were refreshed too, as you asked.</p>
+          </div>
+          <div class="switch" role="group" aria-label="The projector's colours: after or before">
+            <button type="button" id="s7-projector-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s7-projector-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame" style="aspect-ratio: 1280 / 720">
+          <img class="is-before" src="img/s7-before-projector.webp" width="1280" height="720" alt="The projector showing a question's results before the note: dark teal ground, white words." loading="lazy">
+          <img class="is-after" src="img/s7-after-projector.webp" width="1280" height="720" alt="The projector showing a question's results after the note: pale ground, white panels, dark teal words." loading="lazy">
+        </div></div>
+      </figure>
+    </div>
 
     <div class="decide" data-for="step-7">
       <h3>Your decision on step 7</h3>
