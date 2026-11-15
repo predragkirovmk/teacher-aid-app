@@ -43,6 +43,8 @@ for review", its preview link and the pictures, and wait.
   page's other panels the same day. Step 4 is being built.
 - 2026-11-14: step 4 (the live lesson) is built and waits for the owner on the review page
   (`decisions/step-4`). What it changed is under "Step 4 as built" below.
+- 2026-11-15, 18:50 UTC: the owner approved step 4 (`decisions/step-4`, no note) and said so in
+  the chat. Step 5 is being built.
 
 A decision made on the page does not reach the session by itself. Read the store before
 every message that says what is being waited for, and, while a step waits for the owner,
