@@ -361,7 +361,7 @@ footer { color: var(--ink-2); font-size: 0.9375rem; }
 
   <div class="top">
     <span class="wordmark"><svg aria-hidden="true"><use href="#logo"/></svg>TeacherAid</span>
-    <span class="chip" id="status" data-tone="decide">Step 6 is ready for your review.</span>
+    <span class="chip" id="status" data-tone="decide">Step 7, the last, is ready for your review.</span>
   </div>
 
   <header class="hero">
@@ -369,23 +369,95 @@ footer { color: var(--ink-2); font-size: 0.9375rem; }
     <h1>A calmer teacher app</h1>
     <p class="lead">You said the app feels crowded and confusing to use. I opened every screen and measured it. No feature needs to go. Too much is on screen at once, and all of it is equally loud. This plan keeps every feature and changes how the screens are arranged and how they look.</p>
     <ol class="how">
-      <li><h3>You approved the look and steps 1 to 5</h3><p class="muted">The light look on 12 November, the new colours, type and sidebar on 13 November, the four lists as rows and preparing a lesson on 14 November, the live lesson and what comes after it on 15 November.</p></li>
-      <li><h3>Step 6 of 7 is built</h3><p class="muted">Settings, Help, and what a page says when it is empty, slow or could not load. It is below, with a preview you can click through.</p></li>
-      <li><h3>Your decision starts step 7</h3><p class="muted">Approve step 6 or send it back. Nothing more is built until you do.</p></li>
+      <li><h3>You approved the look and steps 1 to 6</h3><p class="muted">The light look on 12 November, the new colours, type and sidebar on 13 November, the four lists as rows and preparing a lesson on 14 November, the live lesson, what comes after it, and Settings and Help on 15 November.</p></li>
+      <li><h3>Step 7 of 7 is built</h3><p class="muted">The projector and the final checks of the whole app. It is below, with a preview you can click through.</p></li>
+      <li><h3>Your decision completes the redesign</h3><p class="muted">Approve step 7 or send it back. Then the work is ready for you to take live when you choose.</p></li>
     </ol>
   </header>
 
-  <section aria-labelledby="s6-h" id="step-6-review">
+  <section aria-labelledby="s7-h" id="step-7-review">
     <div class="section-head">
-      <p class="eyebrow">Step 6 of 7 · built 15 November 2026</p>
-      <h2 id="s6-h">Settings, Help and the quiet moments</h2>
-      <p class="muted measure">The pages a teacher visits now and then, and what any page says when it is empty, slow or cannot load. Settings and Help were stacks of cards; now they are short lists of rows with each control at the right. Every feature is still there.</p>
+      <p class="eyebrow">Step 7 of 7 · built 15 November 2026</p>
+      <h2 id="s7-h">The projector and the final checks</h2>
+      <p class="muted measure">The last step. I looked at the projected screen in every state at three sizes, then put the whole teacher app through one more pass: small and large windows, 200% zoom, English, Windows high contrast and Reduce Motion. Almost everything already held. Two small things were fixed.</p>
     </div>
 
     <div class="review-bar">
       <a class="btn btn-primary" href="https://teacher-aid-git-ccr-65507c3f-cbceas-predragkirovmks-projects.vercel.app/teacher" target="_blank" rel="noopener">Open the preview</a>
       <p class="muted">The preview is the real app with the demo school. On the sign-in screen press “Најави се со Google”, then choose Марија Петровска. No password is asked. If Vercel asks you to log in before the app opens, use your own Vercel account: the preview is private to it.</p>
     </div>
+
+    <ul class="principles">
+      <li><h3>Words stay whole on the projector</h3><p class="muted">On a 1024-wide projector “QR-кодот” broke at its hyphen. Such words are now kept whole; the line takes one more row instead.</p></li>
+      <li><h3>Edges in high contrast</h3><p class="muted">In Windows high contrast the groups on Settings and Help, a page that could not load, and the live lesson's question rows had lost their outline. Each now has a clear line.</p></li>
+      <li><h3>Every screen, every size</h3><p class="muted">15 screens at 1024 and 1920 wide, at 200% zoom and in English: 60 of 60 clean. Nothing scrolls sideways, no text under 16 px, English all the way through.</p></li>
+      <li><h3>Every test green</h3><p class="muted">524 checks of the teacher app, 1,539 smaller ones, and the accessibility scan on every screen.</p></li>
+      <li><h3>The projector otherwise as it was</h3><p class="muted">Its sizes and colours are read from the back of a room and were already right, so they stay.</p></li>
+      <li><h3>Same words</h3><p class="muted">Nothing was reworded and nothing new was added.</p></li>
+    </ul>
+
+    <div class="pairs">
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>The projector, waiting for students, at 1024 wide</h3>
+            <p class="muted">“Скенирајте го QR-кодот…” no longer splits “QR-” from “кодот”. At 1280 and 1920 wide nothing changes.</p>
+          </div>
+          <div class="switch" role="group" aria-label="The projector: after or before">
+            <button type="button" id="s7-qr-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s7-qr-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame" style="aspect-ratio: 1024 / 768">
+          <img class="is-before" src="img/s7-before-qr.webp" width="1024" height="768" alt="The projected screen before step 7: the instruction breaks the word QR-кодот after the hyphen." loading="lazy">
+          <img class="is-after" src="img/s7-after-qr.webp" width="1024" height="768" alt="The projected screen after step 7: QR-кодот stays whole on one line." loading="lazy">
+        </div></div>
+      </figure>
+      <figure class="shot" data-show="after">
+        <div class="shot-head">
+          <div class="shot-text">
+            <h3>Settings in Windows high contrast</h3>
+            <p class="muted">High contrast drops soft shadows, so the groups of settings had no edge and ran into the page. Now each group has a line around it, as the lists elsewhere already did.</p>
+          </div>
+          <div class="switch" role="group" aria-label="Settings in high contrast: after or before">
+            <button type="button" id="s7-contrast-after" data-show="after" aria-pressed="true">After</button>
+            <button type="button" id="s7-contrast-before" data-show="before" aria-pressed="false">Before</button>
+          </div>
+        </div>
+        <p class="swipe muted">Swipe sideways to see the whole screen.</p>
+        <div class="scroller"><div class="frame">
+          <img class="is-before" src="img/s7-before-contrast.webp" width="1920" height="1200" alt="Settings in Windows high contrast before step 7: the groups of rows have no outline." loading="lazy">
+          <img class="is-after" src="img/s7-after-contrast.webp" width="1920" height="1200" alt="Settings in Windows high contrast after step 7: each group of rows has a white outline." loading="lazy">
+        </div></div>
+      </figure>
+    </div>
+
+    <p class="muted measure">One question for you: the website (teacheraid.education) shows pictures of the teacher app, and they still show the old look. I left them alone because the website is outside this work. If you want them to match, say so in the note below and I will refresh them.</p>
+
+    <div class="decide" data-for="step-7">
+      <h3>Your decision on step 7</h3>
+      <div class="saved" aria-live="polite"><b data-saved-title></b><span data-saved-detail></span></div>
+      <div class="decide-on">
+        <label for="note-step-7">Notes for Claude (optional)</label>
+        <textarea id="note-step-7" rows="3" placeholder="Whether to refresh the website's pictures, or anything on any screen you want changed"></textarea>
+      </div>
+      <div class="buttons decide-on">
+        <button type="button" class="btn btn-primary" id="approve-step-7" data-choice="approved">Approve step 7</button>
+        <button type="button" class="btn" id="changes-step-7" data-choice="changes">Ask for changes</button>
+      </div>
+      <p class="decide-msg decide-on muted" role="status"></p>
+      <p class="decide-off muted">Decisions cannot be saved from this view. Tell Claude your decision in the chat instead.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="s6-h" id="step-6-review">
+    <div class="section-head">
+      <p class="eyebrow">Step 6 of 7 · approved 15 November 2026</p>
+      <h2 id="s6-h">Settings, Help and the quiet moments</h2>
+      <p class="muted measure">The pages a teacher visits now and then, and what any page says when it is empty, slow or cannot load. Settings and Help were stacks of cards; now they are short lists of rows with each control at the right. Every feature is still there.</p>
+    </div>
+
 
     <ul class="principles">
       <li><h3>Settings in rows</h3><p class="muted">Each setting is one row, its control at the right where the eye looks. Half the height it was.</p></li>
@@ -1547,25 +1619,25 @@ footer { color: var(--ink-2); font-size: 0.9375rem; }
           <p class="muted measure">The end of lesson page with the attendance list, and class results with tabs. Approved on 15 November 2026. <a href="#step-5-review">See it again.</a></p>
         </div>
       </li>
-      <li class="step" data-step="step-6" data-status="review">
+      <li class="step" data-step="step-6" data-status="done">
         <span class="step-n">6</span>
         <div class="step-body">
-          <div class="step-title"><h3>Settings, Help, sign-in and first run</h3><span class="chip" data-chip data-tone="decide">Ready for your review</span></div>
-          <p class="muted measure">The remaining screens, and every loading, empty and error state. <a href="#step-6-review">See it and decide at the top of the page.</a></p>
+          <div class="step-title"><h3>Settings, Help, sign-in and first run</h3><span class="chip" data-chip data-tone="done">Approved</span></div>
+          <p class="muted measure">The remaining screens, and every loading, empty and error state. Approved on 15 November 2026. <a href="#step-6-review">See it again.</a></p>
         </div>
       </li>
-      <li class="step" data-step="step-7" data-status="planned">
+      <li class="step" data-step="step-7" data-status="review">
         <span class="step-n">7</span>
         <div class="step-body">
-          <div class="step-title"><h3>Projector polish and final checks</h3><span class="chip" data-chip>Not started</span></div>
-          <p class="muted measure">Small refinements to the projected screen, then the whole app again: accessibility, window sizes from 1024 to 1920, 200% zoom, English, and every test green. The website's pictures of the teacher app are refreshed if you want them to match.</p>
+          <div class="step-title"><h3>Projector polish and final checks</h3><span class="chip" data-chip data-tone="decide">Ready for your review</span></div>
+          <p class="muted measure">Small refinements to the projected screen, then the whole app again: accessibility, window sizes from 1024 to 1920, 200% zoom, English, and every test green. <a href="#step-7-review">See it and decide at the top of the page.</a></p>
         </div>
       </li>
     </ol>
   </section>
 
   <footer>
-    <p>Prepared 12 November 2026, updated 15 November for step 6. The pictures under steps 1 to 6 are the built app with the demo school's data. The mockups under “The direction” are drawings of the proposal.</p>
+    <p>Prepared 12 November 2026, updated 15 November for step 7. The pictures under steps 1 to 7 are the built app with the demo school's data. The mockups under “The direction” are drawings of the proposal.</p>
   </footer>
 </div>
 
@@ -1631,9 +1703,9 @@ footer { color: var(--ink-2); font-size: 0.9375rem; }
         (d.note ? "Your note: " + d.note + " " : "") + "Tell Claude “go” in the chat to continue. You can change this by pressing another button.";
     }
     if (stepId === "direction" && approved && d.look) setLook(d.look);
-    if (stepId === "step-6") {
+    if (stepId === "step-7") {
       var status = document.getElementById("status");
-      status.textContent = approved ? "Step 6 approved. Step 7 is next." : "Changes requested on step 6.";
+      status.textContent = approved ? "Step 7 approved. The redesign is complete." : "Changes requested on step 7.";
       status.dataset.tone = approved ? "done" : "changes";
     }
   };

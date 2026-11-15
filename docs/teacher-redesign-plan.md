@@ -252,7 +252,7 @@ the rest of the gate passed as it stood.
   projector was looked at in five states at 1024 x 768, 1280 x 720 and 1920 x 1080.
 - Reduced motion and forced colours were looked at on Today, a class, Help and Settings; axe
   (`a11y.spec.ts`) stays clean on every screen.
-- Checks: lint, typecheck, 1,539 unit tests, the teacher suite (525 passed, 4 skipped) and the
+- Checks: lint, typecheck, 1,539 unit tests, the teacher suite (524 passed, 4 skipped) and the
   typed-code tests.
 - Not done, by the fence: the website's pictures of the teacher app (`scripts/site-v2-capture.mjs`)
   still show the old look. They are outside the teacher app; they are refreshed only if the owner
