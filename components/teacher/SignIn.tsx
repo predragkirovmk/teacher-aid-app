@@ -14,6 +14,7 @@ import { actions, useTeacher } from "@/lib/teacher/store";
 import { PageTitle } from "./PageTitle";
 import { Problem } from "./Problem";
 import { ProviderMark } from "./ProviderMark";
+import { SegGlide } from "./SegGlide";
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 /**
@@ -136,6 +137,7 @@ export function SignIn() {
           <span className="brand__word">TeacherAid</span>
         </span>
         <div className="lang" role="group" aria-label={t("signin.lang")}>
+          <SegGlide at={locale} />
           {(["mk", "en"] as const).map((l) => (
             <button
               key={l}

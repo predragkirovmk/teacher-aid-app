@@ -76,6 +76,10 @@ screen by that.
   pixel, unless the change is about the projector.
 - **Words**: Macedonian first, English second, both in `lib/teacher/i18n.ts`. Plain words a teacher
   uses; no jargon, no exclamation, no emoji. Do not reword what already works.
+- **Segmented controls merge, in both apps**: one white piece for the whole track that stretches
+  out of the old choice into the new one and settles, never a piece that jumps (the owner's rule,
+  2026-11-17). In the teacher app every segmented control gets it from `SegGlide`
+  (`Choices` with `segmented`, `Tabs`, the sign-in language switch); a new one uses those.
 - **Access is part of the look, not a pass at the end**: text at 4.5:1 or better, never dimmed with
   opacity (axe measures what is painted); colour is never the only sign (teal and ink cannot be
   told apart by colour, so a state also has a word, an icon or an edge); visible focus; Windows

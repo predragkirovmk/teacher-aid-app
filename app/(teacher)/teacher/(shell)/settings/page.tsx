@@ -30,6 +30,7 @@ export default function SettingsPage() {
                 <Choices
                   name="locale"
                   labelledBy={heading}
+                  segmented
                   value={locale}
                   onChange={actions.setLocale}
                   options={[
@@ -51,6 +52,7 @@ export default function SettingsPage() {
                   <Choices
                     name="school"
                     labelledBy={heading}
+                    segmented
                     describedBy={hint}
                     value={schoolType}
                     onChange={actions.setSchoolType}

@@ -30,7 +30,7 @@ export function SubjectRow({
       <h2 className="subjects__label" id={heading}>
         {t("lessons.subject")}
       </h2>
-      <Choices<SubjectChoice> name="subject" labelledBy={heading} value={value} options={choices} onChange={onChange} />
+      <Choices<SubjectChoice> name="subject" labelledBy={heading} segmented value={value} options={choices} onChange={onChange} />
       <p role="status" className="sr">
         {result}
       </p>

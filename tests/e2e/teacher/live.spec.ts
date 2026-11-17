@@ -460,10 +460,21 @@ test.describe("starting the lesson, and teaching", () => {
     await expect(page.locator(".qitem").first()).toContainText("Прашање 1 од");
     await expect(page.getByRole("heading", { name: "Кој се приклучи" })).toBeHidden();
     await expect(page.getByRole("tabpanel")).toHaveCount(1);
-    // The chosen tab is told apart by more than colour: its words are heavier and it stands on its own ground.
-    const look = (tab: typeof classTab) => tab(page).evaluate((el) => [getComputedStyle(el).fontWeight, getComputedStyle(el).backgroundColor]);
-    expect((await look(questionsTab))[0]).not.toBe((await look(classTab))[0]);
-    expect((await look(questionsTab))[1]).not.toBe((await look(classTab))[1]);
+    // The chosen tab is told apart by more than colour: its words are heavier and it stands on its own ground, the one white piece
+    // of the row, which moves under whichever tab is chosen (SegGlide) and settles exactly on its edges.
+    const weight = (tab: typeof classTab) => tab(page).evaluate((el) => getComputedStyle(el).fontWeight);
+    expect(await weight(questionsTab)).not.toBe(await weight(classTab));
+    const ground = () =>
+      questionsTab(page).evaluate((el) => {
+        const glide = el.parentElement!.querySelector<HTMLElement>(".seg__glide")!;
+        const face = getComputedStyle(glide, "::after");
+        const [top, right, bottom, left] = face.clipPath.match(/-?[\d.]+px/g)!.map(parseFloat);
+        const g = glide.getBoundingClientRect();
+        const t = el.getBoundingClientRect();
+        const off = Math.max(Math.abs(g.top + top - t.top), Math.abs(g.right - right - t.right), Math.abs(g.bottom - bottom - t.bottom), Math.abs(g.left + left - t.left));
+        return getComputedStyle(glide).opacity === "1" && face.backgroundColor !== getComputedStyle(el.parentElement!).backgroundColor && off < 1;
+      });
+    await expect.poll(ground).toBe(true);
     // The row of tabs is one stop for the keyboard: the arrows, Home and End move between the tabs and show the panel at once.
     await page.keyboard.press("ArrowRight");
     await expect(inboxTab(page)).toBeFocused();

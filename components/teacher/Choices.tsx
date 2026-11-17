@@ -2,6 +2,7 @@
 
 import { CheckCircleIcon, CircleIcon } from "@phosphor-icons/react";
 import { useId, type ReactNode } from "react";
+import { SegGlide } from "./SegGlide";
 
 export type Choice<V extends string> = { value: V; label: string; /** A second, quieter part of the row, at its end. */ detail?: string; lang?: string };
 
@@ -9,7 +10,8 @@ export type Choice<V extends string> = { value: V; label: string; /** A second, 
  * A few large radio choices on one card. Real radio buttons, so the arrow keys work; the chosen
  * row has a filled tick, a heavier label and an edge, never colour alone. With `labelledBy` (the id
  * of a heading that is already there, such as a window's title) the choices come bare, with no card
- * and no heading of their own, and with no `value` yet none is chosen.
+ * and no heading of their own, and with no `value` yet none is chosen. `segmented` makes them a segmented control's track, whose
+ * white piece moves from one choice into the next (see SegGlide): every segmented control in TeacherAid moves this way.
  */
 export function Choices<V extends string>({
   name,
@@ -18,6 +20,7 @@ export function Choices<V extends string>({
   describedBy,
   tag,
   hint,
+  segmented,
   value,
   options,
   onChange,
@@ -29,6 +32,7 @@ export function Choices<V extends string>({
   /** A small word beside the legend, such as "Demo setting". */
   tag?: string;
   hint?: ReactNode;
+  segmented?: boolean;
   value: V | null;
   options: Choice<V>[];
   onChange: (value: V) => void;
@@ -43,6 +47,7 @@ export function Choices<V extends string>({
           {tag && <span className="tag">{tag}</span>}
         </h2>
       )}
+      {segmented && <SegGlide at={value ?? ""} />}
       {options.map((o) => {
         const checked = o.value === value;
         return (

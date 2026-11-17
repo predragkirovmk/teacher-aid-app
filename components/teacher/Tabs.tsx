@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, type KeyboardEvent, type ReactNode } from "react";
+import { SegGlide } from "./SegGlide";
 
 export type TabItem<T extends string> = { id: T; label: ReactNode };
 
@@ -48,6 +49,7 @@ export function Tabs<T extends string>({
       className="tabs"
       onKeyDown={onKeyDown}
     >
+      <SegGlide at={value} />
       {tabs.map((tab) => (
         <button
           key={tab.id}
