@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 
 /** The tab roots, in tab-bar order. Swiping moves along this list. */
-export const TAB_ORDER = ["/app", "/app/notifications", "/app/profile"];
+export const TAB_ORDER = ["/app", "/app/subjects", "/app/notifications", "/app/profile"];
 
 const EXIT_MS = 190;
 const IN_MS = 300;

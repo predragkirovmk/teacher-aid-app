@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useState, useSyncExternalStore } from "react";
+import { SegGlide } from "@/components/app/SegGlide";
 import { Mark } from "@/components/app/Mark";
 import { SignIn } from "@/components/app/SignIn";
 import { useAuth, useSettings } from "@/lib/app/api/hooks";
@@ -77,7 +78,8 @@ export default function Welcome() {
               <Mark size={44} />
               <span className="brand__name">TeacherAid</span>
             </span>
-            <div className="row" style={{ gap: 8 }}>
+            <div className="seg-pills" role="group" aria-label={t("lang.title")}>
+              <SegGlide at={locale} />
               <button className="pill" lang="mk" aria-label="МК, Македонски" aria-pressed={locale === "mk"} onClick={() => setLocale("mk")}>
                 МК
               </button>

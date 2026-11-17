@@ -1,6 +1,6 @@
 "use client";
 
-import { BellSimpleIcon, CheckIcon, HouseSimpleIcon, ScanIcon, UserIcon, type Icon } from "@phosphor-icons/react";
+import { BellSimpleIcon, BooksIcon, CheckIcon, HouseSimpleIcon, ScanIcon, UserIcon, type Icon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
@@ -17,6 +17,7 @@ import { ConnectionPill } from "./ConnectionPill";
 import { NoticeScreen } from "./NoticeScreen";
 import { OutboxRunner } from "./OutboxRunner";
 import { Pager } from "./Pager";
+import { SegGlide } from "./SegGlide";
 import { IosInstallSteps, PushAskSheet, PushHelpSheet } from "./PushSheets";
 import { PushRunner } from "./PushRunner";
 import { StudentStream } from "./StudentStream";
@@ -283,27 +284,28 @@ function Dock({ pathname }: { pathname: string }) {
     </Link>
   );
 
-  const index = pathname === "/app" ? 0 : pathname.startsWith("/app/notifications") ? 1 : pathname === "/app/profile" ? 2 : -1;
+  const home = pathname === "/app";
+  const subjects = pathname === "/app/subjects";
+  const alerts = pathname.startsWith("/app/notifications");
+  const profile = pathname === "/app/profile";
 
   return (
     <nav className="dock" aria-label={t("nav.main")}>
       <span className="sr" role="status">
         {arrived}
       </span>
+      {/* The classic five: two sections on each side of the scan, which sits raised in the middle because it is an action,
+          not a section. The one piece under the current tab is SegGlide's, and it skips over the scan. */}
       <div className="tabbar glass">
-        <span
-          className="tab-ind"
-          aria-hidden="true"
-          style={{ transform: `translateX(${Math.max(index, 0) * 100}%)`, opacity: index < 0 ? 0 : 1 }}
-        />
-        {tab("/app", t("nav.home"), HouseSimpleIcon, pathname === "/app")}
-        {tab("/app/notifications", t("nav.alerts"), BellSimpleIcon, pathname.startsWith("/app/notifications"), count)}
-        {tab("/app/profile", t("nav.profile"), UserIcon, pathname === "/app/profile")}
+        <SegGlide at={home ? "home" : subjects ? "subjects" : alerts ? "alerts" : profile ? "profile" : ""} />
+        {tab("/app", t("nav.home"), HouseSimpleIcon, home)}
+        {tab("/app/subjects", t("subjects.title"), BooksIcon, subjects)}
+        <Link href="/app/scan" className="scan-fab" aria-label={t("nav.scan")}>
+          <ScanIcon size={30} aria-hidden="true" />
+        </Link>
+        {tab("/app/notifications", t("nav.alerts"), BellSimpleIcon, alerts, count)}
+        {tab("/app/profile", t("nav.profile"), UserIcon, profile)}
       </div>
-      {/* The scan is an action, not a section, so it sits beside the tab bar instead of in it. */}
-      <Link href="/app/scan" className="scan-fab" aria-label={t("nav.scan")}>
-        <ScanIcon size={32} aria-hidden="true" />
-      </Link>
     </nav>
   );
 }
