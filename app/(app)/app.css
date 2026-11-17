@@ -28,18 +28,24 @@
   --fs-display: 2.125rem; /* 34 */
   --fs-num: 2.875rem; /* 46 */
   --fs-hero: 4.5rem; /* 72 */
-  /* Springs as SwiftUI defines them, spring(duration:bounce:), sampled into linear() by
-     scratch tooling; each duration is the settle time, the perceived duration is shorter.
-     press 0.25/0 for touch feedback, snappy 0.3/0.15 for small state changes,
-     smooth 0.4/0 for sheets, morphs and arrivals, bouncy 0.5/0.3 for rare rewards. */
-  --spring-press: linear(0, 0.069, 0.2109, 0.3667, 0.5096, 0.6296, 0.7255, 0.7995, 0.8552, 0.8964, 0.9265, 0.9481, 0.9636, 0.9746, 0.9824, 0.9878, 0.9916, 0.9942, 0.996, 0.9973, 1);
-  --spring-press-dur: 340ms;
-  --spring-snappy: linear(0, 0.0361, 0.1222, 0.2332, 0.3519, 0.4673, 0.5731, 0.666, 0.7448, 0.8098, 0.862, 0.9031, 0.9345, 0.958, 0.9751, 0.9872, 0.9954, 1.0007, 1.0039, 1.0056, 1.0062, 1.0062, 1.0058, 1.0051, 1.0044, 1.0037, 1.003, 1.0023, 1);
+  /* Springs as SwiftUI defines them, spring(duration:bounce:), sampled into linear(). The values
+     live in lib/app/motion.ts and tests/unit/motion-tokens.test.ts fails if these drift from them;
+     each -dur is the settle time, the perceived duration is shorter.
+     press for touch-down, pop for the release past 1 and small arrivals, snappy for small state
+     changes, smooth for sheets, morphs and screen moves, bouncy for medium arrivals, big for the
+     rare reward. */
+  --spring-press: linear(0, 0.1477, 0.3919, 0.602, 0.7525, 0.8512, 0.9127, 0.9497, 0.9714, 0.9839, 0.9911, 0.9951, 0.9973, 1);
+  --spring-press-dur: 210ms;
+  --spring-pop: linear(0, 0.1157, 0.3832, 0.6931, 0.9639, 1.1504, 1.2409, 1.2484, 1.1997, 1.1244, 1.0478, 0.9869, 0.9496, 0.9359, 0.9407, 0.9567, 0.9766, 0.9948, 1.0079, 1.0149, 1.0162, 1.0136, 1.009, 1.0039, 0.9998, 0.9971, 0.9959, 0.9961, 0.997, 1);
+  --spring-pop-dur: 480ms;
+  --spring-snappy: linear(0, 0.0516, 0.1686, 0.3105, 0.4527, 0.5817, 0.6915, 0.7804, 0.8496, 0.9015, 0.9391, 0.9654, 0.983, 0.9942, 1.0009, 1.0045, 1.006, 1.0063, 1.0058, 1.005, 1.0041, 1.0033, 1.0025, 1);
   --spring-snappy-dur: 390ms;
-  --spring-smooth: linear(0, 0.0495, 0.1582, 0.2864, 0.4129, 0.5273, 0.6256, 0.7073, 0.7736, 0.8263, 0.8677, 0.8998, 0.9246, 0.9435, 0.9578, 0.9686, 0.9767, 0.9828, 0.9873, 0.9906, 0.9931, 0.995, 0.9963, 0.9973, 1);
+  --spring-smooth: linear(0, 0.0295, 0.0995, 0.1895, 0.2864, 0.3821, 0.472, 0.5535, 0.6256, 0.6884, 0.7423, 0.7879, 0.8263, 0.8583, 0.8848, 0.9067, 0.9246, 0.9392, 0.9511, 0.9608, 0.9686, 0.9749, 0.98, 0.984, 0.9873, 0.9899, 0.992, 0.9936, 0.995, 0.996, 0.9968, 0.9975, 1);
   --spring-smooth-dur: 540ms;
-  --spring-bouncy: linear(0, 0.0236, 0.0844, 0.1696, 0.2685, 0.3731, 0.477, 0.5758, 0.6665, 0.7472, 0.817, 0.8759, 0.9242, 0.9626, 0.9921, 1.0139, 1.0291, 1.0388, 1.0441, 1.0459, 1.0452, 1.0427, 1.039, 1.0345, 1.0297, 1.0249, 1.0203, 1.0161, 1.0123, 1.009, 1.0062, 1.0039, 1.002, 1.0006, 0.9995, 0.9988, 0.9983, 0.998, 0.9979, 0.9979, 1);
+  --spring-bouncy: linear(0, 0.0197, 0.0712, 0.1446, 0.2315, 0.3253, 0.4207, 0.5137, 0.6014, 0.6819, 0.754, 0.817, 0.871, 0.9162, 0.953, 0.9823, 1.0049, 1.0215, 1.0332, 1.0406, 1.0446, 1.046, 1.0452, 1.043, 1.0397, 1.0358, 1.0315, 1.0271, 1.0228, 1.0187, 1.015, 1.0116, 1.0087, 1.0062, 1.004, 1.0023, 1.0009, 0.9999, 0.9991, 0.9985, 0.9982, 0.998, 0.9979, 0.9979, 1);
   --spring-bouncy-dur: 730ms;
+  --spring-big: linear(0, 0.0496, 0.1746, 0.3416, 0.5231, 0.6979, 0.8515, 0.9754, 1.0664, 1.1253, 1.1557, 1.1628, 1.1526, 1.131, 1.1031, 1.0735, 1.0454, 1.021, 1.0015, 0.9875, 0.9786, 0.9742, 0.9735, 0.9755, 0.9793, 0.9839, 0.9887, 0.9932, 0.9971, 1.0001, 1.0023, 1.0036, 1.0043, 1.0043, 1.0039, 1.0033, 1.0025, 1);
+  --spring-big-dur: 610ms;
   --font: system-ui, -apple-system, "SF Pro Text", "Segoe UI", sans-serif;
   --font-display: var(--font-golos), system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: dark;
@@ -207,10 +213,6 @@ a {
   place-items: center;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid var(--line);
-  transition: transform var(--spring-press-dur) var(--spring-press);
-}
-.round:active {
-  transform: scale(0.94);
 }
 
 .brand {
@@ -240,13 +242,10 @@ a {
   background: var(--card);
   border-radius: var(--radius-card);
   padding: 20px;
-  transition:
-    transform var(--spring-press-dur) var(--spring-press),
-    background var(--spring-press-dur) var(--spring-press);
+  --press-scale: 0.96; /* a full-width surface squashes less */
 }
 a.card:active,
 button.card:active {
-  transform: scale(0.985);
   background: var(--card-press);
 }
 .card--flat {
@@ -296,12 +295,6 @@ button.card:active {
   border-radius: 999px;
   font-weight: 650;
   font-size: var(--fs-body);
-  transition:
-    transform var(--spring-press-dur) var(--spring-press),
-    background var(--spring-press-dur) var(--spring-press);
-}
-.btn:active {
-  transform: scale(0.97);
 }
 .btn--primary {
   background: var(--yellow);
@@ -316,6 +309,7 @@ button.card:active {
 }
 .btn--block {
   width: 100%;
+  --press-scale: 0.96;
 }
 /* Borderless: the third level, for a way out beside a primary action. */
 .btn--plain {
@@ -326,10 +320,40 @@ button.card:active {
   color: var(--text);
 }
 
-/* Press in fast, spring back on release: the press answers at once, the release settles. */
-:is(.btn, .card, .round, .next, .scan-fab):active {
-  transition-duration: 100ms;
-  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+/* ---- Press: squash and stretch ----
+   Touch-down squashes to --press-scale (0.94 unless the element says otherwise; surfaces that span
+   the column set 0.96) on --spring-press; release returns to 1 on --spring-pop, which overshoots past it.
+   It is a transition on the individual scale property, so a second touch mid-spring reverses from
+   where the element is, and it never fights a transform that an entrance animation holds.
+   Disabled elements do not move. Reduced motion (the block near the end) swaps the squash for a
+   short dim through --press-reduce, --press-dim and --press-fade. */
+:is(.press, .btn, a.card, button.card, .round, .next, .scan-fab, .provider, .q-opt, .q-tf__btn, .n-minus, .pe-photo-btn) {
+  transition:
+    scale var(--spring-pop-dur) var(--spring-pop),
+    background var(--spring-press-dur) var(--spring-press),
+    opacity var(--press-fade, 0s) linear;
+}
+:is(.press, .btn, a.card, button.card, .round, .next, .scan-fab, .provider, .q-opt, .q-tf__btn, .n-minus, .pe-photo-btn):not(:disabled, [aria-disabled="true"]):active {
+  scale: var(--press-reduce, var(--press-scale, 0.94));
+  opacity: var(--press-dim, 1);
+  transition:
+    scale var(--spring-press-dur) var(--spring-press),
+    background var(--spring-press-dur) var(--spring-press),
+    opacity var(--press-fade, 0s) linear;
+}
+
+/* ---- Stagger ----
+   Children that carry --i (0, 1, 2, ...) arrive 40 ms apart, each popping in and overshooting.
+   Put the class on the parent. Reduced motion turns the keyframe into a plain fade. */
+.stagger > * {
+  animation: arrive var(--spring-pop-dur) var(--spring-pop) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.92);
+  }
 }
 
 /* A pointer on a desktop window (the phone frame) gets the same answer as a press, without the scale. */
@@ -893,6 +917,7 @@ button.item:active {
   font-size: var(--fs-callout);
 }
 .scan__tools .span2 {
+  --press-scale: 0.96;
   grid-column: 1 / -1;
 }
 .warn {
@@ -1123,10 +1148,8 @@ details.faq p {
   border: 1px solid;
   font-weight: 600;
   font-size: var(--fs-body);
-  transition:
-    transform var(--spring-press-dur) var(--spring-press),
-    background var(--spring-press-dur) var(--spring-press),
-    opacity 150ms;
+  --press-scale: 0.96;
+  --press-fade: 150ms; /* the dim when it is disabled */
 }
 .provider svg {
   flex: none;
@@ -1140,10 +1163,7 @@ details.faq p {
   border-color: #8c8c8c;
 }
 .provider:active {
-  transform: scale(0.97);
   background: #f0f0f0;
-  transition-duration: 100ms;
-  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
 }
 .provider:disabled {
   opacity: 0.55;
@@ -1346,10 +1366,8 @@ button.pill {
   background: var(--yellow);
   color: var(--ink);
   box-shadow: 0 8px 22px rgba(2, 8, 24, 0.4);
-  transition: transform var(--spring-press-dur) var(--spring-press);
 }
 .scan-fab:active {
-  transform: scale(0.94);
   background: var(--yellow-soft);
 }
 /* Scroll edge: content fades out where it meets the floating controls. */
@@ -1395,10 +1413,7 @@ button.pill {
   background: var(--yellow);
   color: var(--ink);
   min-height: 176px;
-  transition: transform var(--spring-press-dur) var(--spring-press);
-}
-.next:active {
-  transform: scale(0.985);
+  --press-scale: 0.96;
 }
 /* The subject's sign, large and cropped in the corner, clear of the text. */
 .next__sign {
@@ -2005,7 +2020,7 @@ button.pill {
   }
 }
 /* Reduced motion means gentler, not none: entrances fade in place instead of travelling, and
-   decorative movement stops. Press feedback and the switch stay; they answer a touch. */
+   decorative movement stops. A press dims instead of squashing, and the switch stays; they answer a touch. */
 @media (prefers-reduced-motion: reduce) {
   @keyframes rise {
     from {
@@ -2038,6 +2053,17 @@ button.pill {
     }
   }
   @keyframes unlock-pop {
+    from {
+      opacity: 0;
+    }
+  }
+  /* A press still answers a touch, with a short dim instead of a squash; the stagger is a plain fade. */
+  :root {
+    --press-reduce: 1;
+    --press-dim: 0.8;
+    --press-fade: 120ms;
+  }
+  @keyframes arrive {
     from {
       opacity: 0;
     }

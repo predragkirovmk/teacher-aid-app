@@ -47,7 +47,7 @@ Branch `animate-ui`, cut from `origin/main` at d85fa4e. One draft pull request. 
 | Token | duration / bounce | Overshoot | Use |
 |---|---|---|---|
 | `--spring-press` | 0.15 / 0 (was 0.25 / 0) | none | touch-down, so a press answers within a frame or two (exists, quickened) |
-| `--spring-pop` | about 0.25 / 0.45 | about 12% | release past 1 after a press, small arrivals (new) |
+| `--spring-pop` | 0.2 / 0.6 | 24.8% (settles in 480 ms) | release past 1 after a press, small arrivals (new). A press travels only 0.04 to 0.06, so a 12% overshoot (1.007) could not be seen; 25% reaches about 1.015 |
 | `--spring-snappy` | 0.3 / 0.15 | small | small state changes (exists) |
 | `--spring-smooth` | 0.4 / 0 | none | sheets, morphs, screen moves (exists) |
 | `--spring-bouncy` | 0.5 / 0.3 | about 5% | medium arrivals (exists) |
@@ -55,7 +55,8 @@ Branch `animate-ui`, cut from `origin/main` at d85fa4e. One draft pull request. 
 
 Each has a `-dur` variable: the settle time, by the same rule the existing four were sampled with
 (points equally spaced over `-dur`, cut where the curve stays within a fraction of a percent of
-1). `--spring-big-dur` stays at or under about 620 ms, `--spring-pop-dur` under about 450 ms.
+1). `--spring-big-dur` stays at or under about 620 ms, `--spring-pop-dur` under about 500 ms (its
+visible part is over far sooner: the travel is a few percent).
 Step 1 fits the exact values. The old 100 ms `cubic-bezier` press-in is replaced by
 `--spring-press`: no plain easing curves.
 
@@ -311,3 +312,16 @@ baseline, removal of anything unused, the before and after pictures zipped for t
 ## Record
 
 (each step adds its line here: what was done, the checks, the JS size change, the commit)
+
+- **Step 1, 2026-11-17.** Six springs in `lib/app/motion.ts` (press 0.15/0 210 ms, pop 0.2/0.6
+  480 ms, snappy, smooth and bouncy as before, big 0.31/0.5 610 ms), every CSS curve sampled from
+  them and checked by `tests/unit/motion-tokens.test.ts`. The press primitive squashes on
+  `--spring-press` and springs back on `--spring-pop` through the `scale` property: measured 0.94
+  then 1.015 for a button, 0.96 then 1.010 for full-width surfaces; a second press at 83 ms carries
+  on from 0.998. Reduced motion: a 0.8 dim, no scale. The stagger primitive (`.stagger > *`, 40 ms
+  per `--i`) is ready for step 4. Checks: lint, types, 1555 unit, 672 e2e all pass; no long tasks
+  at 4x; JS +2 bytes gzip (raw identical). Resting pictures unchanged; the 14 that differ also
+  differ between two runs of the same build (random lobby names, the countdown ring) or catch the
+  scanner's camera error at a different moment. Left for step 2: `.q-me` lost its old squash with
+  the move and is not on the primitive yet; `.opt`, `.result`, `.item` and `.tab` only change
+  colour.

@@ -230,7 +230,6 @@
   color: #fff;
 }
 .q-me:active {
-  transform: scale(0.985);
   background: var(--card-press);
 }
 .q-me__text {
@@ -341,14 +340,11 @@
   font-size: var(--fs-body);
   font-weight: 600;
   line-height: 1.3;
-  transition:
-    transform var(--spring-press-dur) var(--spring-press),
-    background var(--spring-press-dur) var(--spring-press);
+  --press-scale: 0.96;
   animation: q-rise var(--spring-smooth-dur) var(--spring-smooth) backwards;
   animation-delay: calc(var(--i) * 50ms + 140ms);
 }
 .q-opt:active {
-  transform: scale(0.97);
   background: var(--card-press);
 }
 .q-letter {
@@ -387,20 +383,12 @@
   justify-content: center;
   gap: 16px;
   padding: 16px 8px;
-  transition:
-    transform var(--spring-press-dur) var(--spring-press),
-    background var(--spring-press-dur) var(--spring-press);
+  --press-scale: 0.96;
   animation: q-rise var(--spring-smooth-dur) var(--spring-smooth) backwards;
   animation-delay: calc(var(--i) * 60ms + 140ms);
 }
 .q-tf__btn:active {
-  transform: scale(0.96);
   background: var(--card-press);
-}
-/* Press in fast, spring back on release. */
-:is(.q-opt, .q-tf__btn):active {
-  transition-duration: 100ms;
-  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
 }
 .q-tf__icon {
   width: 4.5rem;
@@ -747,15 +735,9 @@
   place-items: center;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  transition:
-    transform var(--spring-press-dur) var(--spring-press),
-    background var(--spring-press-dur) var(--spring-press);
 }
 .n-minus:active {
-  transform: scale(0.94);
   background: var(--card-press);
-  transition-duration: 100ms;
-  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
 }
 .n-box {
   flex: 1;
@@ -1039,10 +1021,6 @@
 .pe-photo-btn {
   position: relative;
   border-radius: 50%;
-  transition: transform var(--spring-press-dur) var(--spring-press);
-}
-.pe-photo-btn:active {
-  transform: scale(0.96);
 }
 .pe-photo-badge {
   position: absolute;
