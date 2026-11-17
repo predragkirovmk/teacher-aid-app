@@ -1411,9 +1411,9 @@ button.pill {
 }
 /* ---- one piece per track ----
    Every segmented control and tab row (the tab bar, the welcome screen's language switch) has one piece for the whole
-   track, and a choice flows into the next: the edge in front leaves on the snappy spring and the edge behind follows on
-   the bouncy one 50 ms later, so for a moment the old piece and the new one are one, then it settles with a small
-   overshoot (the teacher app allows none; the student app is livelier). SegGlide draws the piece as two round ends and a
+   track, and a choice flows into the next: the edge in front leaves at the snappy spring's pace and the edge behind
+   follows on the smooth one 50 ms later, so for a moment the old piece and the new one are one, then it settles, never
+   past its place. SegGlide draws the piece as two round ends and a
    flat bridge and moves them only by transform, so the compositor runs the slide and nothing is painted per frame. The
    parts are one group under one opacity (--seg-alpha), so a translucent piece does not darken where they overlap. While
    the piece is there, the chosen piece's own ground steps aside. The chosen piece says it is the one by itself too: a

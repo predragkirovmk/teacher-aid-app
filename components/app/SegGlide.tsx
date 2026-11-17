@@ -10,8 +10,10 @@ type Move = "slide" | "jump" | "follow";
 type Shape = { l: number; r: number; w: number };
 type Slide = { from: Shape; to: Shape; lead: "l" | "r"; start: number };
 
+// The piece goes straight to its place and never past it (the owner's word, 2026-11-17): the trailing edge is the smooth
+// spring, which has no bounce, and the leading edge's snappy spring is held at its target (it would pass it by 0.6%).
 const LEAD = SPRINGS.snappy;
-const TRAIL = SPRINGS.bouncy;
+const TRAIL = SPRINGS.smooth;
 const LEAD_MS = sampleSpring(LEAD).ms;
 const TRAIL_MS = sampleSpring(TRAIL).ms;
 const TRAIL_DELAY = 50;
@@ -20,9 +22,9 @@ const FRAMES = 48;
 
 /**
  * The one piece of a segmented control or tab row, drawn once for the track and moved to the chosen piece, so a choice flows
- * into the next one instead of jumping. The edge in front leaves first on the snappy spring and the edge behind follows 50 ms
- * later on the bouncy one, so for a moment the old piece and the new one are one, then it settles with a small overshoot (the
- * student app is the livelier of the two). Words pushed aside when the choice moves slide to their new places rather than jump.
+ * into the next one instead of jumping. The edge in front leaves first at the snappy spring's pace and the edge behind follows
+ * 50 ms later on the smooth one, so for a moment the old piece and the new one are one, then it settles. Neither edge
+ * overshoots: where the piece comes to rest is where it goes from the start. Words pushed aside when the choice moves slide to their new places rather than jump.
  * The chosen piece still says it is the one by itself (a filled glyph, heavier words, its pressed or current state); this only
  * carries the move.
  *
@@ -79,7 +81,7 @@ const CHOSEN = ':scope > :is([aria-current="page"], [aria-pressed="true"], [aria
 
 const running = (s: Slide | null) => !!s && performance.now() - s.start < TOTAL;
 
-const settle = (spring: Spring, ms: number, t: number) => (t <= 0 ? 0 : t >= ms ? 1 : position(spring, t / 1000));
+const settle = (spring: Spring, ms: number, t: number) => (t <= 0 ? 0 : t >= ms ? 1 : Math.min(1, position(spring, t / 1000)));
 
 /** Where the piece is `t` ms into a slide. */
 function shapeAt({ from, to, lead }: Slide, t: number): Shape {

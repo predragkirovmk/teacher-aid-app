@@ -52,7 +52,6 @@ function terms(course: Course): string[] {
  * app's other screens, which it lists in a group of their own under the subjects.
  */
 export default function Subjects() {
-  const { t } = useT();
   const courses = useCourses();
   return (
     <Gate query={courses} header={<Title />}>

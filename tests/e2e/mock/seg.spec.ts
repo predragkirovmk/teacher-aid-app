@@ -90,12 +90,10 @@ test.describe("the welcome screen's language switch", () => {
     await expect(page.locator(".pill[lang=en]")).toHaveAttribute("aria-pressed", "true");
   });
 
-  test("the trailing end overshoots a little, carrying the piece just past its place, before it settles", async ({ page }) => {
-    const { before, samples, goal } = await tapAndWatch(page, ".seg-pills", ".pill[lang=en]");
-    const furthest = Math.max(...samples.map((s) => s.r));
-    expect(furthest).toBeGreaterThan(goal.r + 0.5);
-    // Small: under a tenth of the way.
-    expect(furthest - goal.r).toBeLessThan((goal.l - before.l) / 10);
+  test("the piece never goes past its place: where it rests is where it went from the start", async ({ page }) => {
+    const { samples, goal } = await tapAndWatch(page, ".seg-pills", ".pill[lang=en]");
+    expect(Math.max(...samples.map((s) => s.r))).toBeLessThanOrEqual(goal.r + 0.5);
+    expect(Math.max(...samples.map((s) => s.l))).toBeLessThanOrEqual(goal.l + 0.5);
   });
 
   test("with Reduce Motion the piece moves at once", async ({ page }) => {
@@ -145,15 +143,18 @@ test.describe("the tab bar", () => {
     await page.goto("/app");
     const glide = page.locator(".tabbar > .seg__glide");
     await expect(glide).toHaveAttribute("data-on", "true");
-    const { before, samples } = await tapAndWatch(page, ".tabbar", `.tab[href="/app/profile"]`, 2500);
+    const { samples } = await tapAndWatch(page, ".tabbar", `.tab[href="/app/profile"]`, 2500);
     await expect(page).toHaveURL(/\/app\/profile$/);
     const goal = await page
       .locator(`.tab[href="/app/profile"]`)
       .evaluate((el: HTMLElement) => ({ l: el.offsetLeft, r: el.offsetLeft + el.offsetWidth }));
-    // Home and Profile are one piece for a moment, then it settles on Profile.
-    expect(samples.some((s) => s.l < before.r - 4 && s.r > goal.l + 4)).toBe(true);
+    // One piece stretched over the way from Home to Profile for a moment (much wider than a tab), then it settles on Profile.
+    expect(Math.max(...samples.map((s) => s.r - s.l))).toBeGreaterThan(2 * (goal.r - goal.l));
     const last = samples.at(-1)!;
     expect(near(last.l, goal.l) && near(last.r, goal.r)).toBe(true);
+    // Never past Profile on the way.
+    expect(Math.max(...samples.map((s) => s.r))).toBeLessThanOrEqual(goal.r + 0.5);
+    expect(Math.max(...samples.map((s) => s.l))).toBeLessThanOrEqual(goal.l + 0.5);
     await expect(page.getByRole("navigation", { name: mk.t("nav.main") }).locator("[aria-current=page]")).toHaveText(mk.t("nav.profile"));
   });
 
