@@ -3,13 +3,14 @@
 import { BellSimpleIcon, CheckIcon, HouseSimpleIcon, ScanIcon, UserIcon, type Icon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition, type ReactNode } from "react";
 import { NOTIFICATIONS_PAGE } from "@/lib/app/api/config";
 import { invalidate } from "@/lib/app/api/query";
 import { useAuth, useNotifications, useSettings } from "@/lib/app/api/hooks";
 import { useT } from "@/lib/app/i18n";
 import { useAsk, usePush } from "@/lib/app/push";
 import { isOpenPath, needsNotice, noticeWaits, noticeWasUpdated } from "@/lib/app/privacy";
+import { BACK, goBack } from "@/lib/app/nav";
 import { welcomeUrl } from "@/lib/app/signin";
 import type { Locale } from "@/lib/app/api/types";
 import { ClockOptions } from "./ClockOptions";
@@ -83,8 +84,9 @@ export function Shell({ children }: { children: ReactNode }) {
       openInstall: (how: "ios" | "manual", reason?: "push") => setInstallState({ at: pathname, how, push: reason === "push" }),
       openPushHelp: () => setPushHelpAt(pathname),
       openClock: () => setClockAt(pathname),
+      back: () => (window.history.length > 1 ? goBack(router) : router.push("/app", BACK)),
     }),
-    [toast, pathname],
+    [toast, pathname, router],
   );
 
   useEffect(() => {
@@ -161,7 +163,12 @@ export function Shell({ children }: { children: ReactNode }) {
       <PushRunner student={status === "signedIn" && me.data ? { id: me.data.id, notificationsOn: me.data.settings.notificationsOn } : undefined} />
       <div className="stage">
         <div className="phone">
-          <Pager pathname={pathname}>{content}</Pager>
+          <Pager pathname={pathname}>
+            {/* Keyed by the route so the screen enters and exits (the layout itself never remounts). Only typed navigations animate; the pager's swipe and redirects carry no type. */}
+            <ViewTransition key={pathname} enter={ENTER} exit={EXIT} default="none">
+              {content}
+            </ViewTransition>
+          </Pager>
           {!inQuiz && <ConnectionPill variant="float" />}
           {showTabs && (
             <>
@@ -247,6 +254,10 @@ export function Shell({ children }: { children: ReactNode }) {
   );
 }
 
+/** Each navigation type picks its CSS classes in app.css; `lift` marks the screen that travels on top (the new one going deeper, the old one going back). Anything untyped does nothing. */
+const ENTER = { "nav-forward": "nav-forward lift", "nav-back": "nav-back", tab: "tab", default: "none" };
+const EXIT = { "nav-forward": "nav-forward", "nav-back": "nav-back lift", tab: "tab", default: "none" };
+
 function Dock({ pathname }: { pathname: string }) {
   const { t } = useT();
   const feed = useNotifications().data;
@@ -266,7 +277,7 @@ function Dock({ pathname }: { pathname: string }) {
 
   const tab = (href: string, label: string, Icon: Icon, active: boolean, badge?: number) => (
     // Switching tabs replaces the history entry, so Back leaves the section instead of replaying tabs.
-    <Link href={href} replace className="tab" aria-current={active ? "page" : undefined}>
+    <Link href={href} replace transitionTypes={["tab"]} className="tab" aria-current={active ? "page" : undefined}>
       {/* The selected tab shows the filled glyph, as a tab bar does on iOS. */}
       <Icon size={24} weight={active ? "fill" : "regular"} aria-hidden="true" />
       {label}
@@ -301,7 +312,7 @@ function Dock({ pathname }: { pathname: string }) {
         {tab("/app/profile", t("nav.profile"), UserIcon, pathname === "/app/profile")}
       </div>
       {/* The scan is an action, not a section, so it sits beside the tab bar instead of in it. */}
-      <Link href="/app/scan" className="scan-fab" aria-label={t("nav.scan")}>
+      <Link href="/app/scan" className="scan-fab" transitionTypes={["nav-forward"]} aria-label={t("nav.scan")}>
         <ScanIcon size={32} aria-hidden="true" />
       </Link>
     </nav>

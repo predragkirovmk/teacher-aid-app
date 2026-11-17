@@ -36,7 +36,7 @@ function Detail({ n }: { n: AlertItem | undefined }) {
       <main className="screen screen--bare">
         <Top title={t("notif.title")} />
         <p className="muted">{t("notif.missing")}</p>
-        <Link href="/app/notifications" replace className="btn btn--ghost btn--block" style={{ marginTop: 16 }}>
+        <Link href="/app/notifications" replace transitionTypes={["nav-back"]} className="btn btn--ghost btn--block" style={{ marginTop: 16 }}>
           {t("notif.all")}
         </Link>
       </main>
@@ -60,7 +60,7 @@ function Detail({ n }: { n: AlertItem | undefined }) {
           {body}
         </p>
       </div>
-      <Link href={link} className="btn btn--ghost btn--block" style={{ marginTop: 16 }}>
+      <Link href={link} className="btn btn--ghost btn--block" transitionTypes={["nav-forward"]} style={{ marginTop: 16 }}>
         {action}
       </Link>
     </main>

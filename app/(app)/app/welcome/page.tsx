@@ -91,10 +91,10 @@ export default function Welcome() {
           <footer className="signin__legal">
             <p className="t-cap">{t("privacy.welcome")}</p>
             <div className="signin__legal-links">
-              <Link href="/app/privacy" className="btn btn--plain">
+              <Link href="/app/privacy" className="btn btn--plain" transitionTypes={["nav-forward"]}>
                 {t("privacy.row")}
               </Link>
-              <Link href="/app/terms" className="btn btn--plain">
+              <Link href="/app/terms" className="btn btn--plain" transitionTypes={["nav-forward"]}>
                 {t("terms.row")}
               </Link>
             </div>

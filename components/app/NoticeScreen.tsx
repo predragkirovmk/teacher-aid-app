@@ -73,10 +73,10 @@ export function NoticeScreen({ updated }: { updated: boolean }) {
           ))}
         </ul>
         <div className="notice__links">
-          <Link href="/app/privacy" className="btn btn--plain">
+          <Link href="/app/privacy" className="btn btn--plain" transitionTypes={["nav-forward"]}>
             {t("notice.readPrivacy")}
           </Link>
-          <Link href="/app/terms" className="btn btn--plain">
+          <Link href="/app/terms" className="btn btn--plain" transitionTypes={["nav-forward"]}>
             {t("notice.readTerms")}
           </Link>
         </div>

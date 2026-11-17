@@ -71,7 +71,7 @@ export function PushAskSheet({
       <p className="sheet__title">{t("push.ask.title")}</p>
       <p className="t-body steps__note">{t("push.ask.body")}</p>
       <p className="t-cap steps__note">
-        <Link href="/app/privacy#alerts" className="doc__link">
+        <Link href="/app/privacy#alerts" className="doc__link" transitionTypes={["nav-forward"]}>
           {t("privacy.alertsLink")}
         </Link>
       </p>

@@ -236,3 +236,178 @@ test.describe("a press with reduced motion", () => {
     });
   }
 });
+
+/**
+ * Screen transitions (docs/mobile-motion-steps.md, step 3). The browser's startViewTransition is wrapped to record the types
+ * each call asks for, so a test can say which direction React or the Back helper asked for without watching pixels.
+ */
+async function recordTransitions(page: Page) {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __vt: string[][]; __anims: { pseudo: string; name: string; ms: number }[] };
+    w.__vt = [];
+    w.__anims = [];
+    const original = document.startViewTransition?.bind(document);
+    if (original) {
+      document.startViewTransition = ((arg?: { types?: string[] } | (() => void)) => {
+        w.__vt.push(typeof arg === "object" && arg && Array.isArray(arg.types) ? [...arg.types] : []);
+        return original(arg as never);
+      }) as typeof document.startViewTransition;
+    }
+    // Remember the animations the snapshots run, so a test can read what the screens do while they move.
+    const watch = () => {
+      for (const a of document.getAnimations()) {
+        const e = a.effect as KeyframeEffect | null;
+        const pseudo = e?.pseudoElement ?? "";
+        if (pseudo.startsWith("::view-transition") && a instanceof CSSAnimation && !w.__anims.some((x) => x.pseudo === pseudo && x.name === a.animationName)) {
+          w.__anims.push({ pseudo, name: a.animationName, ms: Number(e!.getComputedTiming().duration) });
+        }
+      }
+      requestAnimationFrame(watch);
+    };
+    requestAnimationFrame(watch);
+  });
+}
+const transitions = (page: Page) => page.evaluate(() => (window as unknown as { __vt: string[][] }).__vt);
+const animations = (page: Page) => page.evaluate(() => (window as unknown as { __anims: { pseudo: string; name: string; ms: number }[] }).__anims.filter((a) => !a.pseudo.includes("(dock")));
+const back = (page: Page) => page.getByRole("button", { name: mk.t("back") });
+/** Home with its first card; the card opens a detail screen with a Back button. */
+async function home(page: Page) {
+  await recordTransitions(page);
+  await page.goto("/app");
+  await expect(page.locator("main.screen:not([data-pending])")).toBeVisible();
+}
+/** Drag across the phone, not the window: the pager only listens inside it. */
+async function swipe(page: Page, from: number, to: number) {
+  const phone = (await page.locator(".phone").boundingBox())!;
+  const y = phone.y + 130;
+  await page.mouse.move(phone.x + from, y);
+  await page.mouse.down();
+  await page.mouse.move(phone.x + to, y + 4, { steps: 10 });
+  await page.mouse.up();
+}
+
+test.describe("screen transitions", () => {
+  test("going deeper asks for nav-forward and lands on the screen, and Back asks for nav-back and returns", async ({ page }) => {
+    await home(page);
+    await page.locator("a.card.tile").first().click();
+    await expect(page).not.toHaveURL(/\/app$/);
+    await expect(back(page)).toBeVisible();
+    expect((await transitions(page)).at(-1)).toContain("nav-forward");
+
+    await back(page).click();
+    await expect(page).toHaveURL(/\/app$/);
+    await expect(page.locator("a.card.tile").first()).toBeVisible();
+    expect((await transitions(page)).at(-1)).toEqual(["nav-back"]);
+  });
+
+  test("a row in Settings goes forward and Back returns to Settings", async ({ page }) => {
+    await recordTransitions(page);
+    await page.goto("/app/profile");
+    await page.locator("a.item").first().click();
+    await expect(page).not.toHaveURL(/\/app\/profile$/);
+    expect((await transitions(page)).at(-1)).toContain("nav-forward");
+    await back(page).click();
+    await expect(page).toHaveURL(/\/app\/profile$/);
+    expect((await transitions(page)).at(-1)).toEqual(["nav-back"]);
+  });
+
+  test("a tab-bar tap asks for tab and lands on the tab", async ({ page }) => {
+    await home(page);
+    await page.locator(".tab").nth(1).click();
+    await expect(page).toHaveURL(/\/app\/notifications$/);
+    await expect(page.locator(".tab").nth(1)).toHaveAttribute("aria-current", "page");
+    expect((await transitions(page)).at(-1)).toEqual(["tab"]);
+  });
+
+  test("a tab swap fades the old screen out fast and starts the new one's pop after it, so the two never show together", async ({ page }) => {
+    await home(page);
+    await page.locator(".tab").nth(1).click();
+    await expect(page).toHaveURL(/\/app\/notifications$/);
+    const anims = await animations(page);
+    const out = anims.find((a) => a.pseudo.startsWith("::view-transition-old") && a.name === "vt-fade-out");
+    expect(out?.ms).toBe(80);
+    expect(anims.find((a) => a.pseudo.startsWith("::view-transition-new") && a.name === "vt-pop-in")).toBeTruthy();
+    // The new screen waits for the old one to be gone.
+    const rule = await page.evaluate(() =>
+      [...document.styleSheets].flatMap((s) => [...s.cssRules]).find((r) => r.cssText.includes("view-transition-new") && r.cssText.includes("vt-pop-in"))?.cssText ?? "",
+    );
+    expect(rule).toMatch(/\b80ms\b/);
+  });
+
+  test("a swipe on the pager carries no transition type, runs no view-transition animation and still lands on the next tab", async ({ page }) => {
+    await home(page);
+    await page.waitForTimeout(600);
+    await swipe(page, 330, 60);
+    await expect(page).toHaveURL(/\/app\/notifications$/);
+    await page.waitForTimeout(500);
+    // React starts a transition for any screen change that mounts a boundary, but it carries no type, so nothing in it
+    // animates: the pager's own slide is the only motion.
+    expect((await transitions(page)).flat()).toEqual([]);
+    expect(await animations(page)).toEqual([]);
+  });
+
+  test("the browser's own history move starts no view transition", async ({ page }) => {
+    await home(page);
+    await page.locator("a.card.tile").first().click();
+    await expect(back(page)).toBeVisible();
+    const before = (await transitions(page)).length;
+    await page.goBack();
+    await expect(page).toHaveURL(/\/app$/);
+    await expect(page.locator("a.card.tile").first()).toBeVisible();
+    expect((await transitions(page)).length).toBe(before);
+  });
+
+  test("a tap while a screen is still sliding in lands: Back at once returns to Home", async ({ page }) => {
+    await home(page);
+    await page.locator("a.card.tile").first().click();
+    // No waiting for the slide: the overlay lets the tap through to the live page.
+    await back(page).click();
+    await expect(page).toHaveURL(/\/app$/);
+    await expect(page.locator("a.card.tile").first()).toBeVisible();
+  });
+
+  test("a tab tapped during a tab swap lands on the last tab", async ({ page }) => {
+    await home(page);
+    await page.locator(".tab").nth(1).click();
+    await page.locator(".tab").nth(2).click();
+    await expect(page).toHaveURL(/\/app\/profile$/);
+    await expect(page.locator(".tab").nth(2)).toHaveAttribute("aria-current", "page");
+  });
+
+  test("the overlay lets taps through", async ({ page }) => {
+    await home(page);
+    await page.locator(".tab").nth(1).click();
+    const none = await page.evaluate(() => getComputedStyle(document.documentElement, "::view-transition").pointerEvents);
+    // Outside a transition the pseudo-element does not exist and reads as the default; while one runs it must be none.
+    expect(["none", "auto"]).toContain(none);
+    const rule = await page.evaluate(() =>
+      [...document.styleSheets].flatMap((s) => [...s.cssRules]).some((r) => r.cssText.startsWith("::view-transition {") && r.cssText.includes("pointer-events: none")),
+    );
+    expect(rule).toBe(true);
+  });
+});
+
+test.describe("screen transitions with reduced motion", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  test("a forward screen change still lands, as a short opacity fade with no slide", async ({ page }) => {
+    await home(page);
+    await page.locator("a.card.tile").first().click();
+    await expect(page).not.toHaveURL(/\/app$/);
+    await expect(back(page)).toBeVisible();
+    const anims = (await animations(page)).filter((a) => a.pseudo.startsWith("::view-transition-new"));
+    expect(anims.length).toBeGreaterThan(0);
+    for (const a of anims) {
+      expect(a.name).toBe("vt-fade-in");
+      expect(a.ms).toBe(150);
+    }
+    await back(page).click();
+    await expect(page).toHaveURL(/\/app$/);
+  });
+
+  test("a tab swap still lands", async ({ page }) => {
+    await home(page);
+    await page.locator(".tab").nth(2).click();
+    await expect(page).toHaveURL(/\/app\/profile$/);
+  });
+});

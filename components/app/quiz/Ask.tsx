@@ -57,7 +57,7 @@ export function FocusNotice() {
               <Inline text={text} />
             </p>
           ))}
-          <Link href="/app/privacy#focus" className="doc__link">
+          <Link href="/app/privacy#focus" className="doc__link" transitionTypes={["nav-forward"]}>
             {tt("privacy.fullNotice")}
           </Link>
         </details>

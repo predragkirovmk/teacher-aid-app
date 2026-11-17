@@ -102,7 +102,7 @@ export default function Home() {
     <main className="screen" data-pending={live === null || !me.loaded ? "" : undefined}>
       <div className="home-bar">
         <Mark size={32} />
-        <Link href="/app/profile" replace className="press" aria-label={t("nav.profile")} style={{ display: "block", borderRadius: "50%" }}>
+        <Link href="/app/profile" replace transitionTypes={["tab"]} className="press" aria-label={t("nav.profile")} style={{ display: "block", borderRadius: "50%" }}>
           <Avatar photo={me.photo} initials={me.initials} size={48} className="avatar--quiet" />
         </Link>
       </div>
@@ -179,7 +179,7 @@ function RankTile() {
   const { t } = useT();
   const standings = useStandings();
   return (
-    <Link href="/app/leaderboard" className="card tile">
+    <Link href="/app/leaderboard" className="card tile" transitionTypes={["nav-forward"]}>
       <span className="tile__head">
         <span className="t-label">{t("home.leaderboard")}</span>
         <CaretRightIcon size={16} aria-hidden="true" />
@@ -194,7 +194,7 @@ function AttendanceTile() {
   const { t } = useT();
   const attendance = useAttendanceView();
   return (
-    <Link href="/app/attendance" className="card tile">
+    <Link href="/app/attendance" className="card tile" transitionTypes={["nav-forward"]}>
       <span className="tile__head">
         <span className="t-label">{t("home.attendance")}</span>
         <CaretRightIcon size={16} aria-hidden="true" />
@@ -234,7 +234,7 @@ function ResultTile({ wide = false }: { wide?: boolean }) {
     !!notifications.data?.some((n) => n.kind === "result_ready" && n.payload.sessionId === result.sessionId && n.readAt === null);
   const subject = result ? subjectLabel(t, result.subjectId, result.subjectName) : "";
   return (
-    <Link href={result ? `/app/summary/${encodeURIComponent(result.sessionId)}` : "/app/summary"} className="card tile" style={wide ? { gridColumn: "1 / -1" } : undefined}>
+    <Link href={result ? `/app/summary/${encodeURIComponent(result.sessionId)}` : "/app/summary"} className="card tile" transitionTypes={["nav-forward"]} style={wide ? { gridColumn: "1 / -1" } : undefined}>
       <span className="tile__head">
         <span className="t-label">{t("home.summary")}</span>
         <CaretRightIcon size={16} aria-hidden="true" />
@@ -323,6 +323,7 @@ function DemoCards({ now, live }: { now: number; live: boolean }) {
           <Link
             href={needsScan ? "/app/scan" : `/app/subject/${course?.id}`}
             className="next"
+            transitionTypes={["nav-forward"]}
             data-morph={`subject-${course?.id}`}
           >
             <span className="next__sign" aria-hidden="true">
@@ -370,7 +371,7 @@ function DemoCards({ now, live }: { now: number; live: boolean }) {
 
       <div {...rise(1)}>
         <div className="grid2">
-          <Link href="/app/schedule" className="card tile">
+          <Link href="/app/schedule" className="card tile" transitionTypes={["nav-forward"]}>
             <span className="tile__head">
               <span className="t-label">{t(ahead?.kind === "pop" ? "home.nextPop" : "home.nextTest")}</span>
               <CaretRightIcon size={16} aria-hidden="true" />
@@ -402,7 +403,7 @@ function DemoCards({ now, live }: { now: number; live: boolean }) {
               {shown.length > 0 && ` · ${t(`home.${shiftOf(shown[0].start)}-shift`)}`}
             </span>
           </h2>
-          <Link href="/app/schedule" className="section-link">
+          <Link href="/app/schedule" className="section-link" transitionTypes={["nav-forward"]}>
             {t("sch.title")}
           </Link>
         </div>

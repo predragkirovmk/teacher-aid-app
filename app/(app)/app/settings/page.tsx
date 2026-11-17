@@ -74,7 +74,7 @@ export default function SettingsPage() {
             <span className="t-cap" id="push-hint">
               {t(HINT[status === "on" && !checked ? "off" : checked && status !== "on" ? "on" : status])}
             </span>
-            <Link href="/app/privacy#alerts" className="doc__link t-cap settings__more">
+            <Link href="/app/privacy#alerts" className="doc__link t-cap settings__more" transitionTypes={["nav-forward"]}>
               {t("privacy.alertsLink")}
             </Link>
           </span>

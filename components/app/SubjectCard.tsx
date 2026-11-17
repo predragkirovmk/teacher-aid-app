@@ -82,6 +82,7 @@ export function SubjectRow({
     <Link
       href={`/app/subject/${course.id}`}
       className="item"
+      transitionTypes={["nav-forward"]}
       data-morph={shared ? `subject-${course.id}` : undefined}
     >
       <span className="mark" aria-hidden="true">

@@ -36,7 +36,7 @@ export default function Schedule() {
               <ul className="list">
                 {lessonsOn(date.getTime()).map((l) => (
                   <li key={l.period}>
-                    <Link href={`/app/subject/${l.subject}`} className="item">
+                    <Link href={`/app/subject/${l.subject}`} className="item" transitionTypes={["nav-forward"]}>
                       <span className="t-label" style={{ minWidth: 52, flex: "none", fontVariantNumeric: "tabular-nums" }}>
                         {l.from}
                       </span>

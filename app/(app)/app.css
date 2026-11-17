@@ -1906,15 +1906,155 @@ button.pill {
   color: var(--yellow);
 }
 
+/* ---- screen transitions ----
+   React's <ViewTransition> in Shell names the screen and picks one of these classes by navigation type; Back
+   (lib/app/nav.ts goBack) names the screens by hand. Deeper: the new screen slides in from the right while the
+   old one moves a quarter of the way left and dims. Back is the reverse, the leaving screen on top. A tab swap
+   fades the old screen out in 80 ms, then the new one pops up from 0.97 on --spring-pop, so the two texts are never
+   both half visible. The slide is on --spring-smooth, which has no
+   overshoot: an overshoot on a full-screen slide would show a gap at the edge. Only transform and opacity move. */
+::view-transition {
+  /* Taps reach the live page while a transition runs. */
+  pointer-events: none;
+}
+/* The tab bar and the scan button stay still, above the moving screens. They get a name only while a transition
+   runs: a name makes an element a backdrop root, which would flatten the glass of the bar at rest. */
+:root:active-view-transition .dock {
+  view-transition-name: dock;
+}
+:root:active-view-transition .edge {
+  view-transition-name: dock-edge;
+}
+/* Old and new screens are separate groups, so the one that travels on top is lifted on the group. */
+::view-transition-group(.lift) {
+  z-index: 1;
+}
+::view-transition-group(dock),
+::view-transition-group(dock-edge) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(dock),
+::view-transition-old(dock-edge) {
+  display: none;
+}
+::view-transition-new(dock),
+::view-transition-new(dock-edge) {
+  animation: none;
+}
+
+/* React starts a transition whenever a boundary mounts, typed or not (a pager swipe, a redirect). Those carry no type,
+   so the screen is not named and lives in the root: the default root crossfade would blur the pager's own slide, so the
+   root shows the live page at once. With reduced motion the root keeps the plain fade below instead. */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) {
+    display: none;
+  }
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
+
+/* A sliding screen must hide what is under it, and a snapshot only carries what its element paints (a background on
+   the pseudo-element itself is not drawn). So while a transition runs a screen gets the phone's ground; the zero
+   specificity of :where lets any screen that has a ground of its own keep it. */
+:where(:root:active-view-transition .pager > *) {
+  background: linear-gradient(180deg, var(--ground-top) 0%, var(--ground-bottom) 100%);
+}
+
+::view-transition-old(.nav-forward),
+::view-transition-new(.nav-forward),
+::view-transition-old(.nav-back),
+::view-transition-new(.nav-back) {
+  mix-blend-mode: normal;
+  animation-duration: var(--spring-smooth-dur);
+  animation-timing-function: var(--spring-smooth);
+  animation-fill-mode: both;
+}
+::view-transition-old(.nav-forward) {
+  animation-name: vt-under-out;
+}
+::view-transition-new(.nav-forward) {
+  animation-name: vt-over-in;
+}
+::view-transition-old(.nav-back) {
+  animation-name: vt-over-out;
+}
+::view-transition-new(.nav-back) {
+  animation-name: vt-under-in;
+}
+@keyframes vt-over-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes vt-over-out {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes vt-under-out {
+  to {
+    transform: translateX(-25%);
+    opacity: 0.6;
+  }
+}
+@keyframes vt-under-in {
+  from {
+    transform: translateX(-25%);
+    opacity: 0.6;
+  }
+}
+
+::view-transition-old(.tab) {
+  animation: vt-fade-out 80ms linear both;
+}
+::view-transition-new(.tab) {
+  animation: vt-pop-in var(--spring-pop-dur) var(--spring-pop) 80ms both;
+}
+@keyframes vt-pop-in {
+  from {
+    transform: scale(0.97);
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
 /* Shared-element morph between a subject card and its screen. */
 ::view-transition-group(.morph) {
   animation-duration: var(--spring-smooth-dur);
   animation-timing-function: var(--spring-smooth);
 }
+
+/* Reduced motion: every screen change and morph is a plain 150 ms crossfade, with no slide, no scale and no move. */
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*),
-  ::view-transition-old(*),
+  ::view-transition-group(*) {
+    animation: none !important;
+  }
+  ::view-transition-old(*) {
+    mix-blend-mode: plus-lighter !important;
+    animation: vt-fade-out 150ms linear both !important;
+  }
   ::view-transition-new(*) {
+    mix-blend-mode: plus-lighter !important;
+    animation: vt-fade-in 150ms linear both !important;
+  }
+  /* The tab bar still does not move or blink. */
+  ::view-transition-old(dock),
+  ::view-transition-old(dock-edge) {
+    display: none;
+  }
+  ::view-transition-new(dock),
+  ::view-transition-new(dock-edge) {
     animation: none !important;
   }
 }

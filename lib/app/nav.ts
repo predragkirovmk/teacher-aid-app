@@ -26,30 +26,42 @@ export function leave(router: { back(): void; replace(href: string): void }) {
   else router.replace("/app");
 }
 
+/** Types the screens' <ViewTransition> maps listen to (see Shell). Untyped navigations do not animate. */
+export const FORWARD = { transitionTypes: ["nav-forward"] };
+export const BACK = { transitionTypes: ["nav-back"] };
+
 /**
- * Back from a screen whose card morphed in (a subject): the card shrinks back into its row on the
- * screen below. React leaves history traversals unanimated on purpose, since a browser's own swipe
- * back has its animation, so the in-app Back button runs this one transition itself. Only the card
- * being left and its row get the shared name, and only while the transition runs.
+ * The in-app Back. Going back is a history traversal, which React leaves unanimated on purpose (a
+ * browser's own swipe back draws its animation), so the in-app button runs the transition itself:
+ * the screen being left and the one restored get a shared name by hand, because React only names
+ * its boundaries inside transitions it starts, and the subject card morph keeps working the same
+ * way. Without view transitions or their types the Back is instant.
  */
-export function backWithMorph(router: { back(): void }) {
-  const name = document.querySelector<HTMLElement>("[data-morph]")?.dataset.morph;
-  const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (!name || calm || !("startViewTransition" in document)) return router.back();
-  const mark = (on: boolean) =>
-    document.querySelectorAll<HTMLElement>(`[data-morph="${name}"]`).forEach((el) => {
-      el.style.setProperty("view-transition-name", on ? name : null);
-      el.style.setProperty("view-transition-class", on ? "morph" : null);
-    });
-  mark(true);
-  const transition = document.startViewTransition(
-    () =>
+export function goBack(router: { back(): void }) {
+  const canType = typeof ViewTransition !== "undefined" && "types" in ViewTransition.prototype;
+  if (!("startViewTransition" in document) || !canType) return router.back();
+  const morph = document.querySelector<HTMLElement>("[data-morph]")?.dataset.morph;
+  const screens = () => Array.from(document.querySelectorAll<HTMLElement>(".pager > *"));
+  const mark = (el: HTMLElement, name: string | null, cls: string | null) => {
+    el.style.setProperty("view-transition-name", name);
+    el.style.setProperty("view-transition-class", cls);
+  };
+  const markMorph = (on: boolean) =>
+    morph &&
+    document.querySelectorAll<HTMLElement>(`[data-morph="${morph}"]`).forEach((el) => mark(el, on ? morph : null, on ? "morph" : null));
+  const left = screens();
+  left.forEach((el, i) => mark(el, `screen-out-${i}`, "nav-back lift"));
+  markMorph(true);
+  const transition = document.startViewTransition({
+    types: ["nav-back"],
+    update: () =>
       new Promise<void>((resolve) => {
         // The restored screen renders during popstate; a timeout covers a Back that never lands.
         const done = () => {
           clearTimeout(timer);
           window.removeEventListener("popstate", landed);
-          mark(true);
+          screens().forEach((el, i) => !left.includes(el) && mark(el, `screen-in-${i}`, "nav-back"));
+          markMorph(true);
           resolve();
         };
         const landed = () => setTimeout(done, 0);
@@ -57,6 +69,9 @@ export function backWithMorph(router: { back(): void }) {
         window.addEventListener("popstate", landed);
         router.back();
       }),
-  );
-  void transition.finished.finally(() => mark(false));
+  });
+  void transition.finished.finally(() => {
+    screens().forEach((el) => mark(el, null, null));
+    markMorph(false);
+  });
 }

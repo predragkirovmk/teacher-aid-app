@@ -3,6 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
 import { useAuth } from "@/lib/app/api/hooks";
+import { FORWARD } from "@/lib/app/nav";
 
 const noop = () => () => {};
 
@@ -18,7 +19,7 @@ export default function CheckinLink() {
   const hydrated = useSyncExternalStore(noop, () => true, () => false);
 
   useEffect(() => {
-    if (hydrated && signedIn) router.replace(`/app/play/${encodeURIComponent(code)}`);
+    if (hydrated && signedIn) router.replace(`/app/play/${encodeURIComponent(code)}`, FORWARD);
   }, [hydrated, signedIn, code, router]);
 
   return null;

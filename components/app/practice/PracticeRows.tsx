@@ -52,7 +52,7 @@ export function PracticeRow({ set, withSubject = true }: { set: PracticeSet; wit
   const meta = t("pr.meta", { count: questionCount(t, set.questions.length), date: formatDate(set.createdAt, locale) });
   const Icon = practiceStatus(set) === "done" ? CheckCircleIcon : NotePencilIcon;
   return (
-    <Link href={`/app/practice/${encodeURIComponent(set.id)}`} className="item">
+    <Link href={`/app/practice/${encodeURIComponent(set.id)}`} className="item" transitionTypes={["nav-forward"]}>
       <span className="item__icon">
         <Icon size={22} aria-hidden="true" />
       </span>

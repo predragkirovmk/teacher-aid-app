@@ -338,3 +338,21 @@ baseline, removal of anything unused, the before and after pictures zipped for t
   touch-down. New spec `tests/e2e/mock/motion.spec.ts`, 27 tests (squash, centre, release,
   interruption, disabled, reduced motion), 81 of 81 over three repeats. Checks: lint, types,
   1555 unit, 699 e2e pass; no long tasks at 4x; JS +9 bytes gzip.
+- **Step 3, 2026-11-17.** Screen changes run on the View Transitions API through React's
+  `<ViewTransition>` (keyed on the path in `Shell`, `default="none"`) and `transitionTypes` on
+  links and router calls. A deeper screen slides in from the right over the old one, which drifts
+  back to -25% and dims (`--spring-smooth`); Back mirrors it. Back now lives in the Shell and
+  reaches `Top` through `UIContext`, so it ships once instead of in every screen. A tab swap
+  fades the old screen out in 80 ms and pops the new one in on `--spring-pop` 80 ms later, so two
+  screens never show at once. The tab bar and scan button get a `view-transition-name` only while
+  a transition runs, so they stay still. Untyped changes (redirects) show the new page at once;
+  `::view-transition` takes no pointer events, so a tap reaches the live page. Reduced motion: a
+  150 ms crossfade. Without the API every change is instant. Quiz: transitions fire only on
+  entry, never during a question; the countdown and answers are untouched. Focus lands on `body`
+  after every change, as before. Checks: lint, types, 1555 unit; e2e 704 of 710, the six (three
+  teacher axe loads, the editor, one tab squash, the new tab test before its fix) pass alone;
+  motion spec 114 of 114 over three repeats; no long tasks at 4x, worst frame gap 48 ms. JS
+  -8,987 bytes gzip for all screens (476,046) and -1,463 on Home's first load: moving Back into
+  the Shell took a router-and-history copy out of 21 screen chunks. Not verified: Safari and
+  Firefox. Chromium 125 to 132 lacks `:active-view-transition`, so there the dock is not held
+  still and the sliding screens lose their ground.

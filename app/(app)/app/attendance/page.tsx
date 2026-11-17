@@ -73,7 +73,7 @@ function AttendanceView({ a }: { a: AttendanceSummary }) {
       </p>
       </div>
 
-      <Link href="/app/scan" className="btn btn--ghost btn--block">
+      <Link href="/app/scan" className="btn btn--ghost btn--block" transitionTypes={["nav-forward"]}>
         <ScanIcon size={22} aria-hidden="true" />
         {t("att.scanCta")}
       </Link>

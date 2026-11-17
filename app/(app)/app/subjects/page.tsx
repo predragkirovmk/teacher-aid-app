@@ -102,7 +102,7 @@ function SubjectList({ all }: { all: Course[] }) {
           <ul className="list">
             {pages.map(([href, key]) => (
               <li key={href}>
-                <Link href={href} className="item">
+                <Link href={href} className="item" transitionTypes={["nav-forward"]}>
                   <span className="grow item__title">{t(key)}</span>
                   <CaretRightIcon size={22} aria-hidden="true" />
                 </Link>
