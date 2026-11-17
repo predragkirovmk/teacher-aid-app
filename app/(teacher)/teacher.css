@@ -1246,6 +1246,7 @@ button {
 /* The language switch: a track with two buttons in it. The chosen one is a white tile raised off the track, with heavier,
    darker words; the other is grey words on the track. A difference of light and weight, not of hue, so it shows to everyone. */
 .lang {
+  position: relative;
   display: inline-flex;
   gap: 0.125rem;
   padding: 0.1875rem;
@@ -2723,6 +2724,7 @@ button {
   white-space: nowrap;
 }
 :is(.subjects, .seg) .choices {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
@@ -4576,6 +4578,126 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   background: transparent;
 }
 
+/* A segmented control (`Choices` with `segmented`, the tabs, the language switch) has one white piece for the whole track, and a
+   choice flows into the next:
+   the edge in front leaves on the snappy spring and the edge behind follows on the smooth one a beat later, so for a moment the
+   old piece and the new one are a single piece, then it settles. The words pushed aside by the moving tick slide, and the tick
+   lands. SegGlide sets the edges and which way it goes. The piece is drawn by clipping (a ring under a white face) so that only
+   clip-path moves; the soft shadow is a filter on the whole. While it is there, the chosen piece's own ground steps aside. */
+@property --seg-t {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --seg-r {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --seg-b {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --seg-l {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+.seg__glide {
+  --seg-lead: var(--spring-snappy-dur) var(--spring-snappy);
+  --seg-trail: var(--spring-smooth-dur) var(--spring-smooth) 50ms;
+  /* The face of the piece it stands for: its corners, its hairline ring and its shadow. */
+  --seg-round: 1.375rem;
+  --seg-ring: rgba(13, 42, 50, 0.06);
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 1.5px rgba(13, 42, 50, 0.14));
+  transition:
+    --seg-t var(--seg-lead),
+    --seg-r var(--seg-lead),
+    --seg-b var(--seg-lead),
+    --seg-l var(--seg-lead),
+    opacity var(--dur) var(--ease);
+}
+.seg__glide[data-dir="right"] {
+  transition:
+    --seg-t var(--seg-lead),
+    --seg-r var(--seg-lead),
+    --seg-b var(--seg-lead),
+    --seg-l var(--seg-trail),
+    opacity var(--dur) var(--ease);
+}
+.seg__glide[data-dir="left"] {
+  transition:
+    --seg-t var(--seg-lead),
+    --seg-r var(--seg-trail),
+    --seg-b var(--seg-lead),
+    --seg-l var(--seg-lead),
+    opacity var(--dur) var(--ease);
+}
+.seg__glide[data-dir="down"] {
+  transition:
+    --seg-t var(--seg-trail),
+    --seg-r var(--seg-lead),
+    --seg-b var(--seg-lead),
+    --seg-l var(--seg-lead),
+    opacity var(--dur) var(--ease);
+}
+.seg__glide[data-dir="up"] {
+  transition:
+    --seg-t var(--seg-lead),
+    --seg-r var(--seg-lead),
+    --seg-b var(--seg-trail),
+    --seg-l var(--seg-lead),
+    opacity var(--dur) var(--ease);
+}
+.seg__glide::before,
+.seg__glide::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.lang > .seg__glide {
+  --seg-round: var(--r-pill);
+  --seg-ring: rgba(13, 42, 50, 0.04);
+  filter: drop-shadow(0 1px 1px rgba(13, 42, 50, 0.18));
+}
+.tabs > .seg__glide {
+  --seg-round: var(--r-pill);
+  --seg-ring: rgba(13, 42, 50, 0.05);
+  filter: drop-shadow(0 3px 3px rgba(13, 42, 50, 0.07));
+}
+.seg__glide::before {
+  background: var(--seg-ring);
+  clip-path: inset(
+    calc(var(--seg-t) - 1px) calc(var(--seg-r) - 1px) calc(var(--seg-b) - 1px) calc(var(--seg-l) - 1px) round
+      calc(var(--seg-round) + 1px)
+  );
+}
+.seg__glide::after {
+  background: var(--surface);
+  clip-path: inset(var(--seg-t) var(--seg-r) var(--seg-b) var(--seg-l) round var(--seg-round));
+}
+.seg__glide[data-on="true"] {
+  opacity: 1;
+}
+.choices[data-glide="on"] > .choice[data-checked="true"],
+.lang[data-glide="on"] > .pill[aria-pressed="true"],
+.tabs[data-glide="on"] > .tabs__tab[aria-selected="true"] {
+  background: transparent;
+  box-shadow: none;
+}
+:is(.subjects, .seg) .choice__text,
+.tabs__tab {
+  transition: transform var(--spring-snappy-dur) var(--spring-snappy);
+}
+:is(.subjects, .seg) .choice[data-checked="true"] svg {
+  animation: mark-land var(--spring-snappy-dur) var(--spring-snappy) backwards;
+}
+
 /* A window rises in on the smooth spring over a backdrop that fades in. It closes at once: a closing window would still be read out,
    and found and pressed, for as long as it took to go. */
 .dialog[open] {
@@ -4783,6 +4905,17 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   .nav__glide {
     transition: opacity var(--dur) var(--ease);
   }
+  .seg__glide,
+  .seg__glide[data-dir] {
+    transition: opacity var(--dur) var(--ease);
+  }
+  :is(.subjects, .seg) .choice__text,
+  .tabs__tab {
+    transition: none;
+  }
+  :is(.subjects, .seg) .choice[data-checked="true"] svg {
+    animation: none;
+  }
   .dialog[open],
   .dialog[open]::backdrop {
     transition: opacity var(--dur) var(--ease-out);
@@ -4829,6 +4962,9 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   .tag,
   .choice {
     border-width: 2px;
+  }
+  .seg__glide {
+    display: none;
   }
   .card,
   .dialog,
@@ -5222,6 +5358,7 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
 
 /* ---- Tabs: one row of names over panels, of which one is shown ---- */
 .tabs {
+  position: relative;
   display: flex;
   gap: 0.25rem;
   padding: 0.25rem;
