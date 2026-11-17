@@ -266,8 +266,10 @@ function Dock({ pathname }: { pathname: string }) {
   }
 
   // The tab tapped moves the piece and fills its glyph at once, before its screen has loaded; aria-current stays with the
-  // screen actually shown. A tap is forgotten as soon as the screen changes, or if it never does.
+  // screen actually shown. A tap is forgotten as soon as the screen changes: kept, it would win again on a later return to
+  // the screen it was made on (a swipe back), and send the piece to the old tab.
   const [tapped, setTapped] = useState<{ href: string; from: string } | null>(null);
+  if (tapped && tapped.from !== pathname) setTapped(null);
   const shown = pathname === "/app" ? "/app" : pathname === "/app/subjects" ? "/app/subjects" : pathname.startsWith("/app/notifications") ? "/app/notifications" : pathname === "/app/profile" ? "/app/profile" : "";
   const chosen = tapped?.from === pathname ? tapped.href : shown;
 

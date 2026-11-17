@@ -191,6 +191,28 @@ test.describe("the tab bar", () => {
     await expect(page).toHaveURL(/\/app\/subject\//);
   });
 
+  test("after a tap, a swipe back to the screen it was made on puts the piece on that screen's tab", async ({ page }) => {
+    await start(page, {});
+    await page.goto("/app");
+    const tabs = page.getByRole("navigation", { name: mk.t("nav.main") });
+    await tabs.getByRole("link", { name: mk.t("subjects.title") }).click();
+    await expect(page).toHaveURL(/\/app\/subjects$/);
+    // A finger drags the screen to the right: back to Home.
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 100, y: 400 }] });
+    for (let i = 1; i <= 12; i++) {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: 100 + (200 * i) / 12, y: 400 }] });
+      await page.waitForTimeout(12);
+    }
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect(page).toHaveURL(/\/app$/);
+    await expect(tabs.locator('[data-checked="true"]')).toHaveText(mk.t("nav.home"));
+    const home = await page.locator(`.tab[href="/app"]`).evaluate((el: HTMLElement) => el.offsetLeft);
+    await expect
+      .poll(() => page.locator(".tabbar .seg__cap").first().evaluate((el) => el.getBoundingClientRect().left - el.closest(".tabbar")!.getBoundingClientRect().left))
+      .toBeCloseTo(home + 1, 0);
+  });
+
   test("off the tab roots there is no piece, and it comes back at once", async ({ page }) => {
     await start(page, {});
     await page.goto("/app/settings");
