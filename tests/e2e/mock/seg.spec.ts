@@ -191,6 +191,19 @@ test.describe("the tab bar", () => {
     expect(props.every((k) => k === "transform" || k === "opacity")).toBe(true);
   });
 
+  test("the chosen tab's icon fills in place, without a bounce", async ({ page }) => {
+    await start(page, {});
+    await page.goto("/app");
+    await expect(page.locator(".tabbar > .seg__glide")).toHaveAttribute("data-on", "true");
+    const moving = await page.evaluate(async () => {
+      const tab = document.querySelector<HTMLElement>(`.tab[href="/app/profile"]`)!;
+      tab.click();
+      await new Promise(requestAnimationFrame);
+      return tab.querySelector("svg")!.getAnimations().length;
+    });
+    expect(moving).toBe(0);
+  });
+
   test("a tap between Home and Subjects swaps the screens with no morph between them; a subject still morphs into its screen", async ({ page }) => {
     await start(page, {});
     await page.goto("/app");

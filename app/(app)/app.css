@@ -1417,7 +1417,7 @@ button.pill {
    flat bridge and moves them only by transform, so the compositor runs the slide and nothing is painted per frame. The
    parts are one group under one opacity (--seg-alpha), so a translucent piece does not darken where they overlap. While
    the piece is there, the chosen piece's own ground steps aside. The chosen piece says it is the one by itself too: a
-   filled glyph that lands on the big spring, heavier words. */
+   filled glyph (it does not bounce in: the owner's word, 2026-11-18), heavier words. */
 .seg__glide {
   --seg-round: 24px;
   --seg-color: #fff;
@@ -1454,15 +1454,6 @@ button.pill {
 }
 .tab[data-checked="true"] {
   font-weight: 750;
-}
-.tab[data-checked="true"] svg {
-  animation: tab-land var(--spring-big-dur) var(--spring-big) backwards;
-}
-@keyframes tab-land {
-  from {
-    scale: 0.6;
-    translate: 0 4px;
-  }
 }
 
 /* The welcome screen's language switch: a dark track with a yellow piece and ink words on it. */
@@ -2204,9 +2195,6 @@ button.pill {
   }
   details.faq::details-content {
     transition: none;
-  }
-  .tab[data-checked="true"] svg {
-    animation: none;
   }
   .seg-pills > .pill {
     --seg-color: 0s;
