@@ -218,9 +218,13 @@
   bottom: var(--y);
   width: 2.75rem;
   height: 2.75rem;
-  transform: translate(-50%, 50%);
+  /* The `translate` property, not a transform: the press squash is the `scale` property, which would shrink a transform's
+     offset and pull the dot off its point on the line. */
+  translate: -50% 50%;
   display: grid;
   place-items: center;
+  /* The visible dot is 10 px inside this 44 px target: 0.94 of it cannot be seen, so the whole target shrinks to 0.6. */
+  --press-scale: 0.6;
 }
 .tc__dot i {
   width: 0.625rem;

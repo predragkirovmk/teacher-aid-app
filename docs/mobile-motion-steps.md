@@ -325,3 +325,16 @@ baseline, removal of anything unused, the before and after pictures zipped for t
   scanner's camera error at a different moment. Left for step 2: `.q-me` lost its old squash with
   the move and is not on the primitive yet; `.opt`, `.result`, `.item` and `.tab` only change
   colour.
+- **Step 2, 2026-11-17.** Every tappable squashes and springs back: rows, tabs, options, results,
+  pills, the switch, FAQ questions, the Home avatar, chart dots, the toast, on top of step 1's set.
+  Depths: 0.94 for controls, 0.96 for cards and quiz options, 0.98 for rows inside a grouped list
+  (0.96 pulled them off the group's edges and looked cut out), 0.6 for the 44 px target of a
+  10 px chart dot (at 0.94 it did nothing visible). The switch sets its own depth, since the
+  custom property otherwise inherits the row's. The toast and chart dot centre with the
+  `translate` property so `scale` does not move them. FAQ questions run edge to edge, so the
+  press and the focus ring cover the row. Left still on purpose: links inside running text, the
+  Ask sheet's "more" summary, text and number fields. Touch: React's passive `touchstart` on the
+  document is the listener iOS needs for `:active`; Chromium tap gestures confirm the squash on
+  touch-down. New spec `tests/e2e/mock/motion.spec.ts`, 27 tests (squash, centre, release,
+  interruption, disabled, reduced motion), 81 of 81 over three repeats. Checks: lint, types,
+  1555 unit, 699 e2e pass; no long tasks at 4x; JS +9 bytes gzip.

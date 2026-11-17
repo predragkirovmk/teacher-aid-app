@@ -326,19 +326,43 @@ button.card:active {
    It is a transition on the individual scale property, so a second touch mid-spring reverses from
    where the element is, and it never fights a transform that an entrance animation holds.
    Disabled elements do not move. Reduced motion (the block near the end) swaps the squash for a
-   short dim through --press-reduce, --press-dim and --press-fade. */
-:is(.press, .btn, a.card, button.card, .round, .next, .scan-fab, .provider, .q-opt, .q-tf__btn, .n-minus, .pe-photo-btn) {
+   short dim through --press-reduce, --press-dim and --press-fade.
+
+   Who is on the list, and who is not. Rows are only a.item and button.item: the same class is a plain
+   li or div in lists that are read, not pressed. The tab squashes as a whole, which is its icon and
+   label; the moving selection (.tab-ind) is a sibling and stays put, and so does the bar. Rows of a
+   grouped list (.item, FAQ summaries) squash only to 0.98: they fill the group edge to edge, and at 0.96
+   the pressed highlight pulls 7 px off both edges and looks detached. The chart dot squashes to 0.6, because
+   0.94 of a 10 px dot cannot be seen. Both set --press-scale on themselves. --press-scale is inherited, so
+   a pressable inside another that sets it (the switch inside a row) sets its own. The switch
+   squashes as a whole at 0.94: its knob keeps its width, because width never animates. Summaries get
+   the class `press` in markup. Left out on purpose: text links inside a sentence (.doc__link, the
+   summary that reads as a link), because a scaled word in running prose looks broken; text inputs
+   and the number field, which are typed into, not pressed; the sheet's drag handle and the scrim,
+   which follow a finger or dismiss and are not buttons to squash.
+
+   Specificity: :is() takes its most specific argument, here a.card at 0,1,1, so this rule's
+   `transition` beats any single-class `transition` of an element on the list. Only .switch has one
+   (its colour change), so it passes its timing in through --press-bg, which both rules below use for
+   the background. Every other element on the list has no transition of its own, so it needs nothing. */
+:is(
+  .press, .btn, a.card, button.card, .round, .next, .scan-fab, .provider, .q-opt, .q-tf__btn, .n-minus, .pe-photo-btn,
+  a.item, button.item, .tab, .opt, .result, .switch, button.pill, .section-link, .pe-bar__text, .tc__dot
+) {
   transition:
     scale var(--spring-pop-dur) var(--spring-pop),
-    background var(--spring-press-dur) var(--spring-press),
+    background var(--press-bg, var(--spring-press-dur) var(--spring-press)),
     opacity var(--press-fade, 0s) linear;
 }
-:is(.press, .btn, a.card, button.card, .round, .next, .scan-fab, .provider, .q-opt, .q-tf__btn, .n-minus, .pe-photo-btn):not(:disabled, [aria-disabled="true"]):active {
+:is(
+  .press, .btn, a.card, button.card, .round, .next, .scan-fab, .provider, .q-opt, .q-tf__btn, .n-minus, .pe-photo-btn,
+  a.item, button.item, .tab, .opt, .result, .switch, button.pill, .section-link, .pe-bar__text, .tc__dot
+):not(:disabled, [aria-disabled="true"]):active {
   scale: var(--press-reduce, var(--press-scale, 0.94));
   opacity: var(--press-dim, 1);
   transition:
     scale var(--spring-press-dur) var(--spring-press),
-    background var(--spring-press-dur) var(--spring-press),
+    background var(--press-bg, var(--spring-press-dur) var(--spring-press)),
     opacity var(--press-fade, 0s) linear;
 }
 
@@ -424,6 +448,7 @@ button.card:active {
   padding: 0 16px;
   border-radius: 16px;
   text-align: left;
+  --press-scale: 0.96;
 }
 .result:active {
   background: rgba(255, 255, 255, 0.12);
@@ -606,6 +631,7 @@ button.card:active {
   border-radius: 22px;
   font-size: var(--fs-title3);
   font-weight: 600;
+  --press-scale: 0.96;
 }
 .opt:active {
   background: rgba(255, 255, 255, 0.12);
@@ -653,6 +679,9 @@ button.card:active {
   border-radius: 0;
   background: transparent;
   text-align: left;
+  /* A row fills its grouped list edge to edge; at 0.96 its pressed highlight pulls 7 px off both edges and looks
+     detached from the group, so rows squash less. */
+  --press-scale: 0.98;
 }
 a.item:active,
 button.item:active {
@@ -989,7 +1018,9 @@ button.item:active {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.25);
   flex: none;
-  transition: background var(--spring-snappy-dur) var(--spring-snappy);
+  /* Set here because the custom property is inherited: the switch sits in a .item and would take its 0.98. */
+  --press-scale: 0.94;
+  --press-bg: var(--spring-snappy-dur) var(--spring-snappy); /* the colour change keeps its own pace */
 }
 .switch::after {
   content: "";
@@ -1039,9 +1070,18 @@ details.faq summary {
   justify-content: space-between;
   gap: 12px;
   min-height: 64px;
+  /* The summary runs to the edges of the row (the details keeps 20 px of padding for the answer), so a press and
+     the focus ring cover the whole row and the ring does not sit on the first letter. */
+  margin: 0 -20px;
+  padding: 0 20px;
   font-weight: 650;
   font-size: var(--fs-callout);
   cursor: pointer;
+  --press-scale: 0.98; /* a full-width row of a grouped list, like .item */
+}
+/* The list clips what is outside a row, so the summary's focus ring is drawn inside it as well. */
+details.faq summary:focus-visible {
+  outline-offset: -3px;
 }
 details.faq summary::-webkit-details-marker {
   display: none;
@@ -1240,7 +1280,9 @@ button.pill {
   z-index: 40;
   left: 50%;
   top: calc(env(safe-area-inset-top) + 16px);
-  transform: translateX(-50%);
+  /* The centring is the `translate` property, not part of the transform: the press squash is the `scale` property,
+     which would shrink a transform's offset and push the toast sideways while it is held. */
+  translate: -50% 0;
   max-width: 88%;
   padding: 12px 16px;
   border-radius: 999px;
@@ -1250,11 +1292,24 @@ button.pill {
   /* Transitions, not a keyframe: a new message mid-exit turns back from where it is. */
   transition:
     opacity var(--spring-snappy-dur) var(--spring-snappy),
-    transform var(--spring-snappy-dur) var(--spring-snappy);
+    transform var(--spring-snappy-dur) var(--spring-snappy),
+    scale var(--spring-pop-dur) var(--spring-pop);
   @starting-style {
     opacity: 0;
-    transform: translateX(-50%) translateY(-8px);
+    transform: translateY(-8px);
   }
+}
+/* A tap dismisses the toast, so it answers a press like any control. It is not on the press list because
+   its own transition (opacity and transform, for the exit) would be replaced by the list's; it lists scale
+   itself. The exit state is left alone so a press during the fade-out cannot bring the toast back. */
+.toast:not(.toast--out):active {
+  scale: var(--press-reduce, 0.94);
+  opacity: var(--press-dim, 1);
+  /* The way in is the press spring, as for every control; the way out (the base rule) is the pop. */
+  transition:
+    opacity var(--spring-snappy-dur) var(--spring-snappy),
+    transform var(--spring-snappy-dur) var(--spring-snappy),
+    scale var(--spring-press-dur) var(--spring-press);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1967,7 +2022,7 @@ button.pill {
 }
 .toast--out {
   opacity: 0;
-  transform: translateX(-50%) translateY(-8px);
+  transform: translateY(-8px);
   transition-duration: 200ms;
   transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
 }
@@ -2082,9 +2137,9 @@ button.pill {
   }
   .toast,
   .toast--out {
-    transform: translateX(-50%);
+    transform: none;
     @starting-style {
-      transform: translateX(-50%);
+      transform: none;
     }
   }
 }

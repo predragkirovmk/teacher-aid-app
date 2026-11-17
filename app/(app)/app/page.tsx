@@ -102,7 +102,7 @@ export default function Home() {
     <main className="screen" data-pending={live === null || !me.loaded ? "" : undefined}>
       <div className="home-bar">
         <Mark size={32} />
-        <Link href="/app/profile" replace aria-label={t("nav.profile")} style={{ display: "block", borderRadius: "50%" }}>
+        <Link href="/app/profile" replace className="press" aria-label={t("nav.profile")} style={{ display: "block", borderRadius: "50%" }}>
           <Avatar photo={me.photo} initials={me.initials} size={48} className="avatar--quiet" />
         </Link>
       </div>

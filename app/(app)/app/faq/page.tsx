@@ -15,7 +15,7 @@ export default function Faq() {
       <div className="list">
         {FAQ_IDS.map((id) => (
           <details key={id} className="faq">
-            <summary>
+            <summary className="press">
               {t(`faq.${id}.q`)}
               <CaretRightIcon size={22} aria-hidden="true" />
             </summary>
