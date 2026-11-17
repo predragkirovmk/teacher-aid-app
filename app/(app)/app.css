@@ -1365,7 +1365,7 @@ button.pill {
   color: var(--text-2);
   position: relative;
 }
-.tab[aria-current="page"] {
+.tab[data-checked="true"] {
   color: #fff;
 }
 .tab {
@@ -1415,89 +1415,49 @@ button.pill {
    Every segmented control and tab row (the tab bar, the welcome screen's language switch) has one piece for the whole
    track, and a choice flows into the next: the edge in front leaves on the snappy spring and the edge behind follows on
    the bouncy one 50 ms later, so for a moment the old piece and the new one are one, then it settles with a small
-   overshoot of the trailing edge (the teacher app allows none; the student app is livelier). SegGlide sets the edges and
-   which way it goes. The piece is one clipped face on a layer of its own: each frame of a slide repaints only that
-   layer, never the frosted bar under it. No shadow filter and no second ring layer: on a phone a filter is drawn again
-   every frame, and that made the slide stutter (raster work 4x the still bar, measured). While the piece is there, the
-   chosen piece's own ground steps aside. The chosen piece says it is the one
-   by itself too: a filled glyph that lands on the big spring, heavier words. */
-@property --seg-t {
-  syntax: "<length>";
-  inherits: true;
-  initial-value: 0px;
-}
-@property --seg-r {
-  syntax: "<length>";
-  inherits: true;
-  initial-value: 0px;
-}
-@property --seg-b {
-  syntax: "<length>";
-  inherits: true;
-  initial-value: 0px;
-}
-@property --seg-l {
-  syntax: "<length>";
-  inherits: true;
-  initial-value: 0px;
-}
+   overshoot (the teacher app allows none; the student app is livelier). SegGlide draws the piece as two round ends and a
+   flat bridge and moves them only by transform, so the compositor runs the slide and nothing is painted per frame. The
+   parts are one group under one opacity (--seg-alpha), so a translucent piece does not darken where they overlap. While
+   the piece is there, the chosen piece's own ground steps aside. The chosen piece says it is the one by itself too: a
+   filled glyph that lands on the big spring, heavier words. */
 .seg__glide {
-  --seg-lead: var(--spring-snappy-dur) var(--spring-snappy);
-  --seg-trail: var(--spring-bouncy-dur) var(--spring-bouncy) 50ms;
   --seg-round: 24px;
+  --seg-color: #fff;
+  --seg-alpha: 0.22;
   position: absolute;
-  inset: 0;
+  left: 0;
+  top: 0;
+  width: 100%;
   opacity: 0;
   pointer-events: none;
-  background: rgba(255, 255, 255, 0.22);
-  clip-path: inset(var(--seg-t) var(--seg-r) var(--seg-b) var(--seg-l) round var(--seg-round));
-  will-change: transform;
-  transition:
-    --seg-t var(--seg-lead),
-    --seg-r var(--seg-lead),
-    --seg-b var(--seg-lead),
-    --seg-l var(--seg-lead),
-    opacity 160ms;
-}
-.seg__glide[data-dir="right"] {
-  transition:
-    --seg-t var(--seg-lead),
-    --seg-r var(--seg-lead),
-    --seg-b var(--seg-lead),
-    --seg-l var(--seg-trail),
-    opacity 160ms;
-}
-.seg__glide[data-dir="left"] {
-  transition:
-    --seg-t var(--seg-lead),
-    --seg-r var(--seg-trail),
-    --seg-b var(--seg-lead),
-    --seg-l var(--seg-lead),
-    opacity 160ms;
-}
-.seg__glide[data-dir="down"] {
-  transition:
-    --seg-t var(--seg-trail),
-    --seg-r var(--seg-lead),
-    --seg-b var(--seg-lead),
-    --seg-l var(--seg-lead),
-    opacity 160ms;
-}
-.seg__glide[data-dir="up"] {
-  transition:
-    --seg-t var(--seg-lead),
-    --seg-r var(--seg-lead),
-    --seg-b var(--seg-trail),
-    --seg-l var(--seg-lead),
-    opacity 160ms;
+  transition: opacity 160ms;
 }
 .seg__glide[data-on="true"] {
   opacity: 1;
 }
-.tab[aria-current="page"] {
+.seg__face {
+  position: absolute;
+  inset: 0;
+  opacity: var(--seg-alpha);
+}
+.seg__face > span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: var(--seg-color);
+  transform-origin: 0 0;
+}
+.seg__cap {
+  border-radius: var(--seg-round);
+}
+.seg__bridge {
+  width: 1px;
+}
+.tab[data-checked="true"] {
   font-weight: 750;
 }
-.tab[aria-current="page"] svg {
+.tab[data-checked="true"] svg {
   animation: tab-land var(--spring-big-dur) var(--spring-big) backwards;
 }
 @keyframes tab-land {
@@ -1519,7 +1479,8 @@ button.pill {
 }
 .seg-pills > .seg__glide {
   --seg-round: 999px;
-  background: var(--yellow);
+  --seg-color: var(--yellow);
+  --seg-alpha: 1;
 }
 .seg-pills > .pill {
   position: relative;
@@ -1886,7 +1847,7 @@ button.pill {
   .seg__glide {
     display: none;
   }
-  .tabbar > .tab[aria-current="page"],
+  .tabbar > .tab[data-checked="true"],
   .seg-pills:is([data-glide], :not([data-glide])) > .pill[aria-pressed="true"] {
     forced-color-adjust: none;
     background: Highlight;
@@ -2246,11 +2207,7 @@ button.pill {
   details.faq::details-content {
     transition: none;
   }
-  .seg__glide,
-  .seg__glide[data-dir] {
-    transition: opacity 160ms;
-  }
-  .tab[aria-current="page"] svg {
+  .tab[data-checked="true"] svg {
     animation: none;
   }
   .seg-pills > .pill {

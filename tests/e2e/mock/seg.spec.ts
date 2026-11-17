@@ -16,10 +16,18 @@ async function tapAndWatch(page: Page, track: string, target: string, ms = 900) 
     async ([track, target, ms]) => {
       const el = document.querySelector<HTMLElement>(track)!;
       const glide = el.querySelector<HTMLElement>(":scope > .seg__glide")!;
+      // The piece is two round ends and a bridge: its edges are the outer edges of their boxes, as drawn this frame.
       const read = (): Edges => {
-        const cs = getComputedStyle(glide);
-        const px = (k: string) => parseFloat(cs.getPropertyValue(`--seg-${k}`));
-        return { l: px("l"), r: el.clientWidth - px("r"), t: px("t"), b: el.clientHeight - px("b") };
+        const box = el.getBoundingClientRect();
+        const rects = Array.from(glide.querySelectorAll(".seg__face > span"), (p) => p.getBoundingClientRect());
+        const x = box.left + el.clientLeft;
+        const y = box.top + el.clientTop;
+        return {
+          l: Math.min(...rects.map((r) => r.left)) - x,
+          r: Math.max(...rects.map((r) => r.right)) - x,
+          t: Math.min(...rects.map((r) => r.top)) - y,
+          b: Math.max(...rects.map((r) => r.bottom)) - y,
+        };
       };
       const before = read();
       const t0 = performance.now();
@@ -43,6 +51,23 @@ async function tapAndWatch(page: Page, track: string, target: string, ms = 900) 
 
 const near = (a: number, b: number, by = 1) => Math.abs(a - b) <= by;
 
+/** How many frames, over the 1.2 s after `act`, show a view-transition morph running. */
+async function morphsDuring(page: Page, act: () => Promise<unknown>) {
+  await page.evaluate(() => {
+    const w = window as unknown as { morphs: number };
+    w.morphs = 0;
+    const end = performance.now() + 1200;
+    const look = () => {
+      if (document.getAnimations().some((a) => String((a.effect as KeyframeEffect).pseudoElement ?? "").startsWith("::view-transition-group"))) w.morphs++;
+      if (performance.now() < end) requestAnimationFrame(look);
+    };
+    requestAnimationFrame(look);
+  });
+  await act();
+  await page.waitForTimeout(1300);
+  return page.evaluate(() => (window as unknown as { morphs: number }).morphs);
+}
+
 test.describe("the welcome screen's language switch", () => {
   test.beforeEach(async ({ page }) => {
     await start(page, { state: { signedIn: false } });
@@ -65,12 +90,12 @@ test.describe("the welcome screen's language switch", () => {
     await expect(page.locator(".pill[lang=en]")).toHaveAttribute("aria-pressed", "true");
   });
 
-  test("the trailing edge overshoots a little before it settles", async ({ page }) => {
+  test("the trailing end overshoots a little, carrying the piece just past its place, before it settles", async ({ page }) => {
     const { before, samples, goal } = await tapAndWatch(page, ".seg-pills", ".pill[lang=en]");
-    const furthest = Math.max(...samples.map((s) => s.l));
-    expect(furthest).toBeGreaterThan(goal.l + 0.5);
+    const furthest = Math.max(...samples.map((s) => s.r));
+    expect(furthest).toBeGreaterThan(goal.r + 0.5);
     // Small: under a tenth of the way.
-    expect(furthest - goal.l).toBeLessThan((goal.l - before.l) / 10);
+    expect(furthest - goal.r).toBeLessThan((goal.l - before.l) / 10);
   });
 
   test("with Reduce Motion the piece moves at once", async ({ page }) => {
@@ -85,7 +110,7 @@ test.describe("the welcome screen's language switch", () => {
     const glide = page.locator(".seg-pills > .seg__glide");
     await expect.poll(() => page.locator(".pill[lang=en]").evaluate((el: HTMLElement) => el.offsetTop)).toBeGreaterThan(20);
     // The resize placed it on МК, at once.
-    await expect.poll(() => glide.evaluate((el) => el.getAnimations().length)).toBe(0);
+    await expect.poll(() => glide.evaluate((el) => el.getAnimations({ subtree: true }).length)).toBe(0);
     const { samples, goal } = await tapAndWatch(page, ".seg-pills", ".pill[lang=en]", 200);
     expect(near(samples[0].t, goal.t) && near(samples[0].b, goal.b) && near(samples[0].l, goal.l)).toBe(true);
   });
@@ -99,9 +124,9 @@ test.describe("the welcome screen's language switch", () => {
     });
     await page.waitForTimeout(1000);
     const [edges, goal] = await pills.evaluate((el) => {
-      const cs = getComputedStyle(el.querySelector(".seg__glide")!);
+      const left = el.querySelector(".seg__cap")!.getBoundingClientRect().left - el.getBoundingClientRect().left - el.clientLeft;
       const en = el.querySelector<HTMLElement>(".pill[lang=en]")!;
-      return [parseFloat(cs.getPropertyValue("--seg-l")), en.offsetLeft];
+      return [left, en.offsetLeft];
     });
     expect(near(edges, goal)).toBe(true);
   });
@@ -130,6 +155,40 @@ test.describe("the tab bar", () => {
     const last = samples.at(-1)!;
     expect(near(last.l, goal.l) && near(last.r, goal.r)).toBe(true);
     await expect(page.getByRole("navigation", { name: mk.t("nav.main") }).locator("[aria-current=page]")).toHaveText(mk.t("nav.profile"));
+  });
+
+  test("the slide is drawn by the compositor: nothing on the main thread animates but transforms", async ({ page }) => {
+    await start(page, {});
+    await page.goto("/app");
+    await expect(page.locator(".tabbar > .seg__glide")).toHaveAttribute("data-on", "true");
+    const props = await page.evaluate(async () => {
+      document.querySelector<HTMLElement>(`.tab[href="/app/subjects"]`)!.click();
+      // The piece moves on the tap itself, before the screen has loaded: by the next frame the slide is under way.
+      await new Promise(requestAnimationFrame);
+      return document
+        .querySelector(".tabbar > .seg__glide")!
+        .getAnimations({ subtree: true })
+        .flatMap((a) => (a.effect as KeyframeEffect).getKeyframes().flatMap((k) => Object.keys(k)))
+        .filter((k) => !["offset", "easing", "composite", "computedOffset"].includes(k));
+    });
+    expect(props).toContain("transform");
+    // Only what the compositor runs by itself: transforms, and the fade when the piece appears.
+    expect(props.every((k) => k === "transform" || k === "opacity")).toBe(true);
+  });
+
+  test("a tap between Home and Subjects swaps the screens with no morph between them; a subject still morphs into its screen", async ({ page }) => {
+    await start(page, {});
+    await page.goto("/app");
+    const tabs = page.getByRole("navigation", { name: mk.t("nav.main") });
+    expect(await morphsDuring(page, () => tabs.getByRole("link", { name: mk.t("subjects.title") }).click())).toBe(0);
+    await expect(page).toHaveURL(/\/app\/subjects$/);
+    expect(await morphsDuring(page, () => tabs.getByRole("link", { name: mk.t("nav.home") }).click())).toBe(0);
+    await expect(page).toHaveURL(/\/app$/);
+    await tabs.getByRole("link", { name: mk.t("subjects.title") }).click();
+    await expect(page).toHaveURL(/\/app\/subjects$/);
+    // The control: the same morph, from a row into the subject's own screen, still runs.
+    expect(await morphsDuring(page, () => page.locator("[data-morph]").first().click())).toBeGreaterThan(0);
+    await expect(page).toHaveURL(/\/app\/subject\//);
   });
 
   test("off the tab roots there is no piece, and it comes back at once", async ({ page }) => {

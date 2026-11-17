@@ -265,11 +265,25 @@ function Dock({ pathname }: { pathname: string }) {
     if (seen !== null && count > seen) setArrived(t("notif.arrived", { n: shownCount }));
   }
 
-  const tab = (href: string, label: string, Icon: Icon, active: boolean, badge?: number) => (
+  // The tab tapped moves the piece and fills its glyph at once, before its screen has loaded; aria-current stays with the
+  // screen actually shown. A tap is forgotten as soon as the screen changes, or if it never does.
+  const [tapped, setTapped] = useState<{ href: string; from: string } | null>(null);
+  const shown = pathname === "/app" ? "/app" : pathname === "/app/subjects" ? "/app/subjects" : pathname.startsWith("/app/notifications") ? "/app/notifications" : pathname === "/app/profile" ? "/app/profile" : "";
+  const chosen = tapped?.from === pathname ? tapped.href : shown;
+
+  const tab = (href: string, label: string, Icon: Icon, badge?: number) => (
     // Switching tabs replaces the history entry, so Back leaves the section instead of replaying tabs.
-    <Link href={href} replace className="tab" aria-current={active ? "page" : undefined}>
+    <Link
+      href={href}
+      replace
+      transitionTypes={["tab"]}
+      className="tab"
+      aria-current={shown === href ? "page" : undefined}
+      data-checked={chosen === href}
+      onClick={() => setTapped({ href, from: pathname })}
+    >
       {/* The selected tab shows the filled glyph, as a tab bar does on iOS. */}
-      <Icon size={24} weight={active ? "fill" : "regular"} aria-hidden="true" />
+      <Icon size={24} weight={chosen === href ? "fill" : "regular"} aria-hidden="true" />
       {label}
       {badge !== undefined && (
         <>
@@ -284,10 +298,6 @@ function Dock({ pathname }: { pathname: string }) {
     </Link>
   );
 
-  const home = pathname === "/app";
-  const subjects = pathname === "/app/subjects";
-  const alerts = pathname.startsWith("/app/notifications");
-  const profile = pathname === "/app/profile";
 
   return (
     <nav className="dock" aria-label={t("nav.main")}>
@@ -297,14 +307,14 @@ function Dock({ pathname }: { pathname: string }) {
       {/* The classic five: two sections on each side of the scan, which sits raised in the middle because it is an action,
           not a section. The one piece under the current tab is SegGlide's, and it skips over the scan. */}
       <div className="tabbar glass">
-        <SegGlide at={home ? "home" : subjects ? "subjects" : alerts ? "alerts" : profile ? "profile" : ""} />
-        {tab("/app", t("nav.home"), HouseSimpleIcon, home)}
-        {tab("/app/subjects", t("subjects.title"), BooksIcon, subjects)}
+        <SegGlide at={chosen} />
+        {tab("/app", t("nav.home"), HouseSimpleIcon)}
+        {tab("/app/subjects", t("subjects.title"), BooksIcon)}
         <Link href="/app/scan" className="scan-fab" aria-label={t("nav.scan")}>
           <ScanIcon size={36} aria-hidden="true" />
         </Link>
-        {tab("/app/notifications", t("nav.alerts"), BellSimpleIcon, alerts, count)}
-        {tab("/app/profile", t("nav.profile"), UserIcon, profile)}
+        {tab("/app/notifications", t("nav.alerts"), BellSimpleIcon, count)}
+        {tab("/app/profile", t("nav.profile"), UserIcon)}
       </div>
     </nav>
   );

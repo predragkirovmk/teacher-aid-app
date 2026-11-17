@@ -7,7 +7,7 @@ import { Avatar } from "@/components/app/Avatar";
 import { Mark } from "@/components/app/Mark";
 import { PracticeHomeRow } from "@/components/app/practice/PracticeRows";
 import { QueryState } from "@/components/app/QueryState";
-import { SubjectMark, SubjectRow } from "@/components/app/SubjectCard";
+import { SubjectMark, SubjectRow, TAB_SAFE_MORPH } from "@/components/app/SubjectCard";
 import { useUI } from "@/components/app/ui";
 import { demoOnly } from "@/lib/app/api";
 import {
@@ -302,7 +302,7 @@ function DemoCards({ now, live }: { now: number; live: boolean }) {
     <>
       {/* What matters first: the lesson under way or next, which is also where you check in. */}
       <div {...rise(0)}>
-        <ViewTransition name={`subject-${course?.id}`} share="morph" default="none">
+        <ViewTransition name={`subject-${course?.id}`} share={TAB_SAFE_MORPH} default="none">
           <Link
             href={needsScan ? "/app/scan" : `/app/subject/${course?.id}`}
             className="next"
