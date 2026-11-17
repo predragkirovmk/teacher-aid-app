@@ -1423,9 +1423,7 @@ button.pill {
 .tabbar {
   position: relative;
 }
-.tab:active {
-  background: rgba(255, 255, 255, 0.1);
-}
+/* No ground of its own under a pressed tab: the answer to the tap is the piece sliding towards it. */
 .tab__badge {
   position: absolute;
   top: 2px;
@@ -1443,28 +1441,28 @@ button.pill {
   display: grid;
   place-items: center;
 }
-/* The scan is an action, not a section: a yellow circle raised out of the middle of the bar. */
+/* The scan is an action, not a section: a yellow circle in the middle of the bar, inside it like the tabs. */
 .scan-fab {
   position: relative;
   z-index: 1;
-  width: 72px;
-  height: 72px;
-  translate: 0 -20px;
+  width: 56px;
+  height: 56px;
+  margin: 0 4px;
   border-radius: 50%;
   display: grid;
   place-items: center;
   background: var(--yellow);
   color: var(--ink);
-  box-shadow: 0 8px 22px rgba(2, 8, 24, 0.4);
+  box-shadow: 0 2px 8px rgba(2, 8, 24, 0.25);
 }
 .scan-fab:active {
   background: var(--yellow-soft);
 }
 /* ---- one piece per track ----
    Every segmented control and tab row (the tab bar, the welcome screen's language switch) has one piece for the whole
-   track, and a choice flows into the next: the edge in front leaves on the snappy spring and the edge behind follows on
-   the bouncy one 50 ms later, so for a moment the old piece and the new one are one, then it settles with a small
-   overshoot (the teacher app allows none; the student app is livelier). SegGlide draws the piece as two round ends and a
+   track, and a choice flows into the next: the edge in front leaves first, runs a little past its place and comes back
+   (bounce 0.2), and the edge behind follows 60 ms later with no bounce, so for a moment the old piece and the new one are
+   one, then it settles with the overshoot already behind it. SegGlide draws the piece as two round ends and a
    flat bridge and moves them only by transform, so the compositor runs the slide and nothing is painted per frame. The
    parts are one group under one opacity (--seg-alpha), so a translucent piece does not darken where they overlap. While
    the piece is there, the chosen piece's own ground steps aside. The chosen piece says it is the one by itself too: a

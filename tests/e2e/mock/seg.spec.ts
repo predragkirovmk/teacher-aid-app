@@ -51,6 +51,22 @@ async function tapAndWatch(page: Page, track: string, target: string, ms = 900) 
 
 const near = (a: number, b: number, by = 1) => Math.abs(a - b) <= by;
 
+/**
+ * A slide to the right passes its place once, gently, while it is still arriving: the leading edge is at its farthest while
+ * the trailing edge is still on its way, and from then on the piece only comes back (no late bump once it has stopped).
+ */
+function expectOvershootBeforeStop(samples: Sample[], goal: { l: number; r: number }, way: number) {
+  const peak = samples.reduce((best, s, i) => (s.r > samples[best].r ? i : best), 0);
+  const past = samples[peak].r - goal.r;
+  expect(past).toBeGreaterThan(0.2);
+  // Gentle: bounce 0.2 passes by about 1.5% of the way, so under 3%.
+  expect(past).toBeLessThan(way * 0.03);
+  // Before the stop: the trailing edge has not arrived yet at the farthest point.
+  expect(samples[peak].l).toBeLessThan(goal.l - 1);
+  // After it, the leading edge only comes back.
+  for (let i = peak + 1; i < samples.length; i++) expect(samples[i].r).toBeLessThanOrEqual(samples[i - 1].r + 0.3);
+}
+
 /** How many frames, over the 1.2 s after `act`, show a subject's view-transition morph running (the screens' and the dock's own groups are not morphs). */
 async function morphsDuring(page: Page, act: () => Promise<unknown>) {
   await page.evaluate(() => {
@@ -90,12 +106,9 @@ test.describe("the welcome screen's language switch", () => {
     await expect(page.locator(".pill[lang=en]")).toHaveAttribute("aria-pressed", "true");
   });
 
-  test("the trailing end overshoots a little, carrying the piece just past its place, before it settles", async ({ page }) => {
+  test("the piece runs just past its place on the way in and comes back, and nothing passes it after the stop", async ({ page }) => {
     const { before, samples, goal } = await tapAndWatch(page, ".seg-pills", ".pill[lang=en]");
-    const furthest = Math.max(...samples.map((s) => s.r));
-    expect(furthest).toBeGreaterThan(goal.r + 0.5);
-    // Small: under a tenth of the way.
-    expect(furthest - goal.r).toBeLessThan((goal.l - before.l) / 10);
+    expectOvershootBeforeStop(samples, goal, goal.l - before.l);
   });
 
   test("with Reduce Motion the piece moves at once", async ({ page }) => {
@@ -145,15 +158,17 @@ test.describe("the tab bar", () => {
     await page.goto("/app");
     const glide = page.locator(".tabbar > .seg__glide");
     await expect(glide).toHaveAttribute("data-on", "true");
-    const { before, samples } = await tapAndWatch(page, ".tabbar", `.tab[href="/app/profile"]`, 2500);
+    const { samples } = await tapAndWatch(page, ".tabbar", `.tab[href="/app/profile"]`, 2500);
     await expect(page).toHaveURL(/\/app\/profile$/);
     const goal = await page
       .locator(`.tab[href="/app/profile"]`)
       .evaluate((el: HTMLElement) => ({ l: el.offsetLeft, r: el.offsetLeft + el.offsetWidth }));
-    // Home and Profile are one piece for a moment, then it settles on Profile.
-    expect(samples.some((s) => s.l < before.r - 4 && s.r > goal.l + 4)).toBe(true);
+    // One piece stretched over the way from Home to Profile for a moment (much wider than a tab), then it settles on Profile.
+    expect(Math.max(...samples.map((s) => s.r - s.l))).toBeGreaterThan(2 * (goal.r - goal.l));
     const last = samples.at(-1)!;
     expect(near(last.l, goal.l) && near(last.r, goal.r)).toBe(true);
+    // Just past Profile, a little, on the way in, and back.
+    expectOvershootBeforeStop(samples, goal, goal.l - samples[0].l);
     await expect(page.getByRole("navigation", { name: mk.t("nav.main") }).locator("[aria-current=page]")).toHaveText(mk.t("nav.profile"));
   });
 

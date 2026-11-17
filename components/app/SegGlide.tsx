@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { position, sampleSpring, SPRINGS, type Spring } from "@/lib/app/motion";
+import { position, sampleSpring, type Spring } from "@/lib/app/motion";
 
 type Spot = { x: number; y: number };
 /** `slide` to a new choice, `jump` there at once, or `follow` a track that changed size while a slide is under way. */
@@ -10,19 +10,23 @@ type Move = "slide" | "jump" | "follow";
 type Shape = { l: number; r: number; w: number };
 type Slide = { from: Shape; to: Shape; lead: "l" | "r"; start: number };
 
-const LEAD = SPRINGS.snappy;
-const TRAIL = SPRINGS.bouncy;
+// The owner's word (2026-11-17): the overshoot comes before the stop, gently (bounce 0.2, about 1.5% of the way). The
+// leading edge carries it: it runs past its place on the way in and comes back. The trailing edge follows 60 ms later on a
+// spring with no bounce, so nothing passes the goal once the leading edge has settled (a bouncy trailing edge pushed its round
+// end past the goal after the piece had already stopped, a late bump).
+const LEAD: Spring = { duration: 0.4, bounce: 0.2 };
+const TRAIL: Spring = { duration: 0.45, bounce: 0 };
 const LEAD_MS = sampleSpring(LEAD).ms;
 const TRAIL_MS = sampleSpring(TRAIL).ms;
-const TRAIL_DELAY = 50;
+const TRAIL_DELAY = 60;
 const TOTAL = Math.max(LEAD_MS, TRAIL_DELAY + TRAIL_MS);
 const FRAMES = 48;
 
 /**
  * The one piece of a segmented control or tab row, drawn once for the track and moved to the chosen piece, so a choice flows
- * into the next one instead of jumping. The edge in front leaves first on the snappy spring and the edge behind follows 50 ms
- * later on the bouncy one, so for a moment the old piece and the new one are one, then it settles with a small overshoot (the
- * student app is the livelier of the two). Words pushed aside when the choice moves slide to their new places rather than jump.
+ * into the next one instead of jumping. The edge in front leaves first, runs a little past its place and comes back (bounce
+ * 0.2), and the edge behind follows 60 ms later with no bounce, so for a moment the old piece and the new one are one, then
+ * it settles, with the overshoot already behind it. Words pushed aside when the choice moves slide to their new places rather than jump.
  * The chosen piece still says it is the one by itself (a filled glyph, heavier words, its pressed or current state); this only
  * carries the move.
  *
@@ -83,8 +87,9 @@ const settle = (spring: Spring, ms: number, t: number) => (t <= 0 ? 0 : t >= ms 
 
 /** Where the piece is `t` ms into a slide. */
 function shapeAt({ from, to, lead }: Slide, t: number): Shape {
+  // Only the leading edge may pass its target, on the way in; the trailing edge never does.
   const a = settle(LEAD, LEAD_MS, t);
-  const b = settle(TRAIL, TRAIL_MS, t - TRAIL_DELAY);
+  const b = Math.min(1, settle(TRAIL, TRAIL_MS, t - TRAIL_DELAY));
   const mix = (k: keyof Shape, p: number) => from[k] + (to[k] - from[k]) * p;
   return lead === "r" ? { l: mix("l", b), r: mix("r", a), w: mix("w", a) } : { l: mix("l", a), r: mix("r", b), w: mix("w", a) };
 }
