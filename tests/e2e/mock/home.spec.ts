@@ -18,9 +18,10 @@ test("Home shows the name, rank, attendance and the latest result", async ({ pag
   await expect(latest).toContainText(mk.t("subj.math"));
 });
 
-test("Home lists the subjects", async ({ page }) => {
+test("the subjects are a tab of their own, not a row on Home", async ({ page }) => {
   await page.goto("/app");
-  await page.getByRole("link", { name: new RegExp(mk.t("home.allSubjects")) }).click();
+  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.allSubjects")) })).toHaveCount(0);
+  await page.getByRole("navigation", { name: mk.t("nav.main") }).getByRole("link", { name: mk.t("subjects.title") }).click();
   await expect(page).toHaveURL(/\/app\/subjects$/);
   await expect(page.getByRole("link", { name: new RegExp(mk.t("subj.math")) }).first()).toBeVisible();
 });

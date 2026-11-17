@@ -1,13 +1,12 @@
 "use client";
 
-import { BooksIcon, CaretRightIcon, CheckIcon, ClockIcon, ScanIcon, XIcon, type Icon } from "@phosphor-icons/react";
+import { CaretRightIcon, CheckIcon, ClockIcon, ScanIcon, XIcon, type Icon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useEffect, ViewTransition, type CSSProperties } from "react";
 import { Avatar } from "@/components/app/Avatar";
 import { Mark } from "@/components/app/Mark";
 import { PracticeHomeRow } from "@/components/app/practice/PracticeRows";
 import { QueryState } from "@/components/app/QueryState";
-import { Row } from "@/components/app/Row";
 import { SubjectMark, SubjectRow } from "@/components/app/SubjectCard";
 import { useUI } from "@/components/app/ui";
 import { demoOnly } from "@/lib/app/api";
@@ -154,24 +153,8 @@ function LiveCards() {
       </div>
       <div {...rise(2)}>
         <PracticeHomeRow space="below" />
-        <AllSubjects />
       </div>
     </>
-  );
-}
-
-function AllSubjects({ gap = false }: { gap?: boolean }) {
-  const { t } = useT();
-  const courses = useCourses();
-  return (
-    <div className="list" style={gap ? { marginTop: 16 } : undefined}>
-      <Row
-        icon={BooksIcon}
-        label={t("home.allSubjects")}
-        value={courses.data ? t("home.subjectCount", { n: courses.data.length }) : undefined}
-        href="/app/subjects"
-      />
-    </div>
   );
 }
 
@@ -430,7 +413,6 @@ function DemoCards({ now, live }: { now: number; live: boolean }) {
             );
           })}
         </ul>
-        <AllSubjects gap />
       </div>
     </>
   );
