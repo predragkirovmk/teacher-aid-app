@@ -237,8 +237,8 @@ focus, hit targets and contrast, ui-ux-pro-max for layout and type only), then:
   `components/app/ui.tsx`, the pages under `app/(app)/app/` that hold links or Back buttons,
   `app/(app)/app.css`, the affected specs in `tests/e2e/mock/`.
 - Done: going deeper slides the new screen in from the right with a slight pop and the old one
-  back and dimmed; Back does the reverse; a tab-bar tap swaps with a short fade and scale on
-  `--spring-pop`. The tab bar does not move. The pager's own swipe keeps its own slide and runs
+  back and dimmed; Back does the reverse; a tab-bar tap swaps with a simultaneous 220 ms opacity
+  crossfade, with no scale or delay (the first pop was too intense). The tab bar does not move. The pager's own swipe keeps its own slide and runs
   no view transition on top of it. The existing subject morph and quiz morphs keep working.
   Browser history moves (swipe back) stay as the browser draws them. Browsers without view
   transitions change screens at once. Reduced motion: a short crossfade. Taps pass through the
@@ -356,3 +356,4 @@ baseline, removal of anything unused, the before and after pictures zipped for t
   the Shell took a router-and-history copy out of 21 screen chunks. Not verified: Safari and
   Firefox. Chromium 125 to 132 lacks `:active-view-transition`, so there the dock is not held
   still and the sliding screens lose their ground.
+- **Step 3 follow-up, 2026-11-17.** The owner found the tab pop too intense, so the tab swap is now a simultaneous ~220 ms opacity crossfade with no scale, translate or delay (default plus-lighter blend kept, so no dimming); the dock stays still and forward and Back slides are unchanged. The tab timing test was rewritten for the new promise. Checks: lint, types, 1555 unit (two session-controller load flakes pass alone); e2e 710 passed, 4 skipped; motion spec 114 of 114 over three repeats (the new tab test needed a poll for the animations under load); mid-transition frames at 0 to 220 ms show both screens at matching partial opacity, no scale, no dimming, dock still; no long tasks at 4x, worst frame gap 51 ms; CSS only, JS unchanged.

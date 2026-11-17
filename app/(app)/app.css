@@ -1910,8 +1910,7 @@ button.pill {
    React's <ViewTransition> in Shell names the screen and picks one of these classes by navigation type; Back
    (lib/app/nav.ts goBack) names the screens by hand. Deeper: the new screen slides in from the right while the
    old one moves a quarter of the way left and dims. Back is the reverse, the leaving screen on top. A tab swap
-   fades the old screen out in 80 ms, then the new one pops up from 0.97 on --spring-pop, so the two texts are never
-   both half visible. The slide is on --spring-smooth, which has no
+   is a plain 220 ms crossfade of the two screens (see the .tab rules). The slide is on --spring-smooth, which has no
    overshoot: an overshoot on a full-screen slide would show a gap at the edge. Only transform and opacity move. */
 ::view-transition {
   /* Taps reach the live page while a transition runs. */
@@ -2006,17 +2005,16 @@ button.pill {
   }
 }
 
+/* A tab swap is a simultaneous opacity crossfade: both screens start together, run the same 220 ms and only change
+   opacity, with no scale, no move and no delay. The first version popped the new screen in from 0.97 after a short
+   fade-out, and the owner found the pop too intense. Plain easing is fine here (opacity cannot overshoot). The
+   browser's default plus-lighter blend on the image pair is left alone on purpose, so the screen does not dim at the
+   midpoint; do not set mix-blend-mode or isolation on these. */
 ::view-transition-old(.tab) {
-  animation: vt-fade-out 80ms linear both;
+  animation: vt-fade-out 220ms cubic-bezier(0.25, 0.1, 0.25, 1) both;
 }
 ::view-transition-new(.tab) {
-  animation: vt-pop-in var(--spring-pop-dur) var(--spring-pop) 80ms both;
-}
-@keyframes vt-pop-in {
-  from {
-    transform: scale(0.97);
-    opacity: 0;
-  }
+  animation: vt-fade-in 220ms cubic-bezier(0.25, 0.1, 0.25, 1) both;
 }
 @keyframes vt-fade-out {
   to {

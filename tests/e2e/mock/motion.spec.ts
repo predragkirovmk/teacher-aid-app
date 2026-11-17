@@ -243,7 +243,7 @@ test.describe("a press with reduced motion", () => {
  */
 async function recordTransitions(page: Page) {
   await page.addInitScript(() => {
-    const w = window as unknown as { __vt: string[][]; __anims: { pseudo: string; name: string; ms: number }[] };
+    const w = window as unknown as { __vt: string[][]; __anims: { pseudo: string; name: string; ms: number; delay: number; props: string[]; start: number }[] };
     w.__vt = [];
     w.__anims = [];
     const original = document.startViewTransition?.bind(document);
@@ -259,7 +259,9 @@ async function recordTransitions(page: Page) {
         const e = a.effect as KeyframeEffect | null;
         const pseudo = e?.pseudoElement ?? "";
         if (pseudo.startsWith("::view-transition") && a instanceof CSSAnimation && !w.__anims.some((x) => x.pseudo === pseudo && x.name === a.animationName)) {
-          w.__anims.push({ pseudo, name: a.animationName, ms: Number(e!.getComputedTiming().duration) });
+          const t = e!.getComputedTiming();
+          const props = new Set(e!.getKeyframes().flatMap((k) => Object.keys(k)).filter((k) => !["offset", "easing", "composite", "computedOffset"].includes(k)));
+          w.__anims.push({ pseudo, name: a.animationName, ms: Number(t.duration), delay: Number(t.delay), props: [...props].sort(), start: performance.now() });
         }
       }
       requestAnimationFrame(watch);
@@ -268,7 +270,7 @@ async function recordTransitions(page: Page) {
   });
 }
 const transitions = (page: Page) => page.evaluate(() => (window as unknown as { __vt: string[][] }).__vt);
-const animations = (page: Page) => page.evaluate(() => (window as unknown as { __anims: { pseudo: string; name: string; ms: number }[] }).__anims.filter((a) => !a.pseudo.includes("(dock")));
+const animations = (page: Page) => page.evaluate(() => (window as unknown as { __anims: { pseudo: string; name: string; ms: number; delay: number; props: string[]; start: number }[] }).__anims.filter((a) => !a.pseudo.includes("(dock")));
 const back = (page: Page) => page.getByRole("button", { name: mk.t("back") });
 /** Home with its first card; the card opens a detail screen with a Back button. */
 async function home(page: Page) {
@@ -319,19 +321,30 @@ test.describe("screen transitions", () => {
     expect((await transitions(page)).at(-1)).toEqual(["tab"]);
   });
 
-  test("a tab swap fades the old screen out fast and starts the new one's pop after it, so the two never show together", async ({ page }) => {
+  test("a tab swap is a simultaneous opacity-only crossfade: old and new start together, last the same time, no scale, no delay, dock still", async ({ page }) => {
     await home(page);
     await page.locator(".tab").nth(1).click();
     await expect(page).toHaveURL(/\/app\/notifications$/);
+    // The animations start a frame or two after the URL changes; under load, wait until both were seen.
+    await expect.poll(async () => (await animations(page)).filter((a) => a.name === "vt-fade-out" || a.name === "vt-fade-in").length).toBe(2);
     const anims = await animations(page);
-    const out = anims.find((a) => a.pseudo.startsWith("::view-transition-old") && a.name === "vt-fade-out");
-    expect(out?.ms).toBe(80);
-    expect(anims.find((a) => a.pseudo.startsWith("::view-transition-new") && a.name === "vt-pop-in")).toBeTruthy();
-    // The new screen waits for the old one to be gone.
-    const rule = await page.evaluate(() =>
-      [...document.styleSheets].flatMap((s) => [...s.cssRules]).find((r) => r.cssText.includes("view-transition-new") && r.cssText.includes("vt-pop-in"))?.cssText ?? "",
-    );
-    expect(rule).toMatch(/\b80ms\b/);
+    const out = anims.find((a) => a.pseudo.startsWith("::view-transition-old(") && a.name === "vt-fade-out");
+    const inn = anims.find((a) => a.pseudo.startsWith("::view-transition-new(") && a.name === "vt-fade-in");
+    expect(out).toBeTruthy();
+    expect(inn).toBeTruthy();
+    expect(out!.ms).toBe(220);
+    expect(inn!.ms).toBe(out!.ms);
+    expect(out!.delay).toBe(0);
+    expect(inn!.delay).toBe(0);
+    // Created in the same frame, so they start together.
+    expect(Math.abs(inn!.start - out!.start)).toBeLessThan(50);
+    // Opacity only: no transform, no scale, no translate.
+    expect(out!.props).toEqual(["opacity"]);
+    expect(inn!.props).toEqual(["opacity"]);
+    expect(anims.some((a) => a.name === "vt-pop-in")).toBe(false);
+    // The dock has no animation of its own while the screens fade.
+    const all = await page.evaluate(() => (window as unknown as { __anims: { pseudo: string }[] }).__anims.filter((a) => a.pseudo.includes("(dock")));
+    expect(all).toEqual([]);
   });
 
   test("a swipe on the pager carries no transition type, runs no view-transition animation and still lands on the next tab", async ({ page }) => {
