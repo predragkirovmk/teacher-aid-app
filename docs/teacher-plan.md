@@ -105,6 +105,13 @@ the projector's reveal is the one choreographed moment (bars, then the right mar
 ranking). Transform and opacity only, nothing loops but a wait, Reduce Motion leaves 150ms fades.
 See "Motion" in teacher.css.
 
+Segmented controls merge (owner, 2026-11-17, a rule for all of TeacherAid): every segmented control
+(the subject row, the choices in Settings, the tabs, the language switch) has one white piece for the
+whole track, and a new choice flows out of the old one: the edge in front leaves on the snappy spring,
+the edge behind follows on the smooth one, so for a moment the two are one piece, then it settles.
+Words pushed aside slide; the tick lands. Never a piece that jumps. In code: `SegGlide` in the track
+(`Choices` with `segmented`, `Tabs`, the sign-in switch), with Reduce Motion it moves at once.
+
 ## Code layout
 
 - Route group `app/(teacher)/` with its own root layout and `teacher.css`; pages under
