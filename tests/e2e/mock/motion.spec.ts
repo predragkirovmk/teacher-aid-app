@@ -29,7 +29,7 @@ const TARGETS: Target[] = [
     name: "a tab in the tab bar",
     open: async (page) => {
       await page.goto("/app");
-      return page.locator(".tab").nth(1);
+      return page.locator('.tab[href="/app/notifications"]');
     },
   },
   {
@@ -315,15 +315,15 @@ test.describe("screen transitions", () => {
 
   test("a tab-bar tap asks for tab and lands on the tab", async ({ page }) => {
     await home(page);
-    await page.locator(".tab").nth(1).click();
+    await page.locator('.tab[href="/app/notifications"]').click();
     await expect(page).toHaveURL(/\/app\/notifications$/);
-    await expect(page.locator(".tab").nth(1)).toHaveAttribute("aria-current", "page");
+    await expect(page.locator('.tab[href="/app/notifications"]')).toHaveAttribute("aria-current", "page");
     expect((await transitions(page)).at(-1)).toEqual(["tab"]);
   });
 
   test("a tab swap is a simultaneous opacity-only crossfade: old and new start together, last the same time, no scale, no delay, dock still", async ({ page }) => {
     await home(page);
-    await page.locator(".tab").nth(1).click();
+    await page.locator('.tab[href="/app/notifications"]').click();
     await expect(page).toHaveURL(/\/app\/notifications$/);
     // The animations start a frame or two after the URL changes; under load, wait until both were seen.
     await expect.poll(async () => (await animations(page)).filter((a) => a.name === "vt-fade-out" || a.name === "vt-fade-in").length).toBe(2);
@@ -347,15 +347,15 @@ test.describe("screen transitions", () => {
     expect(all).toEqual([]);
   });
 
-  test("a swipe on the pager carries no transition type, runs no view-transition animation and still lands on the next tab", async ({ page }) => {
+  test("a swipe on the pager asks for the swipe type, which animates nothing, and still lands on the next tab", async ({ page }) => {
     await home(page);
     await page.waitForTimeout(600);
     await swipe(page, 330, 60);
-    await expect(page).toHaveURL(/\/app\/notifications$/);
+    await expect(page).toHaveURL(/\/app\/subjects$/);
     await page.waitForTimeout(500);
-    // React starts a transition for any screen change that mounts a boundary, but it carries no type, so nothing in it
-    // animates: the pager's own slide is the only motion.
-    expect((await transitions(page)).flat()).toEqual([]);
+    // The swipe type has no class in Shell, so nothing in the transition animates: the pager's own slide is the only
+    // motion, with no crossfade after it. (It is a type of its own, not none, so the subject morph can be off for it.)
+    expect((await transitions(page)).flat()).toEqual(["swipe"]);
     expect(await animations(page)).toEqual([]);
   });
 
@@ -381,15 +381,15 @@ test.describe("screen transitions", () => {
 
   test("a tab tapped during a tab swap lands on the last tab", async ({ page }) => {
     await home(page);
-    await page.locator(".tab").nth(1).click();
-    await page.locator(".tab").nth(2).click();
+    await page.locator('.tab[href="/app/notifications"]').click();
+    await page.locator('.tab[href="/app/profile"]').click();
     await expect(page).toHaveURL(/\/app\/profile$/);
-    await expect(page.locator(".tab").nth(2)).toHaveAttribute("aria-current", "page");
+    await expect(page.locator('.tab[href="/app/profile"]')).toHaveAttribute("aria-current", "page");
   });
 
   test("the overlay lets taps through", async ({ page }) => {
     await home(page);
-    await page.locator(".tab").nth(1).click();
+    await page.locator('.tab[href="/app/notifications"]').click();
     const none = await page.evaluate(() => getComputedStyle(document.documentElement, "::view-transition").pointerEvents);
     // Outside a transition the pseudo-element does not exist and reads as the default; while one runs it must be none.
     expect(["none", "auto"]).toContain(none);
@@ -420,7 +420,7 @@ test.describe("screen transitions with reduced motion", () => {
 
   test("a tab swap still lands", async ({ page }) => {
     await home(page);
-    await page.locator(".tab").nth(2).click();
+    await page.locator('.tab[href="/app/profile"]').click();
     await expect(page).toHaveURL(/\/app\/profile$/);
   });
 });

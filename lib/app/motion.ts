@@ -26,7 +26,7 @@ export function springPhysics({ duration, bounce }: Spring) {
 }
 
 // Position at time t seconds of the spring released from 0 towards 1 (zeta = 1 - bounce, below 1).
-function position({ duration, bounce }: Spring, t: number) {
+export function position({ duration, bounce }: Spring, t: number) {
   const w = (2 * Math.PI) / duration;
   const z = 1 - bounce;
   if (z >= 1) return 1 - (1 + w * t) * Math.exp(-w * t);

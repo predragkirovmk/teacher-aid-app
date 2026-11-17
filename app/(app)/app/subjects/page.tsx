@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useState } from "react";
 import { Gate } from "@/components/app/QueryState";
 import { SubjectRow } from "@/components/app/SubjectCard";
-import { Top } from "@/components/app/Top";
 import { demoOnly } from "@/lib/app/api";
 import { useCourses } from "@/lib/app/api/hooks";
 import type { Course } from "@/lib/app/api/types";
@@ -29,6 +28,16 @@ const PAGES: [string, Key][] = [
   ["/app/scan", "home.scanTitle"],
 ];
 
+/** A tab root's large title, as on Home, Alerts and Profile: no Back, the tab bar is the way out. */
+function Title() {
+  const { t } = useT();
+  return (
+    <h1 className="large" style={{ marginTop: 16 }}>
+      {t("subjects.title")}
+    </h1>
+  );
+}
+
 /** Everything a course can be found by, in both languages: the subject's names, the teacher's and Latin spellings. */
 function terms(course: Course): string[] {
   const key = `subj.${course.subjectId}`;
@@ -43,10 +52,9 @@ function terms(course: Course): string[] {
  * app's other screens, which it lists in a group of their own under the subjects.
  */
 export default function Subjects() {
-  const { t } = useT();
   const courses = useCourses();
   return (
-    <Gate query={courses} header={<Top title={t("subjects.title")} />}>
+    <Gate query={courses} header={<Title />}>
       {(all) => <SubjectList all={all} />}
     </Gate>
   );
@@ -71,7 +79,7 @@ function SubjectList({ all }: { all: Course[] }) {
 
   return (
     <main className="screen">
-      <Top title={t("subjects.title")} />
+      <Title />
       <div className="search">
         <input
           type="search"

@@ -1,6 +1,6 @@
 "use client";
 
-import { BellSimpleIcon, CheckIcon, HouseSimpleIcon, ScanIcon, UserIcon, type Icon } from "@phosphor-icons/react";
+import { BellSimpleIcon, BooksIcon, CheckIcon, HouseSimpleIcon, ScanIcon, UserIcon, type Icon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition, type ReactNode } from "react";
@@ -18,6 +18,7 @@ import { ConnectionPill } from "./ConnectionPill";
 import { NoticeScreen } from "./NoticeScreen";
 import { OutboxRunner } from "./OutboxRunner";
 import { Pager } from "./Pager";
+import { SegGlide } from "./SegGlide";
 import { IosInstallSteps, PushAskSheet, PushHelpSheet } from "./PushSheets";
 import { PushRunner } from "./PushRunner";
 import { StudentStream } from "./StudentStream";
@@ -275,11 +276,27 @@ function Dock({ pathname }: { pathname: string }) {
     if (seen !== null && count > seen) setArrived(t("notif.arrived", { n: shownCount }));
   }
 
-  const tab = (href: string, label: string, Icon: Icon, active: boolean, badge?: number) => (
+  // The tab tapped moves the piece and fills its glyph at once, before its screen has loaded; aria-current stays with the
+  // screen actually shown. A tap is forgotten as soon as the screen changes: kept, it would win again on a later return to
+  // the screen it was made on (a swipe back), and send the piece to the old tab.
+  const [tapped, setTapped] = useState<{ href: string; from: string } | null>(null);
+  if (tapped && tapped.from !== pathname) setTapped(null);
+  const shown = pathname === "/app" ? "/app" : pathname === "/app/subjects" ? "/app/subjects" : pathname.startsWith("/app/notifications") ? "/app/notifications" : pathname === "/app/profile" ? "/app/profile" : "";
+  const chosen = tapped?.from === pathname ? tapped.href : shown;
+
+  const tab = (href: string, label: string, Icon: Icon, badge?: number) => (
     // Switching tabs replaces the history entry, so Back leaves the section instead of replaying tabs.
-    <Link href={href} replace transitionTypes={["tab"]} className="tab" aria-current={active ? "page" : undefined}>
+    <Link
+      href={href}
+      replace
+      transitionTypes={["tab"]}
+      className="tab"
+      aria-current={shown === href ? "page" : undefined}
+      data-checked={chosen === href}
+      onClick={() => setTapped({ href, from: pathname })}
+    >
       {/* The selected tab shows the filled glyph, as a tab bar does on iOS. */}
-      <Icon size={24} weight={active ? "fill" : "regular"} aria-hidden="true" />
+      <Icon size={24} weight={chosen === href ? "fill" : "regular"} aria-hidden="true" />
       {label}
       {badge !== undefined && (
         <>
@@ -294,27 +311,24 @@ function Dock({ pathname }: { pathname: string }) {
     </Link>
   );
 
-  const index = pathname === "/app" ? 0 : pathname.startsWith("/app/notifications") ? 1 : pathname === "/app/profile" ? 2 : -1;
 
   return (
     <nav className="dock" aria-label={t("nav.main")}>
       <span className="sr" role="status">
         {arrived}
       </span>
+      {/* The classic five: two sections on each side of the scan, which sits raised in the middle because it is an action,
+          not a section. The one piece under the current tab is SegGlide's, and it skips over the scan. */}
       <div className="tabbar glass">
-        <span
-          className="tab-ind"
-          aria-hidden="true"
-          style={{ transform: `translateX(${Math.max(index, 0) * 100}%)`, opacity: index < 0 ? 0 : 1 }}
-        />
-        {tab("/app", t("nav.home"), HouseSimpleIcon, pathname === "/app")}
-        {tab("/app/notifications", t("nav.alerts"), BellSimpleIcon, pathname.startsWith("/app/notifications"), count)}
-        {tab("/app/profile", t("nav.profile"), UserIcon, pathname === "/app/profile")}
+        <SegGlide at={chosen} />
+        {tab("/app", t("nav.home"), HouseSimpleIcon)}
+        {tab("/app/subjects", t("subjects.title"), BooksIcon)}
+        <Link href="/app/scan" className="scan-fab" transitionTypes={["nav-forward"]} aria-label={t("nav.scan")}>
+          <ScanIcon size={36} aria-hidden="true" />
+        </Link>
+        {tab("/app/notifications", t("nav.alerts"), BellSimpleIcon, count)}
+        {tab("/app/profile", t("nav.profile"), UserIcon)}
       </div>
-      {/* The scan is an action, not a section, so it sits beside the tab bar instead of in it. */}
-      <Link href="/app/scan" className="scan-fab" transitionTypes={["nav-forward"]} aria-label={t("nav.scan")}>
-        <ScanIcon size={32} aria-hidden="true" />
-      </Link>
     </nav>
   );
 }

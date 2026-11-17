@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 
 /** The tab roots, in tab-bar order. Swiping moves along this list. */
-export const TAB_ORDER = ["/app", "/app/notifications", "/app/profile"];
+export const TAB_ORDER = ["/app", "/app/subjects", "/app/notifications", "/app/profile"];
 
 const EXIT_MS = 190;
 const IN_MS = 300;
@@ -144,7 +144,10 @@ export function Pager({ pathname, children }: { pathname: string; children: Reac
         incoming.current = dir;
         const go = () => {
           // Sections are tabs, not pages: switching replaces the history entry instead of adding one.
-          router.replace(TAB_ORDER[next]);
+          // The swipe has already moved the screen, so it asks for no view transition of its own ("swipe" has no class in
+          // Shell): a crossfade after the slide would be a second animation. With reduced motion nothing slid, so the
+          // fade is the whole change.
+          router.replace(TAB_ORDER[next], { transitionTypes: [calm() ? "tab" : "swipe"] });
           // If the route never changes (slow network, cancelled navigation), do not leave a blank screen.
           timers.current.dog = setTimeout(() => {
             if (pathRef.current !== from) return;

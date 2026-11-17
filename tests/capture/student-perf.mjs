@@ -133,7 +133,7 @@ const scenarios = [
     await page.waitForTimeout(1500);
     const tabs = page.getByRole("navigation", { name: "Делови" });
     await m();
-    for (const href of ["/app/notifications", "/app/profile", "/app"]) {
+    for (const href of ["/app/subjects", "/app/notifications", "/app/profile", "/app"]) {
       await tabs.locator(`a[href="${href}"]`).click();
       await page.waitForURL(`**${href}`);
       await page.waitForTimeout(700);
@@ -144,13 +144,12 @@ const scenarios = [
     await page.locator("main.screen:not([data-pending])").waitFor();
     await page.waitForTimeout(1500);
     await m();
-    await swipe(page, 330, 60);
-    await swipe(page, 330, 60);
-    await swipe(page, 60, 330);
-    await swipe(page, 60, 330);
+    // Four sections now: all the way across and all the way back.
+    for (const [from, to] of [[330, 60], [330, 60], [330, 60], [60, 330], [60, 330], [60, 330]]) await swipe(page, from, to);
   }],
   ["subject-open-and-back", {}, async (page, m) => {
-    await page.goto(`${base}/app`);
+    // Home no longer lists the subjects (Subjects is a tab), so the subject is opened from its own tab.
+    await page.goto(`${base}/app/subjects`);
     await page.locator("main.screen:not([data-pending])").waitFor();
     await page.waitForTimeout(1500);
     await m();
@@ -158,7 +157,7 @@ const scenarios = [
     await page.waitForURL(/\/app\/subject\//);
     await page.waitForTimeout(900);
     await page.goBack();
-    await page.waitForURL(/\/app$/);
+    await page.waitForURL(/\/app\/subjects$/);
     await page.waitForTimeout(900);
   }],
   ["sheet-open-close", {}, async (page, m) => {

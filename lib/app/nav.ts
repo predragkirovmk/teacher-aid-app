@@ -22,7 +22,7 @@ export function backStaysInApp() {
  * it was opened from, or replace it with Home when it was opened directly from a link.
  */
 export function leave(router: { back(): void; replace(href: string): void }) {
-  if (backStaysInApp()) router.back();
+  if (backStaysInApp()) goBack(router);
   else router.replace("/app");
 }
 

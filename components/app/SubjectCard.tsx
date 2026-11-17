@@ -2,6 +2,13 @@
 
 import Link from "next/link";
 import { ViewTransition, type ReactNode } from "react";
+
+/**
+ * The subject morph, except on a tab switch: Home's next-lesson card and the same subject's row on the Subjects tab share a
+ * name (each morphs into the subject's own screen), so without this a tap between the two tabs morphed one into the other.
+ * Tab-bar taps and pager swipes carry the "tab" or "swipe" transition type.
+ */
+export const TAB_SAFE_MORPH = { tab: "none", swipe: "none", default: "morph" };
 import {
   CaretRightIcon,
   CodeIcon,
@@ -100,7 +107,7 @@ export function SubjectRow({
   );
   // A view-transition name must be unique on the page: the next-lesson card owns this subject's name.
   return shared ? (
-    <ViewTransition name={`subject-${course.id}`} share="morph" default="none">
+    <ViewTransition name={`subject-${course.id}`} share={TAB_SAFE_MORPH} default="none">
       {row}
     </ViewTransition>
   ) : (
