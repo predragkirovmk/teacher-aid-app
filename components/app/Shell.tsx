@@ -361,6 +361,17 @@ export function Sheet({
     (ms: number, flung: boolean) => {
       const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       if (calm) return onClose();
+      // Closed while it is still rising: freeze it where it is, so the exit starts from there. Dropping the rise (animation: none,
+      // below) with nothing held would snap the sheet to its resting place, or past it, before it leaves.
+      // (Found by its role, not through `ref`: this callback is handed to render, where a ref may not be read.)
+      const el = document.querySelector<HTMLElement>('.sheet[role="dialog"]');
+      if (el) {
+        for (const a of el.getAnimations()) {
+          a.commitStyles();
+          a.cancel();
+        }
+        void el.offsetHeight;
+      }
       setExit({ ms, flung });
       setPhase("out");
       setTimeout(onClose, ms);

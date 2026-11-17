@@ -83,15 +83,22 @@ export default function Home() {
   // from the first paint, and skips it once [data-rise-seen] is on <html>, which the layout's inline
   // script sets before paint on later loads and this effect sets after the intro has run.
   useEffect(() => {
-    const id = setTimeout(() => {
+    const seen = () => {
       document.documentElement.setAttribute("data-rise-seen", "");
       try {
         window.sessionStorage.setItem(RISE_KEY, "1");
       } catch {
         // ignore
       }
-    }, 1200);
-    return () => clearTimeout(id);
+    };
+    const id = setTimeout(seen, 1200);
+    const shown = performance.now();
+    return () => {
+      clearTimeout(id);
+      // Leaving within the intro still counts as having seen it, or a quick tab and back would play it again. The 150 ms
+      // floor skips the instant mount-unmount-mount of React's dev double effect.
+      if (performance.now() - shown > 150) seen();
+    };
   }, []);
 
   const date = new Date(now);

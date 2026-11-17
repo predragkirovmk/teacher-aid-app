@@ -50,6 +50,11 @@
 .pr :is(.q-opt, .q-tf__btn) {
   animation-delay: calc(var(--i) * 40ms + 60ms);
 }
+@media (prefers-reduced-motion: reduce) {
+  .pr :is(.q-opt, .q-tf__btn) {
+    animation-delay: 0s;
+  }
+}
 
 /* The Check button before there is something to check: still there, not asking to be pressed. */
 .btn[aria-disabled="true"] {

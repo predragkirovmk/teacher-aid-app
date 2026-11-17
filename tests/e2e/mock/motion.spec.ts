@@ -424,3 +424,273 @@ test.describe("screen transitions with reduced motion", () => {
     await expect(page).toHaveURL(/\/app\/profile$/);
   });
 });
+
+/**
+ * Entrances (docs/mobile-motion-steps.md, step 4, calm): rows, cards and states rise 8 px and fade, 35 ms apart and never later
+ * than 240 ms; answer options are the one place that scales, a small pop from 0.96, 30 to 50 ms apart. Nothing rises after a
+ * tab switch or on a screen that slides in. Read from the computed styles, which stay after an animation ends, so the test does
+ * not race the animation.
+ */
+const ms = (v: string) => v.split(",").map((s) => (s.trim().endsWith("ms") ? parseFloat(s) : parseFloat(s) * 1000));
+const entrance = (el: Locator) =>
+  el.evaluate((n) => {
+    const s = getComputedStyle(n);
+    return { names: s.animationName.split(",").map((x) => x.trim()), delay: s.animationDelay, duration: s.animationDuration };
+  });
+/** Every entrance animation running anywhere on the page right now. */
+const running = (page: Page) =>
+  page.evaluate(() =>
+    document
+      .getAnimations()
+      .filter((a) => a instanceof CSSAnimation && ["arrive", "arrive-fade", "q-opt-in"].includes(a.animationName))
+      .map((a) => (a as CSSAnimation).animationName),
+  );
+const delaysOf = (page: Page, selector: string) =>
+  page.evaluate(
+    (sel) => [...document.querySelectorAll(sel)].map((n) => parseFloat(getComputedStyle(n).animationDelay.split(",")[0]) * 1000),
+    selector,
+  );
+
+test.describe("entrances", () => {
+  test("a quiz question's options pop in 30 to 50 ms apart, and a tap on the last one while it arrives records the answer", async ({ page }) => {
+    await page.clock.install();
+    await page.goto("/app/checkin/MATH-7B");
+    await untilStage(page, "answering");
+    const options = page.locator(".q-opt");
+    expect(await options.count()).toBeGreaterThan(2);
+
+    const delays = await delaysOf(page, ".q-opt");
+    for (let i = 1; i < delays.length; i++) {
+      expect(delays[i] - delays[i - 1]).toBeGreaterThanOrEqual(30);
+      expect(delays[i] - delays[i - 1]).toBeLessThanOrEqual(50);
+    }
+    const first = await entrance(options.first());
+    expect(first.names).toEqual(["q-opt-in", "arrive-fade"]);
+    const from = await options.first().evaluate((n) => {
+      const k = n.getAnimations().find((a) => (a as CSSAnimation).animationName === "q-opt-in")!.effect as KeyframeEffect;
+      return k.getKeyframes()[0].transform;
+    });
+    expect(from).toBe("scale(0.96)");
+
+    // Hold every option part-way through its arrival, then tap the last one where it is: it must take the tap.
+    await page.evaluate(() => {
+      for (const a of document.getAnimations()) {
+        const t = (a.effect as KeyframeEffect | null)?.target;
+        if (t instanceof Element && t.matches(".q-opt")) {
+          a.pause();
+          a.currentTime = 200;
+        }
+      }
+    });
+    const last = options.last();
+    const box = (await last.boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page.getByText(mk.q("q.locked"))).toBeVisible();
+  });
+
+  test("a practice question's options pop in 30 to 50 ms apart and answer a tap at once", async ({ page }) => {
+    await page.goto("/app/practice/ps-session-math-1");
+    await expect(page.locator(".q-opt").first()).toBeVisible();
+    const delays = await delaysOf(page, ".q-opt");
+    expect(delays.length).toBeGreaterThan(2);
+    for (let i = 1; i < delays.length; i++) {
+      expect(delays[i] - delays[i - 1]).toBeGreaterThanOrEqual(30);
+      expect(delays[i] - delays[i - 1]).toBeLessThanOrEqual(50);
+    }
+    await page.evaluate(() => {
+      for (const a of document.getAnimations()) {
+        const t = (a.effect as KeyframeEffect | null)?.target;
+        if (t instanceof Element && t.matches(".q-opt")) {
+          a.pause();
+          a.currentTime = 150;
+        }
+      }
+    });
+    const last = page.locator(".q-opt").last();
+    const box = (await last.boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(last).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("Home's cards rise once per session: the first Home rises, a return and a reload do not", async ({ page }) => {
+    await page.goto("/app");
+    const cards = page.locator(".rise");
+    expect(await cards.count()).toBeGreaterThan(1);
+    expect((await entrance(cards.first())).names).toEqual(["arrive", "arrive-fade"]);
+    // 8 px and a fade, no scale: the one keyframe moves only transform, in translateY.
+    const keyframe = await cards.first().evaluate((n) => (n.getAnimations().find((a) => (a as CSSAnimation).animationName === "arrive")!.effect as KeyframeEffect).getKeyframes()[0].transform);
+    expect(keyframe).toBe("translateY(8px)");
+    await expect(page.locator("html")).toHaveAttribute("data-rise-seen", "");
+    await page.locator('.tab[href="/app/notifications"]').click();
+    await expect(page).toHaveURL(/\/app\/notifications$/);
+    await page.locator('.tab[href="/app"]').click();
+    await expect(page).toHaveURL(/\/app$/);
+    await expect(cards.first()).toBeVisible();
+    expect((await entrance(cards.first())).names).toEqual(["none"]);
+    await page.reload();
+    expect((await entrance(page.locator(".rise").first())).names).toEqual(["none"]);
+  });
+
+  test("leaving Home before its intro is over still counts: coming back does not replay it", async ({ page }) => {
+    await page.goto("/app");
+    await expect(page.locator(".rise").first()).toBeVisible();
+    await page.waitForTimeout(400);
+    await page.locator('.tab[href="/app/notifications"]').click();
+    await expect(page).toHaveURL(/\/app\/notifications$/);
+    await page.locator('.tab[href="/app"]').click();
+    await expect(page).toHaveURL(/\/app$/);
+    await expect(page.locator("html")).toHaveAttribute("data-rise-seen", "");
+    expect((await entrance(page.locator(".rise").first())).names).toEqual(["none"]);
+  });
+
+  test("a tab switch shows no entrance on the new tab, by tap", async ({ page }) => {
+    await page.goto("/app");
+    await expect(page.locator("html")).toHaveAttribute("data-rise-seen", "");
+    for (const tab of ["/app/subjects", "/app/notifications", "/app/profile"]) {
+      await page.locator(`.tab[href="${tab}"]`).click();
+      await expect(page).toHaveURL(new RegExp(`${tab}$`));
+      // Across the whole crossfade and after it, nothing rises.
+      for (let i = 0; i < 6; i++) {
+        expect(await running(page)).toEqual([]);
+        await page.waitForTimeout(60);
+      }
+    }
+  });
+
+  test("a tab switch by swipe shows no entrance either", async ({ page }) => {
+    await home(page);
+    await expect(page.locator("html")).toHaveAttribute("data-rise-seen", "");
+    await swipe(page, 330, 60);
+    await expect(page).toHaveURL(/\/app\/subjects$/);
+    for (let i = 0; i < 8; i++) {
+      expect(await running(page)).toEqual([]);
+      await page.waitForTimeout(60);
+    }
+  });
+
+  test("a deeper screen has no entrance on top of its slide", async ({ page }) => {
+    await page.goto("/app");
+    await expect(page.locator("html")).toHaveAttribute("data-rise-seen", "");
+    await page.locator("a.card.tile").first().click();
+    await expect(page).not.toHaveURL(/\/app$/);
+    for (let i = 0; i < 6; i++) {
+      expect(await running(page)).toEqual([]);
+      await page.waitForTimeout(60);
+    }
+  });
+
+  test("a list that fills after loading staggers 35 ms apart and nobody waits more than 240 ms", async ({ page }) => {
+    await page.goto("/app/subjects");
+    const rows = page.locator("main.screen ul.list > li");
+    expect(await rows.count()).toBeGreaterThan(7);
+    // The Gate sets this on <html> when a screen's data lands late (unit-tested); the mock answers at once, so set it by hand.
+    await page.evaluate(() => document.documentElement.setAttribute("data-arrive", ""));
+    const delays = await delaysOf(page, "main.screen ul.list > li");
+    expect(delays[1] - delays[0]).toBeGreaterThanOrEqual(30);
+    expect(delays[1] - delays[0]).toBeLessThanOrEqual(40);
+    expect(Math.max(...delays)).toBeLessThanOrEqual(240);
+    // After the sixth or seventh the rest arrive together.
+    expect(delays.at(-1)).toBe(delays.at(-2));
+    expect(delays).toEqual([...delays].sort((a, b) => a - b));
+    const e = await entrance(rows.first());
+    expect(e.names).toEqual(["arrive", "arrive-fade"]);
+    expect(ms(e.duration)[1]).toBe(180);
+  });
+
+  test("search results rise only when a row is new, not the whole list on every keystroke", async ({ page }) => {
+    await page.goto("/app/subjects");
+    const rows = page.locator("main.screen ul.list > li");
+    const before = await rows.count();
+    expect(before).toBeGreaterThan(3);
+    // Opening the tab animated nothing.
+    expect(await page.locator("main.screen .arrive").count()).toBe(0);
+    const search = page.getByRole("searchbox");
+    await search.fill("ма");
+    // Rows that were already listed stay as they were.
+    await expect.poll(async () => (await rows.count()) < before).toBe(true);
+    expect(await page.locator("main.screen ul.list > li.arrive").count()).toBe(0);
+    // Clearing brings rows back: those are new, and they rise, one after the other.
+    await search.fill("");
+    await expect.poll(async () => rows.count()).toBe(before);
+    const risen = await page.locator("main.screen ul.list > li.arrive").count();
+    expect(risen).toBeGreaterThan(0);
+    expect(risen).toBeLessThan(before);
+    const delays = await delaysOf(page, "main.screen ul.list > li.arrive");
+    expect(delays[0]).toBe(0);
+    if (delays.length > 1) expect(delays[1] - delays[0]).toBe(35);
+  });
+
+  test("a bottom sheet rises on the snappy spring and leaves faster than it came", async ({ page }) => {
+    await page.goto("/app/profile");
+    await page.getByRole("main").getByRole("button", { name: mk.t("drawer.logout") }).click();
+    const sheet = page.getByRole("dialog");
+    await expect(sheet).toBeVisible();
+    const e = await entrance(sheet);
+    expect(e.names).toEqual(["slide-up"]);
+    const rise = ms(e.duration)[0];
+    expect(rise).toBe(390);
+    await sheet.getByRole("button").first().click();
+    // The exit is 230 ms (SHEET_EXIT_MS), shorter than the rise.
+    const t0 = Date.now();
+    await expect(sheet).toBeHidden();
+    expect(Date.now() - t0).toBeLessThan(rise);
+  });
+
+  test("a sheet closed while it is still rising leaves from where it is, with no jump", async ({ page }) => {
+    await page.goto("/app/profile");
+    await page.getByRole("main").getByRole("button", { name: mk.t("drawer.logout") }).click();
+    const sheet = page.getByRole("dialog");
+    await expect(sheet).toBeVisible();
+    // Close it a moment into the rise and read where it is on the next frames: it must be near its resting place, not already gone.
+    const ys = await sheet.evaluate(
+      (n) =>
+        new Promise<number[]>((done) => {
+          const y = () => new DOMMatrix(getComputedStyle(n).transform).m42;
+          setTimeout(() => {
+            n.querySelector<HTMLButtonElement>("button")!.click();
+            const seen: number[] = [];
+            const frame = () => {
+              seen.push(y());
+              if (seen.length < 4) requestAnimationFrame(frame);
+              else done(seen);
+            };
+            requestAnimationFrame(frame);
+          }, 100);
+        }),
+    );
+    expect(Math.max(...ys.slice(0, 2))).toBeLessThan(120);
+    await expect(sheet).toBeHidden();
+  });
+});
+
+test.describe("entrances with reduced motion", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  test("Home and a list are a plain 150 ms fade, no translate, no scale, no delay", async ({ page }) => {
+    await page.goto("/app");
+    const card = page.locator(".rise").first();
+    const e = await entrance(card);
+    expect(e.names).toEqual(["arrive-fade"]);
+    expect(ms(e.duration)).toEqual([150]);
+    expect(ms(e.delay)).toEqual([0]);
+    expect(await card.evaluate((n) => n.getAnimations().flatMap((a) => (a.effect as KeyframeEffect).getKeyframes().flatMap((k) => Object.keys(k))).filter((k) => ["transform", "scale", "translate"].includes(k)))).toEqual([]);
+
+    await page.goto("/app/subjects");
+    await page.evaluate(() => document.documentElement.setAttribute("data-arrive", ""));
+    const delays = await delaysOf(page, "main.screen ul.list > li");
+    expect(delays.every((d) => d === 0)).toBe(true);
+    expect((await entrance(page.locator("main.screen ul.list > li").first())).names).toEqual(["arrive-fade"]);
+  });
+
+  test("a quiz question's options fade with no scale and no stagger", async ({ page }) => {
+    await page.clock.install();
+    await page.goto("/app/checkin/MATH-7B");
+    await untilStage(page, "answering");
+    const delays = await delaysOf(page, ".q-opt");
+    expect(delays.length).toBeGreaterThan(2);
+    expect(delays.every((d) => d === 0)).toBe(true);
+    const e = await entrance(page.locator(".q-opt").first());
+    expect(e.names).toEqual(["arrive-fade"]);
+    expect(ms(e.duration)).toEqual([150]);
+  });
+});

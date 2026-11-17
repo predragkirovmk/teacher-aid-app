@@ -12,7 +12,7 @@ Branch `animate-ui`, cut from `origin/main` at d85fa4e. One draft pull request. 
 - Springs with overshoot, never plain easing curves.
 - Anticipation and follow-through: a dip before a pop, secondary parts lag a few milliseconds.
 - Squash and stretch on every tappable element: about 0.94 on touch-down, back past 1 on release.
-- Lists and answer options stagger 30 to 50 ms apart, each overshooting.
+- Lists rise calmly (8 px, a fade, 35 ms apart, no scale); answer options stagger 30 to 50 ms apart with a small pop (step 4, the owner chose calm on 2026-11-17).
 - Interruptible: a second tap mid-animation reverses from where it is, never restarts. In CSS this
   means press feedback is a transition, not a keyframe animation.
 - The exaggeration budget (below): frequent things get a small bounce, rare moments the big one.
@@ -64,7 +64,7 @@ Step 1 fits the exact values. The old 100 ms `cubic-bezier` press-in is replaced
 
 | Tier | When | What it gets |
 |---|---|---|
-| Small | every tap, tab change, screen change, list arrival, sheet | squash 0.94 then `--spring-pop`; screen moves on `--spring-smooth` with a slight pop; stagger 30 to 50 ms |
+| Small | every tap, tab change, screen change, list arrival, sheet | squash 0.94 then `--spring-pop`; screen moves on `--spring-smooth`; a list or card rises 8 px with a fade, 35 ms apart, no scale; answer options pop from 0.96, 30 to 50 ms apart; a sheet rises on `--spring-snappy` |
 | Big | a right answer, points landing, a new badge, the end of a lesson, a finished practice set | `--spring-big`, burst, rolling counter, ring pulse, confetti, a short vibration |
 
 A wrong answer is not a reward: it gets a clear but small reaction (a dip and settle), never a
@@ -253,20 +253,33 @@ focus, hit targets and contrast, ui-ux-pro-max for layout and type only), then:
   land on the right screen; a check that a tap during a transition still lands; perf "tabs",
   "subject".
 
-### Step 4: entrances, lists and stagger on every screen
+### Step 4: entrances, lists and stagger, calm
 
-- Files: `app/(app)/app.css`, `app/(app)/quiz.css`, `app/(app)/practice.css`,
-  `app/(app)/privacy.css`, the pages under `app/(app)/app/`, the components under
-  `components/app/` that render lists, cards and answer options.
-- Done: every screen's content arrives with the stagger primitive (header first, then cards or
-  rows 30 to 50 ms apart, each overshooting), answer options on every question stagger in with
-  a pop, sheets rise on `--spring-smooth` with a small overshoot, empty, error and offline states
-  arrive the same way. The existing "Home rises once per session" rule stays: a screen already
-  seen in this session does not replay its stagger when returned to from a tab or Back. No
-  entrance delays the first tap: content is tappable from the first frame. Reduced motion: a
-  plain short fade.
-- Tested: e2e that a question's options carry staggered delays 30 to 50 ms apart and are
-  clickable at once; the a11y reduced-motion check; perf "quiz", "practice".
+The owner found the tab pop "way too intense" and chose calm for this step, which replaces the first wording ("each
+overshooting").
+
+- Files: `app/(app)/app.css`, `app/(app)/quiz.css`, `app/(app)/practice.css`, `app/(app)/privacy.css`, the pages under
+  `app/(app)/app/`, the components under `components/app/` that render lists, cards, options and sheets.
+- Done: rows, cards and list items rise 8 px and fade in, 35 ms apart, no scale and no zoom. The translate rides
+  `--spring-snappy` (its overshoot on 8 px is barely felt, which is the point) and the opacity is its own 180 ms fade
+  (`@keyframes arrive`, `arrive-fade`, the `.stagger > *` primitive; `.arrive` for one element). The stagger is capped: no item
+  waits more than 210 ms (240 ms for rows of a list that fills late), so after the seventh the rest arrive together.
+  - Tab switches (Home, Subjects, Alerts, Profile) stay the plain 220 ms crossfade, by tap or swipe, with nothing rising after
+    it. Content already on a deeper screen moves with the slide, with no stagger on top.
+  - The rise plays where content arrives on its own: the first Home of a session (the "Home rises once per session" rule stays),
+    a list that fills after a loading state (`Gate` sets `data-arrive` on `<html>` for 700 ms, only when its data landed after
+    the screen opened), search results on the Subjects tab (only rows that were not listed before), a new alert, and the error
+    state and the join failure card.
+  - Quiz and practice answer options on every new question stagger in 40 ms apart and pop from `scale(0.96)` on `--spring-pop`
+    with a 160 ms fade. This is the only place in step 4 that scales. It animates `transform`, so the press squash (the `scale`
+    property) still answers a tap while an option is arriving.
+  - Sheets rise on `--spring-snappy` and leave in 230 ms, faster than they rise.
+  - No entrance delays the first tap: content is tappable from its first frame. Quiz timing and the countdown are untouched.
+  - Reduced motion: a plain 150 ms fade, no translate, no scale, no delay, for every one of the above.
+- Tested: e2e that a question's options carry delays 30 to 50 ms apart and a tap on the last one during its arrival records the
+  answer, that a tab switch and a deeper screen show no entrance, that a list that fills late staggers with capped delays, that
+  Home rises once per session, that search rises only new rows, that a sheet rises slower than it leaves, and the same under
+  reduced motion; a unit test of `Gate`; the a11y reduced-motion check; perf "quiz", "practice".
 
 ### Step 5: the big moments
 
@@ -364,3 +377,4 @@ baseline, removal of anything unused, the before and after pictures zipped for t
   still and the sliding screens lose their ground.
 - **Step 3 follow-up, 2026-11-17.** The owner found the tab pop too intense, so the tab swap is now a simultaneous ~220 ms opacity crossfade with no scale, translate or delay (default plus-lighter blend kept, so no dimming); the dock stays still and forward and Back slides are unchanged. The tab timing test was rewritten for the new promise. Checks: lint, types, 1555 unit (two session-controller load flakes pass alone); e2e 710 passed, 4 skipped; motion spec 114 of 114 over three repeats (the new tab test needed a poll for the animations under load); mid-transition frames at 0 to 220 ms show both screens at matching partial opacity, no scale, no dimming, dock still; no long tasks at 4x, worst frame gap 51 ms; CSS only, JS unchanged.
 - **Tab bar merge, 2026-11-17.** The owner's `student-seg-glide` (the five-slot tab bar, Subjects as a tab root, `SegGlide`'s one sliding piece, taps and swipes typed for the tab bar) is merged into `animate-ui`; only `Shell.tsx` conflicted. The tab swap stays the 220 ms opacity crossfade for all four tabs. A tap carries `tab`. A pager swipe now carries a type of its own, `swipe`, which has no class in the Shell maps: the swipe already slides the screen out and the next one in, and a crossfade after that was a second animation (with reduced motion nothing slides, so a swipe there carries `tab` and fades). `swipe` is off for the subject morph too (`TAB_SAFE_MORPH`). The dock is still the one named group: its old snapshot is hidden and the live dock shows, so `SegGlide`'s piece slides once and keeps moving through the transition, and the scan button, now inside the bar, is covered by the same name (it keeps `nav-forward` for opening the scanner). `leave` in `lib/app/nav.ts` now goes through `goBack`, so closing the scanner slides back instead of being instant. Subjects rows slide forward into a subject (the morph is kept) and Back returns with the Back slide. Home's subjects row was already gone with the owner's change, and nothing referenced it. Capture tools: `student-perf.mjs` taps four tabs, swipes across four sections and opens a subject from the Subjects tab; all 66 states are still reached, `09-subjects` is the Subjects tab. Tests: `motion.spec.ts` picks tabs by address instead of position and its swipe test expects the `swipe` type on the Subjects tab; `seg.spec.ts` counts only subject morphs (the screens' own view-transition groups are not morphs). Checks: lint, types, unit (two session-controller load flakes pass alone); e2e, `motion.spec.ts` and `seg.spec.ts` three repeats; mid-transition frames of tab taps, a swipe, a subject, the scanner and reduced motion show one piece and a still dock; no long tasks at 4x, worst frame gap 49 ms. JS: all screens 476,952 gzip (+906 against step 3), Home's first load 335,015 (+12,738; the tab bar's `SegGlide` and the springs it samples are in the Home bundle).
+- **Step 4, 2026-11-17.** Calm entrances. `@keyframes arrive` and the `.stagger > *` primitive are now an 8 px rise on `--spring-snappy` plus a 180 ms fade, 35 ms apart, delay capped at 210 ms, no scale; `.rise` (Home, once per session), `.arrive` and `.item--fresh` (a new alert) share it. A list that fills after a loading state rises through `Gate` (`data-arrive` on `<html>` for 700 ms, only when the data landed after the screen opened; rows start at 40 ms and never wait over 240 ms); Subjects search rises only rows that were not listed (`Found` in `subjects/page.tsx`); the error state and the join failure card rise. Tab switches (tap and swipe) and deeper screens show nothing on top of the crossfade and the slide. Quiz and practice options pop from `scale(0.96)` on `--spring-pop` with a 160 ms fade, 40 ms apart (`q-opt-in`, on `transform` so the press squash still works mid-arrival; a tap on the last option mid-arrival records the answer). The sheet rises on `--spring-snappy` and leaves in 230 ms. Reduced motion: a 150 ms fade, no delay, for all of it. New e2e in `motion.spec.ts` (12 tests) and `tests/unit/gate-arrive.test.tsx`. Checks: lint, types, 1558 unit, e2e 732 passed and 4 skipped (one teacher live keyboard test failed under load and passes alone); motion, seg and tabs specs 186 of 186 over three repeats; frames of Home, quiz and practice options, the sheet, search, a tab switch, a deeper slide and reduced motion look calm; no long tasks at 4x, worst frame gap 49 ms (quiz question to verdict 46 ms, practice answer 45 ms). JS: all screens 478,874 gzip (+1,922), Home's first load 335,952 (+937). Part A: the +12.7 KB on Home's first load is not SegGlide. The Subjects tab in the bar is a `<Link>` that is always in view, so Next prefetches the Subjects route on Home, and that route's chunk carries its own copy of `SubjectCard.tsx` (about 30 KB raw, 7 phosphor icons with every weight inlined); before the merge no link to Subjects was in view on Home (its "All subjects" row was below the fold), so that chunk was never fetched with Home. The module is duplicated across the Home and Subjects route chunk groups by Turbopack, not shared. Not changed: removing it means `prefetch={false}` on the Subjects tab link in `Shell.tsx` (the tab would load its chunk on the tap) or trimming the icons in `SubjectCard`; both need the owner. Planner decision on Part A: the Subjects prefetch from Home stays, because it runs after Home is interactive and makes the tab instant; reviewer measurement at 4x CPU over three fresh loads of /app: first paint 64 ms (the server-rendered launch picture), the only long tasks are the two hydration ones at about 70 ms and 190 ms (58 to 69 ms each, before any prefetched chunk arrives), none after, and a tab tap right after load answers in 40 to 64 ms (event timing) and lands the screen in about 150 ms, with 12 of the 30 chunk requests going out after the load event. Review fixes: `Gate` now counts holders of `data-arrive` (a Gate that ends or unmounts no longer clears it while another is still rising), and the first child of a screen (the header, which React keeps through the loading to ready swap) is left out of the late-list entrance so it does not blink; Home counts as seen when left within its intro, so a quick tab and back does not replay it; a sheet closed mid-rise freezes where it is and leaves from there (it used to vanish at once); `html[data-rise-seen] .rise` outranks `[data-arrive]`. Resting pictures: 07 and 08 differ from the merge only in the antialiased edge of the cards (no `both` fill holding a transform any more); the quiz ones differ run to run, as before.

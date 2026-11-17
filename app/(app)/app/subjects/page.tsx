@@ -2,7 +2,7 @@
 
 import { CaretRightIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Gate } from "@/components/app/QueryState";
 import { SubjectRow } from "@/components/app/SubjectCard";
 import { demoOnly } from "@/lib/app/api";
@@ -60,6 +60,19 @@ export default function Subjects() {
   );
 }
 
+/**
+ * A row that rises in if it was not on screen before the search changed, and stays as it was otherwise: the class is fixed
+ * when the row mounts, so the rows that are still listed do not replay on the next keystroke. `i` counts the new rows only.
+ */
+function Found({ fresh, i, children }: { fresh: boolean; i: number; children: ReactNode }) {
+  const [rises] = useState(fresh);
+  return (
+    <li className={rises ? "arrive" : undefined} style={rises ? ({ "--i": i } as CSSProperties) : undefined}>
+      {children}
+    </li>
+  );
+}
+
 function SubjectList({ all }: { all: Course[] }) {
   const { t } = useT();
   const [q, setQ] = useState("");
@@ -69,6 +82,18 @@ function SubjectList({ all }: { all: Course[] }) {
   const subjects = needle ? all.filter((c) => terms(c).some((s) => s.includes(needle))) : all;
   const pages = needle ? PAGES.filter(([, key]) => matches(key)) : [];
   const count = subjects.length + pages.length;
+  // What was listed last time: only a row that was not takes the entrance. The first list, on opening the tab, is all known.
+  const [listed] = useState(() => new Set(all.map((c) => c.id)));
+  const ids = [...subjects.map((c) => c.id), ...pages.map(([href]) => href)];
+  useEffect(() => {
+    listed.clear();
+    ids.forEach((id) => listed.add(id));
+  });
+  let fresh = 0;
+  const arrival = (id: string) => {
+    const isNew = !listed.has(id);
+    return { fresh: isNew, i: isNew ? fresh++ : 0 };
+  };
   const found = !needle
     ? ""
     : count === 0
@@ -98,9 +123,9 @@ function SubjectList({ all }: { all: Course[] }) {
       {subjects.length > 0 && (
         <ul className="list">
           {subjects.map((c) => (
-            <li key={c.id}>
+            <Found key={c.id} {...arrival(c.id)}>
               <SubjectRow course={c} />
-            </li>
+            </Found>
           ))}
         </ul>
       )}
@@ -109,18 +134,18 @@ function SubjectList({ all }: { all: Course[] }) {
           <h2 className="section-h">{t("subjects.pages")}</h2>
           <ul className="list">
             {pages.map(([href, key]) => (
-              <li key={href}>
+              <Found key={href} {...arrival(href)}>
                 <Link href={href} className="item" transitionTypes={["nav-forward"]}>
                   <span className="grow item__title">{t(key)}</span>
                   <CaretRightIcon size={22} aria-hidden="true" />
                 </Link>
-              </li>
+              </Found>
             ))}
           </ul>
         </>
       )}
       {needle && count === 0 && (
-        <p className="t-cap" aria-hidden="true" style={{ textAlign: "center", marginTop: 24 }}>
+        <p className="t-cap arrive" aria-hidden="true" style={{ textAlign: "center", marginTop: 24 }}>
           {t("home.noResults")}
         </p>
       )}

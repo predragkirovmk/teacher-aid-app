@@ -367,17 +367,65 @@ button.card:active {
 }
 
 /* ---- Stagger ----
-   Children that carry --i (0, 1, 2, ...) arrive 40 ms apart, each popping in and overshooting.
-   Put the class on the parent. Reduced motion turns the keyframe into a plain fade. */
-.stagger > * {
-  animation: arrive var(--spring-pop-dur) var(--spring-pop) both;
-  animation-delay: calc(var(--i, 0) * 40ms);
+   Calm entrances: a row, card or state rises 8 px and fades in, with no scale. The rise rides --spring-snappy (its
+   overshoot on 8 px is barely felt, which is the point) and the opacity is a short fade of its own. Children that carry
+   --i (0, 1, 2, ...) arrive 35 ms apart, and nothing waits more than 210 ms, so a long list never trickles: after the
+   seventh item the rest arrive together. Content is tappable from its first frame (opacity and transform do not block input).
+   Put .stagger on the parent, or .arrive on one element. `backwards` fill, not `both`: when it ends the element is simply
+   itself again, with no animation left holding its transform. Reduced motion turns it into a plain 150 ms fade, no delay. */
+.stagger > *,
+.arrive,
+.rise,
+.item--fresh {
+  animation:
+    arrive var(--spring-snappy-dur) var(--spring-snappy) backwards,
+    arrive-fade 180ms linear backwards;
+  animation-delay: min(calc(var(--i, 0) * 35ms), 210ms);
 }
 @keyframes arrive {
   from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.92);
+    transform: translateY(8px);
   }
+}
+@keyframes arrive-fade {
+  from {
+    opacity: 0;
+  }
+}
+/* Content that fills a screen after it had to wait (see Gate in components/app/QueryState.tsx) arrives the same way:
+   the screen's own blocks, and the rows of its lists. The first child is left out: it is the header, which was already on
+   screen while the data loaded (React keeps that element), and replaying its entrance would make it blink. The attribute is on <html> for under a second, so only what is
+   drawn in that moment rises. A tab switch, a deeper screen and a screen that had its data already never set it. */
+[data-arrive] :is(.screen, ul.list) > :nth-child(1) {
+  --i: 0; /* set, not inherited: a list's rows would otherwise start from its own place in the screen */
+}
+[data-arrive] :is(.screen, ul.list) > :nth-child(2) {
+  --i: 1;
+}
+[data-arrive] :is(.screen, ul.list) > :nth-child(3) {
+  --i: 2;
+}
+[data-arrive] :is(.screen, ul.list) > :nth-child(4) {
+  --i: 3;
+}
+[data-arrive] :is(.screen, ul.list) > :nth-child(5) {
+  --i: 4;
+}
+[data-arrive] :is(.screen, ul.list) > :nth-child(6) {
+  --i: 5;
+}
+[data-arrive] :is(.screen, ul.list) > :nth-child(n + 7) {
+  --i: 6;
+}
+[data-arrive] .screen > :not(ul, :first-child),
+[data-arrive] ul.list > li {
+  animation:
+    arrive var(--spring-snappy-dur) var(--spring-snappy) backwards,
+    arrive-fade 180ms linear backwards;
+  animation-delay: min(calc(var(--i, 0) * 35ms), 210ms);
+}
+[data-arrive] ul.list > li {
+  animation-delay: min(calc(40ms + var(--i, 0) * 35ms), 240ms);
 }
 
 /* A pointer on a desktop window (the phone frame) gets the same answer as a press, without the scale. */
@@ -567,7 +615,8 @@ button.card:active {
   bottom: calc(env(safe-area-inset-bottom) + 12px);
   border-radius: 32px;
   padding: 16px;
-  animation: slide-up var(--spring-smooth-dur) var(--spring-smooth);
+  /* It rises on --spring-snappy (a small overshoot at most) and leaves faster than it came: see SHEET_EXIT_MS in Shell.tsx. */
+  animation: slide-up var(--spring-snappy-dur) var(--spring-snappy);
 }
 @keyframes slide-up {
   from {
@@ -1918,18 +1967,8 @@ button.pill {
   box-shadow: inset 0 0 0 1px var(--line);
 }
 
-/* Home cards rise in once per session, not on every visit (frequent screens stay still). */
-.rise {
-  animation: rise var(--spring-smooth-dur) var(--spring-smooth) both;
-  animation-delay: calc(var(--i, 0) * 45ms);
-}
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-}
-[data-rise-seen] .rise {
+/* Home cards rise in once per session, not on every visit (frequent screens stay still): .rise is the stagger primitive above. */
+html[data-rise-seen] .rise {
   animation: none;
 }
 
@@ -2293,11 +2332,6 @@ button.pill {
 /* Reduced motion means gentler, not none: entrances fade in place instead of travelling, and
    decorative movement stops. A press dims instead of squashing, and the switch stays; they answer a touch. */
 @media (prefers-reduced-motion: reduce) {
-  @keyframes rise {
-    from {
-      opacity: 0;
-    }
-  }
   @keyframes slide-up {
     from {
       opacity: 0;
@@ -2334,10 +2368,14 @@ button.pill {
     --press-dim: 0.8;
     --press-fade: 120ms;
   }
-  @keyframes arrive {
-    from {
-      opacity: 0;
-    }
+  .stagger > *,
+  .arrive,
+  .rise,
+  .item--fresh,
+  [data-arrive] .screen > :not(ul, :first-child),
+  [data-arrive] ul.list > li {
+    animation: arrive-fade 150ms linear backwards;
+    animation-delay: 0s;
   }
   .unlock::after {
     animation: none;
@@ -2373,10 +2411,7 @@ button.pill {
 }
 
 /* ---- notifications ---- */
-/* An alert that arrives while the list is open slides in once (the keyframes fade instead when motion is reduced). */
-.item--fresh {
-  animation: rise var(--spring-smooth-dur) var(--spring-smooth) both;
-}
+/* An alert that arrives while the list is open rises in once: .item--fresh is in the stagger primitive above. */
 /* Something that cannot be pressed right now says so by dimming; it keeps its place in the layout. */
 .btn:disabled,
 .switch:disabled {
