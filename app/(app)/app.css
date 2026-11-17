@@ -1374,9 +1374,7 @@ button.pill {
 .tabbar {
   position: relative;
 }
-.tab:active {
-  background: rgba(255, 255, 255, 0.1);
-}
+/* No ground of its own under a pressed tab: the answer to the tap is the piece sliding towards it. */
 .tab__badge {
   position: absolute;
   top: 2px;
