@@ -90,10 +90,12 @@ test.describe("the welcome screen's language switch", () => {
     await expect(page.locator(".pill[lang=en]")).toHaveAttribute("aria-pressed", "true");
   });
 
-  test("the piece never goes past its place: where it rests is where it went from the start", async ({ page }) => {
-    const { samples, goal } = await tapAndWatch(page, ".seg-pills", ".pill[lang=en]");
-    expect(Math.max(...samples.map((s) => s.r))).toBeLessThanOrEqual(goal.r + 0.5);
-    expect(Math.max(...samples.map((s) => s.l))).toBeLessThanOrEqual(goal.l + 0.5);
+  test("the trailing end carries the piece just past its place, a little, before it settles", async ({ page }) => {
+    const { before, samples, goal } = await tapAndWatch(page, ".seg-pills", ".pill[lang=en]");
+    const past = Math.max(...samples.map((s) => s.r)) - goal.r;
+    expect(past).toBeGreaterThan(0.2);
+    // Gentle: bounce 0.2 passes by about 1.5% of the way, so under 3%.
+    expect(past).toBeLessThan((goal.l - before.l) * 0.03);
   });
 
   test("with Reduce Motion the piece moves at once", async ({ page }) => {
@@ -152,9 +154,8 @@ test.describe("the tab bar", () => {
     expect(Math.max(...samples.map((s) => s.r - s.l))).toBeGreaterThan(2 * (goal.r - goal.l));
     const last = samples.at(-1)!;
     expect(near(last.l, goal.l) && near(last.r, goal.r)).toBe(true);
-    // Never past Profile on the way.
-    expect(Math.max(...samples.map((s) => s.r))).toBeLessThanOrEqual(goal.r + 0.5);
-    expect(Math.max(...samples.map((s) => s.l))).toBeLessThanOrEqual(goal.l + 0.5);
+    // Just past Profile, a little, on the way.
+    expect(Math.max(...samples.map((s) => s.r)) - goal.r).toBeLessThan((goal.l - 4) * 0.03);
     await expect(page.getByRole("navigation", { name: mk.t("nav.main") }).locator("[aria-current=page]")).toHaveText(mk.t("nav.profile"));
   });
 

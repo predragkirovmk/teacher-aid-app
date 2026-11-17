@@ -313,7 +313,7 @@ function Dock({ pathname }: { pathname: string }) {
         {tab("/app", t("nav.home"), HouseSimpleIcon)}
         {tab("/app/subjects", t("subjects.title"), BooksIcon)}
         <Link href="/app/scan" className="scan-fab" aria-label={t("nav.scan")}>
-          <ScanIcon size={36} aria-hidden="true" />
+          <ScanIcon size={30} aria-hidden="true" />
         </Link>
         {tab("/app/notifications", t("nav.alerts"), BellSimpleIcon, count)}
         {tab("/app/profile", t("nav.profile"), UserIcon)}
