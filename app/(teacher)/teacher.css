@@ -138,6 +138,7 @@ body {
   font-size: var(--fs-body);
   line-height: var(--lh-body);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a,
@@ -1956,6 +1957,12 @@ button {
   object-fit: contain;
   justify-self: start;
 }
+/* The outline is neutral black, not the ink, so it never tints a picture (no token is neutral, which is why it is a raw colour). */
+.question__image,
+.imagefield__preview {
+  outline: 1px solid rgba(0, 0, 0, 0.1);
+  outline-offset: -1px;
+}
 .question__prompt {
   margin: 0;
   font-size: var(--fs-row);
@@ -2948,13 +2955,19 @@ button {
   color: var(--ink);
   font-size: var(--fs-row);
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 .card .roster__none {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem;
   color: var(--ink);
   font-weight: 500;
+}
+/* An icon beside words that may wrap keeps its size and sits on the first line, not at the middle of two. */
+.card .roster__none svg {
+  flex: none;
+  margin-top: -0.0625rem;
 }
 .roster__list {
   list-style: none;
@@ -3519,6 +3532,17 @@ body:has(.cv) {
   color: var(--ink);
   font-weight: 500;
 }
+/* The icon kept its size and its line: a long skipped line used to squeeze it and centre it between two lines. */
+.qpanel .qpanel__said {
+  align-items: flex-start;
+}
+.qpanel .qpanel__said svg,
+.qpanel .qpanel__nudge svg {
+  flex: none;
+}
+.qpanel .qpanel__said svg {
+  margin-top: 0.0625rem;
+}
 
 .qlist {
   display: grid;
@@ -3623,6 +3647,7 @@ body:has(.cv) {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  font-variant-numeric: tabular-nums;
 }
 .card .inbox__hint,
 .card .inbox__none {
@@ -4603,6 +4628,10 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
 .savestate[data-status="saved"] svg {
   animation: mark-land var(--spring-snappy-dur) var(--spring-snappy) backwards;
 }
+/* When a student answers, the hourglass gives way to the check, which lands like a saved tick; only the icon moves, the row stays still. */
+.person__answer[data-answer="answered"] svg {
+  animation: mark-land var(--spring-snappy-dur) var(--spring-snappy) backwards;
+}
 /* A wait that is going on turns, so it never looks stuck. */
 .savestate[data-status="saving"] svg,
 .savestate[data-status="dirty"] svg,
@@ -4740,6 +4769,7 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
     animation: pop-fade var(--dur) var(--ease-out) backwards;
   }
   .savestate svg,
+  .person__answer svg,
   .imagefield__busy svg,
   .cvq__barfill,
   .cvq__rightmark,
@@ -5031,6 +5061,7 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   font-size: var(--fs-small);
   font-weight: 500;
   line-height: 1.2;
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
 /* The chosen tab is a raised white pill with heavier words: told apart by shape and weight, not by colour. */

@@ -176,6 +176,10 @@ test.describe("the life of a question", () => {
     }
     await expect(panel(page).getByTestId("none-left")).toHaveText("Ова беше последното прашање.");
     await expect(panel(page).getByRole("button", { name: "Заврши го часот" })).toBeVisible();
+    // The skipped line's icon keeps its size: the long words beside it must not squeeze it.
+    const icon = panel(page).locator(".qpanel__said svg");
+    await expect(icon).toBeVisible();
+    expect(Math.round((await icon.boundingBox())!.width)).toBe(24);
   });
 });
 
