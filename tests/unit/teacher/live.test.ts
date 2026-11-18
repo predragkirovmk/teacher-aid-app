@@ -16,7 +16,6 @@ import {
   openClassWindow,
   recentNames,
   serverOffset,
-  stateSteps,
   studentState,
   TOKEN_GRACE_MS,
   TOKEN_ROTATE_MS,
@@ -37,16 +36,6 @@ const joined = (id: string, at = "2026-10-29T08:31:00.000Z", over: Partial<Conso
 });
 
 describe("where the lesson stands", () => {
-  test("three states in order, the current one marked and the ones before it done", () => {
-    expect(stateSteps("lobby")).toEqual([
-      { state: "lobby", position: "current" },
-      { state: "teaching", position: "next" },
-      { state: "ended", position: "next" },
-    ]);
-    expect(stateSteps("teaching").map((s) => s.position)).toEqual(["done", "current", "next"]);
-    expect(stateSteps("ended").map((s) => s.position)).toEqual(["done", "done", "current"]);
-  });
-
   test("a lesson moves forward one state at a time, and End is not a move (4.1)", () => {
     expect(nextState("lobby")).toBe("teaching");
     expect(nextState("teaching")).toBeNull();

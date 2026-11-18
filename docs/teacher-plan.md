@@ -40,6 +40,9 @@ practice set is removed from the teacher app; after the last question the questi
 offers the red End (nothing pops up), and the anonymous questions stay in their tab; on the waiting step a
 student's row is just the name. The projector's ranking between questions keeps a name on one line.
 
+- 2026-11-19: the line of the lesson's steps (Чекаме ученици, Предавање, Крај) is gone from the console and the end page; the
+  title and the card in front already say where the lesson is.
+
 ## Owner decisions (2026-10-27, do not re-ask)
 
 - Installable web app at `/teacher`, branch `teacher-v1` off `main`. The student app (`/app`)

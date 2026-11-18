@@ -18,14 +18,6 @@ import type {
 /** The three states of a session, in order (4.1). The lesson only moves forward. */
 export const STATES: readonly SessionState[] = ["lobby", "teaching", "ended"];
 
-export type StateStep = { state: SessionState; position: "done" | "current" | "next" };
-
-/** The line of states, each marked as one that is past, the one the lesson is in, or one still to come. */
-export function stateSteps(current: SessionState): StateStep[] {
-  const at = STATES.indexOf(current);
-  return STATES.map((state, i) => ({ state, position: i < at ? "done" : i === at ? "current" : "next" }));
-}
-
 /** How far along a state is: events and moves only ever go forward (4.1). */
 export const stateRank = (state: SessionState): number => STATES.indexOf(state);
 

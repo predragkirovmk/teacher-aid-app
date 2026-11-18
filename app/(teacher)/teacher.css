@@ -822,7 +822,7 @@ button {
   }
 }
 /* What a quiet button sits on. A white surface: the tint, no edge. A well inside one: white again, with the edge. */
-:is(.card, .dialog, .lesson, .question, .savebar, .states, .qpanel, .qitem, .inbox) {
+:is(.card, .dialog, .lesson, .question, .savebar, .qpanel, .qitem, .inbox) {
   --quiet: var(--tint);
   --quiet-edge: 0 0 transparent;
   --box: var(--well);
@@ -2784,68 +2784,6 @@ button {
 }
 
 /* ---- The live lesson: the console (names, the teacher's own screen) ---- */
-/* Where the lesson stands: four words in order. The current one has a filled mark, a line under its word and the word "Сега"; never colour alone. */
-.states {
-  list-style: none;
-  margin: 0;
-  padding: 0.25rem 1.25rem;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0 var(--sp-1);
-  border-radius: var(--r-l);
-  background: var(--surface);
-  box-shadow: var(--ring);
-}
-.states__item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: var(--tap);
-  color: var(--ink-2);
-  font-size: var(--fs-small);
-  font-weight: 400;
-}
-.states__item + .states__item::before {
-  content: "";
-  width: 1rem;
-  height: 2px;
-  margin-right: var(--sp-1);
-  border-radius: 1px;
-  background: var(--edge);
-}
-.states__item svg {
-  flex: none;
-}
-.states__item[data-position="current"] {
-  color: var(--ink);
-  font-weight: 600;
-}
-/* Where the window is not wide enough for the four on one line, the short lines between them go: the filled mark, the word and "Сега" say it. */
-@media (max-width: 69.99rem) {
-  .states__item + .states__item::before {
-    display: none;
-  }
-  .states {
-    gap: 0 var(--sp-2);
-  }
-}
-.states__word {
-  line-height: 1.2;
-}
-.states__item[data-position="current"] .states__word {
-  padding-block: 0.25rem;
-  border-bottom: 2px solid var(--teal);
-}
-.states__now {
-  padding: 0.125rem 0.625rem;
-  border-radius: var(--r-pill);
-  background: var(--teal);
-  color: var(--on-teal);
-  font-size: var(--fs-small);
-  font-weight: 600;
-}
-
 .live__side {
   display: grid;
   gap: var(--sp-3);
@@ -3404,23 +3342,6 @@ body:has(.cv) {
   margin: 0;
   font-size: var(--fs-body);
 }
-.states--compact {
-  padding: 0 var(--sp-2);
-}
-.states--compact .states__item {
-  min-height: var(--tap-small);
-}
-/* At 1024 wide the four steps and "Сега" must still be one line, so the panel is in the first screen. */
-@media (max-width: 69.99rem) {
-  .states--compact {
-    padding-inline: var(--sp-1);
-    gap: 0 var(--sp-1);
-  }
-  .states--compact .states__item {
-    gap: 0.375rem;
-  }
-}
-
 .live__teach {
   display: grid;
   gap: var(--sp-3);
@@ -4881,7 +4802,6 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   .running,
   .option[data-correct="true"],
   .field,
-  .states,
   .person,
   .callout,
   .cv__qr,

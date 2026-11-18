@@ -34,18 +34,13 @@ test.describe("starting", () => {
 });
 
 test.describe("the lobby", () => {
-  test("says where the lesson stands in three words, the current one by a word and a mark, and gives the page one main button", async ({ page, context }) => {
+  test("shows no line of steps, says it is the lobby by the start button, and gives the page one main button", async ({ page, context }) => {
     await start(page, context);
-    const states = page.getByRole("list", { name: "Каде е часот" });
-    await expect(states.getByRole("listitem")).toHaveText([/Чекаме ученици/, /Предавање/, /Крај/]);
-    const now = states.locator("[aria-current=step]");
-    await expect(now).toHaveCount(1);
-    await expect(now).toContainText("Чекаме ученици");
-    await expect(now).toContainText("Сега");
+    await expect(page.locator(".states")).toHaveCount(0);
+    await expect(page.getByRole("list", { name: "Каде е часот" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Почни го часот" })).toBeVisible();
     await expect(mainButton(page)).toHaveCount(1);
     await expect(mainButton(page)).toHaveText("Почни го часот");
-    // The ones that are not current are told apart by more than colour: a screen reader is told which are done and which are still to come.
-    await expect(states.getByRole("listitem").nth(1)).toContainText("следно");
   });
 
   test("no code is shown to read out while students cannot type it, and nobody is listed before anyone scans: the list says students appear then", async ({ page, context }) => {
@@ -285,18 +280,15 @@ test.describe("starting the lesson, and teaching", () => {
     await expect(dialog.getByRole("button", { name: "Не, уште чекам" })).toHaveClass(/btn--primary/);
     await dialog.getByRole("button", { name: "Не, уште чекам" }).click();
     await expect(dialog).toHaveCount(0);
-    await expect(page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]")).toContainText("Чекаме ученици");
+    await expect(page.getByRole("button", { name: "Почни го часот" })).toBeVisible();
   });
 
-  test("moves to teaching: the state line says so, the panel for the question now has the one main button, the class, the questions and the anonymous questions are tabs, and the only way to end is the red one in the top bar", async ({ page, context }) => {
+  test("moves to teaching: the question panel is there, the panel for the question now has the one main button, the class, the questions and the anonymous questions are tabs, and the only way to end is the red one in the top bar", async ({ page, context }) => {
     await start(page, context);
     await at(context, 30, page);
     await page.getByRole("button", { name: "Почни го часот" }).click();
     await page.getByRole("button", { name: "Да, почни го часот" }).click();
-    const now = page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]");
-    await expect(now).toContainText("Предавање");
-    await expect(now).toContainText("Сега");
-    await expect(page.getByRole("listitem").filter({ hasText: "Чекаме ученици" })).toContainText("завршено");
+    await expect(page.locator(".qpanel")).toBeVisible();
     await expect(mainButton(page)).toHaveCount(1);
     await expect(mainButton(page)).toHaveText("Испрати го прашањето");
     await expect(page.getByRole("button", { name: "Почни го часот" })).toHaveCount(0);
@@ -354,7 +346,7 @@ test.describe("starting the lesson, and teaching", () => {
     await at(context, 20, page);
     await page.getByRole("button", { name: "Почни го часот" }).click();
     await page.getByRole("button", { name: "Да, почни го часот" }).click();
-    await expect(page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]")).toContainText("Предавање");
+    await expect(page.locator(".qpanel")).toBeVisible();
     const before = joinedAt(20, 20);
     await expect(people(page)).toHaveCount(before);
     await at(context, 100, page, 20);
@@ -396,7 +388,7 @@ test.describe("coming back", () => {
     await page.getByRole("button", { name: "Почни го часот" }).click();
     await page.getByRole("button", { name: "Да, почни го часот" }).click();
     await page.reload();
-    await expect(page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]")).toContainText("Предавање");
+    await expect(page.locator(".qpanel")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Прашањето сега" })).toBeVisible();
     await expect(people(page)).toHaveCount(joinedAt(40));
   });
@@ -493,7 +485,6 @@ test.describe("words", () => {
     await page.goto("/teacher");
     await cards(page).filter({ hasText: "Проценти и пропорции" }).getByRole("button", { name: "Start lesson" }).click();
     await expect(page.locator(".head__sub")).toHaveText("Проценти и пропорции");
-    await expect(page.getByRole("list", { name: "Where the lesson is" }).getByRole("listitem")).toHaveText([/Waiting for the students/, /Teaching/, /The end/]);
     await expect(page.getByRole("heading", { name: "When you are ready" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Projector screen" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Start the lesson" })).toBeVisible();
@@ -514,13 +505,12 @@ test.describe("words", () => {
     await expect(help.locator("details#projector").getByText("Press the Windows key and P together (Win+P).")).toBeVisible();
   });
 
-  test("at a faculty the console says students, and the line of states says it too", async ({ page, context }) => {
+  test("at a faculty the console says students", async ({ page, context }) => {
     await page.addInitScript((key) => localStorage.setItem(key, JSON.stringify({ locale: "mk", schoolType: "university", schoolSeen: true })), SETTINGS_KEY);
     await context.clock.setFixedTime(T0);
     await page.goto("/teacher");
     await cards(page).first().getByRole("button", { name: "Започни час" }).click();
     await expect(page).toHaveURL(/\/teacher\/live\//);
-    await expect(page.getByRole("list", { name: "Каде е часот" }).getByRole("listitem").first()).toContainText("Чекаме студенти");
     await expect(page.getByText(/Проекторот мора.*Вашите студенти/)).toBeVisible();
     await expect(count(page)).toHaveText("0 се приклучија");
     await expect(page.getByText("Студентите се појавуваат овде кога ќе го скенираат кодот.")).toBeVisible();
@@ -624,7 +614,7 @@ test.describe("what the review of step 8 changed", () => {
     await expect(ask.getByRole("button", { name: "Не, уште чекам" })).toHaveClass(/btn--primary/);
     await page.keyboard.press("Escape");
     await expect(ask).toHaveCount(0);
-    await expect(page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]")).toContainText("Чекаме ученици");
+    await expect(page.getByRole("button", { name: "Почни го часот" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Почни го часот" })).toBeFocused();
   });
 

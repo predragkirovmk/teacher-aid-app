@@ -62,10 +62,11 @@ test.describe("End", () => {
       // No is safe: nothing happened.
       await page.keyboard.press("Escape");
       await expect(q).toBeHidden();
-      await expect(page.locator(".states__item[aria-current=step]")).not.toContainText("Крај");
+      // The lesson is still open, from whichever step it was asked: the console's title, and End still there.
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText("Час во тек");
+      await expect(endButton(page)).toBeVisible();
       await endIt(page);
       await expect(page.getByRole("heading", { level: 1 })).toHaveText("Часот заврши");
-      await expect(page.locator(".states__item[aria-current=step]")).toContainText("Крај");
       await expect(page).toHaveURL(new RegExp(`${LIVE}$`));
       // The projector says the lesson is over, and holds no student's name.
       await expect(projector.getByRole("heading", { name: "Часот заврши" })).toBeVisible();
@@ -110,7 +111,7 @@ test.describe("End", () => {
     await context.setOffline(true);
     await question(page).getByRole("button", { name: "Да, заврши го часот" }).click();
     await expect(question(page).getByRole("alert")).toContainText("Не успеавме да го завршиме часот. Тој е сѐ уште отворен и ништо не е изгубено.");
-    await expect(page.locator(".states__item[aria-current=step]")).toContainText("Чекаме ученици");
+    await expect(page.getByRole("button", { name: "Почни го часот" })).toBeVisible();
     await context.setOffline(false);
     await question(page).getByRole("button", { name: "Да, заврши го часот" }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Часот заврши");
@@ -172,10 +173,10 @@ test.describe("the end page", () => {
     const card = (await page.locator(".att").boundingBox())!;
     expect(Math.abs(card.x - content.x)).toBeLessThan(2);
     expect(Math.abs(card.width - content.width)).toBeLessThan(2);
-    // One main button, the way on, at the right of the title; the steps are over; the lesson was held.
+    // One main button, the way on, at the right of the title; the lesson is over and was held.
     await expect(mainButton(page)).toHaveText(/Оди на Лекции/);
     await expect(mainButton(page)).toHaveCount(1);
-    await expect(page.locator(".states__item[aria-current=step]")).toContainText("Крај");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Часот заврши");
     await expect(page.getByText("Часот е зачуван меѓу одржаните часови.")).toBeVisible();
     // Copy and print in the head of the card, on one row, quiet buttons of 44px.
     const copy = page.locator(".att").getByRole("button", { name: "Копирај го списокот" });

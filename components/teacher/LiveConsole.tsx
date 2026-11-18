@@ -23,7 +23,6 @@ import { PageHeader } from "./PageHeader";
 import { Problem } from "./Problem";
 import { MirrorWarning, ProjectorControl } from "./ProjectorControl";
 import { Bar, Loading } from "./Skeleton";
-import { StateLine } from "./StateLine";
 import { TabPanel, Tabs } from "./Tabs";
 import { AnonInbox } from "./AnonInbox";
 import { QuestionList } from "./QuestionList";
@@ -122,7 +121,6 @@ export function LiveConsole() {
                 </p>
               </div>
             )}
-            <StateLine state={snapshot.session.state} compact />
             <div className="live__frame">
               {/* The stage: the one thing to do now. It keeps its place when the lesson moves on. */}
               <div className="live__stage">

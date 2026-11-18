@@ -13,7 +13,6 @@ import { HOME } from "@/lib/teacher/signin";
 import { LoadProblem } from "./LoadProblem";
 import { PageHeader } from "./PageHeader";
 import { Bar, Loading } from "./Skeleton";
-import { StateLine } from "./StateLine";
 
 /**
  * The page a lesson ends on, and the page a held lesson opens to (`/teacher/live/{id}`, the address of the console while it ran): the students who
@@ -67,7 +66,6 @@ export function EndPage({ sessionId }: { sessionId: string }) {
         {review.status === "error" && !gone && <LoadProblem title={t("live.error.title")} error={review.error} onRetry={review.refetch} />}
         {data && (
           <>
-            <StateLine state="ended" compact />
             <p className="endpage__held">{t("endpage.held")}</p>
             <Results rows={data.students} lesson={data.session.lesson.title} day={data.session.ended_at ?? data.session.started_at} />
           </>
