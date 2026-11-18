@@ -1,6 +1,6 @@
 import { isDraftQuestion, isObject, isText, isValidContent, isValidQuestion } from "../lessons";
 import type { SchoolType } from "../store";
-import type { AnonQuestionItem, AttendanceRow, DraftQuestion, FocusFlag, Lesson, MissedQuestion, Question, Refinement, SessionState, SourceKind } from "./types";
+import type { DraftQuestion, FocusFlag, Lesson, Question, Refinement, ResultRow, SessionState, SourceKind } from "./types";
 
 /**
  * What the mock adapter keeps in the browser. The demo school and its history are worked out from a
@@ -15,8 +15,8 @@ import type { AnonQuestionItem, AttendanceRow, DraftQuestion, FocusFlag, Lesson,
  */
 
 /** The key the mock saves under. Bump the number with `MOCK_VERSION` when the shape changes: the old save is then ignored. */
-export const MOCK_KEY = "teacheraid-teacher-mock-v2";
-export const MOCK_VERSION = 2;
+export const MOCK_KEY = "teacheraid-teacher-mock-v3";
+export const MOCK_VERSION = 3;
 
 /**
  * A document or typed text the teacher gave, kept for the lesson that is made from it. `runs` counts the jobs that have been
@@ -63,7 +63,7 @@ export type DemoSession = {
   started_at: string;
   /** When the teacher moved the lesson on from the lobby; null while it is in it. Students may still join after it. */
   teaching_at: string | null;
-  /** What the teacher did with the questions: when each was sent, skipped or had its answer shown. A question not listed is untouched. */
+  /** What the teacher did with the questions: when each was sent or skipped. A question not listed is untouched. */
   runs: DemoRun[];
   /** The quick questions made on the spot, whole, in the order they were made. */
   adhoc: Question[];
@@ -72,13 +72,8 @@ export type DemoSession = {
 };
 
 /** What happened to one question of the lesson: the session question's id and the times, ISO 8601. */
-export type DemoRun = { id: string; fired_at: string | null; skipped_at: string | null; revealed_at: string | null };
+export type DemoRun = { id: string; fired_at: string | null; skipped_at: string | null };
 
-/**
- * A lesson the teacher ended in the demo, as it was at that moment: the register, the questions the class missed (the only ones the review
- * and the practice set are made of), and the questions the class wrote. Frozen when End is pressed, because the class that was played from the clock
- * stops with the lesson.
- */
 /** What a lesson ended in the demo adds to the class results: the numbers of its questions, kept as they were when the lesson ended. */
 export type EndedResults = {
   /** Questions that were put to the class (a skipped one and one never sent are not here). */
@@ -91,20 +86,19 @@ export type EndedResults = {
   focus: FocusFlag[];
 };
 
+/**
+ * A lesson the teacher ended in the demo, as it was at that moment: the students who joined with their scores, and the numbers of the class.
+ * Frozen when End is pressed, because the class that was played from the clock stops with the lesson.
+ */
 export type EndedSession = {
   id: string;
   lesson: { id: string; title: string; version: number };
   started_at: string;
   ended_at: string;
-  attendance: AttendanceRow[];
-  /** Worst first; a question nobody missed, one skipped and one never sent are not here. */
-  most_missed: MissedQuestion[];
-  anon_questions: AnonQuestionItem[];
+  /** The students who joined, in register order. */
+  students: ResultRow[];
   results: EndedResults;
 };
-
-/** A practice set the teacher sent in the demo: when, and which questions (their session question ids, in lesson order). */
-export type PracticeRecord = { id: string; created_at: string; question_ids: string[] };
 
 export type Overlay = {
   first_run_done: boolean;
@@ -118,8 +112,6 @@ export type Overlay = {
   session: DemoSession | null;
   /** The lessons ended in the demo, oldest first. */
   ended: EndedSession[];
-  /** The practice sets sent in the demo, by session id. */
-  practice: Record<string, PracticeRecord>;
   /** A school where no colleague has saved a lesson yet: the library is empty. Only a test or a screenshot sets it. */
   library_empty: boolean;
   /** Counts the ids handed out, so they never repeat. */
@@ -152,7 +144,6 @@ export const emptyOverlay = (persona: Persona = "veteran"): Overlay => ({
   sources: [],
   session: null,
   ended: [],
-  practice: {},
   library_empty: false,
   counter: 0,
 });
@@ -240,10 +231,10 @@ export function isDemoDraft(v: unknown): v is DemoDraft {
 const isSource = (v: unknown): v is DemoSource =>
   isObject(v) && isText(v.id) && (v.kind === "upload" || v.kind === "typed") && (v.file_name === null || isText(v.file_name)) && isText(v.text) && isCount(v.runs);
 
-const SESSION_STATES: readonly SessionState[] = ["lobby", "teaching", "review", "ended"];
+const SESSION_STATES: readonly SessionState[] = ["lobby", "teaching", "ended"];
 
 const isRun = (v: unknown): v is DemoRun =>
-  isObject(v) && isText(v.id) && (v.fired_at === null || isIso(v.fired_at)) && (v.skipped_at === null || isIso(v.skipped_at)) && (v.revealed_at === null || isIso(v.revealed_at));
+  isObject(v) && isText(v.id) && (v.fired_at === null || isIso(v.fired_at)) && (v.skipped_at === null || isIso(v.skipped_at));
 
 /** A quick question saved by the demo: the fields a live question needs, checked like a finished lesson's question. */
 const isLiveQuestion = (v: unknown): v is Question => isValidQuestion(v);
@@ -280,20 +271,13 @@ const isEnded = (v: unknown): v is EndedSession =>
   isText(v.lesson.title) &&
   isIso(v.started_at) &&
   isIso(v.ended_at) &&
-  Array.isArray(v.attendance) &&
-  v.attendance.every((a) => isObject(a) && isText(a.student_id) && isText(a.full_name)) &&
-  Array.isArray(v.most_missed) &&
-  v.most_missed.every((m) => isObject(m) && isText(m.session_question_id) && isText(m.prompt)) &&
-  Array.isArray(v.anon_questions) &&
-  v.anon_questions.every((a) => isObject(a) && isText(a.id) && isText(a.text)) &&
+  Array.isArray(v.students) &&
+  v.students.every((a) => isObject(a) && isText(a.student_id) && isText(a.full_name) && isCount(a.correct) && isCount(a.asked)) &&
   isObject(v.results) &&
   isCount(v.results.question_count) &&
   typeof v.results.points === "number" &&
   Array.isArray(v.results.topics) &&
   Array.isArray(v.results.focus);
-
-const isPracticeRecord = (v: unknown): v is PracticeRecord =>
-  isObject(v) && isText(v.id) && isIso(v.created_at) && Array.isArray(v.question_ids) && v.question_ids.every(isText);
 
 function sanitizeOverlay(saved: unknown, persona: Persona = "veteran"): Overlay {
   const s = isObject(saved) ? saved : {};
@@ -307,7 +291,6 @@ function sanitizeOverlay(saved: unknown, persona: Persona = "veteran"): Overlay 
     sources: Array.isArray(s.sources) ? s.sources.map((x) => (isObject(x) && x.runs === undefined ? { ...x, runs: 0 } : x)).filter(isSource) : base.sources,
     session: sessionOf(s.session) ?? base.session,
     ended: Array.isArray(s.ended) ? s.ended.filter(isEnded) : base.ended,
-    practice: isObject(s.practice) ? Object.fromEntries(Object.entries(s.practice).filter((e): e is [string, PracticeRecord] => isPracticeRecord(e[1]))) : base.practice,
     library_empty: typeof s.library_empty === "boolean" ? s.library_empty : base.library_empty,
     counter: isCount(s.counter) ? s.counter : base.counter,
   };

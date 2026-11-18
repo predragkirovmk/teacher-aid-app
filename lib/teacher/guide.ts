@@ -8,7 +8,7 @@ import type { Key } from "./i18n";
 export const GUIDE_STEPS = [
   { title: "guide.1.title", body: "guide.1.body", icon: "prepare" },
   { title: "guide.2.title", body: "guide.2.body", icon: "hold" },
-  { title: "guide.3.title", body: "guide.3.body", icon: "review" },
+  { title: "guide.3.title", body: "guide.3.body", icon: "results" },
 ] as const satisfies readonly { title: Key; body: Key; icon: string }[];
 
 export type GuideIcon = (typeof GUIDE_STEPS)[number]["icon"];

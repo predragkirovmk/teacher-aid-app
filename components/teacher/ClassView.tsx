@@ -13,8 +13,7 @@ import { useT } from "@/lib/teacher/i18n";
 import { formatShortCode, joinUrl, STUDENTS_CAN_TYPE_CODE } from "@/lib/teacher/live";
 import { useClassViewBeat } from "@/lib/teacher/windows";
 import { projectedScreen, topOfBoard } from "@/lib/teacher/questions";
-import { ClassReview } from "./ClassReview";
-import { Board, ClosedQuestion, OpenQuestion, RevealedQuestion, SkippedQuestion } from "./ClassQuestion";
+import { Board, OpenQuestion, RevealedQuestion, SkippedQuestion } from "./ClassQuestion";
 import { PageTitle } from "./PageTitle";
 
 /**
@@ -92,7 +91,6 @@ function Screen({ snapshot }: { snapshot: ClassViewSnapshot }) {
   const { state } = snapshot.session;
   if (state === "lobby") return <Lobby snapshot={snapshot} />;
   if (state === "teaching") return <Teaching snapshot={snapshot} />;
-  if (state === "review") return <ClassReview snapshot={snapshot} />;
   return <h1 className="cv__big">{t("class.ended")}</h1>;
 }
 
@@ -147,7 +145,7 @@ function Lobby({ snapshot }: { snapshot: ClassViewSnapshot }) {
 }
 
 /**
- * The lesson is going on: the question that is open, closed, shown or skipped, or, between questions, the last ranking or "the lesson is going on" with a
+ * The lesson is going on: the question that is open, shown or skipped, or, between questions, the last ranking or "the lesson is going on" with a
  * small corner for a student who is late (the code goes on changing, so the corner stays right). The corner is only between questions; a question has the
  * whole screen.
  */
@@ -156,7 +154,6 @@ function Teaching({ snapshot }: { snapshot: ClassViewSnapshot }) {
   const { join, session, question } = snapshot;
   const screen = projectedScreen(question, snapshot.skipped, snapshot.reveal !== null);
   if (question && screen === "open") return <OpenQuestion snapshot={snapshot} q={question} />;
-  if (question && screen === "closed") return <ClosedQuestion snapshot={snapshot} q={question} />;
   if (question && screen === "revealed") return <RevealedQuestion snapshot={snapshot} q={question} />;
   if (question && screen === "skipped") return <SkippedQuestion q={question} />;
   const ranked = topOfBoard(snapshot.board).length > 0;

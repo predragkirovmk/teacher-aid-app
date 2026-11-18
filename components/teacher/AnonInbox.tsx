@@ -4,7 +4,6 @@ import {
   ArrowCounterClockwiseIcon,
   CheckCircleIcon,
   ChatCenteredTextIcon,
-  ProjectorScreenIcon,
 } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { setAnonAnswered } from "@/lib/teacher/api/hooks";
@@ -18,18 +17,10 @@ import { Problem } from "./Problem";
 /**
  * "Анонимни прашања (N)" (FR-ANON, FR-CON-03): what the class writes to the teacher, with the sender's name (BR-ANON-01: classmates never see it, the teacher
  * does), the text and the time, newest first. "Одговорено" marks one answered aloud (FR-ANON-10); it moves down and dims, and "Не е одговорено" takes that back.
- * A new one is announced once, politely, in a line that is read out; it never opens a window. The text is for this screen alone: it goes to no student and,
- * until the review, not to the projector either.
+ * A new one is announced once, politely, in a line that is read out; it never opens a window. The text is for this screen alone: it goes to no student and
+ * not to the projector, and it stays in this tab for as long as the lesson is open, after the last question too.
  */
-export function AnonInbox({
-  sessionId,
-  items,
-  onProjector,
-}: {
-  sessionId: string;
-  items: readonly AnonQuestionItem[];
-  onProjector?: ReadonlySet<string>;
-}) {
+export function AnonInbox({ sessionId, items }: { sessionId: string; items: readonly AnonQuestionItem[] }) {
   const { t, te, locale } = useT();
   const sorted = sortInbox(items);
   const [problem, setProblem] = useState<{ id: string; error: unknown } | null>(
@@ -94,18 +85,11 @@ export function AnonInbox({
                   key={item.id}
                   className="inbox__item"
                   data-answered={done}
-                  data-now={onProjector?.has(item.id) || undefined}
                   data-testid="anon"
                 >
                   <p className="inbox__who">
                     <strong>{name}</strong>
                     <span>{clockTime(Date.parse(item.created_at))}</span>
-                    {onProjector?.has(item.id) && (
-                      <span className="inbox__on" data-testid="on-projector">
-                        <ProjectorScreenIcon size={24} aria-hidden="true" />
-                        {t("rev.on")}
-                      </span>
-                    )}
                   </p>
                   <p className="inbox__text">{item.text}</p>
                   {done ? (

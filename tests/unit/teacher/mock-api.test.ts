@@ -108,26 +108,12 @@ describe("the held lessons", () => {
     }
   });
 
-  test("a finished lesson lists only the students who were there, each present, and no session or summary carries a course, a class or a subject", async () => {
+  test("a finished lesson lists only the students who were there, each with a score, and no session or summary carries a course, a class or a subject", async () => {
     const held = (await api.listLessons()).find((l) => l.times_run > 2)!;
     const review = await api.getReview(held.last_session_id!);
-    expect(review.attendance!.length).toBeGreaterThan(10);
-    expect(review.attendance!.every((a) => a.status === "present" && a.marked_by === "student" && a.no_device_reason === null && a.joined_at !== null)).toBe(true);
-    expect(JSON.stringify(review)).not.toMatch(/course|class_name|subject|"year"/);
-    expect(review.anon_questions.every((a) => a.sender.name && a.text)).toBe(true);
-  });
-
-  test("a practice set of a finished lesson goes to the students who were there, and who did it is read", async () => {
-    let seen = 0;
-    for (const l of (await api.listLessons()).filter((x) => x.times_run > 0)) {
-      const results = await api.getPracticeResults(l.last_session_id!).catch(() => null);
-      if (!results) continue;
-      seen++;
-      expect(results.practice_set).not.toHaveProperty("course_id");
-      const review = await api.getReview(l.last_session_id!);
-      expect(results.students.map((s) => s.student_id).sort()).toEqual(review.attendance!.map((a) => a.student_id).sort());
-    }
-    expect(seen).toBeGreaterThan(0);
+    expect(review.students.length).toBeGreaterThan(10);
+    expect(review.students.every((s) => s.full_name && s.asked >= 0 && s.correct >= 0 && s.correct <= s.asked)).toBe(true);
+    expect(JSON.stringify(review)).not.toMatch(/course|class_name|subject|"year"|attendance|most_missed|practice/);
   });
 
 });
@@ -683,15 +669,14 @@ describe("the live lesson", () => {
     expect((await rejection(api.getConsole(`${c.session.id}x`))).code).toBe("not_found");
   });
 
-  test("the teacher moves the lesson forward, one state at a time, and never back (4.1)", async () => {
+  test("the teacher moves the lesson from the lobby to teaching, once, and never back (4.1)", async () => {
     const c = await started();
-    expect((await rejection(api.advance(c.session.id, { to: "review" }))).code).toBe("invalid_state");
+    expect((await rejection(api.advance(c.session.id, { to: "review" as "teaching" }))).code).toBe("validation_failed");
     const t = await api.advance(c.session.id, { to: "teaching" });
     expect(t.session.state).toBe("teaching");
     expect((await api.getOpenSession()).session?.state).toBe("teaching");
     expect((await rejection(api.advance(c.session.id, { to: "teaching" }))).code).toBe("invalid_state");
     expect((await rejection(api.advance(c.session.id, { to: "lobby" as "teaching" }))).code).toBe("validation_failed");
-    expect((await api.advance(c.session.id, { to: "review" })).session.state).toBe("review");
   });
 
   test("students keep joining after the teacher began the lesson, until End, and nobody is marked late", async () => {
@@ -794,25 +779,9 @@ describe("the live lesson", () => {
 
 describe("what is not built yet", () => {
   test("a lesson that is not the teacher's is not found, ended or reviewed", async () => {
-    for (const call of [api.endSession("s"), api.getReview("s"), api.createPracticeSet("s"), api.getPracticeResults("s")]) {
+    for (const call of [api.endSession("s"), api.getReview("s")]) {
       expect((await rejection(call)).code).toBe("not_found");
     }
-  });
-
-  test("who did a practice set is read from the history", async () => {
-    const withSet = (await api.listLessons()).filter((l) => l.times_run > 0);
-    let found = null;
-    for (const l of withSet) {
-      const results = await api.getPracticeResults(l.last_session_id!).catch(() => null);
-      if (results) {
-        found = results;
-        break;
-      }
-    }
-    expect(found).not.toBeNull();
-    expect(found!.practice_set.id).toMatch(/^pr-/);
-    expect(found!.students.length).toBeGreaterThan(0);
-    expect((await rejection(api.getPracticeResults("s-none"))).code).toBe("not_found");
   });
 });
 

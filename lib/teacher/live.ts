@@ -5,7 +5,6 @@ import type {
   ConsoleSnapshot,
   ConsoleStudent,
   FocusFlag,
-  QuestionStatus,
   SessionState,
 } from "./api/types";
 
@@ -16,12 +15,12 @@ import type {
 
 // ---- Where the lesson stands -----------------------------------------------------------------------
 
-/** The four states of a session, in order (4.1). The lesson only moves forward. */
-export const STATES: readonly SessionState[] = ["lobby", "teaching", "review", "ended"];
+/** The three states of a session, in order (4.1). The lesson only moves forward. */
+export const STATES: readonly SessionState[] = ["lobby", "teaching", "ended"];
 
 export type StateStep = { state: SessionState; position: "done" | "current" | "next" };
 
-/** The line of four states, each marked as one that is past, the one the lesson is in, or one still to come. */
+/** The line of states, each marked as one that is past, the one the lesson is in, or one still to come. */
 export function stateSteps(current: SessionState): StateStep[] {
   const at = STATES.indexOf(current);
   return STATES.map((state, i) => ({ state, position: i < at ? "done" : i === at ? "current" : "next" }));
@@ -31,7 +30,7 @@ export function stateSteps(current: SessionState): StateStep[] {
 export const stateRank = (state: SessionState): number => STATES.indexOf(state);
 
 /** The state a lesson is moved to from `state`, or null when there is none to move to: forward, one at a time, and End is not a move (4.1). */
-export const nextState = (state: SessionState): "teaching" | "review" | null => (state === "lobby" ? "teaching" : state === "teaching" ? "review" : null);
+export const nextState = (state: SessionState): "teaching" | null => (state === "lobby" ? "teaching" : null);
 
 // ---- The students ------------------------------------------------------------------------------------
 
@@ -143,18 +142,14 @@ export function recentNames(students: readonly Pick<ConsoleStudent, "full_name" 
     .map((s) => s.full_name);
 }
 
-const questionRank = (status: QuestionStatus): number => ["ready", "open", "closed", "revealed"].indexOf(status);
-
 /** A console question after a lifecycle event: a status only moves forward (4.2), so an event that repeats or comes late changes nothing. */
 function moveQuestion(q: ConsoleQuestion, event: ChannelEvent): ConsoleQuestion {
   if (q.status === "skipped") return q;
   switch (event.type) {
     case "question.opened":
       return q.status === "ready" ? { ...q, status: "open", fired_at: event.question.fired_at, closes_at: event.question.closes_at, answered: 0 } : q;
-    case "question.closed":
-      return questionRank(q.status) < questionRank("closed") ? { ...q, status: "closed", closed_at: event.server_now } : q;
     case "question.revealed":
-      return q.status !== "revealed" ? { ...q, status: "revealed", revealed_at: event.server_now, counts: event.counts, closed_at: q.closed_at ?? event.server_now } : q;
+      return q.status !== "revealed" ? { ...q, status: "revealed", revealed_at: event.server_now, counts: event.counts } : q;
     case "question.skipped":
       return { ...q, status: "skipped", skipped_at: event.server_now };
     case "question.progress":
@@ -195,7 +190,6 @@ export function applyConsoleEvent(snapshot: ConsoleSnapshot, event: ChannelEvent
     case "student.answer_state":
       return { ...snapshot, students: snapshot.students.map((s) => (s.id === event.student_id ? { ...s, answer_state: event.state } : s)) };
     case "question.opened":
-    case "question.closed":
     case "question.revealed":
     case "question.skipped":
     case "question.progress": {
@@ -204,7 +198,7 @@ export function applyConsoleEvent(snapshot: ConsoleSnapshot, event: ChannelEvent
       const changed = questions.some((q, i) => q !== snapshot.questions[i]);
       // Only the question that is open holds the "answered" marks: skipping or revealing another one leaves them alone.
       const closing =
-        (event.type === "question.closed" || event.type === "question.skipped" || event.type === "question.revealed") &&
+        (event.type === "question.skipped" || event.type === "question.revealed") &&
         snapshot.questions.some((q) => q.id === id && q.status === "open");
       const students = closing ? snapshot.students.map((s) => (s.answer_state === null ? s : { ...s, answer_state: null })) : snapshot.students;
       // A question sent clears the nudge: the line is only for a lesson that has gone quiet.
@@ -236,13 +230,11 @@ export function applyClassEvent(snapshot: ClassViewSnapshot, event: ChannelEvent
   const asked = snapshot.question;
   switch (event.type) {
     case "state.changed":
-      // The lesson ended: the projector keeps nothing of it (no ranking, no review, no code) beyond the words that it is over.
+      // The lesson ended: the projector keeps nothing of it (no ranking, no code) beyond the words that it is over.
       if (event.state === "ended" && snapshot.session.state !== "ended") {
-        return { ...snapshot, session: { ...snapshot.session, state: "ended", recent: [] }, join: null, question: null, progress: null, reveal: null, skipped: false, board: [], review: null };
+        return { ...snapshot, session: { ...snapshot.session, state: "ended", recent: [] }, join: null, question: null, progress: null, reveal: null, skipped: false, board: [] };
       }
       return stateRank(event.state) > stateRank(snapshot.session.state) ? { ...snapshot, session: { ...snapshot.session, state: event.state } } : snapshot;
-    case "review.ready":
-      return { ...snapshot, review: { most_missed: event.most_missed, anon_questions: event.anon_questions } };
     case "join_token.rotated":
       return { ...snapshot, join: { token: event.token, short_code: event.short_code, valid_to: event.valid_to } };
     case "joined.count":
@@ -251,8 +243,6 @@ export function applyClassEvent(snapshot: ClassViewSnapshot, event: ChannelEvent
       return { ...snapshot, question: event.question, progress: { answered: 0, joined: snapshot.session.joined_count }, reveal: null, skipped: false };
     case "question.progress":
       return asked && asked.id === event.session_question_id ? { ...snapshot, progress: { answered: event.answered, joined: event.joined } } : snapshot;
-    case "question.closed":
-      return asked && asked.id === event.session_question_id && questionRank(asked.status) < questionRank("closed") ? { ...snapshot, question: { ...asked, status: "closed" } } : snapshot;
     case "question.revealed":
       return asked && asked.id === event.session_question_id
         ? {

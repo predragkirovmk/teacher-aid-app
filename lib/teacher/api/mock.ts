@@ -9,10 +9,9 @@ import {
   TYPED_TEXT_MIN_CHARS,
 } from "../lessons";
 import { browserImageEnv, checkImage, downscaleImage, UnreadableImage, type ImageEnv } from "../images";
-import { tallyOf } from "../attendance";
 import { nextState } from "../live";
-import { missedOfQuestions, rankMissed } from "../review";
-import { countMissed, QUESTIONS_MAX, selectPracticeQuestions } from "../scoring";
+import { resultRows } from "../results";
+import { QUESTIONS_MAX } from "../scoring";
 import type { SchoolType } from "../store";
 import type { CallOptions, ChannelStatus, DemoControls, SettledPromise, TeacherApi, Unsubscribe } from "./client";
 import { isProvider } from "../signin";
@@ -23,19 +22,16 @@ import {
   DAY_MS,
   libraryIdOf,
   lessonIdOf,
-  type SeedSession,
   type World,
 } from "./mock-data";
 import { GENERATE_MS, latestUnsaved, REFINE_MS, startJob, statusOf, toSummary, toWire, trimDrafts } from "./mock-drafts";
 import { classViewOf, consoleStudents, eventsBetween, planClass, tokenAt, type SimInput } from "./mock-live";
 import { anonQuestions, DEMO_NUDGE_AFTER_MS, nudgeAt, showQuestions, withQuestions, type PlayInput, type QuestionRun } from "./mock-questions";
 import { adhocQuestion } from "./mock-adhoc";
-import { endedFrom, practiceResultsAt } from "./mock-end";
+import { endedFrom } from "./mock-end";
 import { demoProviderUrl, isOffline } from "./mock-session";
 import { overlayOf, withOverlay, type DemoDraft, type DemoRun, type DemoSession, type MockState, type Overlay, type Persona } from "./mock-state";
 import type {
-  AnonQuestionItem,
-  AttendanceRow,
   ChannelEvent,
   ClassViewSnapshot,
   ConsoleSnapshot,
@@ -46,10 +42,8 @@ import type {
   LessonSummary,
   LibraryItem,
   Me,
-  MissedQuestion,
   OpenSession,
-  PracticeResults,
-  PracticeSetSummary,
+  ResultRow,
   SessionReview,
   AdhocRequest,
   Question,
@@ -80,8 +74,8 @@ import type {
  *
  * The live lesson (the console, the class view, realtime) is played from the clock alone (mock-live.ts): the students who scan the code, when,
  * who loses the connection and the code are worked out from when the lesson began and what time it is, so two windows agree and a
- * reload finds the lesson where it was. A teacher has one open lesson at a time; End (mock-end.ts) writes the register, keeps what the class missed and
- * what it wrote, and the lesson is then read from that record, with its practice set done over time by the same clock.
+ * reload finds the lesson where it was. A teacher has one open lesson at a time; End (mock-end.ts) writes down the students who joined with their scores,
+ * and the lesson is then read from that record.
  */
 
 /** What the mock reads and writes: the saved state, the demo school the app is on, the clock. */
@@ -357,13 +351,6 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
     });
   };
 
-  const practiceSummary = (session: SeedSession, p: NonNullable<SeedSession["practice"]>): PracticeSetSummary => ({
-    id: p.id,
-    session_id: session.id,
-    created_at: iso(p.created_at),
-    question_count: p.question_ids.length,
-  });
-
   // ---- Making a lesson ----
 
   /** The demo "writes" a lesson by choosing the bank lesson whose words appear in what the teacher gave. */
@@ -455,14 +442,14 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
     const ms = (v: string | null | undefined) => (v ? Date.parse(v) : null);
     const make = (id: string, question: Question, adhoc: boolean): QuestionRun => {
       const done = s.runs.find((r) => r.id === id);
-      return { id, question, adhoc, fired_at: ms(done?.fired_at), skipped_at: ms(done?.skipped_at), revealed_at: ms(done?.revealed_at) };
+      return { id, question, adhoc, fired_at: ms(done?.fired_at), skipped_at: ms(done?.skipped_at) };
     };
     return [...prepared.map((q, i) => make(`${s.id}-sq${i + 1}`, q, false)), ...s.adhoc.map((q, i) => make(`${s.id}-aq${i + 1}`, q, true))];
   };
 
   /** Change what the teacher did with a question; the question is saved as touched. */
   const touch = (s: DemoSession, id: string, change: Partial<Omit<DemoRun, "id">>): DemoSession => {
-    const old = s.runs.find((r) => r.id === id) ?? { id, fired_at: null, skipped_at: null, revealed_at: null };
+    const old = s.runs.find((r) => r.id === id) ?? { id, fired_at: null, skipped_at: null };
     return { ...s, runs: [...s.runs.filter((r) => r.id !== id), { ...old, ...change }] };
   };
 
@@ -476,16 +463,10 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
   // ---- Lessons that have ended ----
 
   /**
-   * A lesson that has ended, as the review, the end page and the practice set read it: one the teacher ended in the demo (frozen when End was pressed), or one of
-   * the school's history. `practice` is the set that was sent for it, with who has done it at `now`, or null when none was sent.
+   * A lesson that has ended, as the review and the end page read it: one the teacher ended in the demo (frozen when End was pressed), or one of
+   * the school's history. `students` are those who joined, with their scores, in register order.
    */
-  type EndedView = {
-    session: SessionRef;
-    attendance: AttendanceRow[];
-    most_missed: MissedQuestion[];
-    anon_questions: AnonQuestionItem[];
-    practice: ((now: number) => PracticeResults) | null;
-  };
+  type EndedView = { session: SessionRef; students: ResultRow[] };
 
   const endedRef = (e: { id: string; lesson: SessionRef["lesson"]; started_at: string; ended_at: string }): SessionRef => ({
     id: e.id,
@@ -497,82 +478,22 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
 
   const endedOf = (c: Ctx, sessionId: Id): EndedView | null => {
     const frozen = c.overlay.ended.find((e) => e.id === sessionId);
-    if (frozen) {
-      const session = endedRef(frozen);
-      const record = c.overlay.practice[sessionId];
-      return {
-        session,
-        attendance: frozen.attendance,
-        most_missed: frozen.most_missed,
-        anon_questions: frozen.anon_questions,
-        practice: record
-          ? (now) => ({
-              practice_set: { id: record.id, session_id: sessionId, created_at: record.created_at, question_count: record.question_ids.length },
-              students: practiceResultsAt(record, frozen.attendance, now),
-            })
-          : null,
-      };
-    }
-    {
-      const seeded = c.world.sessions.find((x) => x.id === sessionId);
-      if (!seeded) return null;
-      const names = new Map(c.world.students.map((st) => [st.id, st.full_name]));
-      // The finished lesson keeps only the students who were there: each is present, and wrote their own mark.
-      const attendance: AttendanceRow[] = seeded.joins.map((j) => ({
-        student_id: j.student_id,
-        full_name: names.get(j.student_id) ?? "",
-        status: "present",
-        joined_at: iso(j.joined_at),
-        no_device_reason: null,
-        marked_by: "student",
-      }));
-      const right = new Set(seeded.answers.filter((a) => a.correct).map((a) => `${a.student_id}/${a.question_id}`));
-      const missed = seeded.questions
-        .map((sq, order): MissedQuestion | null => {
-          if (sq.skipped) return null;
-          const { missed: wrong, joined } = countMissed(sq.fired_at, seeded.joins.map((j) => ({ joined_at: j.joined_at, right: right.has(`${j.student_id}/${sq.id}`) })));
-          const q = sq.question;
-          return {
-            session_question_id: sq.id,
-            order,
-            prompt: q.prompt,
-            kind: q.kind,
-            topic: q.topic.trim() || seeded.lesson_title,
-            missed: wrong,
-            joined,
-            correct_answer: q.correct,
-            explanation: q.explanation,
-            options: q.kind === "multiple_choice" ? q.options : null,
-            unit: q.kind === "numeric" ? q.unit : null,
-          };
-        })
-        .filter((m): m is MissedQuestion => m !== null);
-      const p = seeded.practice;
-      const record = c.overlay.practice[sessionId];
-      return {
-        session: endedRef({ id: seeded.id, lesson: { id: seeded.lesson_id, title: seeded.lesson_title, version: 1 }, started_at: iso(seeded.started_at), ended_at: iso(seeded.ended_at) }),
-        attendance,
-        most_missed: rankMissed(missed),
-        anon_questions: seeded.anon.map((a) => ({
-          id: a.id,
-          text: a.text,
-          sender: { id: a.sender_id, name: names.get(a.sender_id) ?? "" },
-          created_at: iso(a.created_at),
-          answered_at: a.answered_at === null ? null : iso(a.answered_at),
-        })),
-        practice: p
-          ? () => ({
-              practice_set: practiceSummary(seeded, p),
-              students: p.results.map((r) => ({ student_id: r.student_id, full_name: names.get(r.student_id) ?? "", score: r.score, completed_at: r.completed_at === null ? null : iso(r.completed_at) })),
-            })
-          : record
-            ? (now) => ({
-                practice_set: { id: record.id, session_id: sessionId, created_at: record.created_at, question_count: record.question_ids.length },
-                students: practiceResultsAt(record, attendance, now),
-              })
-            : null,
-      };
-    }
+    if (frozen) return { session: endedRef(frozen), students: frozen.students };
+    const seeded = c.world.sessions.find((x) => x.id === sessionId);
+    if (!seeded) return null;
+    const names = new Map(c.world.students.map((st) => [st.id, st.full_name]));
+    // The finished lesson keeps only the students who were there. A skipped question counts for nobody.
+    const questions = seeded.questions
+      .filter((sq) => !sq.skipped)
+      .map((sq) => ({ fired_at: sq.fired_at, right: new Set(seeded.answers.filter((a) => a.question_id === sq.id && a.correct).map((a) => a.student_id)) }));
+    const students = resultRows(
+      seeded.joins.map((j) => ({ student_id: j.student_id, full_name: names.get(j.student_id) ?? "", joined_at: j.joined_at })),
+      questions,
+    );
+    return {
+      session: endedRef({ id: seeded.id, lesson: { id: seeded.lesson_id, title: seeded.lesson_title, version: 1 }, started_at: iso(seeded.started_at), ended_at: iso(seeded.ended_at) }),
+      students,
+    };
   };
 
   /** The projector's snapshot of a lesson that has ended: it says the lesson is over and holds nothing a name could leak through. */
@@ -582,7 +503,7 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
       id: e.session.id,
       state: "ended",
       lesson_title: e.session.lesson.title,
-      joined_count: e.attendance.length,
+      joined_count: e.students.length,
       recent: [],
     },
     join: null,
@@ -591,7 +512,6 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
     reveal: null,
     skipped: false,
     board: [],
-    review: null,
   });
 
   /** The stream of a lesson: what changed since it last looked (mock-live.ts), as often as the tick, and at once when another window changed it. */
@@ -1052,12 +972,10 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
       run(() => {
         if (isOffline()) throw new ApiError("network");
         const { c, s } = liveOf(sessionId);
-        if (request?.to !== "teaching" && request?.to !== "review") throw invalid();
+        if (request?.to !== "teaching") throw invalid();
         // Forward only, one state at a time, and nothing moves a lesson that has ended (4.1).
         if (nextState(s.state) !== request.to) throw new ApiError("invalid_state", { status: 409 });
-        // The review is not for a lesson with a question still open: it is shown or skipped first (4.2).
-        if (request.to === "review" && consoleOf(c, s).questions.some((q) => q.status === "open")) throw new ApiError("question_open", { status: 409 });
-        const next: DemoSession = { ...s, state: request.to, teaching_at: request.to === "teaching" ? iso(c.now) : s.teaching_at };
+        const next: DemoSession = { ...s, state: request.to, teaching_at: iso(c.now) };
         save(c, { ...c.overlay, session: next });
         return consoleOf(c, next);
       }),
@@ -1073,25 +991,13 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
         save(c, { ...c.overlay, session: next });
         return consoleOf({ ...c, overlay: { ...c.overlay, session: next } }, next);
       }),
-    revealQuestion: (sessionId, sqId) =>
-      run(() => {
-        if (isOffline()) throw new ApiError("network");
-        const { c, s } = liveOf(sessionId);
-        // Only a question that has closed can be revealed (4.2); the reveal of one already revealed is the console as it is.
-        const q = questionOf(c, s, sqId);
-        if (q.status === "revealed") return consoleOf(c, s);
-        if (q.status !== "closed") throw new ApiError("invalid_state", { status: 409 });
-        const next = touch(s, sqId, { revealed_at: iso(c.now) });
-        save(c, { ...c.overlay, session: next });
-        return consoleOf({ ...c, overlay: { ...c.overlay, session: next } }, next);
-      }),
     skipQuestion: (sessionId, sqId) =>
       run(() => {
         if (isOffline()) throw new ApiError("network");
         const { c, s } = liveOf(sessionId);
         const q = questionOf(c, s, sqId);
         if (q.status === "skipped") return consoleOf(c, s);
-        // Ready, open or closed; once the answer is shown it is part of the lesson (4.2).
+        // Ready or open; once the question has ended its answer is shown and it is part of the lesson (4.2).
         if (q.status === "revealed") throw new ApiError("invalid_state", { status: 409 });
         const next = touch(s, sqId, { skipped_at: iso(c.now) });
         save(c, { ...c.overlay, session: next });
@@ -1123,52 +1029,35 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
         return { ...item, answered_at: answered ? iso(c.now) : null };
       }),
     endSession: (sessionId) =>
-      run(() => {
+      run((): SessionReview => {
         if (isOffline()) throw new ApiError("network");
         // A window that ends a lesson another window has already ended is told so, and nothing happens (EC-SES-09).
         if (endedOf(ctx(), sessionId)) throw new ApiError("invalid_state", { status: 409 });
         const { c, s } = liveOf(sessionId);
-        const ended = endedFrom(consoleOf(c, s), iso(c.now));
+        const snapshot = consoleOf(c, s);
+        // Only the questions that have ended count: a skipped one, one never sent and one still open have no result. A quick question always has a right answer in the demo.
+        const plays = showQuestions(runsOf(c, s), { sessionId: s.id, roster: c.world.students, plans: planOf(c, s), sim: simInput(c, s) }, c.now).plays;
+        const questions = snapshot.questions
+          .filter((q) => q.status === "revealed" && q.fired_at !== null)
+          .map((q) => ({ fired_at: Date.parse(q.fired_at as string), right: new Set((plays.get(q.id)?.answers ?? []).filter((a) => a.correct).map((a) => a.student_id)) }));
+        const students = resultRows(
+          snapshot.students.map((st) => ({ student_id: st.id, full_name: st.full_name, joined_at: Date.parse(st.joined_at) })),
+          questions,
+        );
+        const ended = endedFrom(snapshot, students, iso(c.now));
         save(c, { ...c.overlay, session: null, ended: [...c.overlay.ended, ended] });
-        return { server_now: iso(c.now), session: endedRef(ended), attendance: ended.attendance, tally: tallyOf(ended.attendance), most_missed: ended.most_missed };
+        return { server_now: iso(c.now), session: endedRef(ended), students: ended.students };
       }),
     getReview: (sessionId) =>
       run((): SessionReview => {
         const c = ctx();
         const ended = endedOf(c, sessionId);
-        if (ended) return { server_now: iso(c.now), session: ended.session, most_missed: ended.most_missed, anon_questions: ended.anon_questions, attendance: ended.attendance };
-        const { s } = liveOf(sessionId);
-        // The review belongs to the end of the lesson: before the lesson reaches it there is nothing to read.
-        if (s.state !== "review") throw new ApiError("invalid_state", { status: 409 });
-        const snapshot = consoleOf(c, s);
-        return { server_now: iso(c.now), session: snapshot.session, most_missed: missedOfQuestions(snapshot.questions, s.lesson.title), anon_questions: snapshot.anon_questions, attendance: null };
-      }),
-    createPracticeSet: (sessionId) =>
-      run(() => {
-        if (isOffline()) throw new ApiError("network");
-        const c = ctx();
-        const ended = endedOf(c, sessionId);
-        // Only after End (F-12).
+        // The review belongs to the end of the lesson: while it is open there is nothing to read.
         if (!ended) {
           liveOf(sessionId);
           throw new ApiError("invalid_state", { status: 409 });
         }
-        // One set per session: asking again gives the one that was made.
-        const made = ended.practice?.(c.now);
-        if (made) return { practice_set: made.practice_set };
-        const picked = selectPracticeQuestions(ended.most_missed.map((m) => ({ id: m.session_question_id, order: m.order, skipped: false, joined: m.joined, missed: m.missed })));
-        if (picked.length === 0) return { practice_set: null };
-        const record = { id: `pr-${sessionId}`, created_at: iso(c.now), question_ids: picked };
-        save(c, { ...c.overlay, practice: { ...c.overlay.practice, [sessionId]: record } });
-        return { practice_set: { id: record.id, session_id: sessionId, created_at: record.created_at, question_count: picked.length } };
-      }),
-    getPracticeResults: (sessionId) =>
-      run(() => {
-        const c = ctx();
-        const ended = endedOf(c, sessionId);
-        const results = ended?.practice?.(c.now);
-        if (!results) throw notFound();
-        return results;
+        return { server_now: iso(c.now), session: ended.session, students: ended.students };
       }),
 
     openChannel: (channel, { onEvent, onStatus }) => stream(channel, channel.split(".")[1], onEvent, onStatus),

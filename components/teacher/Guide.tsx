@@ -13,7 +13,7 @@ import { safeNext, HOME } from "@/lib/teacher/signin";
 import { PageTitle } from "./PageTitle";
 import { Problem } from "./Problem";
 
-const ICONS: Record<GuideIcon, Icon> = { prepare: FileTextIcon, hold: QrCodeIcon, review: ListChecksIcon };
+const ICONS: Record<GuideIcon, Icon> = { prepare: FileTextIcon, hold: QrCodeIcon, results: ListChecksIcon };
 
 /**
  * The welcome guide of a first run: three short steps, one thing each, with Next, a labelled Back and "Skip the guide" always

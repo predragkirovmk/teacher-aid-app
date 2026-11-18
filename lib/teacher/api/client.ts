@@ -8,7 +8,6 @@ import type {
   CreateSessionRequest,
   DraftPatch,
   DraftSummary,
-  EndResult,
   GenerateRequest,
   Id,
   Lesson,
@@ -17,8 +16,6 @@ import type {
   LibraryItem,
   Me,
   OpenSession,
-  PracticeResults,
-  PracticeSetResult,
   QuestionMedia,
   Refinement,
   SaveLessonRequest,
@@ -133,22 +130,16 @@ export interface TeacherApi {
   advance(sessionId: Id, request: AdvanceRequest): Promise<ConsoleSnapshot>;
   /** POST /sessions/{id}/questions/{sqid}/fire. */
   fireQuestion(sessionId: Id, sessionQuestionId: Id): Promise<ConsoleSnapshot>;
-  /** POST /sessions/{id}/questions/{sqid}/reveal. */
-  revealQuestion(sessionId: Id, sessionQuestionId: Id): Promise<ConsoleSnapshot>;
   /** POST /sessions/{id}/questions/{sqid}/skip (BR-SKIP-01). */
   skipQuestion(sessionId: Id, sessionQuestionId: Id): Promise<ConsoleSnapshot>;
   /** POST /sessions/{id}/adhoc (FR-POP-04, OPEN-14). */
   fireAdhoc(sessionId: Id, request: AdhocRequest): Promise<ConsoleSnapshot>;
   /** PATCH /sessions/{id}/anon-questions/{id} (FR-ANON-10): the teacher answered it aloud (`answered: true`), or takes that back (`false`, PROPOSED). */
   markAnonAnswered(sessionId: Id, anonQuestionId: Id, answered: boolean): Promise<AnonQuestionItem>;
-  /** POST /sessions/{id}/end: the full attendance list and the most-missed questions (F-10). */
-  endSession(sessionId: Id): Promise<EndResult>;
-  /** GET /sessions/{id}/review. */
+  /** POST /sessions/{id}/end: the students who joined, each with their score (F-10). */
+  endSession(sessionId: Id): Promise<SessionReview>;
+  /** GET /sessions/{id}/review: the same, once the session has ended (`invalid_state` before). */
   getReview(sessionId: Id): Promise<SessionReview>;
-  /** POST /sessions/{id}/practice-set: one per session, from what was missed (F-12). */
-  createPracticeSet(sessionId: Id): Promise<PracticeSetResult>;
-  /** PROPOSED, GET /sessions/{id}/practice-set: who did it and how many they got right (FR-PRA-04). */
-  getPracticeResults(sessionId: Id): Promise<PracticeResults>;
 
   // ---- Realtime (11.2, 11.4) ----
   /**

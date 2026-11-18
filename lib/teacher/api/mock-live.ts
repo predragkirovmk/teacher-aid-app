@@ -1,7 +1,6 @@
 import { TOKEN_ROTATE_MS } from "../live";
 import { hashSeed, rng } from "./mock-data";
 import { currentQuestion } from "../questions";
-import { missedOfQuestions } from "../review";
 import type { ChannelEvent, ClassViewSnapshot, ConsoleQuestion, ConsoleSnapshot, ConsoleStudent, JoinToken, PublicQuestion, QuestionStatus, TeacherChannel } from "./types";
 
 /**
@@ -187,11 +186,6 @@ export function classViewOf(c: ConsoleSnapshot): ClassViewSnapshot {
         : null,
     skipped: shown?.status === "skipped",
     board: c.board,
-    // The most-missed questions and the questions the class wrote, text only: this snapshot is the projector's and no student reads it (BR-ANON-06).
-    review:
-      c.session.state === "review"
-        ? { most_missed: missedOfQuestions(c.questions, c.session.lesson.title), anon_questions: c.anon_questions.map(({ id, text }) => ({ id, text })) }
-        : null,
   };
 }
 
@@ -205,16 +199,6 @@ export function eventsBetween(prev: ConsoleSnapshot, next: ConsoleSnapshot, chan
   const at = { channel, server_now: next.server_now };
   const out: ChannelEvent[] = [];
   if (next.session.state !== prev.session.state) out.push({ type: "state.changed", state: next.session.state, ...at });
-  // The review's text goes to the projector's channel and the console's, and to no channel a student reads (BR-ANON-06, AC-ANON-09).
-  if (CLASS_CHANNELS(channel) && next.session.state === "review" && prev.session.state !== "review") {
-    out.push({
-      type: "review.ready",
-      most_missed: missedOfQuestions(next.questions, next.session.lesson.title),
-      anon_questions: next.anon_questions.map(({ id, text }) => ({ id, text })),
-      ...at,
-    });
-  }
-
   const was = prev.students.length;
   const now = next.students.length;
   const recent = recentNames(next.students);
@@ -250,11 +234,11 @@ export function eventsBetween(prev: ConsoleSnapshot, next: ConsoleSnapshot, chan
   return out;
 }
 
-const RANK: Record<QuestionStatus, number> = { ready: 0, open: 1, closed: 2, revealed: 3, skipped: 4 };
+const RANK: Record<QuestionStatus, number> = { ready: 0, open: 1, revealed: 2, skipped: 3 };
 
 /**
- * What happened to the questions between two looks, in the order it happened: opened (with the first progress), the answers coming in, closed, the new
- * ranking, revealed, skipped. A look may find a question several steps on (the page was asleep), and then says each step.
+ * What happened to the questions between two looks, in the order it happened: opened (with the first progress), the answers coming in, ended (the new
+ * ranking, then the answer), skipped. A look may find a question several steps on (the page was asleep), and then says each step.
  */
 function questionEvents(prev: ConsoleSnapshot, next: ConsoleSnapshot, channel: TeacherChannel): ChannelEvent[] {
   const at = { channel, server_now: next.server_now };
@@ -277,12 +261,9 @@ function questionEvents(prev: ConsoleSnapshot, next: ConsoleSnapshot, channel: T
     } else if (q.status === "open" && old && old.answered !== q.answered) {
       out.push({ type: "question.progress", session_question_id: q.id, answered: q.answered, joined: q.joined, ...at });
     }
-    if (was < RANK.closed && now >= RANK.closed) {
-      out.push({ type: "question.progress", session_question_id: q.id, answered: q.answered, joined: q.joined, ...at });
-      out.push({ type: "question.closed", session_question_id: q.id, ...at });
-      out.push({ type: "leaderboard.updated", rows: next.board, ...at });
-    }
     if (was < RANK.revealed && now >= RANK.revealed && q.counts) {
+      out.push({ type: "question.progress", session_question_id: q.id, answered: q.answered, joined: q.joined, ...at });
+      out.push({ type: "leaderboard.updated", rows: next.board, ...at });
       out.push({ type: "question.revealed", session_question_id: q.id, correct_answer: q.question.correct, explanation: q.question.explanation, counts: q.counts, ...at });
     }
   });

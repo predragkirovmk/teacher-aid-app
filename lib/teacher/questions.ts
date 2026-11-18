@@ -45,20 +45,17 @@ export function currentQuestion(questions: readonly ConsoleQuestion[]): ConsoleQ
  * What the panel shows, and so what the page's one main button does:
  * - nothing is open: send the next question (`next`; none left is said plainly), and `skipped` is the one just skipped, if that was the last thing done;
  * - open: no main button, a countdown and the way to skip;
- * - closed: show the right answer;
- * - revealed: the counts, and send the next (`next`, or none left). Moving on to the review is the next step of the build, not this one's.
+ * - revealed (the question has ended and its answer shows by itself): the counts, and send the next (`next`, or none left).
  */
 export type PanelStep =
   | { step: "send"; next: ConsoleQuestion | null; skipped: ConsoleQuestion | null }
   | { step: "open"; question: ConsoleQuestion }
-  | { step: "closed"; question: ConsoleQuestion }
   | { step: "revealed"; question: ConsoleQuestion; next: ConsoleQuestion | null };
 
 export function panelStep(questions: readonly ConsoleQuestion[]): PanelStep {
   const current = currentQuestion(questions);
   const next = nextUnsent(questions);
   if (current?.status === "open") return { step: "open", question: current };
-  if (current?.status === "closed") return { step: "closed", question: current };
   if (current?.status === "revealed") return { step: "revealed", question: current, next };
   return { step: "send", next, skipped: current?.status === "skipped" ? current : null };
 }
@@ -73,7 +70,7 @@ export const listStatus = (status: QuestionStatus): ListStatus =>
  * the panel is never left holding a question nobody can reach. (The API only refuses a second open question, 4.2; this is the app's own care.)
  */
 export const canSendAnother = (questions: readonly ConsoleQuestion[]): boolean =>
-  !questions.some((q) => q.status === "open" || q.status === "closed");
+  !questions.some((q) => q.status === "open");
 
 // ---- The countdown, on the server's clock --------------------------------------------------------------
 
@@ -147,15 +144,14 @@ export function longNames(names: readonly string[]): boolean {
 
 // ---- What the projector shows of the lesson ---------------------------------------------------------------
 
-export type ProjectedScreen = "between" | "open" | "closed" | "revealed" | "skipped";
+export type ProjectedScreen = "between" | "open" | "revealed" | "skipped";
 
 /** Which screen the projector shows, from its snapshot: the question, if there is one, in the state it is in. */
 export function projectedScreen(question: PublicQuestion | null, skipped: boolean, hasReveal: boolean): ProjectedScreen {
   if (!question) return "between";
   if (skipped || question.status === "skipped") return "skipped";
-  if (question.status === "open") return "open";
   if (question.status === "revealed" && hasReveal) return "revealed";
-  return "closed";
+  return "open";
 }
 
 /** A prompt's size on the projector: the longer it is, the smaller, and never below a size that can be read from the back of a room. */

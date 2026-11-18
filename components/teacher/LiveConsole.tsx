@@ -3,7 +3,7 @@
 import { PlayIcon, QuestionIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import {
   advanceSession,
   useConsole,
@@ -13,7 +13,6 @@ import { isApiError } from "@/lib/teacher/api/errors";
 import type { ConsoleSnapshot } from "@/lib/teacher/api/types";
 import { useT } from "@/lib/teacher/i18n";
 import { formatShortCode, STUDENTS_CAN_TYPE_CODE } from "@/lib/teacher/live";
-import { forgetReviewScreen } from "@/lib/teacher/review-screen";
 import { HOME } from "@/lib/teacher/signin";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { EndLesson } from "./EndLesson";
@@ -29,7 +28,6 @@ import { TabPanel, Tabs } from "./Tabs";
 import { AnonInbox } from "./AnonInbox";
 import { QuestionList } from "./QuestionList";
 import { QuestionPanel } from "./QuestionPanel";
-import { ReviewPanel } from "./ReviewPanel";
 
 type PanelTab = "class" | "questions" | "anon";
 
@@ -50,13 +48,8 @@ export function LiveConsole() {
   useFreshCode(snapshot?.server_now, snapshot?.join?.valid_to, query.refetch);
   const [tab, setTab] = useState<PanelTab>("class");
   const teaching = snapshot?.session.state === "teaching";
-  const reviewing = snapshot?.session.state === "review";
   // A lesson that has ended (this window pressed End, another did, or the page was opened afterwards) is no longer a console: the answer is `ended` or
   // `not_found`, and the page becomes the end page, which reads the lesson from its review. A link to no lesson at all says so there.
-  const state = snapshot?.session.state;
-  useEffect(() => {
-    if (state && state !== "review") forgetReviewScreen(sessionId);
-  }, [state, sessionId]);
   const over =
     snapshot?.session.state === "ended" ||
     (isApiError(query.error) && query.error.code === "not_found");
@@ -130,80 +123,76 @@ export function LiveConsole() {
               </div>
             )}
             <StateLine state={snapshot.session.state} compact />
-            {reviewing ? (
-              <ReviewPanel snapshot={snapshot} />
-            ) : (
-              <div className="live__frame">
-                {/* The stage: the one thing to do now. It keeps its place when the lesson moves on. */}
-                <div className="live__stage">
-                  {teaching && <QuestionPanel snapshot={snapshot} />}
-                  <JoinCard snapshot={snapshot} />
-                  <div className="live__notes">
-                    <MirrorWarning />
-                    <p className="projector__hint">
-                      {t("live.projector.hint")}
-                    </p>
-                    <Link
-                      href="/teacher/help"
-                      className="btn btn--quiet"
-                      target="_blank"
-                      rel="noopener"
-                    >
-                      <QuestionIcon size={24} aria-hidden="true" />
-                      {t("nav.help")}
-                      <span className="sr">{`, ${t("link.newtab")}`}</span>
-                    </Link>
-                  </div>
-                </div>
-                {/* Who is here keeps its place from the lobby on; while teaching the questions and what the class writes share it, one at a time. */}
-                <div className="live__panel">
-                  {teaching && (
-                    <Tabs
-                      name="live"
-                      label={t("live.tabs.label")}
-                      value={tab}
-                      onChange={setTab}
-                      tabs={[
-                        { id: "class", label: t("live.tab.class") },
-                        { id: "questions", label: t("live.tab.questions") },
-                        {
-                          id: "anon",
-                          label: t("live.tab.anon", {
-                            n: snapshot.anon_questions.length,
-                          }),
-                        },
-                      ]}
-                    />
-                  )}
-                  <TabPanel
-                    name="live"
-                    id="class"
-                    active={!teaching || tab === "class"}
-                    tabbed={teaching}
-                    scrollLabel={t("live.joined.title")}
+            <div className="live__frame">
+              {/* The stage: the one thing to do now. It keeps its place when the lesson moves on. */}
+              <div className="live__stage">
+                {teaching && <QuestionPanel snapshot={snapshot} />}
+                <JoinCard snapshot={snapshot} />
+                <div className="live__notes">
+                  <MirrorWarning />
+                  <p className="projector__hint">
+                    {t("live.projector.hint")}
+                  </p>
+                  <Link
+                    href="/teacher/help"
+                    className="btn btn--quiet"
+                    target="_blank"
+                    rel="noopener"
                   >
-                    <LiveRoster students={snapshot.students} />
-                  </TabPanel>
-                  {teaching && (
-                    <TabPanel
-                      name="live"
-                      id="questions"
-                      active={tab === "questions"}
-                    >
-                      <QuestionList snapshot={snapshot} />
-                    </TabPanel>
-                  )}
-                  {teaching && (
-                    <TabPanel name="live" id="anon" active={tab === "anon"}>
-                      <AnonInbox
-                        sessionId={snapshot.session.id}
-                        items={snapshot.anon_questions}
-                      />
-                    </TabPanel>
-                  )}
+                    <QuestionIcon size={24} aria-hidden="true" />
+                    {t("nav.help")}
+                    <span className="sr">{`, ${t("link.newtab")}`}</span>
+                  </Link>
                 </div>
               </div>
-            )}
+              {/* Who is here keeps its place from the lobby on; while teaching the questions and what the class writes share it, one at a time. */}
+              <div className="live__panel">
+                {teaching && (
+                  <Tabs
+                    name="live"
+                    label={t("live.tabs.label")}
+                    value={tab}
+                    onChange={setTab}
+                    tabs={[
+                      { id: "class", label: t("live.tab.class") },
+                      { id: "questions", label: t("live.tab.questions") },
+                      {
+                        id: "anon",
+                        label: t("live.tab.anon", {
+                          n: snapshot.anon_questions.length,
+                        }),
+                      },
+                    ]}
+                  />
+                )}
+                <TabPanel
+                  name="live"
+                  id="class"
+                  active={!teaching || tab === "class"}
+                  tabbed={teaching}
+                  scrollLabel={t("live.joined.title")}
+                >
+                  <LiveRoster students={snapshot.students} />
+                </TabPanel>
+                {teaching && (
+                  <TabPanel
+                    name="live"
+                    id="questions"
+                    active={tab === "questions"}
+                  >
+                    <QuestionList snapshot={snapshot} />
+                  </TabPanel>
+                )}
+                {teaching && (
+                  <TabPanel name="live" id="anon" active={tab === "anon"}>
+                    <AnonInbox
+                      sessionId={snapshot.session.id}
+                      items={snapshot.anon_questions}
+                    />
+                  </TabPanel>
+                )}
+              </div>
+            </div>
           </>
         )}
       </div>

@@ -158,26 +158,15 @@ describe("the history", () => {
     }
   });
 
-  test("a skipped question scores nobody and is not in the practice set (BR-SKIP-01, BR-PRA-01)", () => {
+  test("a skipped question scores nobody (BR-SKIP-01)", () => {
     let skipped = 0;
     each((_, session) => {
       for (const q of session.questions.filter((x) => x.skipped)) {
         skipped++;
         expect(session.answers.some((a) => a.question_id === q.id)).toBe(false);
-        expect(session.practice?.question_ids ?? []).not.toContain(q.id);
       }
     });
     expect(skipped).toBeGreaterThan(0);
-  });
-
-  test("a practice set goes to the students who were in the lesson (F-12)", () => {
-    let sets = 0;
-    each((_, session) => {
-      if (!session.practice) return;
-      sets++;
-      expect(session.practice.results.map((r) => r.student_id).sort()).toEqual(session.joins.map((j) => j.student_id).sort());
-    });
-    expect(sets).toBeGreaterThan(0);
   });
 
   test("a question to the teacher is asked by a student who was in the lesson by then, and answered before it ends", () => {
@@ -199,26 +188,8 @@ describe("the history", () => {
     expect(asked).toBeGreaterThan(0);
   });
 
-  test("has a few practice sets with who did them, and questions to the teacher with who asked", () => {
-    for (const type of types) {
-      const all = sessions(type);
-      const withPractice = all.filter((s) => s.practice);
-      expect(withPractice.length).toBeGreaterThanOrEqual(2);
-      for (const s of withPractice) {
-        const p = s.practice!;
-        expect(p.question_ids.length).toBeGreaterThanOrEqual(1);
-        expect(p.question_ids.length).toBeLessThanOrEqual(8);
-        expect(p.created_at).toBeGreaterThan(s.ended_at);
-        for (const r of p.results) {
-          expect(r.completed_at === null).toBe(r.score === null);
-          if (r.completed_at !== null) {
-            expect(r.completed_at).toBeGreaterThan(p.created_at);
-            expect(r.score!).toBeLessThanOrEqual(p.question_ids.length);
-          }
-        }
-      }
-      expect(all.some((s) => s.anon.length > 0)).toBe(true);
-    }
+  test("has questions to the teacher with who asked", () => {
+    for (const type of types) expect(sessions(type).some((s) => s.anon.length > 0)).toBe(true);
   });
 
   test("the held lessons of a school are run several times each, and the prepared ones not at all", () => {

@@ -37,21 +37,19 @@ const joined = (id: string, at = "2026-10-29T08:31:00.000Z", over: Partial<Conso
 });
 
 describe("where the lesson stands", () => {
-  test("four states in order, the current one marked and the ones before it done", () => {
+  test("three states in order, the current one marked and the ones before it done", () => {
     expect(stateSteps("lobby")).toEqual([
       { state: "lobby", position: "current" },
       { state: "teaching", position: "next" },
-      { state: "review", position: "next" },
       { state: "ended", position: "next" },
     ]);
-    expect(stateSteps("teaching").map((s) => s.position)).toEqual(["done", "current", "next", "next"]);
-    expect(stateSteps("ended").map((s) => s.position)).toEqual(["done", "done", "done", "current"]);
+    expect(stateSteps("teaching").map((s) => s.position)).toEqual(["done", "current", "next"]);
+    expect(stateSteps("ended").map((s) => s.position)).toEqual(["done", "done", "current"]);
   });
 
   test("a lesson moves forward one state at a time, and End is not a move (4.1)", () => {
     expect(nextState("lobby")).toBe("teaching");
-    expect(nextState("teaching")).toBe("review");
-    expect(nextState("review")).toBeNull();
+    expect(nextState("teaching")).toBeNull();
     expect(nextState("ended")).toBeNull();
   });
 });
@@ -230,13 +228,15 @@ describe("what an event does to the console", () => {
 
   test("a question skipped or revealed that is not the open one leaves the students' answered marks alone", () => {
     const sq = (id: string, status: "ready" | "open"): ConsoleSnapshot["questions"][number] =>
-      ({ id, status, question: {}, adhoc: false, fired_at: null, closes_at: null, closed_at: null, revealed_at: null, skipped_at: null, answered: 0, joined: 0, counts: null }) as never;
+      ({ id, status, question: {}, adhoc: false, fired_at: null, closes_at: null, revealed_at: null, skipped_at: null, answered: 0, joined: 0, counts: null }) as never;
     const snapshot = { ...base([joined("a", undefined, { answer_state: "answered" })]), questions: [sq("q3", "open"), sq("q5", "ready")] };
     const other = applyConsoleEvent(snapshot, { type: "question.skipped", session_question_id: "q5", ...at(2) } as ChannelEvent);
     expect(other.students[0].answer_state).toBe("answered");
     expect(other.questions[1].status).toBe("skipped");
-    const open = applyConsoleEvent(snapshot, { type: "question.closed", session_question_id: "q3", ...at(2) } as ChannelEvent);
+    const counts = { by_response: {}, right: 1, wrong: 0, unanswered: 0 };
+    const open = applyConsoleEvent(snapshot, { type: "question.revealed", session_question_id: "q3", correct_answer: "true", explanation: null, counts, ...at(2) } as ChannelEvent);
     expect(open.students[0].answer_state).toBeNull();
+    expect(open.questions[0]).toMatchObject({ status: "revealed", counts });
   });
 
   test("the same event twice is the same lesson: a student is never listed twice", () => {
@@ -256,7 +256,6 @@ describe("what an event does to the class view", () => {
     reveal: null,
     skipped: false,
     board: [],
-    review: null,
   };
   const at = (seconds: number) => ({ channel: "session.s1.class" as const, server_now: new Date(Date.parse(base.server_now) + seconds * 1000).toISOString() });
 

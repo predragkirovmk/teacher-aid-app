@@ -101,25 +101,6 @@ export function OpenQuestion({ snapshot, q }: { snapshot: ClassViewSnapshot; q: 
   );
 }
 
-/** The time is up: said in two words and the count, with the question still in view. The right answer comes only at the reveal. */
-export function ClosedQuestion({ snapshot, q }: { snapshot: ClassViewSnapshot; q: PublicQuestion }) {
-  const { t, locale } = useT();
-  const { answered, joined } = snapshot.progress ?? { answered: 0, joined: snapshot.session.joined_count };
-  return (
-    <section className="cvq cvq--closed" aria-label={q.prompt}>
-      <Heading q={q} />
-      <Prompt q={q} />
-      <p className="cvq__done" role="status">
-        <CircleDashedIcon size="1.2em" aria-hidden="true" />
-        {t("cv.closed")}
-      </p>
-      <p className="cvq__progress cvq__progress--big" data-testid="cv-progress">
-        {t(isOne(answered, locale) ? "cv.progress.one" : "cv.progress", { n: answered, total: joined })}
-      </p>
-    </section>
-  );
-}
-
 /** A question taken out of the lesson: it does not count, in six words. */
 export function SkippedQuestion({ q }: { q: PublicQuestion }) {
   const { t } = useT();

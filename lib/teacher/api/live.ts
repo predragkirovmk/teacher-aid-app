@@ -142,15 +142,12 @@ export function createLiveApi(): TeacherApi {
     getClassView: (sessionId) => request<ClassViewSnapshot>("GET", `${session(sessionId)}/class-view`),
     advance: (sessionId, req) => request<ConsoleSnapshot>("POST", `${session(sessionId)}/advance`, { body: req }),
     fireQuestion: (sessionId, sqId) => request<ConsoleSnapshot>("POST", `${question(sessionId, sqId)}/fire`),
-    revealQuestion: (sessionId, sqId) => request<ConsoleSnapshot>("POST", `${question(sessionId, sqId)}/reveal`),
     skipQuestion: (sessionId, sqId) => request<ConsoleSnapshot>("POST", `${question(sessionId, sqId)}/skip`),
     fireAdhoc: (sessionId, req) => request<ConsoleSnapshot>("POST", `${session(sessionId)}/adhoc`, { body: req }),
     markAnonAnswered: (sessionId, anonId, answered) =>
       request("PATCH", `${session(sessionId)}/anon-questions/${id(anonId)}`, { body: { answered } }),
     endSession: (sessionId) => request("POST", `${session(sessionId)}/end`),
     getReview: (sessionId) => request("GET", `${session(sessionId)}/review`),
-    createPracticeSet: (sessionId) => request("POST", `${session(sessionId)}/practice-set`),
-    getPracticeResults: (sessionId) => request("GET", `${session(sessionId)}/practice-set`),
 
     // Server-Sent Events with the session cookie (spec 11.4), kept open by sse.ts. Each message is `event: <type>` and a JSON body of 11.2.
     openChannel: (channel, { onEvent, onStatus }) =>

@@ -1,4 +1,4 @@
-import { rankRows, scoreAnswer, selectPracticeQuestions } from "../scoring";
+import { rankRows, scoreAnswer } from "../scoring";
 import type { SchoolType } from "../store";
 import { bankLesson, bankQuestions } from "./mock-bank";
 import type { AuthProvider, Question, SchoolKind } from "./types";
@@ -200,7 +200,6 @@ export type SeedSession = {
   answers: SeedAnswer[];
   anon: { id: string; sender_id: string; text: string; created_at: number; answered_at: number | null }[];
   focus: { student_id: string; question_id: string; lost_at: number; back_at: number }[];
-  practice: { id: string; created_at: number; question_ids: string[]; results: { student_id: string; score: number | null; completed_at: number | null }[] } | null;
 };
 
 export type World = {
@@ -339,28 +338,6 @@ function seedSession(def: SchoolDef, students: SeedStudent[], series: HeldSeries
     });
   }
 
-  // A practice set after some lessons (F-12): the questions the class missed, and who did it.
-  let practice: SeedSession["practice"] = null;
-  if (index % 3 === 1) {
-    const candidates = questions.map((sq, i) => {
-      const given = new Map(answers.filter((a) => a.question_id === sq.id).map((a) => [a.student_id, a.correct]));
-      return { id: sq.id, order: i, skipped: sq.skipped, joined: present.length, missed: present.filter((s) => !given.get(s.id)).length };
-    });
-    const picked = selectPracticeQuestions(candidates);
-    if (picked.length > 0) {
-      const created_at = ended_at + 18 * 3_600_000;
-      const results = present.map((student) => {
-        const started = r() < 0.78;
-        const done = started && r() < 0.72;
-        const completed_at = done ? Math.min(anchor - 3_600_000, created_at + Math.round(between(r, 0.3, 2.5) * DAY_MS)) : null;
-        let score = 0;
-        for (let q = 0; q < picked.length; q++) if (r() < student.ability) score++;
-        return { student_id: student.id, score: done ? score : null, completed_at };
-      });
-      practice = { id: `pr-${id}`, created_at, question_ids: picked, results };
-    }
-  }
-
   return {
     id,
     lesson_id: lessonIdOf(key),
@@ -373,7 +350,6 @@ function seedSession(def: SchoolDef, students: SeedStudent[], series: HeldSeries
     answers,
     anon,
     focus,
-    practice,
   };
 }
 

@@ -5,17 +5,7 @@ import { useEffect, useId, useState } from "react";
 import type { AnswerState, ConsoleStudent } from "@/lib/teacher/api/types";
 import { personName } from "@/lib/teacher/format";
 import { useT, type Key } from "@/lib/teacher/i18n";
-import { studentState, type StudentState } from "@/lib/teacher/live";
-
-const STATE_WORDS = {
-  joined: "live.student.joined",
-  offline: "live.student.offline",
-} as const satisfies Record<StudentState, Key>;
-
-const STATE_ICONS: Record<StudentState, Icon> = {
-  joined: CheckCircleIcon,
-  offline: PlugsIcon,
-};
+import { studentState } from "@/lib/teacher/live";
 
 const ANSWER_WORDS = {
   answered: "q.answer.answered",
@@ -51,7 +41,7 @@ function AnswerLine({ state }: { state: AnswerState }) {
 
 /**
  * The students who have scanned the code, by name, in the order they joined, with where each one stands in an icon and a word (never
- * colour alone): here, or the connection lost. Nobody is listed before they join, and a student who joins later, at any point until End,
+ * colour alone): the connection lost, and, while a question is open, whether they have answered. Nobody is listed before they join, and a student who joins later, at any point until End,
  * simply appears. Before anyone has joined it says that students appear when they scan the code.
  */
 export function LiveRoster({ students }: { students: readonly ConsoleStudent[] }) {
@@ -61,18 +51,17 @@ export function LiveRoster({ students }: { students: readonly ConsoleStudent[] }
 
   const row = (s: ConsoleStudent) => {
     const state = studentState(s);
-    const StateIcon = STATE_ICONS[state];
-    // A row is one line: the name, then what is worth saying. While a question is open the answer takes the place of "here", for that is what
-    // the teacher is looking for.
+    // A row is one line: the name, and only what is worth saying: that the connection is lost, or, while a question is open, whether they have answered.
+    // A student who is here and has nothing to say is just the name (the count above says they joined).
     const answering = s.answer_state && s.answer_state !== "offline" && state === "joined" ? s.answer_state : null;
     return (
       <li key={s.id} className="person" data-state={state} data-answer={answering ?? undefined}>
         <span className="person__name">{personName(s.full_name, locale)}</span>
         <span className="person__state">
-          {!answering && (
+          {!answering && state === "offline" && (
             <span className="person__what">
-              <StateIcon size={24} weight={state === "joined" ? "fill" : "regular"} aria-hidden="true" />
-              <span className="person__word">{t(STATE_WORDS[state])}</span>
+              <PlugsIcon size={24} aria-hidden="true" />
+              <span className="person__word">{t("live.student.offline")}</span>
             </span>
           )}
           {/* While a question is open, each student who is here also says whether they have answered: an icon and a word. */}

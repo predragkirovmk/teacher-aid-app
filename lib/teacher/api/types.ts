@@ -14,11 +14,12 @@ export type Locale = "mk" | "en";
 
 // ---- Enumerations (spec 3.2) ---------------------------------------------------------------------
 
-export type SessionState = "lobby" | "teaching" | "review" | "ended";
-/** The states a pop-up question goes through (4.2). `ready` is a question that has not been fired. */
-export type QuestionStatus = "ready" | "open" | "closed" | "revealed" | "skipped";
-export type AttendanceStatus = "present" | "late" | "absent" | "present_no_device";
-export type NoDeviceReason = "no_phone" | "battery" | "no_data" | "no_focus_authorization";
+export type SessionState = "lobby" | "teaching" | "ended";
+/**
+ * The states a pop-up question goes through (4.2). `ready` is a question that has not been fired. `revealed` is a question that
+ * has ended: the right answer shows by itself the moment it does.
+ */
+export type QuestionStatus = "ready" | "open" | "revealed" | "skipped";
 export type QuestionKind = "multiple_choice" | "true_false" | "numeric";
 /** What a student has done with the open question, as the console shows it (FR-CON-01). */
 export type AnswerState = "answered" | "not_answered" | "offline";
@@ -257,7 +258,7 @@ export type PublicQuestion = {
 
 /** A question in the console's run order, with what only the teacher sees. PROPOSED. */
 export type ConsoleQuestion = {
-  /** The session question's id, the one fire, reveal and skip take. */
+  /** The session question's id, the one fire and skip take. */
   id: Id;
   question: Question;
   status: QuestionStatus;
@@ -265,13 +266,13 @@ export type ConsoleQuestion = {
   adhoc: boolean;
   fired_at: IsoTime | null;
   closes_at: IsoTime | null;
-  closed_at: IsoTime | null;
+  /** When the question ended and its answer showed: at its time, or sooner when everyone there and online had answered (BR-TIME-04). */
   revealed_at: IsoTime | null;
   skipped_at: IsoTime | null;
   answered: number;
   /** How many students had joined when it opened. */
   joined: number;
-  /** PROPOSED: the counts once the question has closed (right, wrong, unanswered, and by response), so the console can say them at the reveal. Null before. */
+  /** PROPOSED: the counts once the question has ended (right, wrong, unanswered, and by response), so the console can say them at the reveal. Null before. */
   counts: RevealCounts | null;
 };
 
@@ -359,31 +360,6 @@ export type ConsoleSnapshot = {
   nudge: { idle_seconds: number } | null;
 };
 
-/** One of the most-missed questions, worst first (FR-REV-01). */
-export type MissedQuestion = {
-  session_question_id: Id;
-  order: number;
-  prompt: string;
-  kind: QuestionKind;
-  topic: string;
-  /** Wrong or unanswered, among the students the question was put to (one who joined after it was sent is left out, BR-PRA-07). */
-  missed: number;
-  joined: number;
-  /**
-   * PROPOSED, the four fields below: the review says the right answer and why (FR-REV-01), on the projector too, and the spec's shape has
-   * none of it. `correct_answer` is in the encoding of 3.2 (the option's index, "true" or "false", the number).
-   */
-  correct_answer: string;
-  explanation: string | null;
-  /** The choices of a multiple-choice question, so the answer can be said in words; null for the other kinds. */
-  options: string[] | null;
-  /** The unit of a numeric answer. */
-  unit: string | null;
-};
-
-/** What the class view shows in review: no names anywhere (BR-PRIV-01). */
-export type ClassViewReview = { most_missed: MissedQuestion[]; anon_questions: { id: Id; text: string }[] };
-
 /** GET /sessions/{id}/class-view: the projected window's snapshot. No private data (FR-SES-02). */
 export type ClassViewSnapshot = {
   server_now: IsoTime;
@@ -399,16 +375,15 @@ export type ClassViewSnapshot = {
   join: JoinToken | null;
   question: PublicQuestion | null;
   progress: { answered: number; joined: number } | null;
-  /** Once the teacher reveals the question. */
+  /** Once the question has ended. */
   reveal: { session_question_id: Id; correct_answer: string; explanation: string | null; counts: RevealCounts } | null;
   /** The open or last question was skipped: the view says it does not count (BR-SKIP-01). */
   skipped: boolean;
   board: LeaderboardRow[];
-  review: ClassViewReview | null;
 };
 
-/** POST /sessions/{id}/advance. Forward only: lobby, teaching, review (4.1, INTERPRETATION). */
-export type AdvanceRequest = { to: "teaching" | "review" };
+/** POST /sessions/{id}/advance: from the lobby to teaching (4.1, INTERPRETATION). There is no review phase after it. */
+export type AdvanceRequest = { to: "teaching" };
 
 /**
  * POST /sessions/{id}/adhoc (FR-POP-04). PROPOSED, and OPEN-14: its types and whether it scores are not decided.
@@ -425,60 +400,26 @@ export type AdhocRequest = {
   numeric?: { unit: string | null; tolerance: number; allow_negative: boolean };
 };
 
-/** One row of the attendance list the teacher copies into e-Дневник: every enrolled student (FR-END-03, OPEN-06 on the format). */
-export type AttendanceRow = {
-  student_id: Id;
-  full_name: string;
-  status: AttendanceStatus;
-  joined_at: IsoTime | null;
-  no_device_reason: NoDeviceReason | null;
-  /** Who wrote the mark (3.1 Attendance.marked_by). */
-  marked_by: "student" | "teacher" | "system";
-};
+/** A student who joined, with how many of the questions put to them they got right (the end page). */
+export type ResultRow = { student_id: Id; full_name: string; correct: number; asked: number };
 
-export type AttendanceTally = Record<AttendanceStatus, number> & { total: number };
-
-/** POST /sessions/{id}/end (F-10, FR-END-02). PROPOSED shape. */
-export type EndResult = {
-  server_now: IsoTime;
-  session: SessionRef;
-  attendance: AttendanceRow[];
-  tally: AttendanceTally;
-  most_missed: MissedQuestion[];
-};
-
-/** GET /sessions/{id}/review (FR-REV-01, FR-REV-02). PROPOSED shape. */
+/**
+ * GET /sessions/{id}/review and POST /sessions/{id}/end (FR-END-02). PROPOSED shape. The review answers only once the session has
+ * ended (`invalid_state`, 409, before). `students` are those who joined, by surname. `asked` counts the questions sent after the
+ * student joined that were not skipped and have a right answer (an ad-hoc question with `correct: null` is a poll and counts for
+ * nobody); `correct` is how many of those they answered right.
+ */
 export type SessionReview = {
   server_now: IsoTime;
   session: SessionRef;
-  most_missed: MissedQuestion[];
-  anon_questions: AnonQuestionItem[];
-  /** The full list, once the session has ended. */
-  attendance: AttendanceRow[] | null;
-};
-
-/** A practice set (3.1, BR-PRA-01). */
-export type PracticeSetSummary = {
-  id: Id;
-  session_id: Id;
-  created_at: IsoTime;
-  question_count: number;
-};
-
-/** POST /sessions/{id}/practice-set. `practice_set` is null when no question was missed (EC-PRA-07). PROPOSED. */
-export type PracticeSetResult = { practice_set: PracticeSetSummary | null };
-
-/** GET /sessions/{id}/practice-set (FR-PRA-04). PROPOSED: the spec says the teacher sees who did it, and lists no endpoint. */
-export type PracticeResults = {
-  practice_set: PracticeSetSummary;
-  students: { student_id: Id; full_name: string; score: number | null; completed_at: IsoTime | null }[];
+  students: ResultRow[];
 };
 
 // ---- Realtime (11.2, 11.4) -----------------------------------------------------------------------
 
 /**
  * `session.{id}.public`: what a student may read too (11.2). `session.{id}.class` (PROPOSED): the projected window's own channel,
- * for what only the class view and the teacher may read: the live join token and the text of anonymous questions in the review.
+ * for what only the class view and the teacher may read: the live join token.
  * `session.{id}.console`: the teacher only, and everything the other two carry.
  */
 export type PublicChannel = `session.${string}.public`;
@@ -494,7 +435,6 @@ export type PublicEvent =
   | Event<"joined.count", { joined_count: number; recent?: string[] }>
   | Event<"question.opened", { question: PublicQuestion }>
   | Event<"question.progress", { session_question_id: Id; answered: number; joined: number }>
-  | Event<"question.closed", { session_question_id: Id }>
   | Event<
       "question.revealed",
       { session_question_id: Id; correct_answer: string; explanation: string | null; counts: RevealCounts }
@@ -505,9 +445,9 @@ export type PublicEvent =
 /**
  * On the class channel (PROPOSED), and so on the console's: nothing a student may read. The spec puts `join_token.rotated` on the
  * public channel and calls it "class view only", and students subscribe to that channel (11.2), so a student at home could follow the
- * rotating token; the text of the review's anonymous questions conflicts with BR-ANON-06 the same way (OPEN-36).
+ * rotating token; the text of anonymous questions would conflict with BR-ANON-06 the same way (OPEN-36).
  */
-export type ClassOnlyEvent = Event<"join_token.rotated", JoinToken> | Event<"review.ready", ClassViewReview>;
+export type ClassOnlyEvent = Event<"join_token.rotated", JoinToken>;
 
 /** Only on the console channel. All PROPOSED fields. */
 export type ConsoleOnlyEvent =
@@ -531,14 +471,13 @@ export const PUBLIC_EVENT_TYPES = [
   "joined.count",
   "question.opened",
   "question.progress",
-  "question.closed",
   "question.revealed",
   "question.skipped",
   "leaderboard.updated",
   "ping",
 ] as const satisfies readonly ChannelEventType[];
 
-export const CLASS_EVENT_TYPES = [...PUBLIC_EVENT_TYPES, "join_token.rotated", "review.ready"] as const satisfies readonly ChannelEventType[];
+export const CLASS_EVENT_TYPES = [...PUBLIC_EVENT_TYPES, "join_token.rotated"] as const satisfies readonly ChannelEventType[];
 
 export const CONSOLE_EVENT_TYPES = [
   ...CLASS_EVENT_TYPES,

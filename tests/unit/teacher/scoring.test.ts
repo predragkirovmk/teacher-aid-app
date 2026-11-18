@@ -7,13 +7,10 @@ import {
   isCorrect,
   parseNumeric,
   POINTS_RIGHT,
-  PRACTICE_MAX,
   rankRows,
   scoreAnswer,
-  selectPracticeQuestions,
   speedBonus,
   withinTolerance,
-  type PracticeCandidate,
 } from "@/lib/teacher/scoring";
 
 const base = { id: "q", order: 0, prompt: "p", media: null, explanation: null, timer_seconds: 20, topic: "t" };
@@ -151,41 +148,5 @@ describe("the session ranking (BR-PTS-09, OPEN-20)", () => {
       ["c", 2],
       ["d", 4],
     ]);
-  });
-});
-
-describe("the practice set (BR-PRA-01)", () => {
-  const c = (id: string, order: number, missed: number, over: Partial<PracticeCandidate> = {}): PracticeCandidate => ({
-    id,
-    order,
-    skipped: false,
-    joined: 20,
-    missed,
-    ...over,
-  });
-
-  test("holds the questions missed by at least 40% of those who joined, in lesson order", () => {
-    expect(selectPracticeQuestions([c("q1", 0, 3), c("q2", 1, 8), c("q3", 2, 12), c("q4", 3, 7)])).toEqual(["q2", "q3"]);
-  });
-
-  test("adds the next most missed when fewer than two qualify, but never one nobody missed", () => {
-    expect(selectPracticeQuestions([c("q1", 0, 2), c("q2", 1, 10), c("q3", 2, 0), c("q4", 3, 4)])).toEqual(["q2", "q4"]);
-    expect(selectPracticeQuestions([c("q1", 0, 0), c("q2", 1, 1), c("q3", 2, 0)])).toEqual(["q2"]);
-  });
-
-  test("never holds a skipped question", () => {
-    expect(selectPracticeQuestions([c("q1", 0, 15, { skipped: true }), c("q2", 1, 9), c("q3", 2, 10)])).toEqual(["q2", "q3"]);
-  });
-
-  test("is empty when nothing was missed", () => {
-    expect(selectPracticeQuestions([c("q1", 0, 0), c("q2", 1, 0)])).toEqual([]);
-    expect(selectPracticeQuestions([])).toEqual([]);
-  });
-
-  test("holds at most eight, the most missed", () => {
-    const many = Array.from({ length: 10 }, (_, i) => c(`q${i}`, i, 8 + i));
-    const set = selectPracticeQuestions(many);
-    expect(set).toHaveLength(PRACTICE_MAX);
-    expect(set).toEqual(["q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9"]);
   });
 });

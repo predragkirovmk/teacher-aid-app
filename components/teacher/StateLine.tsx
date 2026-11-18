@@ -8,12 +8,11 @@ import { stateSteps } from "@/lib/teacher/live";
 const WORDS = {
   lobby: "live.state.lobby",
   teaching: "live.state.teaching",
-  review: "live.state.review",
   ended: "live.state.ended",
 } as const satisfies Record<SessionState, Key>;
 
 /**
- * Where the lesson stands, in four plain words in the order the lesson goes: waiting for the students, teaching, review, the end. The one
+ * Where the lesson stands, in three plain words in the order the lesson goes: waiting for the students, teaching, the end. The one
  * the lesson is in has a filled mark and the word "Сега" under it, the ones behind it a tick, the ones ahead an empty ring, and a screen
  * reader is told each: never colour alone. It is only read, and it never offers a way back (4.1).
  */
