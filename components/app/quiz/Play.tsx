@@ -3,7 +3,7 @@
 import { ArrowDownIcon, ArrowUpIcon, CheckIcon, FlagCheckeredIcon, HashIcon, HourglassIcon, LockIcon, MinusIcon, PencilSimpleIcon, UsersIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { startTransition, useEffect, useState, ViewTransition, type ReactNode } from "react";
+import { startTransition, useEffect, useRef, useState, ViewTransition, type ReactNode } from "react";
 import { Avatar } from "@/components/app/Avatar";
 import { AnswerDelivery, ConnectionPill } from "@/components/app/ConnectionPill";
 import { ProfileEditor } from "@/components/app/ProfileEditor";
@@ -11,6 +11,7 @@ import { Sheet } from "@/components/app/Shell";
 import { useUI } from "@/components/app/ui";
 import type { Course, JoinedSession } from "@/lib/app/api/types";
 import { formatTime } from "@/lib/app/format";
+import { HAPTICS, buzz } from "@/lib/app/haptics";
 import { errorCopy, useT } from "@/lib/app/i18n";
 import { leave } from "@/lib/app/nav";
 import { useSelf } from "@/lib/app/profile";
@@ -27,7 +28,7 @@ import { formatNumeric } from "@/lib/app/numeric";
 import { NumericQuestion, numberText } from "./Numeric";
 import { Choices, choiceOf, responseOf, useChoiceLabels, type ChoiceQuestion } from "./choices";
 import { Confetti } from "@/components/app/Confetti";
-import { Burst, CheckDraw, CrossDraw, QuizCard, QuizTop, TimerRing, buzz, useCountUp } from "./parts";
+import { Burst, CheckDraw, CrossDraw, QuizCard, QuizTop, TimerRing, useCountUp } from "./parts";
 
 /** How long the "you're in" confirmation holds before the lesson itself is the screen. */
 const JOINED_MS = 1700;
@@ -58,8 +59,8 @@ export function Play({ course, join }: { course: Course; join: JoinedSession }) 
 
   // A short buzz for each verdict, where the phone supports it.
   useEffect(() => {
-    if (run.stage === "right") buzz([18, 60, 28]);
-    else if (run.stage === "wrong") buzz(70);
+    if (run.stage === "right") buzz(HAPTICS.right);
+    else if (run.stage === "wrong") buzz(HAPTICS.wrong);
   }, [run.stage]);
 
   // The sheet for a question to the teacher. What is typed lives here, so a sheet closed by a question starting keeps it.
@@ -267,7 +268,7 @@ function Question({ run, onLeave, onPick }: { run: SessionRunView; onLeave: () =
   const q = run.question!;
   const choice = q as ChoiceQuestion;
   const pick = (i: number) => {
-    buzz(14);
+    buzz(HAPTICS.send);
     startTransition(() => onPick(responseOf(choice, i)));
   };
 
@@ -590,6 +591,13 @@ function Ended({ run, onHome }: { run: SessionRunView; onHome: () => void }) {
   const total = useCountUp(run.points, 0, ENDED_MS);
   // A finished lesson is the first moment worth asking about notifications; the ask waits for a calm screen (lib/app/push).
   useEffect(() => noteMoment("lesson_end"), []);
+  // The ending's badge starts to pop now; a ref keeps a strict-mode remount from buzzing twice.
+  const buzzed = useRef(false);
+  useEffect(() => {
+    if (buzzed.current) return;
+    buzzed.current = true;
+    buzz(HAPTICS.done);
+  }, []);
   return (
     <>
       {/* An answer saved offline that reached the server only after the End did not count. */}

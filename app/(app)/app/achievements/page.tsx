@@ -1,7 +1,7 @@
 "use client";
 
 import { LockIcon } from "@phosphor-icons/react";
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { Gate } from "@/components/app/QueryState";
 import { Top } from "@/components/app/Top";
 import { demoOnly } from "@/lib/app/api";
@@ -9,6 +9,7 @@ import { useBadges } from "@/lib/app/api/hooks";
 import type { Badge } from "@/lib/app/api/types";
 import { badgeCopy, badgeIcon } from "@/lib/app/badges";
 import { Confetti } from "@/components/app/Confetti";
+import { HAPTICS, buzz } from "@/lib/app/haptics";
 import { useT } from "@/lib/app/i18n";
 
 const noop = () => () => {};
@@ -43,6 +44,15 @@ function BadgeList({ all }: { all: Badge[] }) {
   const n = list.filter((b) => b.earned).length;
   const seen = useSyncExternalStore(noop, readSeen, () => "*").split(",");
   const fresh = (b: Badge) => b.earned && !(demoOnly && b.code === STARTING_BADGE) && !seen.includes(b.code) && !seen.includes("*");
+
+  // One short double for the unlock, as it starts, however many badges are new; a ref keeps a remount from buzzing twice.
+  const buzzed = useRef(false);
+  const anyFresh = list.some(fresh);
+  useEffect(() => {
+    if (!anyFresh || buzzed.current) return;
+    buzzed.current = true;
+    buzz(HAPTICS.badge);
+  }, [anyFresh]);
 
   // Mark them seen once the unlock has played, so it only happens the first time.
   useEffect(() => {

@@ -6,7 +6,8 @@ import type { Locale, SessionQuestion } from "@/lib/app/api/types";
 import { formatNumeric, parseNumeric, toggleMinus, withUnit, type NumericProblem } from "@/lib/app/numeric";
 import { useQT, type QKey } from "@/lib/app/quiz-copy";
 import type { SessionRunView } from "@/lib/app/session/controller";
-import { QuizTop, TimerRing, buzz } from "./parts";
+import { HAPTICS, buzz } from "@/lib/app/haptics";
+import { QuizTop, TimerRing } from "./parts";
 
 const PROBLEM: Record<NumericProblem, QKey> = { empty: "n.err.empty", not_number: "n.err.nan", negative: "n.err.negative" };
 
@@ -43,7 +44,7 @@ export function NumericQuestion({ run, onLeave, onPick }: { run: SessionRunView;
           submitLabel={t("n.lock")}
           morph
           onSubmit={(value) => {
-            buzz(14);
+            buzz(HAPTICS.send);
             startTransition(() => onPick(value));
           }}
         />
@@ -87,7 +88,7 @@ export function NumberField({
     const parsed = parseNumeric(text, allowNegative);
     if (!parsed.ok) {
       setProblem(parsed.problem);
-      buzz(40);
+      buzz(HAPTICS.problem);
       input.current?.focus();
       return;
     }
