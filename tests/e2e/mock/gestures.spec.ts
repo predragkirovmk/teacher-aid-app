@@ -144,9 +144,19 @@ test.describe("the sheet", () => {
     const grip = (await page.locator(".sheet__handle").boundingBox())!;
     await page.mouse.move(grip.x + grip.width / 2, grip.y + 20);
     await page.mouse.down();
-    await page.mouse.move(grip.x + grip.width / 2, grip.y + 70, { steps: 5 });
-    await page.mouse.up();
+    // The sheet reads speed from the time between events, and the mouse's steps arrive as slowly as the machine is busy
+    // (on a loaded runner, 50 px in five steps falls under the flick speed). So the flick is sent from inside the page, in one
+    // task: 50 px in no time at all. The real mouse-down above gives the pointer and its capture.
+    await page.evaluate(() => {
+      const el = document.querySelector(".sheet__handle")!;
+      const r = el.getBoundingClientRect();
+      const send = (type: string, y: number) =>
+        el.dispatchEvent(new PointerEvent(type, { pointerId: 1, pointerType: "mouse", isPrimary: true, bubbles: true, clientX: r.x + r.width / 2, clientY: y }));
+      for (let i = 1; i <= 5; i++) send("pointermove", r.y + 20 + i * 10);
+      send("pointerup", r.y + 70);
+    });
     await expect(dialog).toHaveCount(0);
+    await page.mouse.up();
   });
 
   test("a slow, short drag springs back with a move of its own, and a touch catches it where it is", async ({ page }) => {
