@@ -28,18 +28,24 @@
   --fs-display: 2.125rem; /* 34 */
   --fs-num: 2.875rem; /* 46 */
   --fs-hero: 4.5rem; /* 72 */
-  /* Springs as SwiftUI defines them, spring(duration:bounce:), sampled into linear() by
-     scratch tooling; each duration is the settle time, the perceived duration is shorter.
-     press 0.25/0 for touch feedback, snappy 0.3/0.15 for small state changes,
-     smooth 0.4/0 for sheets, morphs and arrivals, bouncy 0.5/0.3 for rare rewards. */
-  --spring-press: linear(0, 0.069, 0.2109, 0.3667, 0.5096, 0.6296, 0.7255, 0.7995, 0.8552, 0.8964, 0.9265, 0.9481, 0.9636, 0.9746, 0.9824, 0.9878, 0.9916, 0.9942, 0.996, 0.9973, 1);
-  --spring-press-dur: 340ms;
-  --spring-snappy: linear(0, 0.0361, 0.1222, 0.2332, 0.3519, 0.4673, 0.5731, 0.666, 0.7448, 0.8098, 0.862, 0.9031, 0.9345, 0.958, 0.9751, 0.9872, 0.9954, 1.0007, 1.0039, 1.0056, 1.0062, 1.0062, 1.0058, 1.0051, 1.0044, 1.0037, 1.003, 1.0023, 1);
+  /* Springs as SwiftUI defines them, spring(duration:bounce:), sampled into linear(). The values
+     live in lib/app/motion.ts and tests/unit/motion-tokens.test.ts fails if these drift from them;
+     each -dur is the settle time, the perceived duration is shorter.
+     press for touch-down, pop for the release past 1 and small arrivals, snappy for small state
+     changes, smooth for sheets, morphs and screen moves, bouncy for medium arrivals, big for the
+     rare reward. */
+  --spring-press: linear(0, 0.1477, 0.3919, 0.602, 0.7525, 0.8512, 0.9127, 0.9497, 0.9714, 0.9839, 0.9911, 0.9951, 0.9973, 1);
+  --spring-press-dur: 210ms;
+  --spring-pop: linear(0, 0.1157, 0.3832, 0.6931, 0.9639, 1.1504, 1.2409, 1.2484, 1.1997, 1.1244, 1.0478, 0.9869, 0.9496, 0.9359, 0.9407, 0.9567, 0.9766, 0.9948, 1.0079, 1.0149, 1.0162, 1.0136, 1.009, 1.0039, 0.9998, 0.9971, 0.9959, 0.9961, 0.997, 1);
+  --spring-pop-dur: 480ms;
+  --spring-snappy: linear(0, 0.0516, 0.1686, 0.3105, 0.4527, 0.5817, 0.6915, 0.7804, 0.8496, 0.9015, 0.9391, 0.9654, 0.983, 0.9942, 1.0009, 1.0045, 1.006, 1.0063, 1.0058, 1.005, 1.0041, 1.0033, 1.0025, 1);
   --spring-snappy-dur: 390ms;
-  --spring-smooth: linear(0, 0.0495, 0.1582, 0.2864, 0.4129, 0.5273, 0.6256, 0.7073, 0.7736, 0.8263, 0.8677, 0.8998, 0.9246, 0.9435, 0.9578, 0.9686, 0.9767, 0.9828, 0.9873, 0.9906, 0.9931, 0.995, 0.9963, 0.9973, 1);
+  --spring-smooth: linear(0, 0.0295, 0.0995, 0.1895, 0.2864, 0.3821, 0.472, 0.5535, 0.6256, 0.6884, 0.7423, 0.7879, 0.8263, 0.8583, 0.8848, 0.9067, 0.9246, 0.9392, 0.9511, 0.9608, 0.9686, 0.9749, 0.98, 0.984, 0.9873, 0.9899, 0.992, 0.9936, 0.995, 0.996, 0.9968, 0.9975, 1);
   --spring-smooth-dur: 540ms;
-  --spring-bouncy: linear(0, 0.0236, 0.0844, 0.1696, 0.2685, 0.3731, 0.477, 0.5758, 0.6665, 0.7472, 0.817, 0.8759, 0.9242, 0.9626, 0.9921, 1.0139, 1.0291, 1.0388, 1.0441, 1.0459, 1.0452, 1.0427, 1.039, 1.0345, 1.0297, 1.0249, 1.0203, 1.0161, 1.0123, 1.009, 1.0062, 1.0039, 1.002, 1.0006, 0.9995, 0.9988, 0.9983, 0.998, 0.9979, 0.9979, 1);
+  --spring-bouncy: linear(0, 0.0197, 0.0712, 0.1446, 0.2315, 0.3253, 0.4207, 0.5137, 0.6014, 0.6819, 0.754, 0.817, 0.871, 0.9162, 0.953, 0.9823, 1.0049, 1.0215, 1.0332, 1.0406, 1.0446, 1.046, 1.0452, 1.043, 1.0397, 1.0358, 1.0315, 1.0271, 1.0228, 1.0187, 1.015, 1.0116, 1.0087, 1.0062, 1.004, 1.0023, 1.0009, 0.9999, 0.9991, 0.9985, 0.9982, 0.998, 0.9979, 0.9979, 1);
   --spring-bouncy-dur: 730ms;
+  --spring-big: linear(0, 0.0496, 0.1746, 0.3416, 0.5231, 0.6979, 0.8515, 0.9754, 1.0664, 1.1253, 1.1557, 1.1628, 1.1526, 1.131, 1.1031, 1.0735, 1.0454, 1.021, 1.0015, 0.9875, 0.9786, 0.9742, 0.9735, 0.9755, 0.9793, 0.9839, 0.9887, 0.9932, 0.9971, 1.0001, 1.0023, 1.0036, 1.0043, 1.0043, 1.0039, 1.0033, 1.0025, 1);
+  --spring-big-dur: 610ms;
   --font: system-ui, -apple-system, "SF Pro Text", "Segoe UI", sans-serif;
   --font-display: var(--font-golos), system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: dark;
@@ -207,10 +213,6 @@ a {
   place-items: center;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid var(--line);
-  transition: transform var(--spring-press-dur) var(--spring-press);
-}
-.round:active {
-  transform: scale(0.94);
 }
 
 .brand {
@@ -240,13 +242,10 @@ a {
   background: var(--card);
   border-radius: var(--radius-card);
   padding: 20px;
-  transition:
-    transform var(--spring-press-dur) var(--spring-press),
-    background var(--spring-press-dur) var(--spring-press);
+  --press-scale: 0.96; /* a full-width surface squashes less */
 }
 a.card:active,
 button.card:active {
-  transform: scale(0.985);
   background: var(--card-press);
 }
 .card--flat {
@@ -296,12 +295,6 @@ button.card:active {
   border-radius: 999px;
   font-weight: 650;
   font-size: var(--fs-body);
-  transition:
-    transform var(--spring-press-dur) var(--spring-press),
-    background var(--spring-press-dur) var(--spring-press);
-}
-.btn:active {
-  transform: scale(0.97);
 }
 .btn--primary {
   background: var(--yellow);
@@ -316,6 +309,7 @@ button.card:active {
 }
 .btn--block {
   width: 100%;
+  --press-scale: 0.96;
 }
 /* Borderless: the third level, for a way out beside a primary action. */
 .btn--plain {
@@ -326,10 +320,112 @@ button.card:active {
   color: var(--text);
 }
 
-/* Press in fast, spring back on release: the press answers at once, the release settles. */
-:is(.btn, .card, .round, .next, .scan-fab):active {
-  transition-duration: 100ms;
-  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+/* ---- Press: squash and stretch ----
+   Touch-down squashes to --press-scale (0.94 unless the element says otherwise; surfaces that span
+   the column set 0.96) on --spring-press; release returns to 1 on --spring-pop, which overshoots past it.
+   It is a transition on the individual scale property, so a second touch mid-spring reverses from
+   where the element is, and it never fights a transform that an entrance animation holds.
+   Disabled elements do not move. Reduced motion (the block near the end) swaps the squash for a
+   short dim through --press-reduce, --press-dim and --press-fade.
+
+   Who is on the list, and who is not. Rows are only a.item and button.item: the same class is a plain
+   li or div in lists that are read, not pressed. The tab squashes as a whole, which is its icon and
+   label; the moving selection (.seg__glide) is a sibling and stays put, and so does the bar. Rows of a
+   grouped list (.item, FAQ summaries) squash only to 0.98: they fill the group edge to edge, and at 0.96
+   the pressed highlight pulls 7 px off both edges and looks detached. The chart dot squashes to 0.6, because
+   0.94 of a 10 px dot cannot be seen. Both set --press-scale on themselves. --press-scale is inherited, so
+   a pressable inside another that sets it (the switch inside a row) sets its own. The switch
+   squashes as a whole at 0.94: its knob keeps its width, because width never animates. Summaries get
+   the class `press` in markup. Left out on purpose: text links inside a sentence (.doc__link, the
+   summary that reads as a link), because a scaled word in running prose looks broken; text inputs
+   and the number field, which are typed into, not pressed; the sheet's drag handle and the scrim,
+   which follow a finger or dismiss and are not buttons to squash.
+
+   Specificity: :is() takes its most specific argument, here a.card at 0,1,1, so this rule's
+   `transition` beats any single-class `transition` of an element on the list. Only .switch has one
+   (its colour change), so it passes its timing in through --press-bg, which both rules below use for
+   the background. Every other element on the list has no transition of its own, so it needs nothing. */
+:is(
+  .press, .btn, a.card, button.card, .round, .next, .scan-fab, .provider, .q-opt, .q-tf__btn, .n-minus, .pe-photo-btn,
+  a.item, button.item, .tab, .opt, .result, .switch, button.pill, .section-link, .pe-bar__text, .tc__dot
+) {
+  transition:
+    scale var(--spring-pop-dur) var(--spring-pop),
+    background var(--press-bg, var(--spring-press-dur) var(--spring-press)),
+    opacity var(--press-fade, 0s) linear;
+}
+:is(
+  .press, .btn, a.card, button.card, .round, .next, .scan-fab, .provider, .q-opt, .q-tf__btn, .n-minus, .pe-photo-btn,
+  a.item, button.item, .tab, .opt, .result, .switch, button.pill, .section-link, .pe-bar__text, .tc__dot
+):not(:disabled, [aria-disabled="true"]):active {
+  scale: var(--press-reduce, var(--press-scale, 0.94));
+  opacity: var(--press-dim, 1);
+  transition:
+    scale var(--spring-press-dur) var(--spring-press),
+    background var(--press-bg, var(--spring-press-dur) var(--spring-press)),
+    opacity var(--press-fade, 0s) linear;
+}
+
+/* ---- Stagger ----
+   Calm entrances: a row, card or state rises 8 px and fades in, with no scale. The rise rides --spring-snappy (its
+   overshoot on 8 px is barely felt, which is the point) and the opacity is a short fade of its own. Children that carry
+   --i (0, 1, 2, ...) arrive 35 ms apart, and nothing waits more than 210 ms, so a long list never trickles: after the
+   seventh item the rest arrive together. Content is tappable from its first frame (opacity and transform do not block input).
+   Put .stagger on the parent, or .arrive on one element. `backwards` fill, not `both`: when it ends the element is simply
+   itself again, with no animation left holding its transform. Reduced motion turns it into a plain 150 ms fade, no delay. */
+.stagger > *,
+.arrive,
+.rise,
+.item--fresh {
+  animation:
+    arrive var(--spring-snappy-dur) var(--spring-snappy) backwards,
+    arrive-fade 180ms linear backwards;
+  animation-delay: min(calc(var(--i, 0) * 35ms), 210ms);
+}
+@keyframes arrive {
+  from {
+    transform: translateY(8px);
+  }
+}
+@keyframes arrive-fade {
+  from {
+    opacity: 0;
+  }
+}
+/* Content that fills a screen after it had to wait (see Gate in components/app/QueryState.tsx) arrives the same way:
+   the screen's own blocks, and the rows of its lists. The first child is left out: it is the header, which was already on
+   screen while the data loaded (React keeps that element), and replaying its entrance would make it blink. The attribute is on <html> for under a second, so only what is
+   drawn in that moment rises. A tab switch, a deeper screen and a screen that had its data already never set it. */
+[data-arrive] :is(.screen, ul.list) > :nth-child(1) {
+  --i: 0; /* set, not inherited: a list's rows would otherwise start from its own place in the screen */
+}
+[data-arrive] :is(.screen, ul.list) > :nth-child(2) {
+  --i: 1;
+}
+[data-arrive] :is(.screen, ul.list) > :nth-child(3) {
+  --i: 2;
+}
+[data-arrive] :is(.screen, ul.list) > :nth-child(4) {
+  --i: 3;
+}
+[data-arrive] :is(.screen, ul.list) > :nth-child(5) {
+  --i: 4;
+}
+[data-arrive] :is(.screen, ul.list) > :nth-child(6) {
+  --i: 5;
+}
+[data-arrive] :is(.screen, ul.list) > :nth-child(n + 7) {
+  --i: 6;
+}
+[data-arrive] .screen > :not(ul, :first-child),
+[data-arrive] ul.list > li {
+  animation:
+    arrive var(--spring-snappy-dur) var(--spring-snappy) backwards,
+    arrive-fade 180ms linear backwards;
+  animation-delay: min(calc(var(--i, 0) * 35ms), 210ms);
+}
+[data-arrive] ul.list > li {
+  animation-delay: min(calc(40ms + var(--i, 0) * 35ms), 240ms);
 }
 
 /* A pointer on a desktop window (the phone frame) gets the same answer as a press, without the scale. */
@@ -400,6 +496,7 @@ button.card:active {
   padding: 0 16px;
   border-radius: 16px;
   text-align: left;
+  --press-scale: 0.96;
 }
 .result:active {
   background: rgba(255, 255, 255, 0.12);
@@ -518,7 +615,8 @@ button.card:active {
   bottom: calc(env(safe-area-inset-bottom) + 12px);
   border-radius: 32px;
   padding: 16px;
-  animation: slide-up var(--spring-smooth-dur) var(--spring-smooth);
+  /* It rises on --spring-snappy (a small overshoot at most) and leaves faster than it came: see SHEET_EXIT_MS in Shell.tsx. */
+  animation: slide-up var(--spring-snappy-dur) var(--spring-snappy);
 }
 @keyframes slide-up {
   from {
@@ -582,6 +680,7 @@ button.card:active {
   border-radius: 22px;
   font-size: var(--fs-title3);
   font-weight: 600;
+  --press-scale: 0.96;
 }
 .opt:active {
   background: rgba(255, 255, 255, 0.12);
@@ -619,6 +718,14 @@ button.card:active {
 .list > * + * {
   border-top: 1px solid rgba(255, 255, 255, 0.14);
 }
+/* A list whose rows leave and move (MotionList): a leaving row is held out of the flow at its old place, so the list is the
+   box it fades out of, and the card around it does not clip it while the rest close up. */
+.list--motion {
+  position: relative;
+}
+.list--motion[data-leaving] {
+  overflow: visible;
+}
 .item {
   display: flex;
   align-items: center;
@@ -629,6 +736,9 @@ button.card:active {
   border-radius: 0;
   background: transparent;
   text-align: left;
+  /* A row fills its grouped list edge to edge; at 0.96 its pressed highlight pulls 7 px off both edges and looks
+     detached from the group, so rows squash less. */
+  --press-scale: 0.98;
 }
 a.item:active,
 button.item:active {
@@ -893,6 +1003,7 @@ button.item:active {
   font-size: var(--fs-callout);
 }
 .scan__tools .span2 {
+  --press-scale: 0.96;
   grid-column: 1 / -1;
 }
 .warn {
@@ -964,7 +1075,9 @@ button.item:active {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.25);
   flex: none;
-  transition: background var(--spring-snappy-dur) var(--spring-snappy);
+  /* Set here because the custom property is inherited: the switch sits in a .item and would take its 0.98. */
+  --press-scale: 0.94;
+  --press-bg: var(--spring-snappy-dur) var(--spring-snappy); /* the colour change keeps its own pace */
 }
 .switch::after {
   content: "";
@@ -1014,9 +1127,18 @@ details.faq summary {
   justify-content: space-between;
   gap: 12px;
   min-height: 64px;
+  /* The summary runs to the edges of the row (the details keeps 20 px of padding for the answer), so a press and
+     the focus ring cover the whole row and the ring does not sit on the first letter. */
+  margin: 0 -20px;
+  padding: 0 20px;
   font-weight: 650;
   font-size: var(--fs-callout);
   cursor: pointer;
+  --press-scale: 0.98; /* a full-width row of a grouped list, like .item */
+}
+/* The list clips what is outside a row, so the summary's focus ring is drawn inside it as well. */
+details.faq summary:focus-visible {
+  outline-offset: -3px;
 }
 details.faq summary::-webkit-details-marker {
   display: none;
@@ -1123,10 +1245,8 @@ details.faq p {
   border: 1px solid;
   font-weight: 600;
   font-size: var(--fs-body);
-  transition:
-    transform var(--spring-press-dur) var(--spring-press),
-    background var(--spring-press-dur) var(--spring-press),
-    opacity 150ms;
+  --press-scale: 0.96;
+  --press-fade: 150ms; /* the dim when it is disabled */
 }
 .provider svg {
   flex: none;
@@ -1140,10 +1260,7 @@ details.faq p {
   border-color: #8c8c8c;
 }
 .provider:active {
-  transform: scale(0.97);
   background: #f0f0f0;
-  transition-duration: 100ms;
-  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
 }
 .provider:disabled {
   opacity: 0.55;
@@ -1220,7 +1337,9 @@ button.pill {
   z-index: 40;
   left: 50%;
   top: calc(env(safe-area-inset-top) + 16px);
-  transform: translateX(-50%);
+  /* The centring is the `translate` property, not part of the transform: the press squash is the `scale` property,
+     which would shrink a transform's offset and push the toast sideways while it is held. */
+  translate: -50% 0;
   max-width: 88%;
   padding: 12px 16px;
   border-radius: 999px;
@@ -1230,11 +1349,24 @@ button.pill {
   /* Transitions, not a keyframe: a new message mid-exit turns back from where it is. */
   transition:
     opacity var(--spring-snappy-dur) var(--spring-snappy),
-    transform var(--spring-snappy-dur) var(--spring-snappy);
+    transform var(--spring-snappy-dur) var(--spring-snappy),
+    scale var(--spring-pop-dur) var(--spring-pop);
   @starting-style {
     opacity: 0;
-    transform: translateX(-50%) translateY(-8px);
+    transform: translateY(-8px);
   }
+}
+/* A tap dismisses the toast, so it answers a press like any control. It is not on the press list because
+   its own transition (opacity and transform, for the exit) would be replaced by the list's; it lists scale
+   itself. The exit state is left alone so a press during the fade-out cannot bring the toast back. */
+.toast:not(.toast--out):active {
+  scale: var(--press-reduce, 0.94);
+  opacity: var(--press-dim, 1);
+  /* The way in is the press spring, as for every control; the way out (the base rule) is the pop. */
+  transition:
+    opacity var(--spring-snappy-dur) var(--spring-snappy),
+    transform var(--spring-snappy-dur) var(--spring-snappy),
+    scale var(--spring-press-dur) var(--spring-press);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1260,25 +1392,21 @@ button.pill {
   }
 }
 
-/* ---- dock: tab bar plus the detached scan action ---- */
+/* ---- dock: the classic five, Home, Subjects, the raised scan, Alerts, Profile ---- */
 .dock {
   position: absolute;
   z-index: 20;
   left: 12px;
   right: 12px;
   bottom: calc(env(safe-area-inset-bottom) + 8px);
-  display: flex;
-  align-items: center;
-  gap: 12px;
 }
 .tabbar {
-  flex: 1;
   min-height: var(--tab-h);
   border-radius: 34px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr 1fr auto 1fr 1fr;
   align-items: center;
-  padding: 4px 8px;
+  padding: 4px;
 }
 .tab {
   display: flex;
@@ -1294,7 +1422,7 @@ button.pill {
   color: var(--text-2);
   position: relative;
 }
-.tab[aria-current="page"] {
+.tab[data-checked="true"] {
   color: #fff;
 }
 .tab {
@@ -1303,22 +1431,7 @@ button.pill {
 .tabbar {
   position: relative;
 }
-.tab-ind {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 8px;
-  width: calc((100% - 16px) / 3);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.16);
-  pointer-events: none;
-  transition:
-    transform var(--spring-snappy-dur) var(--spring-snappy),
-    opacity 160ms;
-}
-.tab:active {
-  background: rgba(255, 255, 255, 0.1);
-}
+/* No ground of its own under a pressed tab: the answer to the tap is the piece sliding towards it. */
 .tab__badge {
   position: absolute;
   top: 2px;
@@ -1336,22 +1449,114 @@ button.pill {
   display: grid;
   place-items: center;
 }
+/* The scan is an action, not a section: a yellow circle in the middle of the bar, inside it like the tabs. */
 .scan-fab {
-  flex: none;
-  width: var(--tab-h);
-  height: var(--tab-h);
+  position: relative;
+  z-index: 1;
+  width: 56px;
+  height: 56px;
+  margin: 0 4px;
   border-radius: 50%;
   display: grid;
   place-items: center;
   background: var(--yellow);
   color: var(--ink);
-  box-shadow: 0 8px 22px rgba(2, 8, 24, 0.4);
-  transition: transform var(--spring-press-dur) var(--spring-press);
+  box-shadow: 0 2px 8px rgba(2, 8, 24, 0.25);
 }
 .scan-fab:active {
-  transform: scale(0.94);
   background: var(--yellow-soft);
 }
+/* ---- one piece per track ----
+   Every segmented control and tab row (the tab bar, the welcome screen's language switch) has one piece for the whole
+   track, and a choice flows into the next: the edge in front leaves first, runs a little past its place and comes back
+   (bounce 0.2), and the edge behind follows 60 ms later with no bounce, so for a moment the old piece and the new one are
+   one, then it settles with the overshoot already behind it. SegGlide draws the piece as two round ends and a
+   flat bridge and moves them only by transform, so the compositor runs the slide and nothing is painted per frame. The
+   parts are one group under one opacity (--seg-alpha), so a translucent piece does not darken where they overlap. While
+   the piece is there, the chosen piece's own ground steps aside. The chosen piece says it is the one by itself too: a
+   filled glyph that lands on the big spring, heavier words. */
+.seg__glide {
+  --seg-round: 24px;
+  --seg-color: #fff;
+  --seg-alpha: 0.22;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms;
+}
+.seg__glide[data-on="true"] {
+  opacity: 1;
+}
+.seg__face {
+  position: absolute;
+  inset: 0;
+  opacity: var(--seg-alpha);
+}
+.seg__face > span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: var(--seg-color);
+  transform-origin: 0 0;
+}
+.seg__cap {
+  border-radius: var(--seg-round);
+}
+.seg__bridge {
+  width: 1px;
+}
+.tab[data-checked="true"] {
+  font-weight: 750;
+}
+.tab[data-checked="true"] svg {
+  animation: tab-land var(--spring-big-dur) var(--spring-big) backwards;
+}
+@keyframes tab-land {
+  from {
+    scale: 0.6;
+    translate: 0 4px;
+  }
+}
+
+/* The welcome screen's language switch: a dark track with a yellow piece and ink words on it. */
+.seg-pills {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(7, 22, 47, 0.3);
+}
+.seg-pills > .seg__glide {
+  --seg-round: 999px;
+  --seg-color: var(--yellow);
+  --seg-alpha: 1;
+}
+.seg-pills > .pill {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  /* The colour hands over while the piece moves, so a word is never ink on the dark track for a frame. */
+  transition:
+    scale var(--spring-pop-dur) var(--spring-pop),
+    background var(--spring-press-dur) var(--spring-press),
+    opacity var(--press-fade, 0s) linear,
+    color var(--seg-color, 220ms) ease-out;
+}
+.seg-pills > .pill[aria-pressed="true"] {
+  background: var(--yellow);
+  color: var(--ink);
+  font-weight: 800;
+}
+.seg-pills[data-glide="on"] > .pill[aria-pressed="true"] {
+  background: transparent;
+}
+
 /* Scroll edge: content fades out where it meets the floating controls. */
 .edge {
   position: absolute;
@@ -1395,10 +1600,7 @@ button.pill {
   background: var(--yellow);
   color: var(--ink);
   min-height: 176px;
-  transition: transform var(--spring-press-dur) var(--spring-press);
-}
-.next:active {
-  transform: scale(0.985);
+  --press-scale: 0.96;
 }
 /* The subject's sign, large and cropped in the corner, clear of the text. */
 .next__sign {
@@ -1697,12 +1899,13 @@ button.pill {
   .subject__glyphs {
     display: none;
   }
-  .tab-ind {
+  .seg__glide {
+    display: none;
+  }
+  .tabbar > .tab[data-checked="true"],
+  .seg-pills:is([data-glide], :not([data-glide])) > .pill[aria-pressed="true"] {
     forced-color-adjust: none;
     background: Highlight;
-  }
-  .tab[aria-current="page"] {
-    forced-color-adjust: none;
     color: HighlightText;
   }
   .opt[aria-checked="true"] {
@@ -1770,18 +1973,8 @@ button.pill {
   box-shadow: inset 0 0 0 1px var(--line);
 }
 
-/* Home cards rise in once per session, not on every visit (frequent screens stay still). */
-.rise {
-  animation: rise var(--spring-smooth-dur) var(--spring-smooth) both;
-  animation-delay: calc(var(--i, 0) * 45ms);
-}
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-}
-[data-rise-seen] .rise {
+/* Home cards rise in once per session, not on every visit (frequent screens stay still): .rise is the stagger primitive above. */
+html[data-rise-seen] .rise {
   animation: none;
 }
 
@@ -1836,15 +2029,153 @@ button.pill {
   color: var(--yellow);
 }
 
+/* ---- screen transitions ----
+   React's <ViewTransition> in Shell names the screen and picks one of these classes by navigation type; Back
+   (lib/app/nav.ts goBack) names the screens by hand. Deeper: the new screen slides in from the right while the
+   old one moves a quarter of the way left and dims. Back is the reverse, the leaving screen on top. A tab swap
+   is a plain 220 ms crossfade of the two screens (see the .tab rules). The slide is on --spring-smooth, which has no
+   overshoot: an overshoot on a full-screen slide would show a gap at the edge. Only transform and opacity move. */
+::view-transition {
+  /* Taps reach the live page while a transition runs. */
+  pointer-events: none;
+}
+/* The tab bar and the scan button stay still, above the moving screens. They get a name only while a transition
+   runs: a name makes an element a backdrop root, which would flatten the glass of the bar at rest. */
+:root:active-view-transition .dock {
+  view-transition-name: dock;
+}
+:root:active-view-transition .edge {
+  view-transition-name: dock-edge;
+}
+/* Old and new screens are separate groups, so the one that travels on top is lifted on the group. */
+::view-transition-group(.lift) {
+  z-index: 1;
+}
+::view-transition-group(dock),
+::view-transition-group(dock-edge) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(dock),
+::view-transition-old(dock-edge) {
+  display: none;
+}
+::view-transition-new(dock),
+::view-transition-new(dock-edge) {
+  animation: none;
+}
+
+/* React starts a transition whenever a boundary mounts, typed or not (a pager swipe, a redirect). Those carry no type,
+   so the screen is not named and lives in the root: the default root crossfade would blur the pager's own slide, so the
+   root shows the live page at once. With reduced motion the root keeps the plain fade below instead. */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) {
+    display: none;
+  }
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
+
+/* A sliding screen must hide what is under it, and a snapshot only carries what its element paints (a background on
+   the pseudo-element itself is not drawn). So while a transition runs a screen gets the phone's ground; the zero
+   specificity of :where lets any screen that has a ground of its own keep it. */
+:where(:root:active-view-transition .pager > *) {
+  background: linear-gradient(180deg, var(--ground-top) 0%, var(--ground-bottom) 100%);
+}
+
+::view-transition-old(.nav-forward),
+::view-transition-new(.nav-forward),
+::view-transition-old(.nav-back),
+::view-transition-new(.nav-back) {
+  mix-blend-mode: normal;
+  animation-duration: var(--spring-smooth-dur);
+  animation-timing-function: var(--spring-smooth);
+  animation-fill-mode: both;
+}
+::view-transition-old(.nav-forward) {
+  animation-name: vt-under-out;
+}
+::view-transition-new(.nav-forward) {
+  animation-name: vt-over-in;
+}
+::view-transition-old(.nav-back) {
+  animation-name: vt-over-out;
+}
+::view-transition-new(.nav-back) {
+  animation-name: vt-under-in;
+}
+@keyframes vt-over-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes vt-over-out {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes vt-under-out {
+  to {
+    transform: translateX(-25%);
+    opacity: 0.6;
+  }
+}
+@keyframes vt-under-in {
+  from {
+    transform: translateX(-25%);
+    opacity: 0.6;
+  }
+}
+
+/* A tab swap is a simultaneous opacity crossfade: both screens start together, run the same 220 ms and only change
+   opacity, with no scale, no move and no delay. The first version popped the new screen in from 0.97 after a short
+   fade-out, and the owner found the pop too intense. Plain easing is fine here (opacity cannot overshoot). The
+   browser's default plus-lighter blend on the image pair is left alone on purpose, so the screen does not dim at the
+   midpoint; do not set mix-blend-mode or isolation on these. */
+::view-transition-old(.tab) {
+  animation: vt-fade-out 220ms cubic-bezier(0.25, 0.1, 0.25, 1) both;
+}
+::view-transition-new(.tab) {
+  animation: vt-fade-in 220ms cubic-bezier(0.25, 0.1, 0.25, 1) both;
+}
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
 /* Shared-element morph between a subject card and its screen. */
 ::view-transition-group(.morph) {
   animation-duration: var(--spring-smooth-dur);
   animation-timing-function: var(--spring-smooth);
 }
+
+/* Reduced motion: every screen change and morph is a plain 150 ms crossfade, with no slide, no scale and no move. */
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*),
-  ::view-transition-old(*),
+  ::view-transition-group(*) {
+    animation: none !important;
+  }
+  ::view-transition-old(*) {
+    mix-blend-mode: plus-lighter !important;
+    animation: vt-fade-out 150ms linear both !important;
+  }
   ::view-transition-new(*) {
+    mix-blend-mode: plus-lighter !important;
+    animation: vt-fade-in 150ms linear both !important;
+  }
+  /* The tab bar still does not move or blink. */
+  ::view-transition-old(dock),
+  ::view-transition-old(dock-edge) {
+    display: none;
+  }
+  ::view-transition-new(dock),
+  ::view-transition-new(dock-edge) {
     animation: none !important;
   }
 }
@@ -1952,7 +2283,7 @@ button.pill {
 }
 .toast--out {
   opacity: 0;
-  transform: translateX(-50%) translateY(-8px);
+  transform: translateY(-8px);
   transition-duration: 200ms;
   transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
 }
@@ -1977,7 +2308,14 @@ button.pill {
 /* A new achievement pops, with one ring that fades out. */
 .unlock {
   position: relative;
-  animation: unlock-pop var(--spring-bouncy-dur) var(--spring-bouncy) 250ms both;
+  animation: unlock-pop var(--spring-big-dur) var(--spring-big) 250ms both;
+}
+.unlock > svg {
+  position: relative;
+}
+/* The confetti of a new badge falls behind the badge's words. */
+.unlock ~ .item__main {
+  position: relative;
 }
 .unlock::after {
   content: "";
@@ -1990,7 +2328,7 @@ button.pill {
 }
 @keyframes unlock-pop {
   from {
-    transform: scale(0.5);
+    transform: scale(0.3);
     opacity: 0.2;
   }
 }
@@ -2004,14 +2342,47 @@ button.pill {
     opacity: 0;
   }
 }
-/* Reduced motion means gentler, not none: entrances fade in place instead of travelling, and
-   decorative movement stops. Press feedback and the switch stay; they answer a touch. */
-@media (prefers-reduced-motion: reduce) {
-  @keyframes rise {
-    from {
-      opacity: 0;
-    }
+/* Confetti: a few dozen pieces that fly out of their parent and fall, once. Transform and opacity only; the component removes them. */
+.confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.confetti i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 14px;
+  margin: -7px 0 0 -4px;
+  border-radius: 2px;
+  background: var(--c);
+  opacity: 0;
+  animation: confetti-fly 1200ms cubic-bezier(0.2, 0.7, 0.4, 1);
+}
+.confetti i[data-round="true"] {
+  width: 9px;
+  height: 9px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+}
+@keyframes confetti-fly {
+  from {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0) scale(0.5);
   }
+  35% {
+    opacity: 1;
+    transform: translate(calc(var(--x) * 0.8), calc(var(--up) * -1)) rotate(calc(var(--spin) * 0.4)) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(var(--x), var(--fall)) rotate(var(--spin)) scale(1);
+  }
+}
+/* Reduced motion means gentler, not none: entrances fade in place instead of travelling, and
+   decorative movement stops. A press dims instead of squashing, and the switch stays; they answer a touch. */
+@media (prefers-reduced-motion: reduce) {
   @keyframes slide-up {
     from {
       opacity: 0;
@@ -2042,23 +2413,41 @@ button.pill {
       opacity: 0;
     }
   }
+  /* A press still answers a touch, with a short dim instead of a squash; the stagger is a plain fade. */
+  :root {
+    --press-reduce: 1;
+    --press-dim: 0.8;
+    --press-fade: 120ms;
+  }
+  .stagger > *,
+  .arrive,
+  .rise,
+  .item--fresh,
+  [data-arrive] .screen > :not(ul, :first-child),
+  [data-arrive] ul.list > li {
+    animation: arrive-fade 150ms linear backwards;
+    animation-delay: 0s;
+  }
   .unlock::after {
     animation: none;
   }
   details.faq::details-content {
     transition: none;
   }
-  .tab-ind {
-    transition: opacity 160ms;
+  .tab[data-checked="true"] svg {
+    animation: none;
+  }
+  .seg-pills > .pill {
+    --seg-color: 0s;
   }
   .tab__badge[data-on="false"] {
     transform: none;
   }
   .toast,
   .toast--out {
-    transform: translateX(-50%);
+    transform: none;
     @starting-style {
-      transform: translateX(-50%);
+      transform: none;
     }
   }
 }
@@ -2073,10 +2462,7 @@ button.pill {
 }
 
 /* ---- notifications ---- */
-/* An alert that arrives while the list is open slides in once (the keyframes fade instead when motion is reduced). */
-.item--fresh {
-  animation: rise var(--spring-smooth-dur) var(--spring-smooth) both;
-}
+/* An alert that arrives while the list is open rises in once: .item--fresh is in the stagger primitive above. */
 /* Something that cannot be pressed right now says so by dimming; it keeps its place in the layout. */
 .btn:disabled,
 .switch:disabled {

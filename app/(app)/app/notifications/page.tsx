@@ -60,6 +60,7 @@ function List({ items, title }: { items: AlertItem[]; title: React.ReactNode }) 
             <li key={n.id}>
               <Link
                 href={`/app/notifications/${n.id}`}
+                transitionTypes={["nav-forward"]}
                 className={`item${n.unread ? " item--unread" : ""}${!known.has(n.id) && n.when > opened ? " item--fresh" : ""}`}
               >
                 <span className="item__icon">

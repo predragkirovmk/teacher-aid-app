@@ -1,16 +1,20 @@
 "use client";
 
 import { LockIcon } from "@phosphor-icons/react";
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { Gate } from "@/components/app/QueryState";
 import { Top } from "@/components/app/Top";
 import { demoOnly } from "@/lib/app/api";
 import { useBadges } from "@/lib/app/api/hooks";
 import type { Badge } from "@/lib/app/api/types";
 import { badgeCopy, badgeIcon } from "@/lib/app/badges";
+import { Confetti } from "@/components/app/Confetti";
+import { HAPTICS, buzz } from "@/lib/app/haptics";
 import { useT } from "@/lib/app/i18n";
 
 const noop = () => () => {};
+/** The delay of `.unlock`'s pop in app.css: the buzz waits as long, so it lands as the badge starts to pop. */
+const POP_DELAY_MS = 250;
 const SEEN_KEY = "teacheraid-achievements-seen";
 // The raw string, so the snapshot is stable between renders.
 const readSeen = () => {
@@ -43,6 +47,19 @@ function BadgeList({ all }: { all: Badge[] }) {
   const seen = useSyncExternalStore(noop, readSeen, () => "*").split(",");
   const fresh = (b: Badge) => b.earned && !(demoOnly && b.code === STARTING_BADGE) && !seen.includes(b.code) && !seen.includes("*");
 
+  // One short double as the badge starts to pop, however many badges are new. A layout effect runs in the commit, inside the screen's
+  // view transition (a passive effect would wait for the slide to end); the ref is set when the buzz fires, so a remount buzzes once.
+  const buzzed = useRef(false);
+  const anyFresh = list.some(fresh);
+  useLayoutEffect(() => {
+    if (!anyFresh || buzzed.current) return;
+    const id = setTimeout(() => {
+      buzzed.current = true;
+      buzz(HAPTICS.badge);
+    }, POP_DELAY_MS);
+    return () => clearTimeout(id);
+  }, [anyFresh]);
+
   // Mark them seen once the unlock has played, so it only happens the first time.
   useEffect(() => {
     const id = setTimeout(() => {
@@ -67,6 +84,7 @@ function BadgeList({ all }: { all: Badge[] }) {
           return (
             <li key={b.code} className="item" style={{ minHeight: 84 }}>
               <span className={`item__icon${fresh(b) ? " unlock" : ""}`} style={on ? { background: "var(--yellow)", color: "var(--ink)" } : undefined}>
+                {fresh(b) && <Confetti count={20} />}
                 {on ? <Icon size={22} /> : <LockIcon size={22} />}
               </span>
               <span className="grow item__main">

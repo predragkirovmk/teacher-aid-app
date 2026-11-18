@@ -28,7 +28,7 @@ export function Inline({ text }: { text: string }) {
         if (!match) return <Fragment key={i}>{part}</Fragment>;
         const [, label, href] = match;
         return href.startsWith("/app") ? (
-          <Link key={i} href={href} className="doc__link">
+          <Link key={i} href={href} className="doc__link" transitionTypes={["nav-forward"]}>
             {label}
           </Link>
         ) : (

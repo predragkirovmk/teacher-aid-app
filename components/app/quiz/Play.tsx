@@ -3,7 +3,7 @@
 import { ArrowDownIcon, ArrowUpIcon, CheckIcon, FlagCheckeredIcon, HashIcon, HourglassIcon, LockIcon, MinusIcon, PencilSimpleIcon, UsersIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { startTransition, useEffect, useState, ViewTransition, type ReactNode } from "react";
+import { startTransition, useEffect, useRef, useState, ViewTransition, type ReactNode } from "react";
 import { Avatar } from "@/components/app/Avatar";
 import { AnswerDelivery, ConnectionPill } from "@/components/app/ConnectionPill";
 import { ProfileEditor } from "@/components/app/ProfileEditor";
@@ -11,6 +11,7 @@ import { Sheet } from "@/components/app/Shell";
 import { useUI } from "@/components/app/ui";
 import type { Course, JoinedSession } from "@/lib/app/api/types";
 import { formatTime } from "@/lib/app/format";
+import { HAPTICS, buzz } from "@/lib/app/haptics";
 import { errorCopy, useT } from "@/lib/app/i18n";
 import { leave } from "@/lib/app/nav";
 import { useSelf } from "@/lib/app/profile";
@@ -26,10 +27,15 @@ import { JoinFailureScreen } from "./JoinFailure";
 import { formatNumeric } from "@/lib/app/numeric";
 import { NumericQuestion, numberText } from "./Numeric";
 import { Choices, choiceOf, responseOf, useChoiceLabels, type ChoiceQuestion } from "./choices";
-import { Burst, CheckDraw, CrossDraw, QuizCard, QuizTop, TimerRing, buzz, useCountUp } from "./parts";
+import { Confetti } from "@/components/app/Confetti";
+import { Burst, CheckDraw, CrossDraw, QuizCard, QuizTop, TimerRing, useCountUp } from "./parts";
 
 /** How long the "you're in" confirmation holds before the lesson itself is the screen. */
 const JOINED_MS = 1700;
+/** How long the numbers of the verdict and the ending roll; the stretch of each landing is timed to the same. */
+const GAIN_MS = 700;
+const TOTAL_MS = 1000;
+const ENDED_MS = 900;
 
 /**
  * The live quiz. What it draws comes from the session engine (lib/app/session): the server's
@@ -53,8 +59,8 @@ export function Play({ course, join }: { course: Course; join: JoinedSession }) 
 
   // A short buzz for each verdict, where the phone supports it.
   useEffect(() => {
-    if (run.stage === "right") buzz([18, 60, 28]);
-    else if (run.stage === "wrong") buzz(70);
+    if (run.stage === "right") buzz(HAPTICS.right);
+    else if (run.stage === "wrong") buzz(HAPTICS.wrong);
   }, [run.stage]);
 
   // The sheet for a question to the teacher. What is typed lives here, so a sheet closed by a question starting keeps it.
@@ -262,7 +268,7 @@ function Question({ run, onLeave, onPick }: { run: SessionRunView; onLeave: () =
   const q = run.question!;
   const choice = q as ChoiceQuestion;
   const pick = (i: number) => {
-    buzz(14);
+    buzz(HAPTICS.send);
     startTransition(() => onPick(responseOf(choice, i)));
   };
 
@@ -359,8 +365,8 @@ function Verdict({ run }: { run: SessionRunView }) {
   const { t, locale } = useQT();
   const q = run.question!;
   const { letters, label, mark } = useChoiceLabels(q);
-  const gain = useCountUp(run.gain, 0, 700);
-  const total = useCountUp(run.points, run.points - run.gain, 1000);
+  const gain = useCountUp(run.gain, 0, GAIN_MS);
+  const total = useCountUp(run.points, run.points - run.gain, TOTAL_MS);
   const numeric = q.kind === "numeric";
   const picked = run.picked === null ? null : numeric ? 0 : choiceOf(q, run.picked);
   const right = run.correctAnswer === null ? null : numeric ? 0 : choiceOf(q, run.correctAnswer);
@@ -375,12 +381,15 @@ function Verdict({ run }: { run: SessionRunView }) {
         <div className="q-body q-body--center">
           <span className="q-badge-wrap">
             <Burst />
-            <span className="q-badge q-badge--yes q-pop">
+            <span className="q-badge q-badge--yes q-badge--big">
               <CheckDraw size={74} />
             </span>
           </span>
           <h1 className="q-hero">{t("q.right")}</h1>
-          <span className="q-gain">+{gain}</span>
+          {/* The stretch starts when the count lands. */}
+          <span className="q-gain q-land" style={{ animationDelay: `${GAIN_MS}ms` }}>
+            +{gain}
+          </span>
           <span className="t-cap q-cap">
             {run.bonus > 0 ? t("q.breakdown", { base: run.gain - run.bonus, bonus: run.bonus }) : t("q.breakdownBase", { base: run.gain })}
           </span>
@@ -390,7 +399,7 @@ function Verdict({ run }: { run: SessionRunView }) {
       ) : (
         <>
           <div className="q-body q-body--center q-body--tight">
-            <span className="q-badge q-badge--no q-pop">
+            <span className="q-badge q-badge--no q-dip">
               <CrossDraw size={60} />
             </span>
             <h1 className="q-hero">{picked === null ? t("q.timeout") : t("q.wrong")}</h1>
@@ -432,7 +441,9 @@ function Verdict({ run }: { run: SessionRunView }) {
       <section className="card q-total">
         <div className="q-total__text">
           <span className="t-label muted">{t("q.total")}</span>
-          <span className="q-big">{total}</span>
+          <span className={`q-big${run.correct ? " q-land" : ""}`} style={{ animationDelay: `${TOTAL_MS}ms` }}>
+            {total}
+          </span>
         </div>
         <span className="q-chip">
           {run.gain > 0 && <ArrowUpIcon size={18} weight="bold" aria-hidden="true" />}
@@ -577,9 +588,16 @@ function Between({
 /** The teacher ended the session (F-10): the student's results, points and place, and the way to the summary. */
 function Ended({ run, onHome }: { run: SessionRunView; onHome: () => void }) {
   const { t } = useQT();
-  const total = useCountUp(run.points, 0, 900);
+  const total = useCountUp(run.points, 0, ENDED_MS);
   // A finished lesson is the first moment worth asking about notifications; the ask waits for a calm screen (lib/app/push).
   useEffect(() => noteMoment("lesson_end"), []);
+  // The ending's badge starts to pop now; a ref keeps a strict-mode remount from buzzing twice.
+  const buzzed = useRef(false);
+  useEffect(() => {
+    if (buzzed.current) return;
+    buzzed.current = true;
+    buzz(HAPTICS.done);
+  }, []);
   return (
     <>
       {/* An answer saved offline that reached the server only after the End did not count. */}
@@ -589,8 +607,11 @@ function Ended({ run, onHome }: { run: SessionRunView; onHome: () => void }) {
         </p>
       )}
       <div className="q-body q-body--center q-body--tight">
-        <span className="q-badge q-badge--no q-pop">
-          <FlagCheckeredIcon size={56} color="var(--yellow)" aria-hidden="true" />
+        <span className="q-badge-wrap">
+          <Confetti />
+          <span className="q-badge q-badge--no q-badge--big">
+            <FlagCheckeredIcon size={56} color="var(--yellow)" aria-hidden="true" />
+          </span>
         </span>
         <h1 className="q-hero q-hero--fail">{t("q.ended.title")}</h1>
         {run.summary && <p className="q-strong">{t("q.ended.right", { right: run.summary.right, total: run.summary.total })}</p>}
@@ -605,7 +626,9 @@ function Ended({ run, onHome }: { run: SessionRunView; onHome: () => void }) {
         <section className="card q-total">
           <div className="q-total__text">
             <span className="t-label muted">{t("q.total")}</span>
-            <span className="q-big">{total}</span>
+            <span className="q-big q-land" style={{ animationDelay: `${ENDED_MS}ms` }}>
+              {total}
+            </span>
           </div>
         </section>
       </div>

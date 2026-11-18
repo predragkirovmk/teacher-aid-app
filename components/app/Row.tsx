@@ -34,7 +34,7 @@ export function Row({
     </>
   );
   return href ? (
-    <Link href={href} className="item">
+    <Link href={href} className="item" transitionTypes={["nav-forward"]}>
       {body}
     </Link>
   ) : (

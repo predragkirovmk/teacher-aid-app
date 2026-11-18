@@ -1,7 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { ViewTransition, type ReactNode } from "react";
+import { useContext, ViewTransition, type ReactNode } from "react";
+import { TabTapContext } from "./ui";
+
+/**
+ * The subject morph, except on a tab switch: Home's next-lesson card and the same subject's row on the Subjects tab share a
+ * name (each morphs into the subject's own screen), so without this a tap between the two tabs morphed one into the other.
+ * Tab-bar taps and pager swipes carry the "tab" or "swipe" transition type.
+ */
+const TAB_SAFE_MORPH = { tab: "none", swipe: "none", default: "morph" };
+const NO_MORPH = { default: "none" };
+/** The `share` map for a subject's name: no morph on a tab switch, whether the type arrives or is lost (see TabTapContext). */
+export function useSubjectMorph() {
+  return useContext(TabTapContext) ? NO_MORPH : TAB_SAFE_MORPH;
+}
 import {
   CaretRightIcon,
   CodeIcon,
@@ -78,10 +91,12 @@ export function SubjectRow({
   status?: ReactNode;
 }) {
   const { t, locale } = useT();
+  const subjectMorph = useSubjectMorph();
   const row = (
     <Link
       href={`/app/subject/${course.id}`}
       className="item"
+      transitionTypes={["nav-forward"]}
       data-morph={shared ? `subject-${course.id}` : undefined}
     >
       <span className="mark" aria-hidden="true">
@@ -99,7 +114,7 @@ export function SubjectRow({
   );
   // A view-transition name must be unique on the page: the next-lesson card owns this subject's name.
   return shared ? (
-    <ViewTransition name={`subject-${course.id}`} share="morph" default="none">
+    <ViewTransition name={`subject-${course.id}`} share={subjectMorph} default="none">
       {row}
     </ViewTransition>
   ) : (

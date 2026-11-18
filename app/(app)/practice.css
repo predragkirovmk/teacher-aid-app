@@ -50,6 +50,11 @@
 .pr :is(.q-opt, .q-tf__btn) {
   animation-delay: calc(var(--i) * 40ms + 60ms);
 }
+@media (prefers-reduced-motion: reduce) {
+  .pr :is(.q-opt, .q-tf__btn) {
+    animation-delay: 0s;
+  }
+}
 
 /* The Check button before there is something to check: still there, not asking to be pressed. */
 .btn[aria-disabled="true"] {
@@ -57,7 +62,6 @@
   cursor: default;
 }
 .btn[aria-disabled="true"]:active {
-  transform: none;
   background: var(--yellow);
 }
 
@@ -85,6 +89,21 @@
   flex-direction: column;
   gap: 8px;
   animation: q-rise var(--spring-smooth-dur) var(--spring-smooth) backwards;
+}
+.pr-verdict[data-right="false"] {
+  animation: q-dip var(--spring-snappy-dur) var(--spring-snappy) backwards;
+}
+/* The check of a right answer pops on the big spring with a small burst round it. */
+.pr-mark {
+  position: relative;
+  display: grid;
+  flex: none;
+}
+.pr-mark > svg {
+  animation: q-badge-big var(--spring-big-dur) var(--spring-big) 40ms backwards;
+}
+.pr-mark .q-burst {
+  --k: 0.45;
 }
 .pr-verdict__head {
   display: flex;
@@ -219,9 +238,13 @@
   bottom: var(--y);
   width: 2.75rem;
   height: 2.75rem;
-  transform: translate(-50%, 50%);
+  /* The `translate` property, not a transform: the press squash is the `scale` property, which would shrink a transform's
+     offset and pull the dot off its point on the line. */
+  translate: -50% 50%;
   display: grid;
   place-items: center;
+  /* The visible dot is 10 px inside this 44 px target: 0.94 of it cannot be seen, so the whole target shrinks to 0.6. */
+  --press-scale: 0.6;
 }
 .tc__dot i {
   width: 0.625rem;

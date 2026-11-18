@@ -161,6 +161,38 @@
   display: grid;
   place-items: center;
 }
+/* The right answer and the big moments: the badge dips under, then pops past full size on the big spring. */
+.q-badge--big {
+  animation: q-badge-big var(--spring-big-dur) var(--spring-big) 40ms backwards;
+}
+/* The badge sits above the confetti that surrounds it. */
+.q-badge-wrap .q-badge {
+  position: relative;
+}
+/* One ring leaves the badge as it lands. */
+.q-badge-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid var(--yellow);
+  pointer-events: none;
+  animation: q-ring-pulse var(--spring-smooth-dur) var(--spring-smooth) 220ms both;
+}
+/* The text of a big moment is drawn over the confetti, never under it. */
+.q-body > .q-hero,
+.q-body > .q-strong {
+  position: relative;
+}
+/* A wrong answer is not a reward: a few pixels of dip and a settle, never a shake. */
+.q-dip {
+  animation: q-dip var(--spring-snappy-dur) var(--spring-snappy) backwards;
+}
+/* A number that has just finished rolling lands squashed, then springs back past its size. It starts after the roll, so no fill before. */
+.q-land {
+  transform-origin: 50% 100%;
+  animation: q-land var(--spring-big-dur) var(--spring-big);
+}
 .q-burst {
   position: absolute;
   inset: 0;
@@ -230,7 +262,6 @@
   color: #fff;
 }
 .q-me:active {
-  transform: scale(0.985);
   background: var(--card-press);
 }
 .q-me__text {
@@ -341,14 +372,15 @@
   font-size: var(--fs-body);
   font-weight: 600;
   line-height: 1.3;
-  transition:
-    transform var(--spring-press-dur) var(--spring-press),
-    background var(--spring-press-dur) var(--spring-press);
-  animation: q-rise var(--spring-smooth-dur) var(--spring-smooth) backwards;
-  animation-delay: calc(var(--i) * 50ms + 140ms);
+  --press-scale: 0.96;
+  /* The one place a step-4 entrance scales: a small pop from 0.96, 40 ms apart. It animates `transform`, so the press
+     squash (the `scale` property) still answers a tap while an option is arriving. */
+  animation:
+    q-opt-in var(--spring-pop-dur) var(--spring-pop) backwards,
+    arrive-fade 160ms linear backwards;
+  animation-delay: calc(var(--i) * 40ms + 100ms);
 }
 .q-opt:active {
-  transform: scale(0.97);
   background: var(--card-press);
 }
 .q-letter {
@@ -387,20 +419,14 @@
   justify-content: center;
   gap: 16px;
   padding: 16px 8px;
-  transition:
-    transform var(--spring-press-dur) var(--spring-press),
-    background var(--spring-press-dur) var(--spring-press);
-  animation: q-rise var(--spring-smooth-dur) var(--spring-smooth) backwards;
-  animation-delay: calc(var(--i) * 60ms + 140ms);
+  --press-scale: 0.96;
+  animation:
+    q-opt-in var(--spring-pop-dur) var(--spring-pop) backwards,
+    arrive-fade 160ms linear backwards;
+  animation-delay: calc(var(--i) * 40ms + 100ms);
 }
 .q-tf__btn:active {
-  transform: scale(0.96);
   background: var(--card-press);
-}
-/* Press in fast, spring back on release. */
-:is(.q-opt, .q-tf__btn):active {
-  transition-duration: 100ms;
-  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
 }
 .q-tf__icon {
   width: 4.5rem;
@@ -747,15 +773,9 @@
   place-items: center;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  transition:
-    transform var(--spring-press-dur) var(--spring-press),
-    background var(--spring-press-dur) var(--spring-press);
 }
 .n-minus:active {
-  transform: scale(0.94);
   background: var(--card-press);
-  transition-duration: 100ms;
-  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
 }
 .n-box {
   flex: 1;
@@ -1039,10 +1059,6 @@
 .pe-photo-btn {
   position: relative;
   border-radius: 50%;
-  transition: transform var(--spring-press-dur) var(--spring-press);
-}
-.pe-photo-btn:active {
-  transform: scale(0.96);
 }
 .pe-photo-badge {
   position: absolute;
@@ -1119,7 +1135,7 @@
   align-items: center;
   gap: 8px;
   text-align: center;
-  animation: q-sheet var(--spring-smooth-dur) var(--spring-smooth) backwards;
+  animation: q-sheet var(--spring-snappy-dur) var(--spring-snappy) backwards;
 }
 .scan-miss__badge {
   width: 4rem;
@@ -1150,10 +1166,42 @@
     transform: translateY(8px);
   }
 }
+@keyframes q-opt-in {
+  from {
+    transform: scale(0.96);
+  }
+}
 @keyframes q-pop {
   from {
     opacity: 0;
     transform: scale(0.4);
+  }
+}
+@keyframes q-badge-big {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+@keyframes q-ring-pulse {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+@keyframes q-dip {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+}
+@keyframes q-land {
+  from {
+    transform: scale(1.18, 0.82);
   }
 }
 @keyframes q-draw {
@@ -1171,7 +1219,7 @@
   }
   100% {
     opacity: 0;
-    transform: translate(-50%, -50%) rotate(var(--a)) translateY(calc(var(--d) * -1)) scale(1);
+    transform: translate(-50%, -50%) rotate(var(--a)) translateY(calc(var(--d) * var(--k, 1) * -1)) scale(1);
   }
 }
 @keyframes q-tick {
@@ -1211,7 +1259,7 @@
 @keyframes q-sheet {
   from {
     opacity: 0;
-    transform: translateY(40px);
+    transform: translateY(8px);
   }
 }
 
@@ -1229,6 +1277,13 @@
       opacity: 0;
     }
   }
+  /* The option pop is a plain fade: no scale, no delay. */
+  .q-opt,
+  .q-tf__btn,
+  .pr :is(.q-opt, .q-tf__btn) {
+    animation: arrive-fade 150ms linear backwards;
+    animation-delay: 0s;
+  }
   @keyframes q-pop {
     from {
       opacity: 0;
@@ -1238,6 +1293,22 @@
     from {
       opacity: 0;
     }
+  }
+  @keyframes q-badge-big {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes q-dip {
+    from {
+      opacity: 0;
+    }
+  }
+  .q-land {
+    animation: none;
+  }
+  .q-badge-wrap::after {
+    display: none;
   }
   @keyframes q-draw {
     from {

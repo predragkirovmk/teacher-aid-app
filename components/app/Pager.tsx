@@ -2,22 +2,24 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { SPRINGS, throwTo } from "@/lib/app/motion";
 
 /** The tab roots, in tab-bar order. Swiping moves along this list. */
-export const TAB_ORDER = ["/app", "/app/notifications", "/app/profile"];
+const TAB_ORDER = ["/app", "/app/subjects", "/app/notifications", "/app/profile"];
 
-const EXIT_MS = 190;
-const IN_MS = 300;
-const IN = `transform ${IN_MS}ms cubic-bezier(0.23, 1, 0.32, 1)`;
-/** The snappy spring from app.css, so a cancelled swipe settles like every other small state change. */
-const SPRING_MS = 390;
-const SPRING = `transform ${SPRING_MS}ms var(--spring-snappy)`;
+/**
+ * Every move of the pager is the app's own spring, started with the finger's speed (sampleThrow in lib/app/motion.ts), so a
+ * flick travels and a slow release settles, and each can be taken over by a new touch from wherever it is. A swipe takes the
+ * small `snappy` spring like every other small state change.
+ */
+const SPRING = SPRINGS.snappy;
 /** Swipes that start this close to a screen edge belong to the system's back and forward gestures. */
 const EDGE = 24;
 /** If the next section has not rendered this long after the exit, bring the old one back. */
 const WATCHDOG_MS = 900;
 
-type Gesture = { id: number; x0: number; y0: number; x: number; t: number; v: number; lock: "h" | "v" | null };
+/** `base` is where the screen was when the finger came down (not 0 when it caught a settle), `pos` where the finger has put it. */
+type Gesture = { id: number; x0: number; y0: number; x: number; t: number; v: number; lock: "h" | "v" | null; base: number; pos: number };
 
 /**
  * Swipe sideways to move between the tab roots, like the sections of a pager. The screen follows
@@ -37,24 +39,45 @@ export function Pager({ pathname, children }: { pathname: string; children: Reac
   const incoming = useRef<1 | -1 | 0>(0);
   /** True from release until the next section has settled; new swipes are ignored meanwhile. */
   const busy = useRef(false);
-  const timers = useRef<{ push?: ReturnType<typeof setTimeout>; dog?: ReturnType<typeof setTimeout>; settle?: ReturnType<typeof setTimeout> }>({});
+  const timers = useRef<{ push?: ReturnType<typeof setTimeout>; dog?: ReturnType<typeof setTimeout> }>({});
   const pathRef = useRef(pathname);
+  /** The move in progress, if any. */
+  const anim = useRef<Animation | null>(null);
+  /** The speed the section left at, px per ms, carried into the one that comes in. */
+  const flick = useRef(0);
   const index = TAB_ORDER.indexOf(pathname);
 
-  /** Put the screen back in place with no leftover inline styles, after `ms`. */
-  const rest = (ms: number) => {
-    clearTimeout(timers.current.settle);
-    timers.current.settle = setTimeout(() => {
-      const el = ref.current;
-      if (el) {
-        el.style.transition = "";
-        el.style.transform = "";
-      }
-      busy.current = false;
-    }, ms + 40);
+  /**
+   * Move the screen from `from` to `to` px on the spring, starting at `v` px per ms. The end state is set at once, under the
+   * animation, so nothing flashes when it ends; a screen that comes to rest at 0 then drops its inline style.
+   */
+  const move = (from: number, to: number, v: number) => {
+    const el = ref.current;
+    if (!el) return { reach: 0, near: 0 };
+    anim.current?.cancel();
+    const { animation: a, reach, near } = throwTo(el, "x", from, to, v, SPRING);
+    el.style.transform = `translateX(${to}px)`;
+    anim.current = a;
+    a.onfinish = () => {
+      if (anim.current !== a) return;
+      anim.current = null;
+      if (to === 0) el.style.transform = "";
+    };
+    return { reach, near };
   };
 
-  // The route changed. If a swipe caused it, slide the new section in from the side it came from.
+  /** Where the screen is now, in px. A move in progress is stopped and left exactly there. */
+  const catchScreen = () => {
+    const el = ref.current;
+    if (!el || !anim.current) return 0;
+    const x = new DOMMatrixReadOnly(getComputedStyle(el).transform).m41;
+    anim.current.cancel();
+    anim.current = null;
+    el.style.transform = `translateX(${x}px)`;
+    return x;
+  };
+
+  // The route changed. If a swipe caused it, the new section comes in from the side it came from, carrying the flick's speed.
   useLayoutEffect(() => {
     pathRef.current = pathname;
     clearTimeout(timers.current.dog);
@@ -62,12 +85,9 @@ export function Pager({ pathname, children }: { pathname: string; children: Reac
     const dir = incoming.current;
     if (!el || !dir) return;
     incoming.current = 0;
-    el.style.transition = "none";
-    el.style.transform = `translateX(${dir * 100}%)`;
-    void el.offsetWidth;
-    el.style.transition = IN;
-    el.style.transform = "translateX(0)";
-    rest(IN_MS);
+    // Free from here: a touch now takes the section from wherever it is.
+    busy.current = false;
+    move(dir * el.clientWidth, 0, flick.current);
   }, [pathname]);
 
   useEffect(() => {
@@ -75,18 +95,25 @@ export function Pager({ pathname, children }: { pathname: string; children: Reac
     return () => {
       clearTimeout(t.push);
       clearTimeout(t.dog);
-      clearTimeout(t.settle);
+      anim.current?.cancel();
     };
   }, []);
 
   const calm = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const springBack = () => {
+  /** Put the screen back in place: on the spring with the speed it has, or at once with Reduce Motion. */
+  const springBack = (v = 0) => {
     const el = ref.current;
     if (!el) return;
-    el.style.transition = calm() ? "" : SPRING;
-    el.style.transform = "translateX(0)";
-    rest(calm() ? 0 : SPRING_MS);
+    busy.current = false;
+    const x = calm() ? 0 : new DOMMatrixReadOnly(getComputedStyle(el).transform).m41;
+    if (calm() || Math.abs(x) < 0.5) {
+      anim.current?.cancel();
+      anim.current = null;
+      el.style.transform = "";
+      return;
+    }
+    move(x, 0, v);
   };
 
   return (
@@ -97,7 +124,9 @@ export function Pager({ pathname, children }: { pathname: string; children: Reac
         const target = e.target as HTMLElement;
         const atEdge = e.clientX < EDGE || e.clientX > window.innerWidth - EDGE;
         if (busy.current || index < 0 || atEdge || target.closest("input, textarea, [role=slider]")) return;
-        g.current = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, t: e.timeStamp, v: 0, lock: null };
+        // A screen still settling from the last release is caught where it is, and the finger carries on from there.
+        const base = catchScreen();
+        g.current = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, t: e.timeStamp, v: 0, lock: null, base, pos: base };
       }}
       onPointerMove={(e) => {
         const s = g.current;
@@ -124,27 +153,35 @@ export function Pager({ pathname, children }: { pathname: string; children: Reac
         s.t = e.timeStamp;
         // At the first and last section the screen resists instead of moving freely.
         const edge = (index === 0 && dx > 0) || (index === TAB_ORDER.length - 1 && dx < 0);
-        clearTimeout(timers.current.settle);
-        el.style.transition = "none";
-        el.style.transform = `translateX(${edge ? dx * 0.25 : dx}px)`;
+        s.pos = s.base + (edge ? dx * 0.25 : dx);
+        el.style.transform = `translateX(${s.pos}px)`;
       }}
       onPointerUp={(e) => {
         const s = g.current;
         const el = ref.current;
         g.current = null;
-        if (!s || !el || s.lock !== "h") return;
-        const dx = e.clientX - s.x0;
-        const next = dx < 0 ? index + 1 : index - 1;
-        const far = Math.abs(dx) > el.clientWidth * 0.28 || Math.abs(s.v) > 0.5;
-        if (!(far && next >= 0 && next < TAB_ORDER.length)) return springBack();
+        if (!s || !el) return;
+        // A finger that stopped before it lifted leaves with no speed.
+        const v = e.timeStamp - s.t > 100 ? 0 : s.v;
+        // A touch that caught a settling screen but never became a swipe lets it go again.
+        if (s.lock !== "h") return s.base ? springBack() : undefined;
+        // A flick decides the way it goes; a slow drag decides by where the screen has got to.
+        const dir = Math.abs(v) > 0.5 ? (v < 0 ? 1 : -1) : s.pos < 0 ? 1 : -1;
+        const next = index + dir;
+        const far = Math.abs(s.pos) > el.clientWidth * 0.28 || Math.abs(v) > 0.5;
+        if (!(far && next >= 0 && next < TAB_ORDER.length)) return springBack(v);
 
-        const dir = dx < 0 ? 1 : -1;
         const from = pathRef.current;
         busy.current = true;
-        incoming.current = dir;
+        // With Reduce Motion nothing slid out, so nothing slides in either: the section is just there, under the fade.
+        incoming.current = calm() ? 0 : dir;
+        flick.current = v;
         const go = () => {
           // Sections are tabs, not pages: switching replaces the history entry instead of adding one.
-          router.replace(TAB_ORDER[next]);
+          // The swipe has already moved the screen, so it asks for no view transition of its own ("swipe" has no class in
+          // Shell): a crossfade after the slide would be a second animation. With reduced motion nothing slid, so the
+          // fade is the whole change.
+          router.replace(TAB_ORDER[next], { transitionTypes: [calm() ? "tab" : "swipe"] });
           // If the route never changes (slow network, cancelled navigation), do not leave a blank screen.
           timers.current.dog = setTimeout(() => {
             if (pathRef.current !== from) return;
@@ -153,25 +190,22 @@ export function Pager({ pathname, children }: { pathname: string; children: Reac
           }, WATCHDOG_MS);
         };
         if (calm()) {
-          el.style.transition = "";
+          anim.current?.cancel();
+          anim.current = null;
           el.style.transform = "";
-          go();
-          rest(0);
-          return;
+          busy.current = false;
+          return go();
         }
-        // A flick keeps its speed: the section leaves at the release velocity instead of starting
-        // again from rest. A slow drag past the threshold leaves on the drawer curve (fast, then easing).
-        const left = el.clientWidth - Math.abs(dx);
-        const speed = Math.max(0, -dir * s.v);
-        const flung = speed > 0 && left / speed < EXIT_MS;
-        const ms = flung ? Math.max(100, Math.round(left / speed)) : EXIT_MS;
-        el.style.transition = `transform ${ms}ms ${flung ? "linear" : "cubic-bezier(0.32, 0.72, 0, 1)"}`;
-        el.style.transform = `translateX(${-dir * 100}%)`;
-        timers.current.push = setTimeout(go, ms - 15);
+        // The section leaves on the spring at the speed of the release. The route changes when it is nine tenths off the screen,
+        // not at the very end: the spring's tail takes about 70 ms to cover the last tenth, and the new section lands a frame
+        // or two after the route changes, so waiting for the end left the screen empty for about 100 ms.
+        const gone = move(s.pos, -dir * el.clientWidth, v);
+        timers.current.push = setTimeout(go, gone.near);
       }}
       onPointerCancel={() => {
+        const s = g.current;
         g.current = null;
-        if (!busy.current) springBack();
+        if (!busy.current && s) springBack();
       }}
     >
       {children}

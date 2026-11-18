@@ -90,14 +90,14 @@ function ProfileView({ student }: { student: Student }) {
       </div>
 
       <div className="grid2" style={{ marginBottom: 24 }}>
-        <Link href="/app/attendance" className="card tile">
+        <Link href="/app/attendance" className="card tile" transitionTypes={["nav-forward"]}>
           <span className="tile__head t-label">
             {t("home.attendance")}
             <CaretRightIcon size={20} aria-hidden="true" />
           </span>
           <span className="tile-big">{attendance.data ? `${attendance.data.percent}%` : "–"}</span>
         </Link>
-        <Link href={latest.data ? `/app/summary/${encodeURIComponent(latest.data.sessionId)}` : "/app/summary"} className="card tile">
+        <Link href={latest.data ? `/app/summary/${encodeURIComponent(latest.data.sessionId)}` : "/app/summary"} className="card tile" transitionTypes={["nav-forward"]}>
           <span className="tile__head t-label">
             {t("home.summary")}
             <CaretRightIcon size={20} aria-hidden="true" />

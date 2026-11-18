@@ -1,10 +1,9 @@
 "use client";
 
 import { CaretLeftIcon } from "@phosphor-icons/react";
-import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useT } from "@/lib/app/i18n";
-import { backWithMorph } from "@/lib/app/nav";
+import { useUI } from "./ui";
 
 /**
  * Back button with an optional trailing action, then the screen's large title, as on the tab roots.
@@ -21,19 +20,15 @@ export function Top({
   onBack?: () => void;
   quiet?: boolean;
 }) {
-  const router = useRouter();
   const { t } = useT();
+  const { back } = useUI();
   return (
     <>
       <div className="top">
         <button
           className="round"
           aria-label={t("back")}
-          onClick={() => {
-            if (onBack) onBack();
-            else if (window.history.length > 1) backWithMorph(router);
-            else router.push("/app");
-          }}
+          onClick={onBack ?? back}
         >
           <CaretLeftIcon size={26} />
         </button>

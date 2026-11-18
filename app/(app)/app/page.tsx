@@ -1,14 +1,13 @@
 "use client";
 
-import { BooksIcon, CaretRightIcon, CheckIcon, ClockIcon, ScanIcon, XIcon, type Icon } from "@phosphor-icons/react";
+import { CaretRightIcon, CheckIcon, ClockIcon, ScanIcon, XIcon, type Icon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useEffect, ViewTransition, type CSSProperties } from "react";
 import { Avatar } from "@/components/app/Avatar";
 import { Mark } from "@/components/app/Mark";
 import { PracticeHomeRow } from "@/components/app/practice/PracticeRows";
 import { QueryState } from "@/components/app/QueryState";
-import { Row } from "@/components/app/Row";
-import { SubjectMark, SubjectRow } from "@/components/app/SubjectCard";
+import { SubjectMark, SubjectRow, useSubjectMorph } from "@/components/app/SubjectCard";
 import { useUI } from "@/components/app/ui";
 import { demoOnly } from "@/lib/app/api";
 import {
@@ -84,15 +83,22 @@ export default function Home() {
   // from the first paint, and skips it once [data-rise-seen] is on <html>, which the layout's inline
   // script sets before paint on later loads and this effect sets after the intro has run.
   useEffect(() => {
-    const id = setTimeout(() => {
+    const seen = () => {
       document.documentElement.setAttribute("data-rise-seen", "");
       try {
         window.sessionStorage.setItem(RISE_KEY, "1");
       } catch {
         // ignore
       }
-    }, 1200);
-    return () => clearTimeout(id);
+    };
+    const id = setTimeout(seen, 1200);
+    const shown = performance.now();
+    return () => {
+      clearTimeout(id);
+      // Leaving within the intro still counts as having seen it, or a quick tab and back would play it again. The 150 ms
+      // floor skips the instant mount-unmount-mount of React's dev double effect.
+      if (performance.now() - shown > 150) seen();
+    };
   }, []);
 
   const date = new Date(now);
@@ -102,7 +108,7 @@ export default function Home() {
     <main className="screen" data-pending={live === null || !me.loaded ? "" : undefined}>
       <div className="home-bar">
         <Mark size={32} />
-        <Link href="/app/profile" replace aria-label={t("nav.profile")} style={{ display: "block", borderRadius: "50%" }}>
+        <Link href="/app/profile" replace transitionTypes={["tab"]} className="press" aria-label={t("nav.profile")} style={{ display: "block", borderRadius: "50%" }}>
           <Avatar photo={me.photo} initials={me.initials} size={48} className="avatar--quiet" />
         </Link>
       </div>
@@ -154,24 +160,8 @@ function LiveCards() {
       </div>
       <div {...rise(2)}>
         <PracticeHomeRow space="below" />
-        <AllSubjects />
       </div>
     </>
-  );
-}
-
-function AllSubjects({ gap = false }: { gap?: boolean }) {
-  const { t } = useT();
-  const courses = useCourses();
-  return (
-    <div className="list" style={gap ? { marginTop: 16 } : undefined}>
-      <Row
-        icon={BooksIcon}
-        label={t("home.allSubjects")}
-        value={courses.data ? t("home.subjectCount", { n: courses.data.length }) : undefined}
-        href="/app/subjects"
-      />
-    </div>
   );
 }
 
@@ -179,7 +169,7 @@ function RankTile() {
   const { t } = useT();
   const standings = useStandings();
   return (
-    <Link href="/app/leaderboard" className="card tile">
+    <Link href="/app/leaderboard" className="card tile" transitionTypes={["nav-forward"]}>
       <span className="tile__head">
         <span className="t-label">{t("home.leaderboard")}</span>
         <CaretRightIcon size={16} aria-hidden="true" />
@@ -194,7 +184,7 @@ function AttendanceTile() {
   const { t } = useT();
   const attendance = useAttendanceView();
   return (
-    <Link href="/app/attendance" className="card tile">
+    <Link href="/app/attendance" className="card tile" transitionTypes={["nav-forward"]}>
       <span className="tile__head">
         <span className="t-label">{t("home.attendance")}</span>
         <CaretRightIcon size={16} aria-hidden="true" />
@@ -234,7 +224,7 @@ function ResultTile({ wide = false }: { wide?: boolean }) {
     !!notifications.data?.some((n) => n.kind === "result_ready" && n.payload.sessionId === result.sessionId && n.readAt === null);
   const subject = result ? subjectLabel(t, result.subjectId, result.subjectName) : "";
   return (
-    <Link href={result ? `/app/summary/${encodeURIComponent(result.sessionId)}` : "/app/summary"} className="card tile" style={wide ? { gridColumn: "1 / -1" } : undefined}>
+    <Link href={result ? `/app/summary/${encodeURIComponent(result.sessionId)}` : "/app/summary"} className="card tile" transitionTypes={["nav-forward"]} style={wide ? { gridColumn: "1 / -1" } : undefined}>
       <span className="tile__head">
         <span className="t-label">{t("home.summary")}</span>
         <CaretRightIcon size={16} aria-hidden="true" />
@@ -256,6 +246,7 @@ function ResultTile({ wide = false }: { wide?: boolean }) {
 /** The demo's school day: the lesson under way or next, the next test, today's timetable. */
 function DemoCards({ now, live }: { now: number; live: boolean }) {
   const { t, locale } = useT();
+  const subjectMorph = useSubjectMorph();
   const scans = useScans();
   const courses = useCourses().data ?? [];
 
@@ -319,10 +310,11 @@ function DemoCards({ now, live }: { now: number; live: boolean }) {
     <>
       {/* What matters first: the lesson under way or next, which is also where you check in. */}
       <div {...rise(0)}>
-        <ViewTransition name={`subject-${course?.id}`} share="morph" default="none">
+        <ViewTransition name={`subject-${course?.id}`} share={subjectMorph} default="none">
           <Link
             href={needsScan ? "/app/scan" : `/app/subject/${course?.id}`}
             className="next"
+            transitionTypes={["nav-forward"]}
             data-morph={`subject-${course?.id}`}
           >
             <span className="next__sign" aria-hidden="true">
@@ -370,7 +362,7 @@ function DemoCards({ now, live }: { now: number; live: boolean }) {
 
       <div {...rise(1)}>
         <div className="grid2">
-          <Link href="/app/schedule" className="card tile">
+          <Link href="/app/schedule" className="card tile" transitionTypes={["nav-forward"]}>
             <span className="tile__head">
               <span className="t-label">{t(ahead?.kind === "pop" ? "home.nextPop" : "home.nextTest")}</span>
               <CaretRightIcon size={16} aria-hidden="true" />
@@ -402,7 +394,7 @@ function DemoCards({ now, live }: { now: number; live: boolean }) {
               {shown.length > 0 && ` · ${t(`home.${shiftOf(shown[0].start)}-shift`)}`}
             </span>
           </h2>
-          <Link href="/app/schedule" className="section-link">
+          <Link href="/app/schedule" className="section-link" transitionTypes={["nav-forward"]}>
             {t("sch.title")}
           </Link>
         </div>
@@ -430,7 +422,6 @@ function DemoCards({ now, live }: { now: number; live: boolean }) {
             );
           })}
         </ul>
-        <AllSubjects gap />
       </div>
     </>
   );

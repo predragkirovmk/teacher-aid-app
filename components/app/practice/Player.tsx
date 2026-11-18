@@ -3,13 +3,15 @@
 import { CheckCircleIcon, CheckIcon, CloudArrowUpIcon, HourglassIcon, XCircleIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { HAPTICS, buzz } from "@/lib/app/haptics";
 import { ConnectionPill } from "@/components/app/ConnectionPill";
 import { Gate } from "@/components/app/QueryState";
 import { Top } from "@/components/app/Top";
 import { Choices, choiceOf, responseOf, type ChoiceQuestion } from "@/components/app/quiz/choices";
 import { NumberField } from "@/components/app/quiz/Numeric";
-import { CheckDraw, QuizTop, buzz, useCountUp } from "@/components/app/quiz/parts";
+import { Confetti } from "@/components/app/Confetti";
+import { Burst, CheckDraw, QuizTop, useCountUp } from "@/components/app/quiz/parts";
 import { markNotificationsRead, useCourses, useNotifications } from "@/lib/app/api/hooks";
 import type { PracticeQuestion, PracticeSet } from "@/lib/app/api/types";
 import { useT } from "@/lib/app/i18n";
@@ -123,11 +125,19 @@ function Step({
   const open = state.status === "open";
 
   const send = (response: string) => {
-    buzz(14);
+    buzz(HAPTICS.send);
     void onAnswer(response);
   };
 
   const verdict = state.status === "checked" ? state.verdict : null;
+  // Once per question, when the right verdict's check starts to pop; a ref keeps a strict-mode remount from buzzing twice.
+  const buzzed = useRef(false);
+  const rightNow = verdict?.correct === true;
+  useEffect(() => {
+    if (!rightNow || buzzed.current) return;
+    buzzed.current = true;
+    buzz(HAPTICS.right);
+  }, [rightNow]);
   const given = state.status === "open" ? null : state.response;
 
   return (
@@ -214,7 +224,14 @@ function Step({
             <>
               <section id="pr-verdict" className="pr-verdict" role="status" data-right={verdict.correct}>
                 <h2 className="pr-verdict__head">
-                  {verdict.correct ? <CheckCircleIcon size={26} weight="bold" aria-hidden="true" /> : <XCircleIcon size={26} weight="bold" aria-hidden="true" />}
+                  {verdict.correct ? (
+                    <span className="pr-mark">
+                      <Burst />
+                      <CheckCircleIcon size={26} weight="bold" aria-hidden="true" />
+                    </span>
+                  ) : (
+                    <XCircleIcon size={26} weight="bold" aria-hidden="true" />
+                  )}
                   <span className="grow">{verdict.correct ? t("pr.right") : t("pr.wrong")}</span>
                 </h2>
                 {!verdict.correct && <p className="pr-verdict__line">{t("pr.correctIs", { a: text(q, verdict.correctAnswer) })}</p>}
@@ -250,6 +267,13 @@ function End({ set, view, onLeave }: { set: PracticeSet; view: PracticeView; onL
   useEffect(() => {
     if (finished) noteMoment("practice_done");
   }, [finished]);
+  // The same moment, once, as the confetti starts; a ref keeps a strict-mode remount from buzzing twice.
+  const buzzed = useRef(false);
+  useEffect(() => {
+    if (!finished || buzzed.current) return;
+    buzzed.current = true;
+    buzz(HAPTICS.done);
+  }, [finished]);
 
   if (!view.finished) {
     return (
@@ -280,8 +304,11 @@ function End({ set, view, onLeave }: { set: PracticeSet; view: PracticeView; onL
         <ConnectionPill variant="inline" answerShown />
         <QuizTop onLeave={onLeave} leaveLabel={t("pr.leave")} label={label} />
         <div className="q-body q-body--center q-body--tight" role="status">
-          <span className="q-badge q-badge--no">
-            <CheckDraw size={64} />
+          <span className="q-badge-wrap">
+            <Confetti />
+            <span className="q-badge q-badge--no q-badge--big">
+              <CheckDraw size={64} />
+            </span>
           </span>
           <h1 className="q-hero">{t("pr.done.score", { score, total })}</h1>
           <p className="q-strong">{t("pr.done.sub")}</p>

@@ -14,7 +14,7 @@ export function ResultRow({ result, withSubject = true }: { result: SessionResul
   const subject = subjectLabel(t, result.subjectId, result.subjectName);
   const date = formatDate(result.endedAt, locale);
   return (
-    <Link href={`/app/summary/${encodeURIComponent(result.sessionId)}`} className="item">
+    <Link href={`/app/summary/${encodeURIComponent(result.sessionId)}`} className="item" transitionTypes={["nav-forward"]}>
       <span className="mark" aria-hidden="true">
         <SubjectMark subject={result} />
       </span>

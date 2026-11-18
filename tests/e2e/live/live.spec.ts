@@ -30,10 +30,11 @@ test("Home draws the API's student, rank, attendance and latest result", async (
   const latest = page.getByRole("link", { name: new RegExp(mk.t("home.summary")) });
   await expect(latest).toContainText("4/5");
   await expect(latest).toContainText(mk.t("subj.math"));
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.allSubjects")) })).toContainText(mk.t("home.subjectCount", { n: 3 }));
+  // The subjects are a tab of their own now, not a row on Home.
+  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.allSubjects")) })).toHaveCount(0);
 
   const { calls } = await serverState(request);
-  expect(calls).toEqual(expect.arrayContaining(["GET /me", "GET /me/leaderboard", "GET /me/attendance", "GET /me/results", "GET /me/courses"]));
+  expect(calls).toEqual(expect.arrayContaining(["GET /me", "GET /me/leaderboard", "GET /me/attendance", "GET /me/results"]));
 });
 
 test("Home hides the demo-only cards", async ({ page }) => {

@@ -10,7 +10,7 @@ import { ANON_MAX_LENGTH, cleanAsk } from "@/lib/app/session/ask";
 import type { SessionRunView } from "@/lib/app/session/controller";
 import { focusNoticeSeen, markFocusNoticeSeen } from "@/lib/app/session/focus-notice";
 import { useQT } from "@/lib/app/quiz-copy";
-import { buzz } from "./parts";
+import { HAPTICS, buzz } from "@/lib/app/haptics";
 
 /** Show the counter once the question is this much used; before that it is only noise. */
 const COUNT_FROM = 0.8;
@@ -57,7 +57,7 @@ export function FocusNotice() {
               <Inline text={text} />
             </p>
           ))}
-          <Link href="/app/privacy#focus" className="doc__link">
+          <Link href="/app/privacy#focus" className="doc__link" transitionTypes={["nav-forward"]}>
             {tt("privacy.fullNotice")}
           </Link>
         </details>
@@ -94,13 +94,13 @@ export function AskBody({ run, draft, setDraft, onSend, close }: BodyProps) {
   const send = () => {
     if (cleanAsk(draft) === "") {
       setEmpty(true);
-      buzz(40);
+      buzz(HAPTICS.problem);
       field.current?.focus();
       return;
     }
     const k = onSend(draft);
     if (k === null) return;
-    buzz(14);
+    buzz(HAPTICS.send);
     setKey(k);
     setDraft("");
   };

@@ -14,7 +14,12 @@ type UI = {
   openPushHelp: () => void;
   /** The demo-time choices, from Home's demo label. */
   openClock: () => void;
+  /** The in-app Back: slides the screen away, or goes Home when there is no history. It lives in the Shell so its code ships once, not in every screen's chunk. */
+  back: () => void;
 };
 
-export const UIContext = createContext<UI>({ openLang() {}, confirm() {}, toast() {}, openInstall() {}, openPushHelp() {}, openClock() {} });
+export const UIContext = createContext<UI>({ openLang() {}, confirm() {}, toast() {}, openInstall() {}, openPushHelp() {}, openClock() {}, back() {} });
 export const useUI = () => useContext(UIContext);
+
+/** True while a tap on a tab is going somewhere (Shell). Things that must not animate on a tab switch ask it, not the transition type, which React can lose under load. */
+export const TabTapContext = createContext(false);

@@ -1,15 +1,17 @@
 "use client";
 
-import { BellSimpleIcon, CheckIcon, HouseSimpleIcon, ScanIcon, UserIcon, type Icon } from "@phosphor-icons/react";
+import { BellSimpleIcon, BooksIcon, CheckIcon, HouseSimpleIcon, ScanIcon, UserIcon, type Icon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition, type ReactNode } from "react";
 import { NOTIFICATIONS_PAGE } from "@/lib/app/api/config";
 import { invalidate } from "@/lib/app/api/query";
 import { useAuth, useNotifications, useSettings } from "@/lib/app/api/hooks";
 import { useT } from "@/lib/app/i18n";
 import { useAsk, usePush } from "@/lib/app/push";
+import { SPRINGS, throwTo } from "@/lib/app/motion";
 import { isOpenPath, needsNotice, noticeWaits, noticeWasUpdated } from "@/lib/app/privacy";
+import { BACK, goBack } from "@/lib/app/nav";
 import { welcomeUrl } from "@/lib/app/signin";
 import type { Locale } from "@/lib/app/api/types";
 import { ClockOptions } from "./ClockOptions";
@@ -17,11 +19,12 @@ import { ConnectionPill } from "./ConnectionPill";
 import { NoticeScreen } from "./NoticeScreen";
 import { OutboxRunner } from "./OutboxRunner";
 import { Pager } from "./Pager";
+import { SegGlide } from "./SegGlide";
 import { IosInstallSteps, PushAskSheet, PushHelpSheet } from "./PushSheets";
 import { PushRunner } from "./PushRunner";
 import { StudentStream } from "./StudentStream";
 import { SignedElsewhere, Splash, Unreachable } from "./SessionScreens";
-import { UIContext, type ConfirmOptions } from "./ui";
+import { TabTapContext, UIContext, type ConfirmOptions } from "./ui";
 
 const NO_TABS = ["/app/scan", "/app/welcome"];
 /** How long after landing on a calm screen the ask about notifications appears: the result is read first. */
@@ -83,13 +86,21 @@ export function Shell({ children }: { children: ReactNode }) {
       openInstall: (how: "ios" | "manual", reason?: "push") => setInstallState({ at: pathname, how, push: reason === "push" }),
       openPushHelp: () => setPushHelpAt(pathname),
       openClock: () => setClockAt(pathname),
+      back: () => (window.history.length > 1 ? goBack(router) : router.push("/app", BACK)),
     }),
-    [toast, pathname],
+    [toast, pathname, router],
   );
 
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
+
+  // The tab tap that is going somewhere, as the two screens it joins. It holds through the swap, so the old screen's exit and the new
+  // screen's enter both see it (a flag cleared when the path changes would be gone for the enter), and it is forgotten as soon as the
+  // student is on any screen it does not join or taps anything outside the tab bar (a row on the screen it arrived at must not count as a tab tap). See ENTER_TAB.
+  const [tap, setTap] = useState<{ from: string; to: string } | null>(null);
+  if (tap && pathname !== tap.from && pathname !== tap.to) setTap(null);
+  const tabTap = tap !== null;
 
   // A lesson or a practice set has just finished and the student is on a calm screen: after a beat, ask once about notifications.
   const { eligible, shown } = ask;
@@ -159,14 +170,19 @@ export function Shell({ children }: { children: ReactNode }) {
       <OutboxRunner meId={status === "signedIn" ? me.data?.id : undefined} />
       <StudentStream meId={status === "signedIn" ? me.data?.id : undefined} />
       <PushRunner student={status === "signedIn" && me.data ? { id: me.data.id, notificationsOn: me.data.settings.notificationsOn } : undefined} />
-      <div className="stage">
+      <div className="stage" onClickCapture={(e) => tap && !(e.target as Element).closest(".tabbar") && setTap(null)}>
         <div className="phone">
-          <Pager pathname={pathname}>{content}</Pager>
+          <Pager pathname={pathname}>
+            {/* Keyed by the route so the screen enters and exits (the layout itself never remounts). Only typed navigations animate; the pager's swipe and redirects carry no type. */}
+            <ViewTransition key={pathname} enter={tabTap ? ENTER_TAB : ENTER} exit={tabTap ? EXIT_TAB : EXIT} default="none">
+              <TabTapContext.Provider value={tabTap}>{content}</TabTapContext.Provider>
+            </ViewTransition>
+          </Pager>
           {!inQuiz && <ConnectionPill variant="float" />}
           {showTabs && (
             <>
               <div className="edge" aria-hidden="true" />
-              <Dock pathname={pathname} />
+              <Dock pathname={pathname} onTabTap={(href) => setTap(href === pathname ? null : { from: pathname, to: href })} />
             </>
           )}
           {lang && (
@@ -247,7 +263,14 @@ export function Shell({ children }: { children: ReactNode }) {
   );
 }
 
-function Dock({ pathname }: { pathname: string }) {
+/** Each navigation type picks its CSS classes in app.css; `lift` marks the screen that travels on top (the new one going deeper, the old one going back). Anything untyped does nothing. */
+const ENTER = { "nav-forward": "nav-forward lift", "nav-back": "nav-back", tab: "tab", swipe: "none", default: "none" };
+const EXIT = { "nav-forward": "nav-forward", "nav-back": "nav-back lift", tab: "tab", swipe: "none", default: "none" };
+/** While a tap on a tab is on its way the screens crossfade whatever type React hands the transition. React can lose the `tab` the Link added (the router finishes the navigation in a transition of its own, and under load the commit has been seen to arrive untyped), and an untyped swap would show no crossfade at all. */
+const ENTER_TAB = { ...ENTER, default: "tab" };
+const EXIT_TAB = { ...EXIT, default: "tab" };
+
+function Dock({ pathname, onTabTap }: { pathname: string; onTabTap: (href: string) => void }) {
   const { t } = useT();
   const feed = useNotifications().data;
   const count = (feed ?? []).filter((n) => n.readAt === null).length;
@@ -264,11 +287,30 @@ function Dock({ pathname }: { pathname: string }) {
     if (seen !== null && count > seen) setArrived(t("notif.arrived", { n: shownCount }));
   }
 
-  const tab = (href: string, label: string, Icon: Icon, active: boolean, badge?: number) => (
+  // The tab tapped moves the piece and fills its glyph at once, before its screen has loaded; aria-current stays with the
+  // screen actually shown. A tap is forgotten as soon as the screen changes: kept, it would win again on a later return to
+  // the screen it was made on (a swipe back), and send the piece to the old tab.
+  const [tapped, setTapped] = useState<{ href: string; from: string } | null>(null);
+  if (tapped && tapped.from !== pathname) setTapped(null);
+  const shown = pathname === "/app" ? "/app" : pathname === "/app/subjects" ? "/app/subjects" : pathname.startsWith("/app/notifications") ? "/app/notifications" : pathname === "/app/profile" ? "/app/profile" : "";
+  const chosen = tapped?.from === pathname ? tapped.href : shown;
+
+  const tab = (href: string, label: string, Icon: Icon, badge?: number) => (
     // Switching tabs replaces the history entry, so Back leaves the section instead of replaying tabs.
-    <Link href={href} replace className="tab" aria-current={active ? "page" : undefined}>
+    <Link
+      href={href}
+      replace
+      transitionTypes={["tab"]}
+      className="tab"
+      aria-current={shown === href ? "page" : undefined}
+      data-checked={chosen === href}
+      onClick={() => {
+        setTapped({ href, from: pathname });
+        onTabTap(href);
+      }}
+    >
       {/* The selected tab shows the filled glyph, as a tab bar does on iOS. */}
-      <Icon size={24} weight={active ? "fill" : "regular"} aria-hidden="true" />
+      <Icon size={24} weight={chosen === href ? "fill" : "regular"} aria-hidden="true" />
       {label}
       {badge !== undefined && (
         <>
@@ -283,27 +325,24 @@ function Dock({ pathname }: { pathname: string }) {
     </Link>
   );
 
-  const index = pathname === "/app" ? 0 : pathname.startsWith("/app/notifications") ? 1 : pathname === "/app/profile" ? 2 : -1;
 
   return (
     <nav className="dock" aria-label={t("nav.main")}>
       <span className="sr" role="status">
         {arrived}
       </span>
+      {/* The classic five: two sections on each side of the scan, which sits raised in the middle because it is an action,
+          not a section. The one piece under the current tab is SegGlide's, and it skips over the scan. */}
       <div className="tabbar glass">
-        <span
-          className="tab-ind"
-          aria-hidden="true"
-          style={{ transform: `translateX(${Math.max(index, 0) * 100}%)`, opacity: index < 0 ? 0 : 1 }}
-        />
-        {tab("/app", t("nav.home"), HouseSimpleIcon, pathname === "/app")}
-        {tab("/app/notifications", t("nav.alerts"), BellSimpleIcon, pathname.startsWith("/app/notifications"), count)}
-        {tab("/app/profile", t("nav.profile"), UserIcon, pathname === "/app/profile")}
+        <SegGlide at={chosen} />
+        {tab("/app", t("nav.home"), HouseSimpleIcon)}
+        {tab("/app/subjects", t("subjects.title"), BooksIcon)}
+        <Link href="/app/scan" className="scan-fab" transitionTypes={["nav-forward"]} aria-label={t("nav.scan")}>
+          <ScanIcon size={30} aria-hidden="true" />
+        </Link>
+        {tab("/app/notifications", t("nav.alerts"), BellSimpleIcon, count)}
+        {tab("/app/profile", t("nav.profile"), UserIcon)}
       </div>
-      {/* The scan is an action, not a section, so it sits beside the tab bar instead of in it. */}
-      <Link href="/app/scan" className="scan-fab" aria-label={t("nav.scan")}>
-        <ScanIcon size={32} aria-hidden="true" />
-      </Link>
     </nav>
   );
 }
@@ -326,7 +365,9 @@ export function Sheet({
 }) {
   const { t } = useT();
   const ref = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ y0: number; y: number; t: number; v: number; moved: boolean } | null>(null);
+  const drag = useRef<{ y0: number; y: number; t: number; v: number; moved: boolean; base: number } | null>(null);
+  /** The spring back to rest, while it runs: a new touch catches the sheet where it is. */
+  const settling = useRef<Animation | null>(null);
   const [dy, setDy] = useState(0);
   const [phase, setPhase] = useState<"in" | "drag" | "settle" | "out">("in");
   /** How the sheet leaves: on the drawer curve, or at the speed of the flick that threw it. */
@@ -336,6 +377,17 @@ export function Sheet({
     (ms: number, flung: boolean) => {
       const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       if (calm) return onClose();
+      // Closed while it is still rising: freeze it where it is, so the exit starts from there. Dropping the rise (animation: none,
+      // below) with nothing held would snap the sheet to its resting place, or past it, before it leaves.
+      // (Found by its role, not through `ref`: this callback is handed to render, where a ref may not be read.)
+      const el = document.querySelector<HTMLElement>('.sheet[role="dialog"]');
+      if (el) {
+        for (const a of el.getAnimations()) {
+          a.commitStyles();
+          a.cancel();
+        }
+        void el.offsetHeight;
+      }
       setExit({ ms, flung });
       setPhase("out");
       setTimeout(onClose, ms);
@@ -343,6 +395,21 @@ export function Sheet({
     [onClose],
   );
   const close = useCallback(() => leave(SHEET_EXIT_MS, false), [leave]);
+
+  /** The sheet springs back to rest carrying the finger's speed (px per ms, down is positive); Reduce Motion puts it back at once. */
+  const springBack = (v: number) => {
+    const el = ref.current;
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (el && !calm && Math.abs(dy) >= 1) {
+      const { animation } = throwTo(el, "y", dy, 0, v, SPRINGS.snappy);
+      settling.current = animation;
+      animation.onfinish = () => {
+        if (settling.current === animation) settling.current = null;
+      };
+    }
+    setPhase("settle");
+    setDy(0);
+  };
 
   // The latest close, for the Escape key, without setting the sheet up again on every render.
   const closeRef = useRef(close);
@@ -374,6 +441,7 @@ export function Sheet({
       window.removeEventListener("keydown", key);
       behind.forEach((el) => (el.inert = false));
       prev?.focus?.();
+      settling.current?.cancel();
     };
   }, []);
 
@@ -381,7 +449,7 @@ export function Sheet({
     phase === "drag"
       ? { transform: `translateY(${dy}px)`, transition: "none", animation: "none" }
       : phase === "settle"
-        ? { transform: "translateY(0)", transition: "transform var(--spring-snappy-dur) var(--spring-snappy)", animation: "none" }
+        ? { transform: "translateY(0)", transition: "none", animation: "none" }
         : phase === "out"
           ? {
               transform: "translateY(120%)",
@@ -405,7 +473,17 @@ export function Sheet({
             if (!drag.current?.moved) close();
           }}
           onPointerDown={(e) => {
-            drag.current = { y0: e.clientY, y: e.clientY, t: e.timeStamp, v: 0, moved: false };
+            // A sheet still springing back is caught where it is, and the finger carries on from there.
+            let base = 0;
+            const el = ref.current;
+            if (settling.current && el) {
+              base = new DOMMatrixReadOnly(getComputedStyle(el).transform).m42;
+              settling.current.cancel();
+              settling.current = null;
+              setDy(base);
+              setPhase("drag");
+            }
+            drag.current = { y0: e.clientY, y: e.clientY, t: e.timeStamp, v: 0, moved: false, base };
             e.currentTarget.setPointerCapture(e.pointerId);
           }}
           onPointerMove={(e) => {
@@ -413,6 +491,7 @@ export function Sheet({
             if (!d) return;
             const raw = e.clientY - d.y0;
             if (Math.abs(raw) > 6) d.moved = true;
+            const at = d.base + raw;
             if (!d.moved) return;
             const dt = Math.max(1, e.timeStamp - d.t);
             d.v = 0.8 * d.v + 0.2 * ((e.clientY - d.y) / dt);
@@ -420,19 +499,25 @@ export function Sheet({
             d.t = e.timeStamp;
             setPhase("drag");
             // Pulling up meets resistance instead of moving freely.
-            setDy(raw >= 0 ? raw : -Math.sqrt(-raw) * 3);
+            setDy(at >= 0 ? at : -Math.sqrt(-at) * 3);
           }}
-          onPointerUp={() => {
+          onPointerUp={(e) => {
             const d = drag.current;
-            if (!d?.moved) return;
-            if (dy > 90 || d.v > 0.6) {
+            if (!d) return;
+            if (!d.moved) {
+              // A touch that caught a settling sheet but did not drag lets it go again.
+              if (d.base) springBack(0);
+              return;
+            }
+            // A finger that stopped before it lifted leaves with no speed.
+            const v = e.timeStamp - d.t > 100 ? 0 : d.v;
+            if (dy > 90 || v > 0.6) {
               // A flick keeps its speed instead of starting the exit again from rest.
               const left = (ref.current?.offsetHeight ?? 0) * 1.2 - dy;
-              const flung = d.v > 0 && left / d.v < SHEET_EXIT_MS;
-              leave(flung ? Math.max(120, Math.round(left / d.v)) : SHEET_EXIT_MS, flung);
+              const flung = v > 0 && left / v < SHEET_EXIT_MS;
+              leave(flung ? Math.max(120, Math.round(left / v)) : SHEET_EXIT_MS, flung);
             } else {
-              setPhase("settle");
-              setDy(0);
+              springBack(v);
             }
             // The click that follows this pointerup must not close the sheet.
             setTimeout(() => {
@@ -441,8 +526,7 @@ export function Sheet({
           }}
           onPointerCancel={() => {
             drag.current = null;
-            setPhase("settle");
-            setDy(0);
+            springBack(0);
           }}
         >
           <span className="sheet__grip" />

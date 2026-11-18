@@ -126,7 +126,7 @@ function DataView({ student }: { student: Student }) {
       <h2 className="section-h">{t("data.phone")}</h2>
       <p className="t-body muted data__text">
         {t("data.phoneBody")}{" "}
-        <Link href="/app/privacy#phone" className="doc__link">
+        <Link href="/app/privacy#phone" className="doc__link" transitionTypes={["nav-forward"]}>
           {t("data.phoneList")}
         </Link>
       </p>
