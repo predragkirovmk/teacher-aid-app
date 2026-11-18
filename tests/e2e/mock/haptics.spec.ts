@@ -97,8 +97,8 @@ test("a new badge vibrates once", async ({ page }) => {
   await page.goto("/app/profile");
   await page.getByRole("link", { name: mk.t("drawer.achievements") }).click();
   await expect(page.locator(".unlock").first()).toBeVisible();
-  // The screen is in the DOM when the slide starts, but React runs its effects (the buzz) only after the view transition ends,
-  // so wait for the buzz instead of reading once; then give a second one time to show up, since the promise is exactly one.
+  // The buzz waits for the badge's pop (250 ms after the commit), so the badge can be visible before it; wait for the buzz
+  // instead of reading once, then give a second one time to show up, since the promise is exactly one.
   const badge = async () => (await calls(page)).filter((p) => JSON.stringify(p) === "[16,50,16]").length;
   await expect.poll(badge, { timeout: 10_000 }).toBe(1);
   await page.waitForTimeout(500);
