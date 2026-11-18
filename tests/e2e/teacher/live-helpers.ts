@@ -85,7 +85,6 @@ export const go = (context: BrowserContext, seconds: number) => context.clock.se
 /** The panel "Прашањето сега". */
 export const panel = (page: Page) => page.locator(".qpanel");
 export const send = (page: Page) => panel(page).getByRole("button", { name: "Испрати го прашањето", exact: true });
-export const reveal = (page: Page) => panel(page).getByRole("button", { name: "Прикажи го точниот одговор" });
 export const next = (page: Page) => panel(page).getByRole("button", { name: "Испрати го следното прашање" });
 export const skipInPanel = (page: Page) => panel(page).getByRole("button", { name: "Прескокни", exact: true });
 /** A question's own "Испрати" in the list, by its number in the lesson. */

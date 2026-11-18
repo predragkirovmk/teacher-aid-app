@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures";
-import { go, openProjector, readQr, reveal, send, next, start, teach, TEACHING_AT, at } from "./live-helpers";
+import { go, openProjector, panel, readQr, send, next, skipInPanel, start, teach, TEACHING_AT, at } from "./live-helpers";
 
 /** The projector check of step 12: read from the back of a room, at the three sizes a school has. */
 
@@ -35,10 +35,8 @@ test("the ranking beside the bars is large in a squarish window, a name on one l
   const projector = await teach(page, context);
   await send(page).click();
   await go(context, TEACHING_AT + 31);
-  await reveal(page).click();
   await next(page).click();
   await go(context, TEACHING_AT + 90);
-  await reveal(page).click();
   await expect(projector.getByTestId("cv-board")).toBeVisible();
   for (const size of SIZES) {
     await projector.setViewportSize(size);
@@ -51,5 +49,31 @@ test("the ranking beside the bars is large in a squarish window, a name on one l
     const reveal = (await projector.locator(".cvq__reveal").boundingBox())!;
     expect((reveal.y + reveal.height) / size.height, `${size.width}`).toBeGreaterThanOrEqual(0.85);
     expect(await projector.evaluate(() => [document.documentElement.scrollWidth - innerWidth, document.documentElement.scrollHeight - innerHeight])).toEqual([0, 0]);
+  }
+});
+
+test("the ranking between questions keeps one line a name beside the QR corner, ends inside the window, and the QR still reads", async ({ page, context }) => {
+  const projector = await teach(page, context);
+  await send(page).click();
+  await go(context, TEACHING_AT + 31);
+  await expect(projector.getByTestId("cv-board")).toBeVisible();
+  // The next question is skipped before it is sent: the projector has nothing to show of it, and shows the ranking between questions.
+  await skipInPanel(page).click();
+  await page.getByRole("button", { name: "Да, прескокни го" }).click();
+  await expect(panel(page)).toContainText("Прескокнато");
+  await expect(projector.locator(".cv__between .cvb--between")).toBeVisible();
+  for (const size of SIZES) {
+    await projector.setViewportSize(size);
+    const rows = await projector.locator(".cvb--between .cvb__row").evaluateAll((els) =>
+      els.map((e) => ({ size: parseFloat(getComputedStyle(e).fontSize), height: e.querySelector(".cvb__name")!.getBoundingClientRect().height, bottom: e.getBoundingClientRect().bottom })),
+    );
+    expect(rows.length, `${size.width}`).toBeGreaterThan(0);
+    // One line a name: not taller than two lines of its own type, even at 1024 x 768 where the corner used to take the width.
+    for (const r of rows) {
+      expect(r.height, `${size.width}`).toBeLessThanOrEqual(r.size * 2);
+      expect(r.bottom, `${size.width}`).toBeLessThanOrEqual(size.height);
+    }
+    expect(await projector.evaluate(() => [document.documentElement.scrollWidth - innerWidth, document.documentElement.scrollHeight - innerHeight]), `${size.width}`).toEqual([0, 0]);
+    expect(await readQr(projector.locator(".cv__corner .cv__qr svg")), `${size.width}`).toContain("/app/");
   }
 });

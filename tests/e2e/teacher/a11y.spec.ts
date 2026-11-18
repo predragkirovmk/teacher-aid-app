@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { expect, SETTINGS_KEY, test } from "./fixtures";
-import { go, openProjector, panel, reveal, send, start, teach, TEACHING_AT, T0 } from "./live-helpers";
+import { go, next, openProjector, panel, send, start, teach, TEACHING_AT, T0 } from "./live-helpers";
 
 /**
  * Accessibility, step 12: axe over the screens, in both languages and both kinds of institution, failing on a serious or critical issue
@@ -62,7 +62,7 @@ test.describe("signed out", () => {
 });
 
 test.describe("the live lesson", () => {
-  test("axe: console and class view in the lobby, a question open, closed and shown", async ({ page, context }) => {
+  test("axe: console and class view in the lobby, a question open and shown", async ({ page, context }) => {
     await start(page, context);
     const projector = await openProjector(page, context);
     await check(page, "console, lobby");
@@ -76,11 +76,28 @@ test.describe("the live lesson", () => {
     await check(page, "console, a question open");
     await check(projector, "class view, a question open");
     await go(context, TEACHING_AT + 31);
-    await check(page, "console, closed");
-    await check(projector, "class view, closed");
-    await reveal(page).click();
+    await expect(panel(page).getByTestId("right-answer")).toBeVisible();
     await check(page, "console, shown");
     await check(projector, "class view, shown");
+  });
+
+  test("axe: the console after the last question, with two End buttons and the anonymous tab", async ({ page, context }) => {
+    await teach(page, context);
+    let t = TEACHING_AT;
+    for (const [i, timer] of [30, 25, 15, 45, 25, 45].entries()) {
+      await go(context, t);
+      if (i === 0) await send(page).click();
+      else await next(page).click();
+      t += timer + 1;
+      await go(context, t);
+      await expect(panel(page).getByTestId("right-answer")).toBeVisible();
+    }
+    await expect(panel(page).getByTestId("none-left")).toBeVisible();
+    await check(page, "console, after the last question");
+    await panel(page).getByRole("button", { name: "Заврши го часот" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Да, заврши го часот" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Часот заврши");
+    await check(page, "the end page");
   });
 });
 

@@ -55,6 +55,8 @@ test.describe("the frame on a long page", () => {
       await page.mouse.move(width / 2, height / 2);
       for (let i = 0; i < 12; i++) await page.mouse.wheel(0, 400);
       await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(200);
+      // The smooth scroll is still moving when scrollY first passes 200: wait until it has stopped, so the sticky sidebar is measured at rest.
+      await expect.poll(() => page.evaluate(() => new Promise<number>((done) => { const y = scrollY; requestAnimationFrame(() => requestAnimationFrame(() => done(scrollY - y))); }))).toBe(0);
 
       await expect(page.getByRole("link", { name: "Прескокни кон содржината" })).not.toBeInViewport();
       if (width >= 1024) {
@@ -193,7 +195,7 @@ test.describe("settings", () => {
     await expect(page.getByRole("status")).toBeFocused();
     const after = await saved();
     expect(after.school.counter).toBe(0);
-    expect(after.v).toBe(2);
+    expect(after.v).toBe(3);
     await expect(title(page)).toHaveText("Settings");
     await expect(page.getByRole("radio", { name: "University" })).toBeChecked();
   });

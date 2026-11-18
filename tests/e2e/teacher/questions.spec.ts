@@ -1,6 +1,6 @@
 import { expect, settled, SETTINGS_KEY, tall, test } from "./fixtures";
 import {
-  at, cards, classTab, go, inboxTab, joinedWhenTeaching, listItem, listSend, next, openProjector, panel, questionsTab, reveal, send, showClass, showInbox, showQuestions, skipInPanel, start, T0, TEACHING_AT, teach, mainButton,
+  at, cards, classTab, go, inboxTab, joinedWhenTeaching, listItem, listSend, next, openProjector, panel, questionsTab, send, showClass, showInbox, showQuestions, skipInPanel, start, T0, TEACHING_AT, teach, mainButton,
 } from "./live-helpers";
 
 /**
@@ -41,14 +41,8 @@ test.describe("the life of a question", () => {
     await expect(projector.getByText("Точен одговор")).toHaveCount(0);
     expect(await projector.locator("main").innerHTML()).not.toMatch(/data-right|cv-right|cv-answer/);
 
-    // Closed: "Времето истече" on both, and the main button shows the answer.
+    // The time ends: the answer shows by itself on both, with no button to press and no "closed" state in between.
     await go(context, TEACHING_AT + 31);
-    await expect(panel(page).getByText("Времето истече")).toBeVisible();
-    await expect(mainButton(page)).toHaveText("Прикажи го точниот одговор");
-    await expect(projector.getByText("Времето истече")).toBeVisible();
-    await expect(projector.getByText("Точен одговор")).toHaveCount(0);
-
-    await reveal(page).click();
     await expect(panel(page).getByText("Одговорот е прикажан")).toBeVisible();
     await expect(panel(page).getByTestId("right-answer")).toHaveText("Точен одговор: 36");
     await expect(panel(page).getByRole("list").getByRole("listitem")).toHaveText([/Точни\s*\d+/, /Неточни\s*\d+/, /Без одговор\s*\d+/]);
@@ -68,8 +62,6 @@ test.describe("the life of a question", () => {
     await expect(projector.locator(".cvq__letter")).toHaveText(["A", "B", "C", "D"]);
     await expect(projector.getByTestId("cv-option")).toHaveText([/600 денари/, /650 денари/, /200 денари/, /775 денари/]);
     await go(context, TEACHING_AT + 26);
-    await expect(mainButton(page)).toHaveText("Прикажи го точниот одговор");
-    await reveal(page).click();
     await expect(panel(page).getByTestId("right-answer")).toHaveText("Точен одговор: A. 600 денари");
     const bars = projector.getByTestId("cv-bar");
     await expect(bars).toHaveCount(4);
@@ -95,7 +87,6 @@ test.describe("the life of a question", () => {
     await expect(projector.getByTestId("cv-option")).toHaveText(["Точно", "Неточно"]);
     await expect(panel(page).getByTestId("countdown")).toHaveText("Уште 15 секунди");
     await go(context, TEACHING_AT + 16);
-    await reveal(page).click();
     await expect(panel(page).getByTestId("right-answer")).toHaveText("Точен одговор: Точно");
     await expect(projector.getByTestId("cv-bar")).toHaveCount(2);
     await expect(projector.getByTestId("cv-bar").first().getByTestId("cv-right")).toHaveText("Точен одговор");
@@ -107,7 +98,6 @@ test.describe("the life of a question", () => {
     await listSend(page, 4).click();
     await expect(projector.getByText("Единица: %")).toBeVisible();
     await go(context, TEACHING_AT + 46);
-    await reveal(page).click();
     await expect(panel(page).getByTestId("right-answer")).toHaveText("Точен одговор: 25 %");
     await expect(projector.getByTestId("cv-answer")).toHaveText("Точниот број е 25 %");
   });
@@ -120,7 +110,7 @@ test.describe("the life of a question", () => {
     await expect(panel(page).getByTestId("countdown")).toHaveText("Уште 1 секунда");
   });
 
-  test("when the last question has its answer shown, the panel says plainly that none is left, and the one main button goes on to the review", async ({ page, context }) => {
+  test("after the last question the panel says so, that the anonymous questions stay in their tab, and offers the red End with its own question; nothing opens by itself", async ({ page, context }) => {
     await teach(page, context);
     await showQuestions(page);
     const times = [30, 25, 15, 45, 25, 45];
@@ -131,13 +121,61 @@ test.describe("the life of a question", () => {
       else await next(page).click();
       t += timer + 1;
       await go(context, t);
-      await reveal(page).click();
-      await expect(panel(page).getByText("Одговорот е прикажан")).toBeVisible();
+      await expect(panel(page).getByTestId("right-answer")).toBeVisible();
     }
-    await expect(panel(page).getByTestId("none-left")).toContainText("Сите прашања се готови");
-    await expect(mainButton(page)).toHaveText("Премини на прегледот");
+    await expect(panel(page).getByTestId("none-left")).toHaveText("Ова беше последното прашање.");
+    await expect(panel(page).getByTestId("none-left").locator("svg")).toHaveCount(1);
+    await expect(panel(page)).toContainText("Анонимните прашања остануваат во картичката „Анонимни“. Кога ќе бидете готови, завршете го часот.");
+    // The last answer is still there to read, and no main button is left: End is the red one, here as in the top bar.
+    await expect(panel(page).getByTestId("right-answer")).toBeVisible();
+    await expect(mainButton(page)).toHaveCount(0);
+    await expect(panel(page).getByRole("button", { name: "Испрати го следното прашање" })).toHaveCount(0);
+    await expect(panel(page).getByRole("button", { name: "Прескокни", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]")).toContainText("Предавање");
     await expect(page.locator(".qitem[data-status=shown]")).toHaveCount(6);
+    // End asks first; saying no keeps the lesson, and the anonymous questions are still in their tab.
+    const end = panel(page).getByRole("button", { name: "Заврши го часот" });
+    await end.click();
+    const dialog = page.getByRole("alertdialog", { name: "Дали сакате да го завршите часот?" });
+    await dialog.getByRole("button", { name: "Не, часот останува отворен" }).click();
+    await expect(dialog).toBeHidden();
+    await showInbox(page);
+    await expect(page.getByTestId("anon")).not.toHaveCount(0);
+    await end.click();
+    await dialog.getByRole("button", { name: "Да, заврши го часот" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Часот заврши");
+  });
+
+  test("a Skip asked in the last seconds closes by itself when the time ends: the answer shows, the question is not skipped, and no failure is said", async ({ page, context }) => {
+    await teach(page, context);
+    await showQuestions(page);
+    await send(page).click();
+    await go(context, TEACHING_AT + 28);
+    await skipInPanel(page).click();
+    const dialog = page.getByRole("alertdialog", { name: "Да го прескокнеме ли прашањето?" });
+    await expect(dialog).toBeVisible();
+    await go(context, TEACHING_AT + 31);
+    await expect(dialog).toBeHidden();
+    await expect(panel(page).getByTestId("right-answer")).toBeVisible();
+    await expect(listItem(page, 1)).toContainText("Одговорот е прикажан");
+    await expect(listItem(page, 1)).not.toContainText("Прескокнато");
+    await expect(panel(page).getByText("Не успеавме да го прескокнеме прашањето")).toHaveCount(0);
+  });
+
+  test("when the rest of the questions were skipped, the panel says it was the last one too", async ({ page, context }) => {
+    await teach(page, context);
+    await showQuestions(page);
+    await send(page).click();
+    await go(context, TEACHING_AT + 31);
+    await expect(panel(page).getByTestId("right-answer")).toBeVisible();
+    for (let n = 2; n <= 6; n++) {
+      await skipInPanel(page).click();
+      await page.getByRole("button", { name: "Да, прескокни го" }).click();
+      await expect(listItem(page, n)).toContainText("Прескокнато");
+    }
+    await expect(panel(page).getByTestId("none-left")).toHaveText("Ова беше последното прашање.");
+    await expect(panel(page).getByRole("button", { name: "Заврши го часот" })).toBeVisible();
   });
 });
 
@@ -164,7 +202,6 @@ test.describe("the list of questions", () => {
     await expect(page.getByRole("button", { name: "Брзо прашање" })).toBeDisabled();
     await expect(projector.getByTestId("cv-prompt")).toContainText("Ако 3 тетратки");
     await go(context, TEACHING_AT + 16);
-    await reveal(page).click();
     await expect(listItem(page, 3)).toContainText("Одговорот е прикажан");
     await expect(panel(page)).toContainText("Следно: Колку е 15% од 240?");
     await expect(mainButton(page)).toHaveText("Испрати го следното прашање");
@@ -234,12 +271,11 @@ test.describe("skipping", () => {
     await expect(panel(page)).toContainText("Прашање 2 од 6");
   });
 
-  test("a closed question can be skipped before its answer is shown", async ({ page, context }) => {
+  test("an open question can be skipped before its time is up", async ({ page, context }) => {
     await teach(page, context);
     await showQuestions(page);
     await send(page).click();
-    await go(context, TEACHING_AT + 31);
-    await expect(mainButton(page)).toHaveText("Прикажи го точниот одговор");
+    await go(context, TEACHING_AT + 10);
     await skipInPanel(page).click();
     await page.getByRole("button", { name: "Да, прескокни го" }).click();
     await expect(listItem(page, 1)).toContainText("Прескокнато");
@@ -257,7 +293,6 @@ test.describe("the note above the list", () => {
     await expect(note).toBeVisible();
     expect(await note.evaluate((el) => [getComputedStyle(el).fontWeight, getComputedStyle(el).fontSize])).toEqual(["400", "17px"]);
     await go(context, TEACHING_AT + 31);
-    await reveal(page).click();
     await expect(note).toHaveCount(0);
   });
 });
@@ -294,7 +329,6 @@ test.describe("the quick question", () => {
     await expect(page.locator(".qitem")).toHaveCount(7);
     await expect(listItem(page, 7)).toContainText("Брзо прашање");
     await go(context, TEACHING_AT + 13);
-    await reveal(page).click();
     await expect(panel(page).getByTestId("right-answer")).toHaveText("Точен одговор: Точно");
     await expect(projector.getByTestId("cv-bar")).toHaveCount(2);
   });
@@ -318,7 +352,6 @@ test.describe("the quick question", () => {
     await expect(dialog).toBeHidden();
     await expect(projector.locator(".cvq__letter")).toHaveText(["A", "B", "C"]);
     await go(context, TEACHING_AT + 26);
-    await reveal(page).click();
     await expect(panel(page).getByTestId("right-answer")).toHaveText("Точен одговор: B. Скопје");
     await expect(projector.getByTestId("cv-bar").nth(1).getByTestId("cv-right")).toHaveText("Точен одговор");
   });
@@ -339,7 +372,6 @@ test.describe("the quick question", () => {
     await expect(dialog).toBeHidden();
     await expect(projector.getByText("Единица: m")).toBeVisible();
     await go(context, TEACHING_AT + 46);
-    await reveal(page).click();
     await expect(panel(page).getByTestId("right-answer")).toHaveText("Точен одговор: 3500 m");
     await expect(projector.getByTestId("cv-answer")).toHaveText("Точниот број е 3500 m");
   });
@@ -482,7 +514,6 @@ test.describe("flags and the nudge", () => {
       t += Number((await countdown.textContent())!.match(/\d+/)![0]) + 1;
       await go(context, t);
       if ((await page.getByTestId("focus").count()) > 0) break;
-      await reveal(page).click();
     }
     await showClass(page);
     const flag = page.getByTestId("focus").first();
@@ -546,9 +577,6 @@ test.describe("coming back", () => {
     await expect(mainButton(page)).toHaveCount(0);
     await go(context, TEACHING_AT + 31);
     await page.reload();
-    await expect(mainButton(page)).toHaveText("Прикажи го точниот одговор");
-    await reveal(page).click();
-    await page.reload();
     await expect(panel(page).getByTestId("right-answer")).toHaveText("Точен одговор: 36");
     await expect(mainButton(page)).toHaveText("Испрати го следното прашање");
   });
@@ -563,7 +591,6 @@ test.describe("coming back", () => {
     await expect(projector.getByTestId("cv-seconds")).toContainText("20");
     await expect(projector.getByText("Точен одговор")).toHaveCount(0);
     await go(context, TEACHING_AT + 31);
-    await reveal(page).click();
     await projector.reload();
     await expect(projector.getByTestId("cv-answer")).toHaveText("Точниот број е 36");
     await expect(projector.getByTestId("cv-board")).toBeVisible();
@@ -581,16 +608,18 @@ test.describe("coming back", () => {
 });
 
 test.describe("the projector shows no private thing", () => {
-  test("not the answer before the reveal, not the names of the class but in the ranking, and nothing of the inbox", async ({ page, context }) => {
+  test("not the answer while the question is open, not the names of the class but in the ranking, and nothing of the inbox", async ({ page, context }) => {
     const projector = await teach(page, context);
     await showQuestions(page);
     await listSend(page, 2).click();
-    await go(context, TEACHING_AT + 26);
-    await expect(projector.getByText("Времето истече")).toBeVisible();
+    await go(context, TEACHING_AT + 20);
+    await expect(projector.getByTestId("cv-seconds")).toContainText("5");
     const html = await projector.content();
     expect(html).not.toContain("Точен одговор");
     expect(html).not.toContain("data-right");
     expect(html).not.toContain("25% од 800 е 200");
+    await go(context, TEACHING_AT + 26);
+    await expect(projector.getByTestId("cv-bar")).toHaveCount(4);
     await go(context, TEACHING_AT + 90);
     await showInbox(page);
     await expect(page.getByTestId("anon")).not.toHaveCount(0);
@@ -618,7 +647,7 @@ test.describe("the projector uses the window", () => {
   const overlap = (a: { top: number; bottom: number; left: number; right: number }, b: { top: number; bottom: number; left: number; right: number }) =>
     a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
 
-  test("a long question with four long answers: open, closed and shown, nothing is cut, nothing collides, and the content reaches the foot of the window", async ({ page, context }) => {
+  test("a long question with four long answers: open and shown, nothing is cut, nothing collides, and the content reaches the foot of the window", async ({ page, context }) => {
     const projector = await teach(page, context);
     await showQuestions(page);
     await page.getByRole("button", { name: "Брзо прашање" }).click();
@@ -651,9 +680,6 @@ test.describe("the projector uses the window", () => {
     };
     await fits("open", ".cvq__foot");
     await go(context, TEACHING_AT + 26);
-    await expect(projector.getByText("Времето истече")).toBeVisible();
-    await fits("closed", ".cvq__progress");
-    await reveal(page).click();
     await expect(projector.getByTestId("cv-bar")).toHaveCount(4);
     await fits("shown", ".cvq__reveal");
 
@@ -689,7 +715,6 @@ test.describe("the projector uses the window", () => {
     };
     expect(await dimmed()).toEqual([]);
     await go(context, TEACHING_AT + 31);
-    await reveal(page).click();
     await expect(projector.getByTestId("cv-board")).toBeVisible();
     expect(await dimmed()).toEqual([]);
   });
@@ -771,7 +796,7 @@ test.describe("a picture on a projected question", () => {
 });
 
 test.describe("the keyboard alone", () => {
-  test("send, skip's question, the answer and the next, with the focus always where the next thing to do is", async ({ page, context }) => {
+  test("send, skip's question, the answer that shows by itself and the next, with the focus always where the next thing to do is", async ({ page, context }) => {
     await teach(page, context);
     const inPanel = () => page.evaluate(() => !!document.activeElement?.closest(".qpanel"));
     await send(page).focus();
@@ -787,11 +812,9 @@ test.describe("the keyboard alone", () => {
     await page.keyboard.press("Enter");
     await expect(panel(page).getByTestId("countdown")).toBeVisible();
     await go(context, TEACHING_AT + 31);
-    // The time is up while the focus is on Skip: it stays where the teacher is.
-    await expect(mainButton(page)).toHaveText("Прикажи го точниот одговор");
-    await mainButton(page).focus();
-    await page.keyboard.press("Enter");
-    // The main button of the next step has the focus.
+    // The answer shows by itself while the focus is on Skip: the panel moves to the next step.
+    await expect(panel(page).getByTestId("right-answer")).toBeVisible();
+    // The main button of the next step has the focus: the Skip it was on is gone.
     await expect(mainButton(page)).toHaveText("Испрати го следното прашање");
     await expect(mainButton(page)).toBeFocused();
     await page.keyboard.press("Enter");
@@ -858,7 +881,6 @@ test.describe("words and zoom", () => {
     await expect(panel(page).getByTestId("countdown")).toHaveText("30 seconds left");
     await expect(projector.getByText("Answer with a number")).toBeVisible();
     await go(context, TEACHING_AT + 31);
-    await page.getByRole("button", { name: "Show the right answer" }).click();
     await expect(panel(page).getByTestId("right-answer")).toHaveText("Right answer: 36");
     await expect(projector.getByTestId("cv-answer")).toHaveText("The right number is 36");
     await expect(projector.getByRole("heading", { name: "Best so far" })).toBeVisible();
@@ -929,9 +951,6 @@ test.describe("words and zoom", () => {
     await expect(projector.getByTestId("cv-option")).toHaveCount(4);
     await check("open");
     await go(context, TEACHING_AT + 26);
-    await expect(projector.getByText("Времето истече")).toBeVisible();
-    await check("closed");
-    await reveal(page).click();
     await expect(projector.getByTestId("cv-bar")).toHaveCount(4);
     await check("revealed");
   });

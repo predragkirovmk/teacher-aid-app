@@ -6,7 +6,7 @@ import { test as base, expect, type Locator, type Page } from "@playwright/test"
  * the tests of signing in set `account` to null and start with nobody.
  */
 export const SESSION_KEY = "teacheraid-teacher-session-v1";
-export const MOCK_KEY = "teacheraid-teacher-mock-v2";
+export const MOCK_KEY = "teacheraid-teacher-mock-v3";
 export const SETTINGS_KEY = "teacheraid-teacher-v1";
 
 export type Account = "veteran" | "novice" | null;

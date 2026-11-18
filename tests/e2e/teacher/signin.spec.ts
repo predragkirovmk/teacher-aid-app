@@ -295,7 +295,7 @@ test.describe("signing in", () => {
     await page.getByRole("button", { name: "Следно" }).click();
     await page.getByRole("button", { name: "Следно" }).click();
     await expect(page.getByText("Чекор 3 од 3")).toBeVisible();
-    await expect(page.getByRole("heading", { level: 2 })).toHaveText("Видете кој бил присутен и што да се повтори");
+    await expect(page.getByRole("heading", { level: 2 })).toHaveText("Видете како поминал секој");
     // The last step leads into the first lesson (the one main button), and "Не сега" is the way out; there is nothing to skip.
     await expect(page.getByRole("button", { name: "Следно" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Прескокни го водичот" })).toHaveCount(0);

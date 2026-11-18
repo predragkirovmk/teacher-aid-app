@@ -34,10 +34,10 @@ test.describe("starting", () => {
 });
 
 test.describe("the lobby", () => {
-  test("says where the lesson stands in four words, the current one by a word and a mark, and gives the page one main button", async ({ page, context }) => {
+  test("says where the lesson stands in three words, the current one by a word and a mark, and gives the page one main button", async ({ page, context }) => {
     await start(page, context);
     const states = page.getByRole("list", { name: "Каде е часот" });
-    await expect(states.getByRole("listitem")).toHaveText([/Чекаме ученици/, /Предавање/, /Преглед/, /Крај/]);
+    await expect(states.getByRole("listitem")).toHaveText([/Чекаме ученици/, /Предавање/, /Крај/]);
     const now = states.locator("[aria-current=step]");
     await expect(now).toHaveCount(1);
     await expect(now).toContainText("Чекаме ученици");
@@ -61,7 +61,7 @@ test.describe("the lobby", () => {
     await expect(page.getByRole("button", { name: /Без телефон/ })).toHaveCount(0);
   });
 
-  test("students appear as the clock runs, at an uneven pace, up to 70 to 85 percent of the 26, each with an icon and a word, and the line that told to wait goes", async ({ page, context }) => {
+  test("students appear as the clock runs, at an uneven pace, up to 70 to 85 percent of the 26, each one just the name, and the line that told to wait goes", async ({ page, context }) => {
     await start(page, context);
     let last = 0;
     for (const seconds of [6, 15, 30, 50, 75]) {
@@ -75,8 +75,10 @@ test.describe("the lobby", () => {
     expect(last / 26).toBeGreaterThanOrEqual(0.7);
     expect(last / 26).toBeLessThanOrEqual(0.85);
     await expect(page.getByText("Учениците се појавуваат овде кога ќе го скенираат кодот.")).toHaveCount(0);
-    await expect(page.locator(".person[data-state=joined] .person__state svg").first()).toBeVisible();
-    await expect(page.locator(".person[data-state=joined] .person__word").first()).toHaveText("Се приклучи");
+    // A student who is here is just the name: no icon and no word repeated on every row (the count above says they joined).
+    await expect(page.locator(".person[data-state=joined]").first()).toBeVisible();
+    await expect(page.locator(".person[data-state=joined] .person__word, .person[data-state=joined] svg")).toHaveCount(0);
+    await expect(page.getByText("Се приклучи", { exact: true })).toHaveCount(0);
   });
 
   test("the list is in the order students joined: a new one comes at the end and nobody moves", async ({ page, context }) => {
@@ -96,6 +98,7 @@ test.describe("the lobby", () => {
     const offline = page.locator(".person[data-state=offline]");
     await expect(offline).toHaveCount(1);
     await expect(offline.locator(".person__word")).toHaveText("Без врска");
+    await expect(offline.locator(".person__what svg")).toBeVisible();
     await at(context, away.off!.to_ms / 1000 + 1, page);
     await expect(offline).toHaveCount(0);
   });
@@ -490,7 +493,7 @@ test.describe("words", () => {
     await page.goto("/teacher");
     await cards(page).filter({ hasText: "Проценти и пропорции" }).getByRole("button", { name: "Start lesson" }).click();
     await expect(page.locator(".head__sub")).toHaveText("Проценти и пропорции");
-    await expect(page.getByRole("list", { name: "Where the lesson is" }).getByRole("listitem")).toHaveText([/Waiting for the students/, /Teaching/, /Review/, /The end/]);
+    await expect(page.getByRole("list", { name: "Where the lesson is" }).getByRole("listitem")).toHaveText([/Waiting for the students/, /Teaching/, /The end/]);
     await expect(page.getByRole("heading", { name: "When you are ready" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Projector screen" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Start the lesson" })).toBeVisible();

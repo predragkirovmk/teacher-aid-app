@@ -1295,7 +1295,7 @@ test.describe("the first run", () => {
     await expect(page).toHaveURL(/\/teacher\/welcome/);
     await page.getByRole("button", { name: "Следно" }).click();
     await page.getByRole("button", { name: "Следно" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "Видете кој бил присутен и што да се повтори" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Видете како поминал секој" })).toBeVisible();
   }
 
   test("the guide's last screen leads into the first lesson, with 'Не сега' to leave; the main button is the first lesson", async ({ page }) => {

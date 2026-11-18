@@ -866,6 +866,8 @@ test.describe("wording", () => {
     await expect(page.getByText("This can take up to 3 minutes. You can leave this page: the lesson will wait for you in Lessons.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Cancel", exact: true })).toHaveClass(/btn--secondary/);
     await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d\d+$/);
+    // The no-subtitle line is about the written draft, so wait for the writing step to end first.
+    await expect(page.getByRole("heading", { level: 2, name: "We are writing the questions" })).toBeHidden({ timeout: 20_000 });
     await expect(page.locator(".head__sub")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Back to Lessons", exact: true })).toBeVisible();
   });
