@@ -11,11 +11,10 @@ import { useT } from "@/lib/teacher/i18n";
 import { lessonSections } from "@/lib/teacher/lessons-list";
 import { newestSavedFirst } from "@/lib/teacher/library";
 import { FROM_LIBRARY, libraryLessonUrl, TEMPLATES_ANCHOR } from "@/lib/teacher/routes";
-import { kindLine, LessonCard } from "./LessonCard";
+import { LessonCard } from "./LessonCard";
 import { LoadProblem } from "./LoadProblem";
 import { PageHeader } from "./PageHeader";
 import { Bar, Loading } from "./Skeleton";
-import { StartDialog, type StartLesson } from "./StartDialog";
 import { TabPanel, Tabs } from "./Tabs";
 
 type Shelf = "mine" | "templates";
@@ -32,7 +31,6 @@ export function LibraryPage() {
   const library = useLibrary();
   const [shelf, setShelf] = useState<Shelf>("mine");
   // The window that starts a lesson belongs to the page, not to the row, as on the Lessons page.
-  const [starting, setStarting] = useState<StartLesson | null>(null);
 
   // A link to the templates opens on them; the address follows the shelf, so a reload or Back keeps it.
   useEffect(() => {
@@ -72,7 +70,7 @@ export function LibraryPage() {
           ) : (
             <ul className="lessons">
               {held.map((lesson) => (
-                <LessonCard key={lesson.id} lesson={lesson} today={today} from={FROM_LIBRARY} onStart={setStarting} />
+                <LessonCard key={lesson.id} lesson={lesson} today={today} from={FROM_LIBRARY} />
               ))}
             </ul>
           )}
@@ -94,7 +92,6 @@ export function LibraryPage() {
           )}
         </TabPanel>
       </div>
-      {starting && <StartDialog lesson={starting} onClose={() => setStarting(null)} />}
     </>
   );
 }
@@ -138,7 +135,7 @@ function TemplateCard({ item }: { item: LibraryItem }) {
             {item.title}
           </Link>
         </h3>
-        <p>{`${kindLine(t, item)} · ${questions}`}</p>
+        <p>{questions}</p>
         {item.already_copied && (
           <p className="lesson__edit lesson__copied">
             <CheckCircleIcon size={24} weight="fill" aria-hidden="true" />

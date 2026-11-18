@@ -8,7 +8,6 @@ import { isOne } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
 import { draftUrl, type From } from "@/lib/teacher/routes";
 import { relativeDay, sayWhen } from "@/lib/teacher/when";
-import { kindLine } from "./LessonCard";
 
 /**
  * One lesson that is not finished, as a row: its title (while it is being written, or when that failed, those words in its place),
@@ -34,7 +33,6 @@ export function DraftCard({
   const questions = draft.question_count ?? 0;
   const changed = today === null ? null : t("lesson.changed", { when: sayWhen(t, relativeDay(Date.parse(draft.updated_at), today)) });
   const count = t(isOne(questions, locale) ? "lesson.questions.one" : "lesson.questions.many", { n: questions });
-  const kind = kindLine(t, draft);
   return (
     <li className="lesson lesson--draft" data-status={draft.status}>
       <div className="lesson__text">
@@ -47,10 +45,9 @@ export function DraftCard({
           {heading}
         </h3>
         {draft.status === "ready" ? (
-          <p>{changed ? `${kind} · ${count} · ${changed}` : `${kind} · ${count}`}</p>
+          <p>{changed ? `${count} · ${changed}` : count}</p>
         ) : (
           <>
-            <p>{kind}</p>
             <p>{t(draft.status === "pending" ? "draft.card.pending.line" : "draft.card.failed.line")}</p>
           </>
         )}

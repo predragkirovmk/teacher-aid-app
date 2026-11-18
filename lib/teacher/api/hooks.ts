@@ -9,7 +9,7 @@ import { actions, useTeacher } from "../store";
 import { apiMode } from "./config";
 import { api, type CallOptions, type ChannelStatus, type TeacherApi } from "./client";
 import { toApiError } from "./errors";
-import { change, forget, invalidate, mapQuery, resetQueries, seed, slotFor, useQuery, type Query } from "./query";
+import { change, forget, invalidate, resetQueries, seed, slotFor, useQuery, type Query } from "./query";
 import { endSession, useSessionEnd } from "./session";
 import {
   classChannel,
@@ -17,7 +17,6 @@ import {
   type ChannelEvent,
   type ClassViewSnapshot,
   type ConsoleSnapshot,
-  type NoDeviceReason,
   type TeacherChannel,
 } from "./types";
 import type {
@@ -26,9 +25,6 @@ import type {
   PracticeResults,
   PracticeSetResult,
   SessionReview,
-  CourseDashboard,
-  CoursePatch,
-  CourseSummary,
   CreateSessionRequest,
   DraftPatch,
   DraftSummary,
@@ -57,7 +53,7 @@ export type { Query } from "./query";
  * while a refresh runs, and renders the same on the server and on the first client render. Each change goes
  * through the adapter and then loads again what it touched, so a list is right the moment a change has been made.
  *
- * Query keys: `me`, `courses`, `dashboard:<course>`, `lessons`, `lessons:<id>`, `draft-list`, `drafts:<id>`, `library`,
+ * Query keys: `me`, `lessons`, `lessons:<id>`, `draft-list`, `drafts:<id>`, `library`,
  * `open-session`, `console:<session>`, `class-view:<session>`. A change names the first part of the keys it touches.
  */
 
@@ -66,17 +62,10 @@ export type { Query } from "./query";
 /** The teacher who is signed in, and their school. */
 export const useMe = (): Query<Me> => useQuery("me", (a) => a.getMe());
 
-/** The teacher's courses: each a class and a subject. */
-export const useCourses = (): Query<CourseSummary[]> => useQuery("courses", (a) => a.listCourses());
-
-/** One course's results page (FR-DASH-01). `enabled: false` waits for an id. */
-export const useDashboard = (courseId: Id | undefined): Query<CourseDashboard> =>
-  useQuery(`dashboard:${courseId}`, (a) => a.getDashboard(courseId as Id), courseId !== undefined);
-
 /** All the teacher's lessons, newest change first. */
 export const useLessons = (): Query<LessonSummary[]> => useQuery("lessons", (a) => a.listLessons());
 
-/** One lesson, whole: its questions and review summary. Also reads a lesson of the school library, to preview it. */
+/** One lesson, whole: its questions. Also reads a lesson of the school library, to preview it. */
 export function useLesson(lessonId: Id | undefined): Query<Lesson> {
   const q = useQuery(`lessons:${lessonId}`, (a) => a.getLesson(lessonId as Id), lessonId !== undefined);
   // A lesson that has just been deleted by the page that is showing it: the teacher is on the way to the list, so the page waits for
@@ -262,26 +251,6 @@ export async function advanceSession(sessionId: Id, to: "teaching" | "review"): 
   return snapshot;
 }
 
-/** A student marked present without a phone, with the reason (FR-ATT-04). The answer is the fresh console. */
-export async function markNoDevice(sessionId: Id, studentId: Id, reason: NoDeviceReason): Promise<ConsoleSnapshot> {
-  try {
-    const snapshot = await change((a) => a.markNoDevice(sessionId, studentId, { reason }));
-    seed(`console:${sessionId}`, snapshot);
-    return snapshot;
-  } catch (e) {
-    // The student joined with a phone while the teacher was choosing: the console is told how things stand now.
-    if (toApiError(e).code === "invalid_state") invalidate(`console:${sessionId}`);
-    throw e;
-  }
-}
-
-/** The mark taken back: the student is as they were before it. The answer is the fresh console. */
-export async function clearNoDevice(sessionId: Id, studentId: Id): Promise<ConsoleSnapshot> {
-  const snapshot = await change((a) => a.clearNoDevice(sessionId, studentId));
-  seed(`console:${sessionId}`, snapshot);
-  return snapshot;
-}
-
 /**
  * A question sent, its answer shown or skipped, or a quick one made: each answers the fresh console, which is put into the cache, so the panel
  * moves at once and the next event finds it already there (FR-CON-06).
@@ -335,7 +304,7 @@ export async function endLesson(sessionId: Id): Promise<EndResult | null> {
   try {
     const result = await change((a) => a.endSession(sessionId));
     seed("open-session", { server_now: result.server_now, session: null });
-    invalidate("console", "review", "class-view", "lessons", "courses");
+    invalidate("console", "review", "class-view", "lessons");
     return result;
   } catch (e) {
     if (toApiError(e).code === "invalid_state") {
@@ -384,12 +353,6 @@ export async function signOut(): Promise<void> {
 
 // ---- Derived --------------------------------------------------------------------------------------
 
-/** One course, from the list. Null when the teacher has no such course. */
-export function useCourse(courseId: Id | undefined): Query<CourseSummary | null> {
-  const q = useCourses();
-  return useMemo(() => mapQuery(q, (all) => all.find((c) => c.id === courseId) ?? null), [q, courseId]);
-}
-
 /**
  * The teacher's name as the interface language writes it (the English interface uses Latin letters), with the first name
  * for greetings and the initials for the badge. Null until the API has answered.
@@ -407,7 +370,7 @@ export function useTeacherName(): { full: string; first: string; initials: strin
 // ---- Keeping the words in step with the school -----------------------------------------------------
 
 /**
- * The school decides whether the app says "ученици" and "клас" or "студенти" and "група". The store keeps the last type
+ * The school decides whether the app says "ученици" or "студенти". The store keeps the last type
  * seen, so the words are right from the first paint; this updates it from the school once the API has answered. The demo
  * has no such step: there the switch in Settings is what chooses the school, and the store already holds the choice.
  */
@@ -432,10 +395,6 @@ export async function setFirstRunDone(): Promise<Me> {
   seed("me", me);
   return me;
 }
-
-/** The speed bonus on or off for a course (BR-PTS-04). */
-export const updateCourse = (courseId: Id, patch: CoursePatch): Promise<CourseSummary> =>
-  change((a) => a.updateCourse(courseId, patch), ["courses", "dashboard"]);
 
 /**
  * Add the material a lesson is made from: a document or typed sentences. Nothing is listed yet, so nothing is loaded again.

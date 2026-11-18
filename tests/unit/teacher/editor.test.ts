@@ -29,7 +29,7 @@ import { isValidContent } from "@/lib/teacher/lessons";
 
 /** The first `n` questions of the demo lessons, put one after the other (a single lesson has five to seven). */
 const questions = (n = 6): Question[] => BANK.flatMap((b, i) => bankQuestions(b, `b${i}`)).slice(0, n).map((q, order) => ({ ...q, order }));
-const content = (patch: Partial<DraftContent> = {}): DraftContent => ({ title: "Низи", review_summary: "Резиме.", questions: questions(), ...patch });
+const content = (patch: Partial<DraftContent> = {}): DraftContent => ({ title: "Низи", questions: questions(), ...patch });
 
 const mc = (patch: Record<string, unknown> = {}): DraftQuestion => ({ ...blankQuestion("multiple_choice", "q-mc", 0, "Тема"), prompt: "Прашање?", options: ["а", "б", "в"], correct: "1", ...patch }) as DraftQuestion;
 const tf = (patch: Record<string, unknown> = {}): DraftQuestion => ({ ...blankQuestion("true_false", "q-tf", 1, "Тема"), prompt: "Точно?", correct: "true", ...patch }) as DraftQuestion;
@@ -283,9 +283,8 @@ describe("what is wrong with a lesson (BR-Q-04)", () => {
 describe("a lesson as the API takes it", () => {
   test("is trimmed, numbered from the start, and passes the check the server makes", () => {
     const list = questions() as DraftQuestion[];
-    const lesson = lessonOf({ title: "  Низи  ", review_summary: "  Резиме  ", questions: list.map((q, i) => ({ ...q, prompt: ` ${q.prompt} `, order: 7 - i })) })!;
+    const lesson = lessonOf({ title: "  Низи  ", questions: list.map((q, i) => ({ ...q, prompt: ` ${q.prompt} `, order: 7 - i })) })!;
     expect(lesson.title).toBe("Низи");
-    expect(lesson.review_summary).toBe("Резиме");
     expect(lesson.questions.map((q) => q.order)).toEqual(list.map((_, i) => i));
     expect(lesson.questions.every((q) => q.prompt === q.prompt.trim())).toBe(true);
     expect(isValidContent(lesson)).toBe(true);
@@ -306,7 +305,7 @@ describe("a lesson as the API takes it", () => {
 
   test("the content of a ready draft is read in order", () => {
     const list = questions();
-    const draft = { title: "Т", review_summary: "Р", questions: [list[1], list[0]] } as ReadyDraft;
+    const draft = { title: "Т", questions: [list[1], list[0]] } as ReadyDraft;
     expect(contentOf(draft).questions.map((q) => q.order)).toEqual([0, 1]);
   });
 });

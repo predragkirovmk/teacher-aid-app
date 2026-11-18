@@ -14,7 +14,6 @@ import { LoadProblem } from "./LoadProblem";
 import { OnceLine } from "./OnceLine";
 import { PageHeader } from "./PageHeader";
 import { Bar, Loading } from "./Skeleton";
-import { StartDialog, type StartLesson } from "./StartDialog";
 
 /**
  * The app's home: the one main button, at the right of the title, prepares a lesson, and under it the lessons that are prepared, then the
@@ -26,8 +25,6 @@ export function LessonsPage() {
   const today = useToday();
   const lessons = useLessons();
   const drafts = useDrafts();
-  // The window that starts a lesson belongs to the page, not to the row: a lesson that has just been started leaves the list.
-  const [starting, setStarting] = useState<StartLesson | null>(null);
   const [deleted, setDeleted] = useState(false);
 
   // What the address said when the page opened: that a lesson has just been deleted. Told once, then taken off the address.
@@ -108,7 +105,7 @@ export function LessonsPage() {
                 </h2>
                 <ul className="lessons">
                   {prepared.map((lesson) => (
-                    <LessonCard key={lesson.id} lesson={lesson} today={today} onStart={setStarting} />
+                    <LessonCard key={lesson.id} lesson={lesson} today={today} />
                   ))}
                 </ul>
               </section>
@@ -129,7 +126,6 @@ export function LessonsPage() {
           </>
         )}
       </div>
-      {starting && <StartDialog lesson={starting} onClose={() => setStarting(null)} />}
     </>
   );
 }

@@ -3,7 +3,6 @@ import type { ChannelEvent, ClassViewSnapshot, ConsoleSnapshot, ConsoleStudent }
 import {
   applyClassEvent,
   applyConsoleEvent,
-  canMarkNoDevice,
   CLASS_WINDOW_NAME,
   classViewStatus,
   formatShortCode,
@@ -11,15 +10,11 @@ import {
   HEARTBEAT_MS,
   HEARTBEAT_STALE_MS,
   isWindowMessage,
-  joinedCount,
   joinUrl,
-  missingCount,
   msUntil,
   nextState,
-  NO_DEVICE_REASONS,
   openClassWindow,
   recentNames,
-  rosterSections,
   serverOffset,
   stateSteps,
   studentState,
@@ -29,20 +24,17 @@ import {
   type ClassWindow,
 } from "@/lib/teacher/live";
 
-const student = (id: string, over: Partial<ConsoleStudent> = {}): ConsoleStudent => ({
+/** A student who joined: every console student has. */
+const joined = (id: string, at = "2026-10-29T08:31:00.000Z", over: Partial<ConsoleStudent> = {}): ConsoleStudent => ({
   id,
   full_name: `Ученик ${id}`,
-  attendance: null,
-  joined_at: null,
-  no_device_reason: null,
-  online: false,
+  joined_at: at,
+  online: true,
   answer_state: null,
   focus_flags: 0,
   points: 0,
   ...over,
 });
-const joined = (id: string, at = "2026-10-29T08:31:00.000Z", over: Partial<ConsoleStudent> = {}) =>
-  student(id, { attendance: "present", joined_at: at, online: true, ...over });
 
 describe("where the lesson stands", () => {
   test("four states in order, the current one marked and the ones before it done", () => {
@@ -65,70 +57,9 @@ describe("where the lesson stands", () => {
 });
 
 describe("how a student is shown", () => {
-  test("not here, here, late, offline and without a phone, in one word each", () => {
-    expect(studentState(student("a"))).toBe("not_yet");
+  test("here, or here with the connection lost, in one word each", () => {
     expect(studentState(joined("a"))).toBe("joined");
-    expect(studentState(joined("a", undefined, { attendance: "late" }))).toBe("late");
     expect(studentState(joined("a", undefined, { online: false }))).toBe("offline");
-    expect(studentState(joined("a", undefined, { attendance: "late", online: false }))).toBe("offline");
-    expect(studentState(student("a", { attendance: "present_no_device", no_device_reason: "battery" }))).toBe("no_device");
-  });
-
-  test("a student the lesson has not heard of is not here (an absent mark is only written at the end)", () => {
-    expect(studentState(student("a", { attendance: "absent" }))).toBe("not_yet");
-  });
-
-  test("the count is those who joined with a phone: a mark the teacher wrote is not a join (BR-ATT-01)", () => {
-    const class26 = [joined("1"), joined("2", undefined, { attendance: "late" }), joined("3", undefined, { online: false }), student("4", { attendance: "present_no_device", no_device_reason: "no_phone" }), student("5")];
-    expect(joinedCount(class26)).toEqual({ joined: 3, withoutPhone: 1, total: 5 });
-    expect(missingCount(class26)).toBe(1);
-    expect(joinedCount([])).toEqual({ joined: 0, withoutPhone: 0, total: 0 });
-  });
-});
-
-describe("the order of the class", () => {
-  const class6 = [
-    joined("a"),
-    student("b"),
-    joined("c", undefined, { online: false }),
-    student("d", { attendance: "present_no_device", no_device_reason: "no_data" }),
-    student("e"),
-    joined("f", undefined, { attendance: "late" }),
-  ];
-
-  test("those who are not here come first, then those who are, and in each group the register's order stays", () => {
-    const { missing, here } = rosterSections(class6);
-    expect(missing.map((s) => s.id)).toEqual(["b", "e"]);
-    expect(here.map((s) => s.id)).toEqual(["c", "a", "d", "f"]);
-  });
-
-  test("the one whose connection is lost is first among those who are here, since that one is worth a look", () => {
-    expect(rosterSections(class6).here[0].id).toBe("c");
-  });
-
-  test("a student who joins moves from one group to the other and nothing else moves", () => {
-    const after = class6.map((s) => (s.id === "b" ? joined("b") : s));
-    const { missing, here } = rosterSections(after);
-    expect(missing.map((s) => s.id)).toEqual(["e"]);
-    expect(here.map((s) => s.id)).toEqual(["c", "a", "b", "d", "f"]);
-  });
-
-  test("everyone is in exactly one group", () => {
-    const { missing, here } = rosterSections(class6);
-    expect(missing.length + here.length).toBe(class6.length);
-  });
-});
-
-describe("present without a phone", () => {
-  test("four reasons, in the order they are offered", () => {
-    expect(NO_DEVICE_REASONS).toEqual(["no_phone", "battery", "no_data", "no_focus_authorization"]);
-  });
-
-  test("only a student who has not joined with a phone may be marked", () => {
-    expect(canMarkNoDevice(student("a"))).toBe(true);
-    expect(canMarkNoDevice(student("a", { attendance: "present_no_device", no_device_reason: "battery" }))).toBe(true);
-    expect(canMarkNoDevice(joined("a"))).toBe(false);
-    expect(canMarkNoDevice(joined("a", undefined, { attendance: "late" }))).toBe(false);
   });
 });
 
@@ -249,9 +180,9 @@ describe("opening the projected window", () => {
 });
 
 describe("what an event does to the console", () => {
-  const base = (students: ConsoleStudent[] = [student("a"), joined("b")]): ConsoleSnapshot => ({
+  const base = (students: ConsoleStudent[] = [joined("a"), joined("b")]): ConsoleSnapshot => ({
     server_now: "2026-10-29T08:31:00.000Z",
-    session: { id: "s1", course_id: "c", lesson: { id: "l", title: "T", version: 1 }, state: "lobby", started_at: "2026-10-29T08:30:00.000Z", ended_at: null, class_name: "II-4", subject_name: "Математика" },
+    session: { id: "s1", lesson: { id: "l", title: "T", version: 1 }, state: "lobby", started_at: "2026-10-29T08:30:00.000Z", ended_at: null },
     join: { token: "t1", short_code: "111111", valid_to: "2026-10-29T08:31:30.000Z" },
     questions: [],
     students,
@@ -262,17 +193,22 @@ describe("what an event does to the console", () => {
   });
   const at = (seconds: number) => ({ channel: "session.s1.console" as const, server_now: new Date(Date.parse("2026-10-29T08:31:00.000Z") + seconds * 1000).toISOString() });
 
-  test("a student who joined replaces the one that was there", () => {
+  test("a student who joins appears at the end of the list, at any point until End", () => {
     const snapshot = base();
-    const event: ChannelEvent = { type: "student.joined", student: joined("a"), ...at(2) };
-    const next = applyConsoleEvent(snapshot, event);
-    expect(next.students.map((s) => s.attendance)).toEqual(["present", "present"]);
-    expect(snapshot.students[0].attendance).toBeNull();
+    const next = applyConsoleEvent(snapshot, { type: "student.joined", student: joined("c"), ...at(2) });
+    expect(next.students.map((s) => s.id)).toEqual(["a", "b", "c"]);
+    expect(snapshot.students).toHaveLength(2);
+    const teaching = applyConsoleEvent(next, { type: "state.changed", state: "teaching", ...at(3) });
+    expect(applyConsoleEvent(teaching, { type: "student.joined", student: joined("d"), ...at(4) }).students.map((s) => s.id)).toEqual(["a", "b", "c", "d"]);
+  });
+
+  test("an empty lobby takes its first student", () => {
+    expect(applyConsoleEvent(base([]), { type: "student.joined", student: joined("a"), ...at(1) }).students.map((s) => s.id)).toEqual(["a"]);
   });
 
   test("a connection that was lost or came back changes the student's presence only", () => {
     const next = applyConsoleEvent(base(), { type: "student.presence", student_id: "b", online: false, ...at(1) });
-    expect(next.students[1]).toMatchObject({ attendance: "present", online: false });
+    expect(next.students[1]).toMatchObject({ id: "b", online: false });
   });
 
   test("a new code replaces the old one", () => {
@@ -295,7 +231,7 @@ describe("what an event does to the console", () => {
   test("a question skipped or revealed that is not the open one leaves the students' answered marks alone", () => {
     const sq = (id: string, status: "ready" | "open"): ConsoleSnapshot["questions"][number] =>
       ({ id, status, question: {}, adhoc: false, fired_at: null, closes_at: null, closed_at: null, revealed_at: null, skipped_at: null, answered: 0, joined: 0, counts: null }) as never;
-    const snapshot = { ...base([student("a", { answer_state: "answered" })]), questions: [sq("q3", "open"), sq("q5", "ready")] };
+    const snapshot = { ...base([joined("a", undefined, { answer_state: "answered" })]), questions: [sq("q3", "open"), sq("q5", "ready")] };
     const other = applyConsoleEvent(snapshot, { type: "question.skipped", session_question_id: "q5", ...at(2) } as ChannelEvent);
     expect(other.students[0].answer_state).toBe("answered");
     expect(other.questions[1].status).toBe("skipped");
@@ -303,8 +239,8 @@ describe("what an event does to the console", () => {
     expect(open.students[0].answer_state).toBeNull();
   });
 
-  test("the same event twice is the same lesson", () => {
-    const event: ChannelEvent = { type: "student.joined", student: joined("a"), ...at(2) };
+  test("the same event twice is the same lesson: a student is never listed twice", () => {
+    const event: ChannelEvent = { type: "student.joined", student: joined("c"), ...at(2) };
     const once = applyConsoleEvent(base(), event);
     expect(applyConsoleEvent(once, event)).toEqual(once);
   });
@@ -313,7 +249,7 @@ describe("what an event does to the console", () => {
 describe("what an event does to the class view", () => {
   const base: ClassViewSnapshot = {
     server_now: "2026-10-29T08:31:00.000Z",
-    session: { id: "s1", state: "lobby", lesson_title: "T", class_name: "II-4", subject_name: "Математика", joined_count: 3, recent: ["Ана", "Бојан"] },
+    session: { id: "s1", state: "lobby", lesson_title: "T", joined_count: 3, recent: ["Ана", "Бојан"] },
     join: { token: "t1", short_code: "111111", valid_to: "2026-10-29T08:31:30.000Z" },
     question: null,
     progress: null,
@@ -337,12 +273,10 @@ describe("what an event does to the class view", () => {
 });
 
 describe("the last names", () => {
-  test("the last five to join, newest first, and nobody who has not joined", () => {
+  test("the last five to join, newest first", () => {
     const s = [
       joined("1", "2026-10-29T08:31:01.000Z"),
       joined("2", "2026-10-29T08:31:02.000Z"),
-      student("x"),
-      student("m", { attendance: "present_no_device", no_device_reason: "battery" }),
       joined("3", "2026-10-29T08:31:03.000Z"),
       joined("4", "2026-10-29T08:31:04.000Z"),
       joined("5", "2026-10-29T08:31:05.000Z"),

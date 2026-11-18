@@ -11,7 +11,6 @@ import type { ClassViewSnapshot } from "@/lib/teacher/api/types";
 import { isOne, personName } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
 import { formatShortCode, joinUrl, STUDENTS_CAN_TYPE_CODE } from "@/lib/teacher/live";
-import { courseLabel } from "@/lib/teacher/start";
 import { useClassViewBeat } from "@/lib/teacher/windows";
 import { projectedScreen, topOfBoard } from "@/lib/teacher/questions";
 import { ClassReview } from "./ClassReview";
@@ -68,7 +67,7 @@ export function ClassView() {
           <Mark size={48} />
           <span>TeacherAid</span>
         </span>
-        {snapshot && <p className="cv__course">{courseLabel(snapshot.session.subject_name, snapshot.session.class_name)}</p>}
+        {snapshot && <p className="cv__course">{snapshot.session.lesson_title}</p>}
         {allowed && !fullscreen && (
           <button type="button" className="btn btn--secondary cv__fullscreen" onClick={() => void document.documentElement.requestFullscreen().catch(() => {})}>
             <ArrowsOutIcon size={28} aria-hidden="true" />

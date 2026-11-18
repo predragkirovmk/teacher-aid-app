@@ -5,9 +5,6 @@ import type {
   ChannelEvent,
   ClassViewSnapshot,
   ConsoleSnapshot,
-  CoursePatch,
-  CourseDashboard,
-  CourseSummary,
   CreateSessionRequest,
   DraftPatch,
   DraftSummary,
@@ -19,7 +16,6 @@ import type {
   LessonSummary,
   LibraryItem,
   Me,
-  NoDeviceRequest,
   OpenSession,
   PracticeResults,
   PracticeSetResult,
@@ -76,14 +72,6 @@ export interface TeacherApi {
   /** PROPOSED, PATCH /me: the guided first lesson is done (FR-SUP-03). Answers with the teacher. */
   setFirstRunDone(): Promise<Me>;
 
-  // ---- Courses ----
-  /** GET /teacher/courses. */
-  listCourses(): Promise<CourseSummary[]>;
-  /** GET /courses/{id}/dashboard (FR-DASH-01). */
-  getDashboard(courseId: Id): Promise<CourseDashboard>;
-  /** PATCH /courses/{id}: the speed bonus on or off (BR-PTS-04). */
-  updateCourse(courseId: Id, patch: CoursePatch): Promise<CourseSummary>;
-
   // ---- Making a lesson (F-03, F-04) ----
   /**
    * POST /lessons/sources: a PDF or .docx, or typed sentences. Rejects `validation_failed` with a reason (BR-LES-05, EC-LES-06).
@@ -133,7 +121,7 @@ export interface TeacherApi {
   copyFromLibrary(lessonId: Id): Promise<Lesson>;
 
   // ---- Running a lesson (F-06 to F-11) ----
-  /** POST /sessions: starts in the lobby. Rejects `session_open` when the course already has one (EC-SES-02). */
+  /** POST /sessions: starts in the lobby. Rejects `session_open` when the teacher already has an open session (EC-SES-02). */
   createSession(request: CreateSessionRequest): Promise<ConsoleSnapshot>;
   /** GET /sessions/open: the teacher's open session, if any, so End works from anywhere (FR-END-04). */
   getOpenSession(): Promise<OpenSession>;
@@ -151,16 +139,6 @@ export interface TeacherApi {
   skipQuestion(sessionId: Id, sessionQuestionId: Id): Promise<ConsoleSnapshot>;
   /** POST /sessions/{id}/adhoc (FR-POP-04, OPEN-14). */
   fireAdhoc(sessionId: Id, request: AdhocRequest): Promise<ConsoleSnapshot>;
-  /**
-   * POST /sessions/{id}/attendance/{student_id}/no-device (FR-ATT-04): present without a phone, with the reason. Refused `invalid_state`
-   * for a student who has joined with a phone; on a student already marked it changes the reason.
-   */
-  markNoDevice(sessionId: Id, studentId: Id, request: NoDeviceRequest): Promise<ConsoleSnapshot>;
-  /**
-   * PROPOSED, DELETE /sessions/{id}/attendance/{student_id}/no-device: takes the mark back, and the student is as before it was made (not
-   * here yet). Nothing to take back is not an error. Answers the fresh console snapshot.
-   */
-  clearNoDevice(sessionId: Id, studentId: Id): Promise<ConsoleSnapshot>;
   /** PATCH /sessions/{id}/anon-questions/{id} (FR-ANON-10): the teacher answered it aloud (`answered: true`), or takes that back (`false`, PROPOSED). */
   markAnonAnswered(sessionId: Id, anonQuestionId: Id, answered: boolean): Promise<AnonQuestionItem>;
   /** POST /sessions/{id}/end: the full attendance list and the most-missed questions (F-10). */

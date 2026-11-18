@@ -15,8 +15,6 @@ const lesson = (patch: Partial<Lesson> = {}): Lesson => {
     id: "l-n1",
     last_session_id: null,
     title: bank.title,
-    subject: { id: "math", name: "Математика" },
-    year: 3,
     question_count: questions.length,
     version: 1,
     times_run: 0,
@@ -24,7 +22,6 @@ const lesson = (patch: Partial<Lesson> = {}): Lesson => {
     copied_from: null,
     created_at: new Date(NOW).toISOString(),
     updated_at: new Date(NOW).toISOString(),
-    review_summary: bank.summary,
     questions,
     source: null,
     emphasis: null,
@@ -38,8 +35,6 @@ const draft = (patch: Partial<DemoDraft> = {}): DemoDraft => {
     id: "d2",
     source_id: "src-n1",
     source: { kind: "typed", file_name: null },
-    subject: { id: "math", name: "Математика" },
-    year: 3,
     emphasis: null,
     refinements: [],
     previous_draft_id: null,
@@ -48,7 +43,7 @@ const draft = (patch: Partial<DemoDraft> = {}): DemoDraft => {
     consumed_at: null,
     lesson_id: null,
     job: { started_at: new Date(NOW).toISOString(), done_at: new Date(NOW + 8000).toISOString(), outcome: "ready" },
-    content: { title: bank.title, review_summary: bank.summary, questions: bankQuestions(bank, "d2") },
+    content: { title: bank.title, questions: bankQuestions(bank, "d2") },
     ...patch,
   };
 };
@@ -64,12 +59,12 @@ describe("the mock's saved state", () => {
   });
 
   test("a good save comes back as it was", () => {
-    const saved = { ...freshState(TODAY), school: { ...emptyOverlay(), counter: 3, speed_bonus: { "course-ii-4": false }, lessons: [lesson()], drafts: [draft()], deleted: ["l-nizi"] } };
+    const saved = { ...freshState(TODAY), school: { ...emptyOverlay(), counter: 3, lessons: [lesson()], drafts: [draft()], deleted: ["l-nizi"] } };
     expect(sanitizeState(JSON.parse(JSON.stringify(saved)), NOW)).toEqual(saved);
   });
 
   test("anything that is not a save of this version starts over", () => {
-    for (const junk of [null, undefined, 42, "text", [], {}, { v: 0, anchor: TODAY }, { v: 2, anchor: TODAY }, { v: MOCK_VERSION }, { v: MOCK_VERSION, anchor: "yesterday" }, { v: MOCK_VERSION, anchor: NaN }]) {
+    for (const junk of [null, undefined, 42, "text", [], {}, { v: 0, anchor: TODAY }, { v: 1, anchor: TODAY }, { v: MOCK_VERSION }, { v: MOCK_VERSION, anchor: "yesterday" }, { v: MOCK_VERSION, anchor: NaN }]) {
       expect(sanitizeState(junk, NOW)).toEqual(freshState(TODAY));
     }
   });
@@ -85,7 +80,6 @@ describe("the mock's saved state", () => {
       anchor: TODAY,
       school: {
         first_run_done: "yes",
-        speed_bonus: { a: false, b: "no" },
         lessons: [lesson(), { id: "x" }, lesson({ questions: [] }), lesson({ id: "l-n2", version: 0 }), null],
         deleted: ["l-nizi", 4, null],
         drafts: [draft(), draft({ refinements: ["sharper" as never] })],
@@ -96,7 +90,6 @@ describe("the mock's saved state", () => {
     };
     const state = sanitizeState(damaged, NOW);
     expect(state.school.first_run_done).toBe(true);
-    expect(state.school.speed_bonus).toEqual({ a: false });
     expect(state.school.lessons.map((l) => l.id)).toEqual(["l-n1"]);
     expect(state.school.deleted).toEqual(["l-nizi"]);
     expect(state.school.drafts.map((d) => d.id)).toEqual(["d2"]);
@@ -199,11 +192,13 @@ describe("the new teacher's own save", () => {
   });
 
   test("a damaged save of the new teacher keeps what is good and falls back to a first run for the rest", () => {
-    const saved = { ...freshState(TODAY), novice: { school: { first_run_done: "yes", counter: 2, speed_bonus: { a: true } }, university: "junk" } };
+    const saved = { ...freshState(TODAY), novice: { school: { first_run_done: "yes", counter: 2, speed_bonus: { a: true }, courses_empty: true }, university: "junk" } };
     const state = sanitizeState(saved, NOW);
     expect(state.novice.school.first_run_done).toBe(false);
     expect(state.novice.school.counter).toBe(2);
-    expect(state.novice.school.speed_bonus).toEqual({ a: true });
+    // What the app no longer keeps (the speed bonus switch, the empty list of courses) is not carried over from a save.
+    expect(state.novice.school).not.toHaveProperty("speed_bonus");
+    expect(state.novice.school).not.toHaveProperty("courses_empty");
     expect(state.novice.university).toEqual(emptyOverlay("novice"));
     expect(sanitizeState({ ...freshState(TODAY), novice: 7 }, NOW).novice).toEqual(freshState(TODAY).novice);
   });
@@ -216,5 +211,12 @@ describe("the new teacher's own save", () => {
     expect(read.novice.school.first_run_done).toBe(true);
     expect(read.novice.university.first_run_done).toBe(false);
     expect(read.school.first_run_done).toBe(true);
+  });
+});
+
+describe("the saved state's version", () => {
+  test("a save from before the courses were removed is not read as the new shape", () => {
+    const old = { ...freshState(TODAY), v: 1, school: { ...emptyOverlay(), counter: 9, session: { id: "s-n1", course_id: "course-ii-4" } } };
+    expect(sanitizeState(JSON.parse(JSON.stringify(old)), NOW)).toEqual(freshState(TODAY));
   });
 });

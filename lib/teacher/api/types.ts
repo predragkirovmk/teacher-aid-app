@@ -28,7 +28,7 @@ export type SourceKind = "upload" | "typed";
 
 /**
  * What kind of institution a school is (3.1 School.type: гимназија, стручно, уметничко, faculty).
- * PROPOSED codes. A `faculty` is a university: the app words it "студенти" and "група".
+ * PROPOSED codes. A `faculty` is a university: the app words it "студенти".
  */
 export type SchoolKind = "gymnasium" | "vocational" | "arts" | "faculty";
 
@@ -63,28 +63,6 @@ export type SignInRequest = { provider: AuthProvider; return_to?: string };
 
 /** The answer: where to send the browser, that provider's own sign-in address with no login hint. `redirect` is the only method. */
 export type SignInRedirect = { method: "redirect"; url: string };
-
-// ---- Courses and classes (3.1, OPEN-02) ----------------------------------------------------------
-
-export type Subject = { id: Id; name: string };
-/** A school class (II-4) or a study group at a faculty. `year` is I to IV as 1 to 4, or the study year. */
-export type ClassRef = { id: Id; name: string; year: number };
-
-/** One item of GET /teacher/courses. PROPOSED. */
-export type CourseSummary = {
-  id: Id;
-  subject: Subject;
-  class: ClassRef;
-  student_count: number;
-  /** BR-PTS-04: the teacher may switch the speed bonus off per course. */
-  speed_bonus_on: boolean;
-  /** Finished lessons run for this course. */
-  lessons_run: number;
-  last_session_at: IsoTime | null;
-};
-
-/** PATCH /courses/{id}. */
-export type CoursePatch = { speed_bonus_on: boolean };
 
 // ---- Questions and lessons (3.1, BR-Q-*, FR-LES-*) -----------------------------------------------
 
@@ -122,11 +100,9 @@ export type NumericQuestion = QuestionBase & {
 };
 export type Question = MultipleChoiceQuestion | TrueFalseQuestion | NumericQuestion;
 
-/** What a teacher edits: the questions and the review summary, plus the title. */
+/** What a teacher edits: the title and the questions. */
 export type LessonContent = {
   title: string;
-  /** The text of the review, which the teacher reads out when the lesson turns to review (FR-LES-04). PROPOSED as one text. */
-  review_summary: string;
   questions: Question[];
 };
 
@@ -134,13 +110,10 @@ export type LessonContent = {
 export type LessonSummary = {
   id: Id;
   title: string;
-  subject: Subject;
-  /** The year the lesson is for (3.1 Lesson.year). */
-  year: number;
   question_count: number;
   /** The number of the current version (FR-LES-09). */
   version: number;
-  /** How many times it has been run, for any course. 0 is a prepared lesson that has not been run. */
+  /** How many times it has been run. 0 is a prepared lesson that has not been run. */
   times_run: number;
   last_run_at: IsoTime | null;
   /** Set on a copy from the school library (F-05). */
@@ -166,7 +139,7 @@ export type SourceInput = { kind: "upload"; file: File } | { kind: "typed"; text
 export type SourceCreated = { source_id: Id };
 
 /** POST /lessons/generate. */
-export type GenerateRequest = { source_id: Id; subject_id: Id; year: number; emphasis?: string | null };
+export type GenerateRequest = { source_id: Id; emphasis?: string | null };
 
 /** What a draft is doing (3.2 `draft.status`): being written, written, or the AI could not. */
 export type DraftStatus = "pending" | "ready" | "failed";
@@ -185,8 +158,6 @@ type DraftBase = {
   source_id: Id | null;
   /** PROPOSED: the item of `GET /lessons/drafts` has it, and the wait on the draft page needs to know a document from sentences. */
   source: { kind: SourceKind; file_name: string | null } | null;
-  subject: Subject;
-  year: number;
   emphasis: string | null;
   /** The refinements applied so far, oldest first. */
   refinements: Refinement[];
@@ -207,14 +178,14 @@ type DraftBase = {
 
 /**
  * A draft: the output of a generation or a refinement before the teacher saves it, and the job that makes it (BR-LES-08). Nothing
- * reaches students before the teacher reviews it (BR-LES-04). `title`, `review_summary` and `questions` are null until it is ready
+ * reaches students before the teacher reviews it (BR-LES-04). `title` and `questions` are null until it is ready
  * (INTERPRETATION); `failure` is null unless it failed.
  */
 export type LessonDraft = DraftBase &
   (
-    | { status: "pending"; failure: null; title: null; review_summary: null; questions: null }
-    | { status: "failed"; failure: "generation_failed"; title: null; review_summary: null; questions: null }
-    | { status: "ready"; failure: null; title: string; review_summary: string; questions: DraftQuestion[] }
+    | { status: "pending"; failure: null; title: null; questions: null }
+    | { status: "failed"; failure: "generation_failed"; title: null; questions: null }
+    | { status: "ready"; failure: null; title: string; questions: DraftQuestion[] }
   );
 
 export type ReadyDraft = Extract<LessonDraft, { status: "ready" }>;
@@ -225,8 +196,6 @@ export type DraftSummary = {
   status: DraftStatus;
   failure: "generation_failed" | null;
   title: string | null;
-  subject: Subject;
-  year: number;
   question_count: number | null;
   refinements: Refinement[];
   emphasis: string | null;
@@ -243,7 +212,7 @@ export type DraftSummary = {
  * A ready draft only (`invalid_state`, 409, for a pending, failed or saved one). The draft may hold unfinished content (DraftQuestion);
  * the answer is the draft.
  */
-export type DraftPatch = { title?: string; review_summary?: string; questions?: DraftQuestion[] };
+export type DraftPatch = { title?: string; questions?: DraftQuestion[] };
 
 /** POST /lessons: the draft as the teacher edited it (FR-LES-07) becomes a lesson at version 1. PROPOSED body. */
 export type SaveLessonRequest = LessonContent & { draft_id: Id };
@@ -257,8 +226,6 @@ export type UpdateLessonRequest = LessonContent & { draft_id?: Id };
 export type LibraryItem = {
   lesson_id: Id;
   title: string;
-  subject: Subject;
-  year: number;
   question_count: number;
   owner: { id: Id; name: string };
   saved_at: IsoTime;
@@ -321,10 +288,9 @@ export type LeaderboardRow = { student_id: Id; name: string; points: number; ran
 
 // ---- Sessions (F-06, 4.1) ------------------------------------------------------------------------
 
-/** A live run of a lesson for one course. */
+/** A live run of a lesson. */
 export type SessionRef = {
   id: Id;
-  course_id: Id;
   lesson: { id: Id; title: string; version: number };
   state: SessionState;
   started_at: IsoTime;
@@ -332,24 +298,22 @@ export type SessionRef = {
 };
 
 /** POST /sessions. */
-export type CreateSessionRequest = { lesson_id: Id; course_id: Id };
+export type CreateSessionRequest = { lesson_id: Id };
 
 /** GET /sessions/open (FR-END-04): any open session of the teacher, so End works from anywhere. PROPOSED shape. */
 export type OpenSession = {
   server_now: IsoTime;
-  session: (SessionRef & { class_name: string; subject_name: string }) | null;
+  session: SessionRef | null;
 };
 
 /** The QR token and the short code beside it, both rotating every 30 s (BR-JOIN-02). */
 export type JoinToken = { token: string; short_code: string; valid_to: IsoTime };
 
+/** A student who has scanned the code and joined. The console lists no one else (owner's simplification, 2026-11-17). */
 export type ConsoleStudent = {
   id: Id;
   full_name: string;
-  /** Null until the student joins. */
-  attendance: AttendanceStatus | null;
-  joined_at: IsoTime | null;
-  no_device_reason: NoDeviceReason | null;
+  joined_at: IsoTime;
   /** Realtime presence: what tells `offline` from `not_answered` (FR-CON-02). */
   online: boolean;
   /** For the open question, else null. */
@@ -380,7 +344,7 @@ export type FocusFlag = {
 /** GET /sessions/{id}/console: everything the teacher's own screen shows, for a reload or a reopened window (FR-SES-08). */
 export type ConsoleSnapshot = {
   server_now: IsoTime;
-  session: SessionRef & { class_name: string; subject_name: string };
+  session: SessionRef;
   /**
    * PROPOSED: the code the console reads out, `short_code`, and the token behind the QR; null once students may no longer join. The
    * teacher's own screen may hold it (it is the teacher's lesson), unlike a channel students read.
@@ -427,8 +391,6 @@ export type ClassViewSnapshot = {
     id: Id;
     state: SessionState;
     lesson_title: string;
-    class_name: string;
-    subject_name: string;
     joined_count: number;
     /** PROPOSED: the names of the last five to join, newest first, for the lobby (the `recent` of `joined.count`, so a reload shows them too). */
     recent: string[];
@@ -462,9 +424,6 @@ export type AdhocRequest = {
   /** PROPOSED: for `numeric` only; the tolerance is 0 in a quick question. */
   numeric?: { unit: string | null; tolerance: number; allow_negative: boolean };
 };
-
-/** POST /sessions/{id}/attendance/{student_id}/no-device (FR-ATT-04, F-11). */
-export type NoDeviceRequest = { reason: NoDeviceReason };
 
 /** One row of the attendance list the teacher copies into e-Дневник: every enrolled student (FR-END-03, OPEN-06 on the format). */
 export type AttendanceRow = {
@@ -502,7 +461,6 @@ export type SessionReview = {
 export type PracticeSetSummary = {
   id: Id;
   session_id: Id;
-  course_id: Id;
   created_at: IsoTime;
   question_count: number;
 };
@@ -514,77 +472,6 @@ export type PracticeSetResult = { practice_set: PracticeSetSummary | null };
 export type PracticeResults = {
   practice_set: PracticeSetSummary;
   students: { student_id: Id; full_name: string; score: number | null; completed_at: IsoTime | null }[];
-};
-
-// ---- Course dashboard (FR-DASH-01, GET /courses/{id}/dashboard) ----------------------------------
-
-/** All PROPOSED: the spec says what the screen shows and lists no payload. */
-export type DashboardStudent = {
-  id: Id;
-  full_name: string;
-  /** Joined the class partway through the year (FR-DASH-04, BR-ROS-01). */
-  joined_mid_year: boolean;
-  joined_class_at: IsoTime | null;
-  /** The season's points in this course. */
-  points: number;
-};
-
-/** One finished lesson in the course's history; `lesson_id` makes it reusable (FR-DASH-01). */
-export type DashboardSession = {
-  id: Id;
-  lesson: { id: Id; title: string; version: number };
-  started_at: IsoTime;
-  ended_at: IsoTime;
-  question_count: number;
-  tally: AttendanceTally;
-  /** Answers given per pop-up per joined student, 0 to 1 (the report's "engagement", OPEN-19). */
-  participation: number;
-  /** Right answers among the answers given, 0 to 1. */
-  right_rate: number;
-  /** Points the class earned in the lesson. */
-  points: number;
-};
-
-/** One student at one lesson. A reason accompanies `present_no_device` so a zero is not read as disengagement (FR-DASH-03). */
-export type DashboardAttendance = {
-  session_id: Id;
-  student_id: Id;
-  status: AttendanceStatus;
-  no_device_reason: NoDeviceReason | null;
-};
-
-/** How the class, and each student, did on a topic across all lessons (BR-TOP-01, FR-DASH-01). */
-export type DashboardTopic = {
-  topic: string;
-  right: number;
-  total: number;
-  by_student: { student_id: Id; right: number; total: number }[];
-};
-
-export type DashboardFocusFlag = FocusFlag & { session_id: Id; away_seconds: number | null };
-
-export type DashboardAnonQuestion = AnonQuestionItem & { session_id: Id };
-
-export type DashboardPractice = {
-  practice_set: PracticeSetSummary;
-  /** Students in the class when it was sent. */
-  students: number;
-  completed: number;
-  /** The mean of the completed students' scores, or null when nobody finished. */
-  average_score: number | null;
-};
-
-export type CourseDashboard = {
-  server_now: IsoTime;
-  course: CourseSummary;
-  students: DashboardStudent[];
-  /** Newest first. */
-  sessions: DashboardSession[];
-  attendance: DashboardAttendance[];
-  topics: DashboardTopic[];
-  focus_flags: DashboardFocusFlag[];
-  anon_questions: DashboardAnonQuestion[];
-  practice: DashboardPractice[];
 };
 
 // ---- Realtime (11.2, 11.4) -----------------------------------------------------------------------

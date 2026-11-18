@@ -1,12 +1,11 @@
-import { hasJoined } from "../live";
 import { rng } from "./mock-data";
 import { missedOfQuestions } from "../review";
 import type { EndedSession, PracticeRecord } from "./mock-state";
 import type { AttendanceRow, ConsoleSnapshot, MissedQuestion, PracticeResults } from "./types";
 
 /**
- * The end of a lesson in the demo (F-10, F-12). Ending freezes the class where the clock had it: who joined, who joined late, who was marked present
- * without a phone with the reason they were given, and who never came (absent, written by the system). The questions the class missed and the ones it
+ * The end of a lesson in the demo (F-10, F-12). Ending freezes the class where the clock had it: the students who joined, each present, marked by the
+ * student. Nobody else is listed. The questions the class missed and the ones it
  * wrote are kept as they were, because the class that was played from the clock stops with the lesson.
  */
 
@@ -15,11 +14,10 @@ export function endedFrom(snapshot: ConsoleSnapshot, endedAt: string): EndedSess
   const attendance: AttendanceRow[] = snapshot.students.map((s) => ({
     student_id: s.id,
     full_name: s.full_name,
-    // A student who is neither here nor marked is absent, written by the system (F-10).
-    status: s.attendance ?? "absent",
-    joined_at: hasJoined(s) ? s.joined_at : null,
-    no_device_reason: s.attendance === "present_no_device" ? s.no_device_reason : null,
-    marked_by: hasJoined(s) ? "student" : s.attendance === "present_no_device" ? "teacher" : "system",
+    status: "present",
+    joined_at: s.joined_at,
+    no_device_reason: null,
+    marked_by: "student",
   }));
   const { session } = snapshot;
   // The questions that were put to the class and have closed (a skipped one, one never sent and one still open have no result).
@@ -37,7 +35,6 @@ export function endedFrom(snapshot: ConsoleSnapshot, endedAt: string): EndedSess
   }
   return {
     id: session.id,
-    course_id: session.course_id,
     lesson: session.lesson,
     started_at: session.started_at,
     ended_at: endedAt,
@@ -62,20 +59,19 @@ export const PRACTICE_FIRST_MS = 25_000;
 export const PRACTICE_SPREAD_MS = 20 * 60_000;
 
 /**
- * Who has done the set at `now` (FR-PRA-10): every enrolled student, in the register's order as the API sends it. Whether a student does it, when and with
- * how many right is worked out from the set's id, so two windows and a reload agree. A student who was in the lesson is likelier to; none of it gives points.
+ * Who has done the set at `now` (FR-PRA-10): every student who was in the lesson, in the order the list gives them. Whether a student does it, when and with
+ * how many right is worked out from the set's id, so two windows and a reload agree. None of it gives points.
  */
 export function practiceResultsAt(
   record: PracticeRecord,
-  attendance: readonly Pick<AttendanceRow, "student_id" | "full_name" | "status">[],
+  attendance: readonly Pick<AttendanceRow, "student_id" | "full_name">[],
   now: number,
 ): PracticeResults["students"] {
   const created = Date.parse(record.created_at);
   const count = record.question_ids.length;
   return attendance.map((a) => {
     const r = rng(`${record.id}/${a.student_id}`);
-    const chance = a.status === "absent" ? 0.3 : 0.65;
-    const does = r() < chance;
+    const does = r() < 0.65;
     const at = created + PRACTICE_FIRST_MS + Math.round(r() * PRACTICE_SPREAD_MS);
     let score = 0;
     for (let i = 0; i < count; i++) if (r() < 0.7) score++;

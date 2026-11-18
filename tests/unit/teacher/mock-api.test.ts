@@ -40,7 +40,7 @@ const file = (name: string, size = 1000) => ({ name, size, type: "" }) as File;
 /** Asks for a lesson: the draft, pending, as the API answers at once. */
 async function askDraft(text = typed, emphasis?: string): Promise<LessonDraft> {
   const { source_id } = await api.createSource({ kind: "typed", text });
-  return api.generateLesson({ source_id, subject_id: "math", year: 2, emphasis });
+  return api.generateLesson({ source_id, emphasis });
 }
 
 /** A draft that has been written: the clock is moved past the job, as a wait that is over. */
@@ -58,28 +58,21 @@ async function makeDraft(text = typed, emphasis?: string): Promise<ReadyDraft> {
 const saveRequest = (draft: ReadyDraft) => ({
   draft_id: draft.id,
   title: draft.title,
-  review_summary: draft.review_summary,
   questions: draft.questions as Lesson["questions"],
 });
 
 describe("who and what", () => {
-  test("the teacher is Марија Петровска at a gymnasium, with four courses, the last not taught yet", async () => {
+  test("the teacher is Марија Петровска at a gymnasium, with no courses, classes or subjects in the API", async () => {
     const me = await api.getMe();
     expect(me).toMatchObject({ name: "Марија Петровска", role: "teacher", first_run_done: true, school: { type: "gymnasium" } });
-    const courses = await api.listCourses();
-    expect(courses.map((c) => c.class.name)).toEqual(["II-4", "III-5", "IV-1", "IV-2"]);
-    expect(courses.map((c) => c.student_count)).toEqual([26, 24, 28, 25]);
-    expect(courses.map((c) => c.lessons_run)).toEqual([10, 6, 6, 0]);
-    expect(courses.every((c) => c.speed_bonus_on)).toBe(true);
-    expect(courses.map((c) => c.last_session_at === null)).toEqual([false, false, false, true]);
+    for (const gone of ["listCourses", "getDashboard", "updateCourse", "markNoDevice", "clearNoDevice"]) expect(api).not.toHaveProperty(gone);
   });
 
-  test("the demo switch serves the faculty: the same teacher as a professor, with study groups", async () => {
+  test("the demo switch serves the faculty: the same teacher as a professor", async () => {
     source.setSchoolType("university");
     const me = await api.getMe();
     expect(me.name).toBe("Марија Петровска");
     expect(me.school.type).toBe("faculty");
-    expect((await api.listCourses()).map((c) => c.class.name)).toEqual(["Група 1А", "Група 2Б", "Група 3А", "Група 1Б"]);
   });
 
   test("tells whoever is listening that the school changed", () => {
@@ -102,79 +95,41 @@ describe("who and what", () => {
   });
 });
 
-describe("the course dashboard", () => {
-  test("holds a course's history in the shapes the results page needs", async () => {
-    const [course] = await api.listCourses();
-    const d = await api.getDashboard(course.id);
-    expect(d.course.id).toBe(course.id);
-    expect(d.students).toHaveLength(26);
-    expect(d.sessions).toHaveLength(10);
-    expect(d.sessions[0].started_at > d.sessions[9].started_at).toBe(true); // newest first
-    expect(d.attendance.length).toBeGreaterThan(200);
-    expect(d.topics.length).toBeGreaterThan(0);
-    expect(d.practice.length).toBeGreaterThanOrEqual(1);
-    expect(d.students.some((s) => s.joined_mid_year)).toBe(true);
-    expect(d.attendance.filter((a) => a.status === "present_no_device").every((a) => a.no_device_reason)).toBe(true);
-    expect(d.anon_questions.every((a) => a.sender.name && a.text)).toBe(true);
-  });
-
-  test("a lesson's tally adds up to the students enrolled for it", async () => {
-    const [course] = await api.listCourses();
-    const d = await api.getDashboard(course.id);
-    for (const s of d.sessions) {
-      expect(s.tally.present + s.tally.late + s.tally.absent + s.tally.present_no_device).toBe(s.tally.total);
-      expect(d.attendance.filter((a) => a.session_id === s.id)).toHaveLength(s.tally.total);
-      expect(s.participation).toBeGreaterThan(0.8);
-      expect(s.right_rate).toBeGreaterThan(0.3);
-      expect(s.right_rate).toBeLessThan(1);
+describe("the held lessons", () => {
+  test("a lesson that was run says how often and when, and leads to the latest of its sessions, which is a finished one", async () => {
+    const held = (await api.listLessons()).filter((l) => l.times_run > 0);
+    expect(held.length).toBeGreaterThan(5);
+    for (const l of held) {
+      expect(l.last_run_at).toBeTruthy();
+      expect(l.last_session_id).toBeTruthy();
+      const review = await api.getReview(l.last_session_id!);
+      expect(review.session).toMatchObject({ state: "ended", lesson: { id: l.id } });
+      expect(Date.parse(review.session.ended_at!)).toBe(Date.parse(l.last_run_at!));
     }
   });
 
-  test("the points of the lessons add up to the points of the students", async () => {
-    for (const course of (await api.listCourses()).filter((c) => c.lessons_run > 0)) {
-      const d = await api.getDashboard(course.id);
-      const byLesson = d.sessions.reduce((n, s) => n + s.points, 0);
-      const byStudent = d.students.reduce((n, s) => n + s.points, 0);
-      expect(byLesson).toBe(byStudent);
-      expect(byLesson).toBeGreaterThan(0);
+  test("a finished lesson lists only the students who were there, each present, and no session or summary carries a course, a class or a subject", async () => {
+    const held = (await api.listLessons()).find((l) => l.times_run > 2)!;
+    const review = await api.getReview(held.last_session_id!);
+    expect(review.attendance!.length).toBeGreaterThan(10);
+    expect(review.attendance!.every((a) => a.status === "present" && a.marked_by === "student" && a.no_device_reason === null && a.joined_at !== null)).toBe(true);
+    expect(JSON.stringify(review)).not.toMatch(/course|class_name|subject|"year"/);
+    expect(review.anon_questions.every((a) => a.sender.name && a.text)).toBe(true);
+  });
+
+  test("a practice set of a finished lesson goes to the students who were there, and who did it is read", async () => {
+    let seen = 0;
+    for (const l of (await api.listLessons()).filter((x) => x.times_run > 0)) {
+      const results = await api.getPracticeResults(l.last_session_id!).catch(() => null);
+      if (!results) continue;
+      seen++;
+      expect(results.practice_set).not.toHaveProperty("course_id");
+      const review = await api.getReview(l.last_session_id!);
+      expect(results.students.map((s) => s.student_id).sort()).toEqual(review.attendance!.map((a) => a.student_id).sort());
     }
+    expect(seen).toBeGreaterThan(0);
   });
 
-  test("a practice set counts the whole class, and who did it, not only those who were at the lesson", async () => {
-    const [course] = await api.listCourses();
-    const d = await api.getDashboard(course.id);
-    for (const p of d.practice) {
-      const session = d.sessions.find((s) => s.id === p.practice_set.session_id)!;
-      expect(p.students).toBe(session.tally.total);
-      expect(p.completed).toBeLessThanOrEqual(p.students);
-      if (p.average_score !== null) expect(p.average_score).toBeLessThanOrEqual(p.practice_set.question_count);
-    }
-  });
-
-  test("a topic's totals are the sum of its students'", async () => {
-    const [course] = await api.listCourses();
-    const d = await api.getDashboard(course.id);
-    for (const t of d.topics) {
-      expect(t.by_student.reduce((n, s) => n + s.total, 0)).toBe(t.total);
-      expect(t.by_student.reduce((n, s) => n + s.right, 0)).toBe(t.right);
-      expect(t.right).toBeLessThanOrEqual(t.total);
-    }
-  });
-
-  test("a course that is not the teacher's is not found", async () => {
-    expect((await rejection(api.getDashboard("course-of-someone-else"))).code).toBe("not_found");
-  });
-
-  test("the speed bonus can be switched off for one course, and the switch is kept per demo school", async () => {
-    const [course] = await api.listCourses();
-    expect((await api.updateCourse(course.id, { speed_bonus_on: false })).speed_bonus_on).toBe(false);
-    expect((await api.listCourses())[0].speed_bonus_on).toBe(false);
-    expect((await api.listCourses())[1].speed_bonus_on).toBe(true);
-    expect((await api.getDashboard(course.id)).course.speed_bonus_on).toBe(false);
-    expect((await rejection(api.updateCourse(course.id, { speed_bonus_on: "no" as unknown as boolean }))).code).toBe("validation_failed");
-    source.setSchoolType("university");
-    expect((await api.listCourses()).every((c) => c.speed_bonus_on)).toBe(true);
-  });
 });
 
 describe("lessons", () => {
@@ -223,21 +178,20 @@ describe("making a lesson", () => {
     expect((await rejection(api.createSource({ kind: "upload", file: file("scan.pdf") }))).reason).toBe("no_text");
   });
 
-  test("a draft that is ready has 5 to 8 valid questions of all three kinds, a review summary and a timer for each", async () => {
+  test("a draft that is ready has 5 to 8 valid questions of all three kinds and a timer for each, and no subject, year or review summary", async () => {
     const draft = await makeDraft();
     expect(isValidContent(draft)).toBe(true);
     expect(draft.refinements).toEqual([]);
     expect(new Set(draft.questions.map((q) => q.kind)).size).toBe(3);
     expect(draft.questions.every((q) => q.timer_seconds >= 10 && q.explanation)).toBe(true);
-    expect(draft.review_summary.length).toBeGreaterThan(40);
-    expect(draft.subject).toEqual({ id: "math", name: "Математика" });
+    for (const gone of ["review_summary", "subject", "year"]) expect(draft).not.toHaveProperty(gone);
   });
 
   test("it picks the lesson that fits what the teacher wrote", async () => {
     expect((await makeDraft("Логаритми и нивните својства, за третата година со задачи.")).title).toBe("Логаритми");
     expect((await makeDraft("Извод на функција и правилата за наоѓање извод на полином.")).title).toBe("Извод на функција");
     const { source_id } = await api.createSource({ kind: "upload", file: file("Веројатност - работен лист.pdf") });
-    expect((await finished(await api.generateLesson({ source_id, subject_id: "math", year: 4 }))).title).toBe("Основи на веројатноста");
+    expect((await finished(await api.generateLesson({ source_id }))).title).toBe("Основи на веројатноста");
   });
 
   test("the sentence of emphasis is kept, trimmed", async () => {
@@ -245,11 +199,8 @@ describe("making a lesson", () => {
     expect((await makeDraft(typed, "   ")).emphasis).toBeNull();
   });
 
-  test("a source, subject or year that does not exist is refused", async () => {
-    expect((await rejection(api.generateLesson({ source_id: "src-none", subject_id: "math", year: 2 }))).code).toBe("not_found");
-    const { source_id } = await api.createSource({ kind: "typed", text: typed });
-    expect((await rejection(api.generateLesson({ source_id, subject_id: "physics", year: 2 }))).code).toBe("validation_failed");
-    expect((await rejection(api.generateLesson({ source_id, subject_id: "math", year: 0 }))).code).toBe("validation_failed");
+  test("a source that does not exist is refused", async () => {
+    expect((await rejection(api.generateLesson({ source_id: "src-none" }))).code).toBe("not_found");
   });
 
   test("a document is read for a moment, typed sentences are taken at once, and the wait can be set", async () => {
@@ -329,7 +280,8 @@ describe("saving, editing and deleting", () => {
     const draft = await makeDraft();
     const before = (await api.listLessons()).length;
     const lesson = await api.saveLesson(saveRequest(draft));
-    expect(lesson).toMatchObject({ version: 1, times_run: 0, copied_from: null, title: draft.title, subject: draft.subject, year: 2 });
+    expect(lesson).toMatchObject({ version: 1, times_run: 0, copied_from: null, title: draft.title });
+    for (const gone of ["subject", "year", "review_summary"]) expect(lesson).not.toHaveProperty(gone);
     expect(lesson.questions).toHaveLength(draft.questions.length);
     expect(lesson.questions.every((q, i) => q.id.startsWith(lesson.id) && q.order === i)).toBe(true);
 
@@ -362,13 +314,12 @@ describe("saving, editing and deleting", () => {
   test("editing a lesson makes the next version and leaves what was run alone (BR-LES-03)", async () => {
     const run = (await api.listLessons()).find((l) => l.times_run > 0)!;
     const lesson = await api.getLesson(run.id);
-    const changed = await api.updateLesson(run.id, { title: "Нов наслов", review_summary: lesson.review_summary, questions: lesson.questions });
+    const changed = await api.updateLesson(run.id, { title: "Нов наслов", questions: lesson.questions });
     expect(changed).toMatchObject({ version: 2, title: "Нов наслов", times_run: run.times_run });
     expect((await api.listLessons()).find((l) => l.id === run.id)).toMatchObject({ version: 2, title: "Нов наслов", times_run: run.times_run });
-    const [course] = await api.listCourses();
-    const dash = await api.getDashboard(course.id);
-    expect(dash.sessions.every((s) => s.lesson.version === 1)).toBe(true);
-    expect((await rejection(api.updateLesson(run.id, { title: "", review_summary: "", questions: [] }))).code).toBe("validation_failed");
+    // What was run keeps its version: the end page of the latest run still names version 1.
+    expect((await api.getReview(run.last_session_id!)).session.lesson.version).toBe(1);
+    expect((await rejection(api.updateLesson(run.id, { title: "", questions: [] }))).code).toBe("validation_failed");
     expect((await rejection(api.updateLesson("l-none", lesson))).code).toBe("not_found");
   });
 
@@ -381,8 +332,7 @@ describe("saving, editing and deleting", () => {
 
     const run = (await api.listLessons()).find((l) => l.times_run > 0)!;
     await api.deleteLesson(run.id);
-    const [course] = await api.listCourses();
-    expect((await api.getDashboard(course.id)).sessions).toHaveLength(10);
+    expect((await api.getReview(run.last_session_id!)).session.state).toBe("ended");
 
     const draft = await makeDraft();
     const mine = await api.saveLesson(saveRequest(draft));
@@ -443,35 +393,25 @@ describe("the school library", () => {
 });
 
 describe("the library of the demo school and of the demo faculty", () => {
-  test("holds the lessons of several colleagues, in more than one subject, each lesson a valid one", async () => {
+  test("holds the lessons of several colleagues, each lesson a valid one, with no subject or year", async () => {
     const library = await api.listLibrary();
     expect(new Set(library.map((i) => i.owner.id)).size).toBeGreaterThanOrEqual(3);
-    expect(new Set(library.map((i) => i.subject.id)).size).toBeGreaterThanOrEqual(2);
     for (const item of library) {
+      for (const gone of ["subject", "year"]) expect(item).not.toHaveProperty(gone);
       const lesson = await api.getLesson(item.lesson_id);
       expect(isValidContent(lesson)).toBe(true);
-      expect(lesson.subject).toEqual(item.subject);
       expect(lesson.question_count).toBe(item.question_count);
+      for (const gone of ["subject", "year", "review_summary"]) expect(lesson).not.toHaveProperty(gone);
     }
   });
 
-  test("the faculty has its own colleagues and subjects, and none of the school's", async () => {
+  test("the faculty has its own colleagues, and none of the school's", async () => {
     const school = await api.listLibrary();
     source.setSchoolType("university");
     const faculty = await api.listLibrary();
     expect(faculty.length).toBeGreaterThanOrEqual(3);
-    expect(new Set(faculty.map((i) => i.subject.id)).size).toBeGreaterThanOrEqual(3);
-    expect(faculty.some((i) => i.subject.name === "Дискретна математика")).toBe(true);
     expect(faculty.every((i) => !school.some((s) => s.owner.id === "t-avramovska" && i.owner.id === s.owner.id))).toBe(true);
     expect(new Set(faculty.map((i) => i.owner.name))).toContain("Драган Ристевски");
-  });
-
-  test("the teacher's courses cover some of the library's subjects, and not all", async () => {
-    const courses = await api.listCourses();
-    const mine = new Set(courses.map((c) => c.subject.id));
-    const library = await api.listLibrary();
-    expect(library.some((i) => mine.has(i.subject.id))).toBe(true);
-    expect(library.some((i) => !mine.has(i.subject.id))).toBe(true);
   });
 
   test("one of the library's lessons has a drawing on a question, with what it shows, and a copy keeps it", async () => {
@@ -524,10 +464,9 @@ describe("the library of the demo school and of the demo faculty", () => {
 });
 
 describe("deleting a lesson", () => {
-  test("a lesson that a class is being held with cannot be deleted, and stays", async () => {
+  test("a lesson that is being run cannot be deleted, and stays", async () => {
     const lesson = (await api.listLessons()).find((l) => l.times_run === 0)!;
-    const [course] = await api.listCourses();
-    await api.createSession({ lesson_id: lesson.id, course_id: course.id });
+    await api.createSession({ lesson_id: lesson.id });
     expect((await rejection(api.deleteLesson(lesson.id))).code).toBe("invalid_state");
     expect((await api.listLessons()).some((l) => l.id === lesson.id)).toBe(true);
     // Another lesson can go while one is running.
@@ -538,13 +477,11 @@ describe("deleting a lesson", () => {
 
   test("a lesson that was held goes from the list, and the held lessons and their results stay", async () => {
     const held = (await api.listLessons()).find((l) => l.times_run > 0)!;
-    const [course] = await api.listCourses();
-    const before = await api.getDashboard(course.id);
+    const before = await api.getReview(held.last_session_id!);
     await api.deleteLesson(held.id);
     expect((await api.listLessons()).some((l) => l.id === held.id)).toBe(false);
     expect((await rejection(api.getLesson(held.id))).code).toBe("not_found");
-    const after = await api.getDashboard(course.id);
-    expect(after.sessions).toEqual(before.sessions);
+    expect(await api.getReview(held.last_session_id!)).toEqual(before);
     expect((await rejection(api.deleteLesson(held.id))).code).toBe("not_found");
   });
 
@@ -653,43 +590,60 @@ describe("the picture of a question", () => {
     const draft = await makeDraft();
     const questions = draft.questions.map((q, i) => (i === 0 ? { ...q, media: { ...media, alt: "Графикот на парабола" } } : q));
     await a.updateDraft(draft.id, { questions });
-    const lesson = await a.saveLesson({ draft_id: draft.id, title: draft.title, review_summary: draft.review_summary, questions: questions as Lesson["questions"] });
+    const lesson = await a.saveLesson({ draft_id: draft.id, title: draft.title, questions: questions as Lesson["questions"] });
     expect(lesson.questions[0].media).toEqual({ id: media.id, url: media.url, alt: "Графикот на парабола" });
     expect((await a.getLesson(lesson.id)).questions[0].media?.alt).toBe("Графикот на парабола");
   });
 });
 
 describe("the live lesson", () => {
-  /** A lesson started with II-4, and the class as the clock gives it. */
+  /** A lesson started at once, and the students as the clock gives them. */
   async function started() {
-    const lesson = (await api.listLessons()).find((l) => l.times_run === 0 && l.year === 2)!;
-    const course = (await api.listCourses()).find((c) => c.class.year === 2)!;
-    return api.createSession({ lesson_id: lesson.id, course_id: course.id });
+    const lesson = (await api.listLessons()).find((l) => l.times_run === 0)!;
+    return api.createSession({ lesson_id: lesson.id });
   }
-  const here = <S extends { attendance: string | null }>(c: { students: S[] }) => c.students.filter((s) => s.attendance === "present" || s.attendance === "late");
+  /** The pool the demo draws its joiners from: the school's 26 students. */
+  const POOL = 26;
 
-  test("a lesson that has just been started has its whole class listed, nobody here, the code and every question ready", async () => {
+  test("a lesson that has just been started lists nobody, has the code and every question ready, and names no class or subject", async () => {
     const c = await started();
-    expect(c.session).toMatchObject({ state: "lobby", class_name: "II-4", subject_name: "Математика" });
-    expect(c.students).toHaveLength(26);
-    expect(c.students.every((s) => s.attendance === null && !s.online)).toBe(true);
+    expect(c.session).toMatchObject({ state: "lobby", lesson: { id: expect.any(String), title: expect.any(String) } });
+    for (const gone of ["class_name", "subject_name", "course_id"]) expect(c.session).not.toHaveProperty(gone);
+    expect(c.students).toEqual([]);
     expect(c.join).toMatchObject({ short_code: expect.stringMatching(/^\d{6}$/), token: expect.any(String) });
     expect(c.questions.length).toBeGreaterThanOrEqual(5);
     expect(c.questions.every((q) => q.status === "ready")).toBe(true);
   });
 
-  test("the class joins as time goes by, and a reload finds it where the clock has put it (FR-SES-08)", async () => {
+  test("students appear as they scan the code, as time goes by, and a reload finds them where the clock has put it (FR-SES-08)", async () => {
     const first = await started();
     now += 5000;
     const soon = await api.getConsole(first.session.id);
     now += 70_000;
     const later = await api.getConsole(first.session.id);
-    expect(here(soon).length).toBeLessThan(here(later).length);
-    const share = here(later).length / 26;
+    expect(soon.students.length).toBeLessThan(later.students.length);
+    const share = later.students.length / POOL;
     expect(share).toBeGreaterThanOrEqual(0.7);
-    expect(share).toBeLessThanOrEqual(0.85);
+    expect(share).toBeLessThanOrEqual(0.9);
+    // Everyone listed has a join time that has passed, and is an object of the new shape: no mark of attendance.
+    for (const s of later.students) {
+      expect(Date.parse(s.joined_at)).toBeLessThanOrEqual(now);
+      expect(Object.keys(s).sort()).toEqual(["answer_state", "focus_flags", "full_name", "id", "joined_at", "online", "points"]);
+    }
     // A second read, as a second window or a reload, says the same.
     expect(await api.getConsole(first.session.id)).toEqual(later);
+  });
+
+  test("the list only ever grows: nobody who has joined drops out, and a student who is not yet in is never named", async () => {
+    const c = await started();
+    const seen = new Set<string>();
+    for (let step = 0; step < 12; step++) {
+      now += 15_000;
+      const snap = await api.getConsole(c.session.id);
+      for (const id of seen) expect(snap.students.some((s) => s.id === id)).toBe(true);
+      snap.students.forEach((s) => seen.add(s.id));
+      expect(snap.students.length).toBeLessThanOrEqual(POOL);
+    }
   });
 
   test("the code is the same all through its 30 seconds and another one follows", async () => {
@@ -705,16 +659,19 @@ describe("the live lesson", () => {
     expect(b.join!.valid_to).toBe(new Date(edge + 30_000).toISOString());
   });
 
-  test("the class view holds no student who is not here and none of the console's own data", async () => {
+  test("the class view names the lesson, holds no student who is not here and none of the console's own data", async () => {
     const c = await started();
     now += 30_000;
     const view = await api.getClassView(c.session.id);
     const console_ = await api.getConsole(c.session.id);
-    const absent = console_.students.filter((s) => s.attendance === null);
-    expect(absent.length).toBeGreaterThan(0);
     const text = JSON.stringify(view);
-    for (const s of absent) expect(text).not.toContain(s.full_name);
-    expect(view.session).toMatchObject({ lesson_title: c.session.lesson.title, class_name: "II-4", joined_count: here(console_).length });
+    expect(console_.students.length).toBeGreaterThan(0);
+    expect(console_.students.length).toBeLessThan(POOL);
+    expect(view.session).toMatchObject({ lesson_title: c.session.lesson.title, joined_count: console_.students.length });
+    for (const gone of ["class_name", "subject_name"]) expect(view.session).not.toHaveProperty(gone);
+    // The projector may name only the last few to join.
+    expect(view.session.recent.length).toBeLessThanOrEqual(5);
+    expect(text.match(/"recent":\[[^\]]*\]/)).not.toBeNull();
     expect(view.join).toEqual(console_.join);
     expect(text).not.toContain("students");
   });
@@ -737,79 +694,31 @@ describe("the live lesson", () => {
     expect((await api.advance(c.session.id, { to: "review" })).session.state).toBe("review");
   });
 
-  test("a student who joins after the lesson began is late, and the ones who joined before are not", async () => {
+  test("students keep joining after the teacher began the lesson, until End, and nobody is marked late", async () => {
     const c = await started();
     now += 20_000;
-    const before = here(await api.getConsole(c.session.id)).map((s) => s.id);
+    const before = (await api.getConsole(c.session.id)).students.map((s) => s.id);
     await api.advance(c.session.id, { to: "teaching" });
     now += 80_000;
     const after = await api.getConsole(c.session.id);
-    const late = after.students.filter((s) => s.attendance === "late");
-    expect(late.length).toBeGreaterThanOrEqual(1);
-    for (const id of before) expect(after.students.find((s) => s.id === id)!.attendance).toBe("present");
-    for (const s of late) expect(Date.parse(s.joined_at!)).toBeGreaterThan(Date.parse(after.session.started_at) + 20_000);
+    const newcomers = after.students.filter((s) => !before.includes(s.id));
+    expect(newcomers.length).toBeGreaterThanOrEqual(1);
+    for (const id of before) expect(after.students.some((s) => s.id === id)).toBe(true);
+    // A join after End is not possible: the lesson is gone.
+    await api.endSession(c.session.id);
+    expect((await rejection(api.getConsole(c.session.id))).code).toBe("not_found");
   });
 
-  test("a student can be marked present without a phone, with a reason, and the mark can be taken back", async () => {
-    const c = await started();
-    const target = c.students[0].id;
-    const marked = await api.markNoDevice(c.session.id, target, { reason: "battery" });
-    expect(marked.students.find((s) => s.id === target)).toMatchObject({ attendance: "present_no_device", no_device_reason: "battery", joined_at: null });
-    // It is kept: a reload finds it.
-    expect((await api.getConsole(c.session.id)).students.find((s) => s.id === target)).toMatchObject({ attendance: "present_no_device" });
-    // A second mark changes the reason.
-    const changed = await api.markNoDevice(c.session.id, target, { reason: "no_data" });
-    expect(changed.students.find((s) => s.id === target)?.no_device_reason).toBe("no_data");
-    const cleared = await api.clearNoDevice(c.session.id, target);
-    expect(cleared.students.find((s) => s.id === target)).toMatchObject({ attendance: null, no_device_reason: null });
-    // Taking back what is not there is not an error.
-    await expect(api.clearNoDevice(c.session.id, target)).resolves.toMatchObject({ session: { id: c.session.id } });
-  });
-
-  test("a student marked who then joins with a phone is present, and the reason is gone (the reversal rule)", async () => {
-    const c = await started();
-    // Somebody who will join later than the moment of the mark: the one who joins last in the lobby.
-    now += 5000;
-    const quiet = await api.getConsole(c.session.id);
-    const waiting = quiet.students.filter((s) => s.attendance === null);
-    now += 70_000;
-    const done = await api.getConsole(c.session.id);
-    const willJoin = waiting.find((s) => done.students.find((d) => d.id === s.id)!.attendance !== null)!;
-    // Go back to before they joined, mark them, and let the clock run.
-    now = Date.parse(c.session.started_at) + 5000;
-    await api.markNoDevice(c.session.id, willJoin.id, { reason: "no_phone" });
-    expect((await api.getConsole(c.session.id)).students.find((s) => s.id === willJoin.id)?.attendance).toBe("present_no_device");
-    now = Date.parse(c.session.started_at) + 75_000;
-    expect((await api.getConsole(c.session.id)).students.find((s) => s.id === willJoin.id)).toMatchObject({ attendance: "present", no_device_reason: null, online: true });
-  });
-
-  test("a student who has joined with a phone cannot be marked: the join stands", async () => {
-    const c = await started();
-    now += 75_000;
-    const joined = (await api.getConsole(c.session.id)).students.find((s) => s.attendance === "present")!;
-    expect((await rejection(api.markNoDevice(c.session.id, joined.id, { reason: "battery" }))).code).toBe("invalid_state");
-  });
-
-  test("a reason that is none of the four, and a student who is not in the class, are refused", async () => {
-    const c = await started();
-    expect((await rejection(api.markNoDevice(c.session.id, c.students[0].id, { reason: "lazy" as "battery" }))).code).toBe("validation_failed");
-    expect((await rejection(api.markNoDevice(c.session.id, "st-nobody", { reason: "battery" }))).code).toBe("not_found");
-    expect((await rejection(api.clearNoDevice(c.session.id, "st-nobody"))).code).toBe("not_found");
-  });
-
-  test("a computer that is offline cannot move the lesson or mark anyone, and nothing changes", async () => {
+  test("a computer that is offline cannot move the lesson, and nothing changes", async () => {
     const c = await started();
     vi.stubGlobal("navigator", { onLine: false });
     try {
       expect((await rejection(api.advance(c.session.id, { to: "teaching" }))).code).toBe("network");
-      expect((await rejection(api.markNoDevice(c.session.id, c.students[0].id, { reason: "battery" }))).code).toBe("network");
-      expect((await rejection(api.clearNoDevice(c.session.id, c.students[0].id))).code).toBe("network");
     } finally {
       vi.unstubAllGlobals();
     }
     const again = await api.getConsole(c.session.id);
     expect(again.session.state).toBe("lobby");
-    expect(again.students[0].attendance).toBeNull();
   });
 
   describe("the stream", () => {
@@ -891,89 +800,80 @@ describe("what is not built yet", () => {
   });
 
   test("who did a practice set is read from the history", async () => {
-    const [course] = await api.listCourses();
-    const d = await api.getDashboard(course.id);
-    const practice = d.practice[0];
-    const results = await api.getPracticeResults(practice.practice_set.session_id);
-    expect(results.practice_set.id).toBe(practice.practice_set.id);
-    expect(results.students.length).toBe(practice.students);
-    expect(results.students.filter((s) => s.completed_at).length).toBe(practice.completed);
+    const withSet = (await api.listLessons()).filter((l) => l.times_run > 0);
+    let found = null;
+    for (const l of withSet) {
+      const results = await api.getPracticeResults(l.last_session_id!).catch(() => null);
+      if (results) {
+        found = results;
+        break;
+      }
+    }
+    expect(found).not.toBeNull();
+    expect(found!.practice_set.id).toMatch(/^pr-/);
+    expect(found!.students.length).toBeGreaterThan(0);
     expect((await rejection(api.getPracticeResults("s-none"))).code).toBe("not_found");
   });
 });
 
 describe("starting a lesson", () => {
   const prepared = async () => (await api.listLessons()).filter((l) => l.times_run === 0);
-  const courseFor = async (lessonYear: number) => (await api.listCourses()).find((c) => c.class.year === lessonYear)!;
-
   test("nothing is open to begin with, and the answer carries the server's clock", async () => {
     const open = await api.getOpenSession();
     expect(open.session).toBeNull();
     expect(open.server_now).toBe(new Date(NOW).toISOString());
   });
 
-  test("starts in the lobby and answers the console: every question ready, every student of the class not yet in", async () => {
+  test("starts in the lobby with no question asked for a class: the body is the lesson alone, every question is ready and nobody is in yet", async () => {
     const [lesson] = await prepared();
-    const course = await courseFor(lesson.year);
-    const snapshot = await api.createSession({ lesson_id: lesson.id, course_id: course.id });
-    expect(snapshot.session).toMatchObject({
-      course_id: course.id,
+    const snapshot = await api.createSession({ lesson_id: lesson.id });
+    expect(snapshot.session).toEqual({
+      id: expect.any(String),
       state: "lobby",
       ended_at: null,
       started_at: new Date(NOW).toISOString(),
       lesson: { id: lesson.id, title: lesson.title, version: 1 },
-      class_name: course.class.name,
-      subject_name: course.subject.name,
     });
     expect(snapshot.questions).toHaveLength(lesson.question_count);
     expect(snapshot.questions.every((q) => q.status === "ready" && q.fired_at === null && !q.adhoc)).toBe(true);
-    expect(snapshot.students).toHaveLength(course.student_count);
-    expect(snapshot.students.every((s) => s.attendance === null && !s.online)).toBe(true);
+    expect(snapshot.students).toEqual([]);
     expect(snapshot.nudge).toBeNull();
   });
 
-  test("GET /sessions/open then returns it, with the names of the class and the subject (AC-END-05)", async () => {
+  test("GET /sessions/open then returns it, with the lesson and nothing of a class or a subject (AC-END-05)", async () => {
     const [lesson] = await prepared();
-    const course = await courseFor(lesson.year);
-    const { session } = await api.createSession({ lesson_id: lesson.id, course_id: course.id });
+    const { session } = await api.createSession({ lesson_id: lesson.id });
     const open = await api.getOpenSession();
-    expect(open.session).toMatchObject({ id: session.id, state: "lobby", class_name: course.class.name, subject_name: "Математика" });
+    expect(open.session).toEqual(session);
     expect(open.session?.started_at).toBe(new Date(NOW).toISOString());
   });
 
-  test("a second start is refused as session_open (409), whatever the lesson or the class, and nothing changes", async () => {
+  test("a second start is refused as session_open (409), whatever the lesson, and nothing changes", async () => {
     const [first, second] = await prepared();
-    const [a, b] = await api.listCourses();
-    const { session } = await api.createSession({ lesson_id: first.id, course_id: a.id });
-    const sameCourse = await rejection(api.createSession({ lesson_id: second.id, course_id: a.id }));
-    expect(sameCourse.code).toBe("session_open");
-    expect(sameCourse.status).toBe(409);
-    expect((await rejection(api.createSession({ lesson_id: second.id, course_id: b.id }))).code).toBe("session_open");
+    const { session } = await api.createSession({ lesson_id: first.id });
+    const again = await rejection(api.createSession({ lesson_id: second.id }));
+    expect(again.code).toBe("session_open");
+    expect(again.status).toBe(409);
+    expect((await rejection(api.createSession({ lesson_id: first.id }))).code).toBe("session_open");
     expect((await api.getOpenSession()).session?.id).toBe(session.id);
   });
 
-  test("a lesson or a class that is not the teacher's is not found, even while a lesson is open", async () => {
-    const [lesson] = await prepared();
-    const [course] = await api.listCourses();
-    expect((await rejection(api.createSession({ lesson_id: "nope", course_id: course.id }))).code).toBe("not_found");
-    expect((await rejection(api.createSession({ lesson_id: lesson.id, course_id: "nope" }))).code).toBe("not_found");
+  test("a lesson that is not the teacher's is not found, even while a lesson is open", async () => {
+    expect((await rejection(api.createSession({ lesson_id: "nope" }))).code).toBe("not_found");
     expect((await api.getOpenSession()).session).toBeNull();
   });
 
   test("the lesson stays prepared until it has been run: starting it does not make it a run lesson", async () => {
     const [lesson] = await prepared();
-    const course = await courseFor(lesson.year);
-    await api.createSession({ lesson_id: lesson.id, course_id: course.id });
+    await api.createSession({ lesson_id: lesson.id });
     expect((await prepared()).map((l) => l.id)).toContain(lesson.id);
-    expect((await api.listCourses()).find((c) => c.id === course.id)?.lessons_run).toBe(6);
   });
 
   test("the open lesson is kept with the demo, and each demo school and teacher has their own", async () => {
     const [lesson] = await prepared();
-    const course = await courseFor(lesson.year);
-    await api.createSession({ lesson_id: lesson.id, course_id: course.id });
+    const { session } = await api.createSession({ lesson_id: lesson.id });
     // A page loaded again builds the adapter afresh over the same saved state.
-    await expect(build().getOpenSession()).resolves.toMatchObject({ session: { class_name: course.class.name } });
+    await expect(build().getOpenSession()).resolves.toMatchObject({ session: { id: session.id } });
     source.setSchoolType("university");
     expect((await api.getOpenSession()).session).toBeNull();
     source.setSchoolType("school");
@@ -983,25 +883,22 @@ describe("starting a lesson", () => {
     expect((await api.getOpenSession()).session).not.toBeNull();
   });
 
-  test("starts at a faculty too, in the group of that subject", async () => {
+  test("starts at a faculty too, with the lesson alone", async () => {
     source.setSchoolType("university");
     const [lesson] = await prepared();
-    const groups = await api.listCourses();
-    const group = groups.find((c) => c.subject.id === lesson.subject.id)!;
-    const { session } = await api.createSession({ lesson_id: lesson.id, course_id: group.id });
-    expect(session.class_name).toBe(group.class.name);
-    expect(session.class_name).toMatch(/^Група/);
+    const { session } = await api.createSession({ lesson_id: lesson.id });
+    expect(session.lesson.id).toBe(lesson.id);
+    expect(session).not.toHaveProperty("class_name");
   });
 
   test("a saved lesson that is open is read back; one that is damaged or ended is dropped, not trusted", async () => {
     const [lesson] = await prepared();
-    const course = await courseFor(lesson.year);
-    await api.createSession({ lesson_id: lesson.id, course_id: course.id });
+    await api.createSession({ lesson_id: lesson.id });
     const saved = JSON.parse(JSON.stringify(source.state()));
     expect(saved.school.session.state).toBe("lobby");
     const { sanitizeState } = await import("@/lib/teacher/api/mock-state");
     expect(sanitizeState(saved, NOW).school.session?.id).toBe(saved.school.session.id);
-    for (const damage of [{ state: "ended" }, { started_at: "yesterday" }, { course_id: 7 }, { lesson: null }]) {
+    for (const damage of [{ state: "ended" }, { started_at: "yesterday" }, { lesson: null }]) {
       const bad = JSON.parse(JSON.stringify(saved));
       bad.school.session = { ...bad.school.session, ...damage };
       expect(sanitizeState(bad, NOW).school.session).toBeNull();
@@ -1012,20 +909,20 @@ describe("starting a lesson", () => {
     const mock = createMock(source, { delay: () => Promise.resolve() });
     mock.demo.simulateRunning();
     const open = await mock.api.getOpenSession();
-    expect(open.session).toMatchObject({ state: "lobby", subject_name: "Математика" });
+    expect(open.session).toMatchObject({ state: "lobby" });
+    expect(open.session).not.toHaveProperty("subject_name");
     expect(Date.parse(open.server_now) - Date.parse(open.session!.started_at)).toBe(12 * 60_000);
     // One lesson at a time: pretending again changes nothing, and a real start is refused.
     const id = open.session!.id;
     mock.demo.simulateRunning();
     expect((await mock.api.getOpenSession()).session?.id).toBe(id);
     const [lesson] = await prepared();
-    const [course] = await api.listCourses();
-    expect((await rejection(mock.api.createSession({ lesson_id: lesson.id, course_id: course.id }))).code).toBe("session_open");
+    expect((await rejection(mock.api.createSession({ lesson_id: lesson.id }))).code).toBe("session_open");
 
     await mock.api.endSession(id);
     expect((await mock.api.getOpenSession()).session).toBeNull();
     // Ended, it is a lesson that can be started again.
-    expect((await mock.api.createSession({ lesson_id: lesson.id, course_id: course.id })).session.state).toBe("lobby");
+    expect((await mock.api.createSession({ lesson_id: lesson.id })).session.state).toBe("lobby");
   });
 
   test("the demo can show a running lesson to a teacher who has made no lesson, too", async () => {
@@ -1034,14 +931,12 @@ describe("starting a lesson", () => {
     mock.demo.simulateRunning();
     const open = await mock.api.getOpenSession();
     expect(open.session?.lesson.title).toBeTruthy();
-    expect(open.session?.class_name).toBeTruthy();
   });
 
   test("starting is refused until somebody is signed in", async () => {
     const [lesson] = await prepared();
-    const [course] = await api.listCourses();
     source.setSession(null);
-    expect((await rejection(api.createSession({ lesson_id: lesson.id, course_id: course.id }))).code).toBe("unauthenticated");
+    expect((await rejection(api.createSession({ lesson_id: lesson.id }))).code).toBe("unauthenticated");
     expect((await rejection(api.getOpenSession())).code).toBe("unauthenticated");
   });
 });
@@ -1060,17 +955,9 @@ describe("the new teacher: invited, signed in for the first time", () => {
     expect((await api.getMe()).id).not.toBe((await build().getMe()).id);
   });
 
-  test("has the same classes and rosters, and has run nothing: no history, no points", async () => {
+  test("has the same demo students to join a lesson, and has run nothing: no held lessons", async () => {
     const { api } = novice();
-    const courses = await api.listCourses();
-    expect(courses.map((c) => c.class.name)).toEqual(["II-4", "III-5", "IV-1", "IV-2"]);
-    expect(courses.map((c) => c.student_count)).toEqual([26, 24, 28, 25]);
-    expect(courses.every((c) => c.lessons_run === 0 && c.last_session_at === null)).toBe(true);
-    const d = await api.getDashboard(courses[0].id);
-    expect(d.students).toHaveLength(26);
-    expect(d.sessions).toEqual([]);
-    expect(d.attendance).toEqual([]);
-    expect(d.students.every((s) => s.points === 0)).toBe(true);
+    expect(await api.listLessons()).toEqual([]);
   });
 
   test("has made no lesson, and so has nothing prepared for Today; the school library is there to copy from", async () => {
@@ -1096,7 +983,7 @@ describe("the new teacher: invited, signed in for the first time", () => {
   test("makes lessons of their own, which the teacher with history does not see, and the other way round", async () => {
     const { api, source } = novice();
     const draft = await makeDraftWith(api);
-    const saved = await api.saveLesson({ draft_id: draft.id, title: draft.title, review_summary: draft.review_summary, questions: draft.questions as Lesson["questions"] });
+    const saved = await api.saveLesson({ draft_id: draft.id, title: draft.title, questions: draft.questions as Lesson["questions"] });
     expect((await api.listLessons()).map((l) => l.id)).toEqual([saved.id]);
     source.setSession("veteran");
     expect((await api.listLessons()).some((l) => l.id === saved.id)).toBe(false);
@@ -1115,7 +1002,7 @@ describe("the new teacher: invited, signed in for the first time", () => {
 /** A draft made through a new teacher's own adapter, for the tests above. */
 async function makeDraftWith(a: TeacherApi): Promise<ReadyDraft> {
   const { source_id } = await a.createSource({ kind: "typed", text: typed });
-  const asked = await a.generateLesson({ source_id, subject_id: "math", year: 2 });
+  const asked = await a.generateLesson({ source_id });
   now += GENERATE_MS + 1;
   const read = await a.getDraft(asked.id);
   if (read.status !== "ready") throw new Error("The draft is not ready");

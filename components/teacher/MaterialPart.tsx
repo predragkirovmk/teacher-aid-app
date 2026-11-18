@@ -70,12 +70,12 @@ export function MaterialPart({
     problem !== undefined && (list.includes(problem) || (problem === "other" && kind === mine));
 
   return (
-    <section className="card prepare__part" aria-labelledby="prepare-2">
-      <h2 id="prepare-2">{t("prepare.part2")}</h2>
+    <section className="card prepare__part" aria-labelledby="prepare-1">
+      <h2 id="prepare-1">{t("prepare.part1")}</h2>
       <div className="prepare__tiles" data-focus="kind">
         <Choices<MaterialKind>
           name="material"
-          labelledBy="prepare-2"
+          labelledBy="prepare-1"
           describedBy={problem === "pick" ? problemId : undefined}
           value={kind}
           onChange={onKind}

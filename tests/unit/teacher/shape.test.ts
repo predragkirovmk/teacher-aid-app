@@ -10,8 +10,6 @@ const base = {
   id: "d-1",
   source_id: "src-1",
   source: { kind: "upload", file_name: "plan.pdf" },
-  subject: { id: "sub-1", name: "Математика" },
-  year: 1,
   emphasis: null,
   refinements: [],
   previous_draft_id: null,
@@ -24,8 +22,8 @@ const common = { media: null, explanation: null, timer_seconds: 20, topic: "Др
 const mc = { id: "q-1", order: 0, kind: "multiple_choice", prompt: "1/2 + 1/2?", options: ["1", "2"], correct: "0", ...common };
 const tf = { id: "q-2", order: 1, kind: "true_false", prompt: "1/2 > 1/3", correct: "true", ...common };
 const num = { id: "q-3", order: 2, kind: "numeric", prompt: "3/4 = ?", correct: "0.75", tolerance: 0, unit: null, allow_negative: false, ...common };
-const ready = { ...base, status: "ready", failure: null, title: "Дропки", review_summary: "Збир на дропки.", questions: [mc, tf, num] };
-const pending = { ...base, status: "pending", failure: null, title: null, review_summary: null, questions: null };
+const ready = { ...base, status: "ready", failure: null, title: "Дропки", questions: [mc, tf, num] };
+const pending = { ...base, status: "pending", failure: null, title: null, questions: null };
 const failed = { ...pending, status: "failed", failure: "generation_failed" };
 
 const problem = (f: () => unknown) => {
@@ -58,7 +56,6 @@ describe("a draft", () => {
     ["a question with no order", { ...ready, questions: [{ ...mc, order: undefined }] }, "draft: questions[0].order is not a number"],
     ["an unknown kind", { ...ready, questions: [{ ...mc, kind: "open_text" }] }, 'draft: questions[0].kind "open_text"'],
     ["options that are not text", { ...ready, questions: [{ ...mc, options: [1, 2] }] }, "draft: questions[0].options"],
-    ["the subject as an id alone", { ...ready, subject: "sub-1" }, "draft: subject is not { id, name }"],
     ["the source as a kind alone", { ...ready, source: "upload" }, "draft: source is not { kind, file_name } or null"],
     ["no questions on a ready draft", { ...ready, questions: undefined }, "draft: questions is not a list"],
     ["an unknown status", { ...ready, status: "done" }, 'draft: status "done"'],
@@ -75,7 +72,7 @@ describe("a draft", () => {
     let now = start;
     const api = createMockApi(memorySource(freshState(new Date(2026, 9, 29).getTime()), { now: () => now }), { delay: () => Promise.resolve() });
     const { source_id } = await api.createSource({ kind: "typed", text: "Равенки од втор степен и дискриминантата. Учениците треба да знаат да ги решаваат." });
-    const asked = await api.generateLesson({ source_id, subject_id: "math", year: 2 });
+    const asked = await api.generateLesson({ source_id });
     expect(problem(() => checkDraft(asked))).toBeNull();
     now = start + GENERATE_MS + 1;
     const written = await api.getDraft(asked.id);
@@ -87,7 +84,7 @@ describe("a draft", () => {
 });
 
 describe("a lesson", () => {
-  const lesson = { id: "l-1", title: "Дропки", review_summary: "", subject: base.subject, questions: [mc, tf, num] };
+  const lesson = { id: "l-1", title: "Дропки", questions: [mc, tf, num] };
 
   test("in the shape of 11.5 passes", () => {
     expect(checkLesson(lesson)).toBe(lesson);

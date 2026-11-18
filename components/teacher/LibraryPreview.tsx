@@ -8,7 +8,6 @@ import { copyFromLibrary, useLesson, useLibrary } from "@/lib/teacher/api/hooks"
 import { isApiError } from "@/lib/teacher/api/errors";
 import { useT } from "@/lib/teacher/i18n";
 import { backFromLibraryLesson, LIBRARY, savedLessonUrl } from "@/lib/teacher/routes";
-import { kindLine } from "./LessonCard";
 import { QuestionList } from "./LessonView";
 import { LoadProblem } from "./LoadProblem";
 import { PageHeader } from "./PageHeader";
@@ -53,7 +52,7 @@ export function LibraryPreview() {
 
   return (
     <>
-      <PageHeader title={ready ? lesson.title : t("lesson.title")} subtitle={ready ? kindLine(t, lesson) : undefined} back={back.href} backLabel={t(back.label)} />
+      <PageHeader title={ready ? lesson.title : t("lesson.title")} back={back.href} backLabel={t(back.label)} />
       <div className="content">
         {!ready && !missing && !failed && (
           <Loading>

@@ -53,8 +53,6 @@ export function toWire(draft: DemoDraft, now: number): LessonDraft {
     id: draft.id,
     source_id: draft.source_id,
     source: draft.source,
-    subject: draft.subject,
-    year: draft.year,
     emphasis: draft.emphasis,
     refinements: draft.refinements,
     previous_draft_id: draft.previous_draft_id,
@@ -65,8 +63,8 @@ export function toWire(draft: DemoDraft, now: number): LessonDraft {
   };
   const status = statusOf(draft, now);
   if (status === "ready") return { ...base, status, failure: null, ...draft.content };
-  if (status === "failed") return { ...base, status, failure: "generation_failed", title: null, review_summary: null, questions: null };
-  return { ...base, status, failure: null, title: null, review_summary: null, questions: null };
+  if (status === "failed") return { ...base, status, failure: "generation_failed", title: null, questions: null };
+  return { ...base, status, failure: null, title: null, questions: null };
 }
 
 /**
@@ -89,8 +87,6 @@ export function toSummary(draft: DemoDraft, now: number): DraftSummary {
     status,
     failure: status === "failed" ? "generation_failed" : null,
     title: status === "ready" ? draft.content.title : null,
-    subject: draft.subject,
-    year: draft.year,
     question_count: status === "ready" ? draft.content.questions.length : null,
     refinements: draft.refinements,
     emphasis: draft.emphasis,

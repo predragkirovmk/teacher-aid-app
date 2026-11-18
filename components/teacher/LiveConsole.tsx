@@ -11,15 +11,9 @@ import {
 } from "@/lib/teacher/api/hooks";
 import { isApiError } from "@/lib/teacher/api/errors";
 import type { ConsoleSnapshot } from "@/lib/teacher/api/types";
-import { isOne } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
-import {
-  formatShortCode,
-  missingCount,
-  STUDENTS_CAN_TYPE_CODE,
-} from "@/lib/teacher/live";
+import { formatShortCode, STUDENTS_CAN_TYPE_CODE } from "@/lib/teacher/live";
 import { forgetReviewScreen } from "@/lib/teacher/review-screen";
-import { courseLabel } from "@/lib/teacher/start";
 import { HOME } from "@/lib/teacher/signin";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { EndLesson } from "./EndLesson";
@@ -41,7 +35,7 @@ type PanelTab = "class" | "questions" | "anon";
 
 /**
  * The teacher's own screen of a lesson that is running (F-06, FR-CON-*). It is the one page without the sidebar: in front of a class the
- * window belongs to the lesson, and Back leads to the lessons. The top bar says which lesson, class and subject this is and holds the button
+ * window belongs to the lesson, and Back leads to the lessons. The top bar says which lesson this is and holds the button
  * that opens the projected window, with where that window stands, and the red End. Under it, where the lesson stands; then, at the left,
  * the stage: the one thing to do now (start it in the lobby, the question while teaching). At the right, who has joined; while teaching it
  * shares its place with the list of questions and the anonymous questions, as tabs, so the whole lesson is one screen. Everything comes from `GET /sessions/{id}/console`, kept up to date by the stream, so a
@@ -81,11 +75,7 @@ export function LiveConsole() {
     <>
       <PageHeader
         title={t("live.title")}
-        subtitle={
-          snapshot
-            ? `${courseLabel(snapshot.session.subject_name, snapshot.session.class_name)}: ${snapshot.session.lesson.title}`
-            : undefined
-        }
+        subtitle={snapshot?.session.lesson.title}
         back={HOME}
         backLabel={t("back.lessons")}
         compact
@@ -190,11 +180,9 @@ export function LiveConsole() {
                     id="class"
                     active={!teaching || tab === "class"}
                     tabbed={teaching}
+                    scrollLabel={t("live.joined.title")}
                   >
-                    <LiveRoster
-                      sessionId={snapshot.session.id}
-                      students={snapshot.students}
-                    />
+                    <LiveRoster students={snapshot.students} />
                   </TabPanel>
                   {teaching && (
                     <TabPanel
@@ -225,17 +213,15 @@ export function LiveConsole() {
 
 /**
  * In the lobby, the page's one main button. The question before it is the app's own kind: the lesson cannot be taken back to the lobby
- * (4.1), and everyone who joins afterwards is late, so it asks first, with the safe answer as the default. The code to read out is shown only
+ * (4.1), so it asks first, with the safe answer as the default. The code to read out is shown only
  * while a student can type it (`STUDENTS_CAN_TYPE_CODE`, OPEN-03); until then the QR on the projector is the one way in, and a code here
  * would only invite the teacher to read out what nobody can use.
  */
 function JoinCard({ snapshot }: { snapshot: ConsoleSnapshot }) {
-  const { t, te, locale } = useT();
+  const { t, te } = useT();
   const [asking, setAsking] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const lobby = snapshot.session.state === "lobby";
-  // Those the teacher is still waiting for: a student marked present without a phone is not one of them.
-  const waiting = missingCount(snapshot.students);
   if (!lobby && !STUDENTS_CAN_TYPE_CODE) return null;
 
   const start = async () => {
@@ -282,16 +268,7 @@ function JoinCard({ snapshot }: { snapshot: ConsoleSnapshot }) {
           <ConfirmDialog
             open={asking}
             title={t("live.start.confirm.title")}
-            body={
-              waiting > 0
-                ? t(
-                    isOne(waiting, locale)
-                      ? "live.start.confirm.waiting.one"
-                      : "live.start.confirm.waiting",
-                    { n: waiting },
-                  )
-                : t("live.start.confirm.all")
-            }
+            body={t("live.start.confirm.body")}
             stay={t("live.start.confirm.stay")}
             confirm={t("live.start.confirm.yes")}
             onStay={() => setAsking(false)}

@@ -52,20 +52,20 @@ describe("speed bonus (BR-PTS-04)", () => {
 
 describe("scoring an answer (BR-PTS-02)", () => {
   test("a right answer is 10 plus the speed bonus", () => {
-    expect(scoreAnswer({ correct: true, remainingMs: 20_000, durationMs: 20_000, speedBonusOn: true })).toEqual({ points: 15, speed_bonus: 5 });
-    expect(scoreAnswer({ correct: true, remainingMs: 10_000, durationMs: 20_000, speedBonusOn: true })).toEqual({ points: 13, speed_bonus: 3 });
+    expect(scoreAnswer({ correct: true, remainingMs: 20_000, durationMs: 20_000 })).toEqual({ points: 15, speed_bonus: 5 });
+    expect(scoreAnswer({ correct: true, remainingMs: 10_000, durationMs: 20_000 })).toEqual({ points: 13, speed_bonus: 3 });
   });
 
   test("a wrong answer scores nothing, however fast", () => {
-    expect(scoreAnswer({ correct: false, remainingMs: 20_000, durationMs: 20_000, speedBonusOn: true })).toEqual({ points: 0, speed_bonus: 0 });
+    expect(scoreAnswer({ correct: false, remainingMs: 20_000, durationMs: 20_000 })).toEqual({ points: 0, speed_bonus: 0 });
   });
 
-  test("with the bonus off a right answer is just 10", () => {
-    expect(scoreAnswer({ correct: true, remainingMs: 20_000, durationMs: 20_000, speedBonusOn: false })).toEqual({ points: POINTS_RIGHT, speed_bonus: 0 });
+  test("the speed bonus is always on: there is no switch to turn it off", () => {
+    expect(scoreAnswer({ correct: true, remainingMs: 20_000, durationMs: 20_000 }).points).toBeGreaterThan(POINTS_RIGHT);
   });
 
   test("an answer in the grace window after the close still scores, with no bonus", () => {
-    expect(scoreAnswer({ correct: true, remainingMs: 0, durationMs: 20_000, speedBonusOn: true })).toEqual({ points: 10, speed_bonus: 0 });
+    expect(scoreAnswer({ correct: true, remainingMs: 0, durationMs: 20_000 })).toEqual({ points: 10, speed_bonus: 0 });
   });
 });
 

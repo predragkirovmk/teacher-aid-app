@@ -59,15 +59,10 @@ function questionsProblem(questions: unknown, draft: boolean): string | null {
   return null;
 }
 
-const subjectProblem = (s: unknown) => (isObj(s) && isStr(s.id) && isStr(s.name) ? null : "subject is not { id, name }");
-
 function draftProblem(d: unknown): string | null {
   if (!isObj(d)) return "is not an object";
   if (!isStr(d.id)) return "id is not text";
   if (!STATUSES.includes(d.status as string)) return `status ${JSON.stringify(d.status)} is not one of ${STATUSES.join(", ")}`;
-  const subject = subjectProblem(d.subject);
-  if (subject) return subject;
-  if (!isNum(d.year)) return "year is not a number";
   if (d.source !== null && !(isObj(d.source) && SOURCE_KINDS.includes(d.source.kind as string) && isStrOrNull(d.source.file_name)))
     return "source is not { kind, file_name } or null";
   if (!isStrOrNull(d.emphasis)) return "emphasis is not text or null";
@@ -76,7 +71,6 @@ function draftProblem(d: unknown): string | null {
   if (!isStr(d.created_at) || !isStr(d.updated_at)) return "created_at or updated_at is not text";
   if (d.status !== "ready") return null;
   if (!isStr(d.title)) return "title is not text";
-  if (!isStr(d.review_summary)) return "review_summary is not text";
   return questionsProblem(d.questions, true);
 }
 
@@ -84,9 +78,6 @@ function lessonProblem(l: unknown): string | null {
   if (!isObj(l)) return "is not an object";
   if (!isStr(l.id)) return "id is not text";
   if (!isStr(l.title)) return "title is not text";
-  if (!isStr(l.review_summary)) return "review_summary is not text";
-  const subject = subjectProblem(l.subject);
-  if (subject) return subject;
   return questionsProblem(l.questions, false);
 }
 

@@ -15,13 +15,12 @@ import { LoadProblem } from "./LoadProblem";
 import { PageHeader } from "./PageHeader";
 import { Bar, Loading } from "./Skeleton";
 import { StartLessonButton } from "./StartLessonButton";
-import { kindLine } from "./LessonCard";
 
 /** What the lesson page says once on arriving: from a save of a new lesson, from a save of changes, or from a copy of a colleague's lesson. */
 const SAVED_WORDS = { new: "lesson.saved.new", changes: "lesson.saved.changes", copied: "lesson.saved.copied" } as const satisfies Record<Saved, Key>;
 
 /**
- * A lesson, to read: its title, subject and year, what the teacher asked to stress, and the questions in order, each with
+ * A lesson, to read: its title, what the teacher asked to stress, and the questions in order, each with
  * its kind in words, its answers, which one is right (an icon and the words "Точен одговор", never colour alone), its timer
  * and why. Two things to do with it: start a class (the main one), and edit it, which opens a draft of it to change (a lesson
  * is read here, and changed on a draft's page, where every change saves itself). Coming from saving, a line says so once.
@@ -65,7 +64,7 @@ export function LessonView() {
 
   return (
     <>
-      <PageHeader title={lesson?.title ?? t("lesson.title")} subtitle={lesson ? kindLine(t, lesson) : undefined} back={back.href} backLabel={t(back.label)} />
+      <PageHeader title={lesson?.title ?? t("lesson.title")} back={back.href} backLabel={t(back.label)} />
       <div className="content">
         {q.status === "loading" && (
           <Loading>

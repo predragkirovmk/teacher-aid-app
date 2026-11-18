@@ -1,16 +1,12 @@
 import { describe, expect, test } from "vitest";
-import type { DraftSummary, LessonSummary, Subject } from "@/lib/teacher/api/types";
+import type { DraftSummary, LessonSummary } from "@/lib/teacher/api/types";
 import { heldLine, heldText, lastHeldFirst, lessonSections, newestChangeFirst, unfinishedDrafts } from "@/lib/teacher/lessons-list";
 import { translate, type Key } from "@/lib/teacher/i18n";
-
-const MATH: Subject = { id: "math", name: "Математика" };
 
 const lesson = (id: string, updated: string, extra: Partial<LessonSummary> = {}): LessonSummary => ({
   last_session_id: null,
   id,
   title: `Лекција ${id}`,
-  subject: MATH,
-  year: 2,
   question_count: 6,
   version: 1,
   times_run: 0,
@@ -26,8 +22,6 @@ const draft = (id: string, updated: string, extra: Partial<DraftSummary> = {}): 
   status: "ready",
   failure: null,
   title: `Нацрт ${id}`,
-  subject: MATH,
-  year: 2,
   question_count: 5,
   refinements: [],
   emphasis: null,

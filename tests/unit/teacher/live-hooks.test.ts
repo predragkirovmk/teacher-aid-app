@@ -1,20 +1,15 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { SettledPromise, ChannelHandlers } from "@/lib/teacher/api/client";
-import { ApiError } from "@/lib/teacher/api/errors";
 import type { ConsoleSnapshot, ConsoleStudent } from "@/lib/teacher/api/types";
 import { applyConsoleEvent } from "@/lib/teacher/live";
 
 const getConsole = vi.fn();
 const advance = vi.fn();
-const markNoDevice = vi.fn();
-const clearNoDevice = vi.fn();
 const openChannel = vi.fn();
 vi.mock("@/lib/teacher/api/client", () => ({
   api: {
     getConsole: (...a: unknown[]) => getConsole(...a),
     advance: (...a: unknown[]) => advance(...a),
-    markNoDevice: (...a: unknown[]) => markNoDevice(...a),
-    clearNoDevice: (...a: unknown[]) => clearNoDevice(...a),
     openChannel: (...a: unknown[]) => openChannel(...a),
     getOpenSession: () => settled({ server_now: "", session: null }),
     subscribe: () => () => {},
@@ -23,7 +18,7 @@ vi.mock("@/lib/teacher/api/client", () => ({
   demo: null,
 }));
 
-const { advanceSession, clearNoDevice: clearMark, markNoDevice: mark, watchSnapshot } = await import("@/lib/teacher/api/hooks");
+const { advanceSession, watchSnapshot } = await import("@/lib/teacher/api/hooks");
 const { resetQueries, slotFor } = await import("@/lib/teacher/api/query");
 
 const settled = <T>(value: T): SettledPromise<T> => Object.assign(Promise.resolve(value), { settled: { ok: true as const, value } });
@@ -31,9 +26,7 @@ const settled = <T>(value: T): SettledPromise<T> => Object.assign(Promise.resolv
 const student = (id: string, over: Partial<ConsoleStudent> = {}): ConsoleStudent => ({
   id,
   full_name: `Ученик ${id}`,
-  attendance: null,
-  joined_at: null,
-  no_device_reason: null,
+  joined_at: "2026-10-29T08:30:30.000Z",
   online: false,
   answer_state: null,
   focus_flags: 0,
@@ -42,7 +35,7 @@ const student = (id: string, over: Partial<ConsoleStudent> = {}): ConsoleStudent
 });
 const snapshot = (over: Partial<ConsoleSnapshot> = {}): ConsoleSnapshot => ({
   server_now: "2026-10-29T08:31:00.000Z",
-  session: { id: "s1", course_id: "c", lesson: { id: "l", title: "T", version: 1 }, state: "lobby", started_at: "2026-10-29T08:30:00.000Z", ended_at: null, class_name: "II-4", subject_name: "Математика" },
+  session: { id: "s1", lesson: { id: "l", title: "T", version: 1 }, state: "lobby", started_at: "2026-10-29T08:30:00.000Z", ended_at: null },
   join: null,
   questions: [],
   students: [student("a"), student("b")],
@@ -60,7 +53,7 @@ const load = () => getConsole("s1") as Promise<ConsoleSnapshot>;
 
 beforeEach(() => {
   resetQueries();
-  for (const m of [getConsole, advance, markNoDevice, clearNoDevice, openChannel, stop]) m.mockReset();
+  for (const m of [getConsole, advance, openChannel, stop]) m.mockReset();
   getConsole.mockImplementation(() => settled(snapshot()));
   openChannel.mockImplementation((_channel: string, handlers: ChannelHandlers) => {
     stream = handlers;
@@ -84,8 +77,8 @@ describe("a snapshot that a stream keeps up to date", () => {
     const { slot } = watch();
     const heard = vi.fn();
     slot.subscribe(heard);
-    stream.onEvent({ type: "student.joined", channel: "session.s1.console", server_now: "2026-10-29T08:31:05.000Z", student: student("a", { attendance: "present", online: true, joined_at: "2026-10-29T08:31:05.000Z" }) });
-    expect(slot.read().data?.students[0].attendance).toBe("present");
+    stream.onEvent({ type: "student.presence", channel: "session.s1.console", server_now: "2026-10-29T08:31:05.000Z", student_id: "a", online: true });
+    expect(slot.read().data?.students[0].online).toBe(true);
     expect(heard).toHaveBeenCalled();
   });
 
@@ -108,19 +101,19 @@ describe("a snapshot that a stream keeps up to date", () => {
     const seen: string[] = [];
     const { slot } = watch((s) => seen.push(s));
     getConsole.mockClear();
-    getConsole.mockImplementation(() => settled(snapshot({ students: [student("a", { attendance: "present", online: true, joined_at: "2026-10-29T08:31:02.000Z" }), student("b")] })));
+    getConsole.mockImplementation(() => settled(snapshot({ students: [student("a", { online: true, joined_at: "2026-10-29T08:31:02.000Z" }), student("b")] })));
     stream.onStatus?.("reconnecting");
     expect(getConsole).not.toHaveBeenCalled();
     stream.onStatus?.("open");
     expect(getConsole).toHaveBeenCalledTimes(1);
-    expect(slot.read().data?.students[0].attendance).toBe("present");
+    expect(slot.read().data?.students[0].online).toBe(true);
     expect(seen).toEqual(["reconnecting", "open"]);
   });
 
   test("an event that comes while the snapshot is being read does not leave the screen with the old one", async () => {
     const { slot } = watch();
     let answer: (s: ConsoleSnapshot) => void = () => {};
-    const fresh = snapshot({ students: [student("a", { attendance: "present", online: true, joined_at: "2026-10-29T08:31:02.000Z" }), student("b")] });
+    const fresh = snapshot({ students: [student("a", { online: true, joined_at: "2026-10-29T08:31:02.000Z" }), student("b")] });
     getConsole.mockClear();
     getConsole.mockImplementationOnce(() => new Promise<ConsoleSnapshot>((r) => (answer = r)));
     getConsole.mockImplementation(() => Promise.resolve(fresh));
@@ -129,7 +122,7 @@ describe("a snapshot that a stream keeps up to date", () => {
     answer(snapshot());
     await new Promise((r) => setTimeout(r, 0));
     expect(getConsole).toHaveBeenCalledTimes(2);
-    expect(slot.read().data?.students[0].attendance).toBe("present");
+    expect(slot.read().data?.students[0].online).toBe(true);
   });
 
   test("stopping closes the stream", () => {
@@ -151,28 +144,5 @@ describe("what the teacher does in the lesson", () => {
     expect(advance).toHaveBeenCalledWith("s1", { to: "teaching" });
     expect(slot.read().data?.session.state).toBe("teaching");
     expect((open.read().data as { session: { state: string } }).session.state).toBe("teaching");
-  });
-
-  test("a mark, and taking it back, put the fresh console into the cache", async () => {
-    const slot = slotFor("console:s1", load);
-    slot.read();
-    const marked = snapshot({ students: [student("a", { attendance: "present_no_device", no_device_reason: "battery" }), student("b")] });
-    markNoDevice.mockResolvedValue(marked);
-    await mark("s1", "a", "battery");
-    expect(markNoDevice).toHaveBeenCalledWith("s1", "a", { reason: "battery" });
-    expect(slot.read().data?.students[0].no_device_reason).toBe("battery");
-    clearNoDevice.mockResolvedValue(snapshot());
-    await clearMark("s1", "a");
-    expect(clearNoDevice).toHaveBeenCalledWith("s1", "a");
-    expect(slot.read().data?.students[0].attendance).toBeNull();
-  });
-
-  test("a mark refused because the student has joined asks for the console again, and the refusal still comes through", async () => {
-    const slot = slotFor("console:s1", load);
-    slot.read();
-    getConsole.mockClear();
-    markNoDevice.mockRejectedValue(new ApiError("invalid_state", { status: 409 }));
-    await expect(mark("s1", "a", "battery")).rejects.toMatchObject({ code: "invalid_state" });
-    expect(getConsole).toHaveBeenCalledTimes(1);
   });
 });

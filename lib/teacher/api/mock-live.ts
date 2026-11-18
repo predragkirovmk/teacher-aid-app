@@ -1,23 +1,23 @@
-import { hasJoined, recentNames, TOKEN_ROTATE_MS } from "../live";
+import { TOKEN_ROTATE_MS } from "../live";
 import { hashSeed, rng } from "./mock-data";
-import type { MockMark } from "./mock-state";
 import { currentQuestion } from "../questions";
 import { missedOfQuestions } from "../review";
 import type { ChannelEvent, ClassViewSnapshot, ConsoleQuestion, ConsoleSnapshot, ConsoleStudent, JoinToken, PublicQuestion, QuestionStatus, TeacherChannel } from "./types";
 
 /**
  * A believable class, played by the demo from the clock alone. There is no worker in the browser, so a lesson that has been started is
- * a promise about time, the way a draft's job is (mock-drafts.ts): who has joined, who joined late, who lost the connection and
- * what the code is are all worked out from when the lesson began, when the teacher moved it on, what the teacher marked, and what time
+ * a promise about time, the way a draft's job is (mock-drafts.ts): who has joined, who lost the connection and
+ * what the code is are all worked out from when the lesson began, when the teacher moved it on, and what time
  * it is. Two windows of the same browser read the same saved lesson and the same clock, so they agree without talking to each other, and
  * a reload or a window opened afterwards finds the class where the clock has put it. Everything here takes `now`, so a test moves time
  * by giving another one.
  *
- * What the class does, for the same lesson every time (it is seeded by the session's id):
- * - 70 to 85 percent of the class joins during the first minute or so, at an uneven pace: a few at once, then gaps;
- * - one or two students join after the teacher has begun the lesson, a few seconds after, so they are late;
+ * What the pool of demo students does, for the same lesson every time (it is seeded by the session's id):
+ * - 70 to 85 percent of the pool scans the code during the first minute or so, at an uneven pace: a few at once, then gaps;
+ * - one or two more scan it later, minutes into the lesson, so the console's list grows at any point until End;
  * - one student who has joined loses the connection for a while and comes back;
- * - the rest never join: they are the ones the teacher may mark present without a phone.
+ * - the rest never join.
+ * A student is listed on the console only once their join time has passed: nobody is named before that, and nobody is marked late or absent.
  */
 
 /** The first students join within seconds; the early ones are all in within this long. */
@@ -26,8 +26,7 @@ export const LOBBY_FILL_MS = 70_000;
 /** When a student who will join does so, and when their connection is lost. Students who never join have no plan. */
 export type ClassPlan = {
   id: string;
-  /** "early": this long after the lesson began. "late": this long after the teacher moved it to teaching, so after the lobby. */
-  kind: "early" | "late";
+  /** The student scans the code this long after the lesson began. */
   after_ms: number;
   /** The connection is lost from the first moment to the second, both counted from the start of the lesson. Null: never. */
   off: { from_ms: number; to_ms: number } | null;
@@ -35,30 +34,30 @@ export type ClassPlan = {
 
 const round100 = (ms: number) => Math.round(ms / 100) * 100;
 
-/** The plan for a class: who joins when, by the session's id and the roster's ids. The same input always gives the same plan. */
+/** The plan for a lesson: who joins when, by the session's id and the ids of the demo students. The same input always gives the same plan. */
 export function planClass(sessionId: string, studentIds: readonly string[]): ClassPlan[] {
   const r = rng(`${sessionId}/class`);
   const order = [...studentIds];
-  // A seeded shuffle: who joins early is not the top of the register.
+  // A seeded shuffle: who joins first is not the top of the list.
   for (let i = order.length - 1; i > 0; i--) {
     const j = Math.floor(r() * (i + 1));
     [order[i], order[j]] = [order[j], order[i]];
   }
   const n = order.length;
   const early = Math.round(n * (0.7 + r() * 0.15));
-  const lateCount = n >= 10 ? 1 + Math.floor(r() * 2) : 0;
+  const stragglers = n >= 10 ? 1 + Math.floor(r() * 2) : 0;
 
   // Uneven: the square of a random number puts more of the joins at the start, and a second pass pulls some in pairs.
   const offsets = Array.from({ length: early }, () => 2000 + (LOBBY_FILL_MS - 2000) * Math.pow(r(), 1.7)).sort((a, b) => a - b);
   for (let i = 1; i < offsets.length; i += 3) offsets[i] = Math.min(offsets[i], offsets[i - 1] + 400 + r() * 1200);
   offsets.sort((a, b) => a - b);
 
-  const plans: ClassPlan[] = order.slice(0, early).map((id, i) => ({ id, kind: "early", after_ms: round100(offsets[i]), off: null }));
-  for (let k = 0; k < lateCount; k++) {
-    plans.push({ id: order[early + k], kind: "late", after_ms: round100(4000 + k * 5000 + r() * 4000), off: null });
+  const plans: ClassPlan[] = order.slice(0, early).map((id, i) => ({ id, after_ms: round100(offsets[i]), off: null }));
+  for (let k = 0; k < stragglers; k++) {
+    plans.push({ id: order[early + k], after_ms: round100(LOBBY_FILL_MS + 20_000 + k * 60_000 + r() * 40_000), off: null });
   }
   // One student who has joined loses the connection for a while: one who joined in the first half minute, so it is seen.
-  const candidates = plans.filter((p) => p.kind === "early" && p.after_ms >= 8000 && p.after_ms <= 40_000);
+  const candidates = plans.filter((p) => p.after_ms >= 8000 && p.after_ms <= 40_000);
   if (candidates.length > 0) {
     const chosen = candidates[Math.floor(r() * candidates.length)];
     const from = chosen.after_ms + round100(10_000 + r() * 8000);
@@ -73,53 +72,51 @@ export type SimInput = { started_at: number; teaching_at: number | null; now: nu
 export type Sim = {
   /** When the student joined, or null if they have not yet. */
   joined_at: number | null;
-  late: boolean;
   online: boolean;
 };
 
-/** One student at `now`. A student with no plan never joins. A late one joins only once the teacher has begun the lesson. */
-export function simulate(plan: ClassPlan | undefined, { started_at, teaching_at, now }: SimInput): Sim {
-  if (!plan) return { joined_at: null, late: false, online: false };
-  const at = plan.kind === "early" ? started_at + plan.after_ms : teaching_at === null ? null : teaching_at + plan.after_ms;
-  if (at === null || at > now) return { joined_at: null, late: false, online: false };
+/** One student at `now`. A student with no plan never joins. */
+export function simulate(plan: ClassPlan | undefined, { started_at, now }: SimInput): Sim {
+  if (!plan) return { joined_at: null, online: false };
+  const at = started_at + plan.after_ms;
+  if (at > now) return { joined_at: null, online: false };
   const away = plan.off !== null && now >= started_at + plan.off.from_ms && now < started_at + plan.off.to_ms;
-  // A join after the lobby is late (BR-JOIN-04): even an early student whose time came after the teacher moved on.
-  return { joined_at: at, late: teaching_at !== null && at > teaching_at, online: !away };
+  return { joined_at: at, online: !away };
 }
 
 /**
- * The students of the class as the console shows them. A join with a phone is the record that stands: a student whom the teacher marked
- * present without a phone and who then joins is present (or late), and the mark and its reason are gone from them (the reversal rule). A
- * mark is shown only while the student has not joined.
+ * The students on the console at `now`: only those whose join time has passed, in the order they joined. A student who has not scanned
+ * the code is not listed at all, by name or otherwise.
  */
 export function consoleStudents(
-  roster: readonly { id: string; full_name: string }[],
+  pool: readonly { id: string; full_name: string }[],
   plans: readonly ClassPlan[],
-  marks: readonly MockMark[],
   input: SimInput,
 ): ConsoleStudent[] {
   const byId = new Map(plans.map((p) => [p.id, p]));
-  const marked = new Map(marks.map((m) => [m.student_id, m]));
-  return roster.map((student) => {
+  const joined: ConsoleStudent[] = [];
+  for (const student of pool) {
     const sim = simulate(byId.get(student.id), input);
-    const mark = marked.get(student.id);
-    const joined = sim.joined_at !== null;
-    return {
+    if (sim.joined_at === null) continue;
+    joined.push({
       id: student.id,
       full_name: student.full_name,
-      attendance: joined ? (sim.late ? "late" : "present") : mark ? "present_no_device" : null,
-      joined_at: joined ? new Date(sim.joined_at as number).toISOString() : null,
-      no_device_reason: !joined && mark ? mark.reason : null,
+      joined_at: new Date(sim.joined_at).toISOString(),
       online: sim.online,
       answer_state: null,
       focus_flags: 0,
       points: 0,
-    };
-  });
+    });
+  }
+  return joined.sort((a, b) => Date.parse(a.joined_at) - Date.parse(b.joined_at) || a.id.localeCompare(b.id));
 }
 
-/** Whether the student has joined with a phone at `now`, which is what stops the teacher marking them. */
-export const hasJoinedAt = (plan: ClassPlan | undefined, input: SimInput): boolean => simulate(plan, input).joined_at !== null;
+/** The names of the last five to join, newest first, for the lobby. */
+const recentNames = (students: readonly ConsoleStudent[]): string[] =>
+  [...students]
+    .sort((a, b) => Date.parse(b.joined_at) - Date.parse(a.joined_at))
+    .slice(0, 5)
+    .map((s) => s.full_name);
 
 // ---- The code -----------------------------------------------------------------------------------------
 
@@ -178,9 +175,7 @@ export function classViewOf(c: ConsoleSnapshot): ClassViewSnapshot {
       id: c.session.id,
       state: c.session.state,
       lesson_title: c.session.lesson.title,
-      class_name: c.session.class_name,
-      subject_name: c.session.subject_name,
-      joined_count: c.students.filter(hasJoined).length,
+      joined_count: c.students.length,
       recent: recentNames(c.students),
     },
     join: c.join,
@@ -220,8 +215,8 @@ export function eventsBetween(prev: ConsoleSnapshot, next: ConsoleSnapshot, chan
     });
   }
 
-  const was = prev.students.filter(hasJoined).length;
-  const now = next.students.filter(hasJoined).length;
+  const was = prev.students.length;
+  const now = next.students.length;
   const recent = recentNames(next.students);
   if (now !== was || recent.join("|") !== recentNames(prev.students).join("|")) out.push({ type: "joined.count", joined_count: now, recent, ...at });
 
@@ -235,10 +230,9 @@ export function eventsBetween(prev: ConsoleSnapshot, next: ConsoleSnapshot, chan
     const before = new Map(prev.students.map((s) => [s.id, s]));
     for (const s of next.students) {
       const old = before.get(s.id);
-      if (!old) continue;
-      if (hasJoined(s) && !hasJoined(old)) out.push({ type: "student.joined", student: s, ...at });
-      else if (hasJoined(s) && s.online !== old.online) out.push({ type: "student.presence", student_id: s.id, online: s.online, ...at });
-      if (s.answer_state !== old.answer_state && s.answer_state !== null) {
+      if (!old) out.push({ type: "student.joined", student: s, ...at });
+      else if (s.online !== old.online) out.push({ type: "student.presence", student_id: s.id, online: s.online, ...at });
+      if (s.answer_state !== old?.answer_state && s.answer_state !== null) {
         const open = next.questions.find((q) => q.status === "open");
         if (open) out.push({ type: "student.answer_state", session_question_id: open.id, student_id: s.id, state: s.answer_state, ...at });
       }

@@ -9,7 +9,6 @@ const draft = (n = 6): ReadyDraft =>
     id: "d1",
     status: "ready",
     title: "Низи",
-    review_summary: "Резиме",
     questions: BANK.flatMap((b, i) => bankQuestions(b, `b${i}`)).slice(0, n).map((q, order) => ({ ...q, order })),
   }) as ReadyDraft;
 
@@ -28,7 +27,6 @@ describe("the editor's state", () => {
   test("a change that changes nothing is the same state, so there is nothing to save", () => {
     const s = start();
     expect(reduce(s, { type: "title", text: "Низи" })).toBe(s);
-    expect(reduce(s, { type: "summary", text: "Резиме" })).toBe(s);
     expect(reduce(s, { type: "close" })).toBe(s);
     expect(reduce(s, { type: "choosing", on: false })).toBe(s);
     expect(reduce(s, { type: "delete", id: "nope" })).toBe(s);
@@ -172,7 +170,6 @@ describe("what is sent to the draft", () => {
     const sent = s.content;
     expect(isEmptyPatch(patchOf(sent, s.content))).toBe(true);
     expect(patchOf(sent, reduce(s, { type: "title", text: "Нов" }).content)).toEqual({ title: "Нов" });
-    expect(patchOf(sent, reduce(s, { type: "summary", text: "Ново" }).content)).toEqual({ review_summary: "Ново" });
     const moved = reduce(s, { type: "move", id: first(s).id, direction: "down" }).content;
     expect(Object.keys(patchOf(sent, moved))).toEqual(["questions"]);
   });

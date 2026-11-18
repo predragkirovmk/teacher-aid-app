@@ -530,7 +530,7 @@ button {
   .running--top .running__tag {
     align-items: center;
     padding: 0;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
   .running--top .running__tag svg {
     margin-top: 0;
@@ -549,6 +549,9 @@ button {
 /* A phone's width (or a laptop's, zoomed to 400%): the words, then the button under them. */
 @media (max-width: 29.9375rem) {
   .running--top {
+    /* The lesson's title may be long: the tile is never wider than the bar, and the title wraps inside it. */
+    flex: 1 1 100%;
+    min-width: 0;
     grid-auto-flow: row;
     justify-content: stretch;
     padding: 0.75rem;
@@ -2119,31 +2122,6 @@ button {
   flex: 1 0 100%;
   margin-left: calc(28px + 0.75rem);
 }
-/* Subjects have long names and there may be many: one under the other, so they read as a list and not as a ragged grid. */
-.prepare__tiles--rows .choices {
-  grid-template-columns: minmax(0, 1fr);
-}
-/* What there is no choice about, because there is only one: a plain line to read, not a row that looks chosen (and so pressable). */
-.card .prepare__stated {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem 0.75rem;
-  max-width: none;
-  color: var(--ink);
-  font-size: var(--fs-row);
-}
-.prepare__stated-label {
-  color: var(--ink-2);
-}
-.prepare__stated-value {
-  font-size: var(--fs-row);
-  font-weight: 600;
-}
-.prepare__stated-detail {
-  color: var(--ink-2);
-}
-
 /* The two kinds of box the teacher writes in: 17px words on white, an edge strong enough to find the box by, and the same
    ring as everything when it has the focus. */
 .field {
@@ -2958,7 +2936,7 @@ button {
   color: var(--ink);
 }
 
-/* Who has joined: every student by name, in two groups, each with an icon and a word. */
+/* Who has joined: the students who scanned the code, by name, each with an icon and a word. */
 .roster {
   container: roster / inline-size;
   display: grid;
@@ -2967,28 +2945,6 @@ button {
 .card .roster__count {
   color: var(--ink);
   font-size: var(--fs-row);
-  font-weight: 600;
-}
-.card .roster__nophone {
-  color: var(--ink-2);
-}
-/* What was done, said once and read out. It has no room of its own until it has something to say, so the list sits close under the count. */
-.card .roster__said {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-}
-.card .roster__said:empty {
-  display: none;
-}
-.roster__group {
-  display: grid;
-  gap: var(--sp-1);
-}
-.roster__heading {
-  margin: var(--sp-1) 0 0;
-  font-size: var(--fs-body);
   font-weight: 600;
 }
 .card .roster__none {
@@ -3005,7 +2961,7 @@ button {
   display: grid;
   gap: 0.25rem;
 }
-/* A student is one line: the name, then what is worth saying (an icon and a word), and a button when there is one. It wraps below the name only when it must. */
+/* A student is one line: the name, then what is worth saying (an icon and a word). It wraps below the name only when it must. */
 .person {
   display: flex;
   flex-wrap: wrap;
@@ -3022,7 +2978,7 @@ button {
   font-weight: 600;
   overflow-wrap: anywhere;
 }
-/* The parts of what is said about a student are items of the row itself, so the answer stays beside the name and what is longer (when a student came late, that they left the app) goes on a line of its own below. */
+/* The parts of what is said about a student are items of the row itself, so the answer stays beside the name and what is longer (that they left the app) goes on a line of its own below. */
 .person__state {
   display: contents;
 }
@@ -3047,11 +3003,6 @@ button {
   flex-basis: 100%;
   margin-left: 0;
 }
-.person[data-state="late"] .person__what {
-  order: 3;
-  flex-basis: 100%;
-  margin-left: 0;
-}
 .person__what svg {
   flex: none;
 }
@@ -3065,12 +3016,6 @@ button {
 .person__answer {
   font-weight: 500;
   color: var(--ink);
-}
-.person__action {
-  align-self: center;
-}
-.person__problem {
-  grid-column: 1 / -1;
 }
 /* A student whose connection is lost is worth a look: a teal edge besides the icon and the words. */
 .person[data-state="offline"] {
@@ -5512,9 +5457,4 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
     font-size: 1rem;
     padding: 0.25rem 0.5rem;
   }
-}
-
-/* The button of a student's row is as wide as its word needs, so a long surname keeps its line in the narrow card. */
-.person__action {
-  padding-inline: var(--sp-2);
 }

@@ -34,8 +34,7 @@ const rejection = async (p: Promise<unknown>): Promise<ApiError> => {
 /** A lesson running in teaching, a minute after it began (the class has joined). */
 async function teaching(): Promise<ConsoleSnapshot> {
   const [lesson] = (await api.listLessons()).filter((l) => l.times_run === 0);
-  const course = (await api.listCourses()).find((c) => c.class.year === lesson.year)!;
-  const { session } = await api.createSession({ lesson_id: lesson.id, course_id: course.id });
+  const { session } = await api.createSession({ lesson_id: lesson.id });
   now += 60_000;
   return api.advance(session.id, { to: "teaching" });
 }
@@ -56,8 +55,7 @@ describe("sending a question", () => {
 
   test("only in teaching, only a question that is ready, and only one at a time", async () => {
     const [lesson] = (await api.listLessons()).filter((l) => l.times_run === 0);
-    const course = (await api.listCourses()).find((x) => x.class.year === lesson.year)!;
-    const lobby = await api.createSession({ lesson_id: lesson.id, course_id: course.id });
+    const lobby = await api.createSession({ lesson_id: lesson.id });
     expect((await rejection(api.fireQuestion(lobby.session.id, lobby.questions[0].id))).code).toBe("invalid_state");
     now += 60_000;
     const c = await api.advance(lobby.session.id, { to: "teaching" });
@@ -178,7 +176,7 @@ describe("what the class does", () => {
       now = t0 + s * 1000;
       const snap = await api.getConsole(c.session.id);
       if (snap.questions[0].status !== "open") break;
-      const states = snap.students.filter((x) => x.attendance === "present" || x.attendance === "late").map((x) => x.answer_state);
+      const states = snap.students.map((x) => x.answer_state);
       expect(states.every((x) => x === "answered" || x === "not_answered" || x === "offline")).toBe(true);
       if (states.includes("offline")) sawOffline = true;
     }
@@ -187,25 +185,16 @@ describe("what the class does", () => {
     expect((await api.getConsole(c.session.id)).students.every((x) => x.answer_state === null)).toBe(true);
   });
 
-  test("points are 10 and the speed bonus for a right answer, and nothing for a wrong one, and the bonus can be switched off per course", async () => {
-    const run = async (bonus: boolean) => {
-      source = memorySource(freshState(ANCHOR), { now: () => now });
-      api = createMockApi(source, { delay: () => Promise.resolve() });
-      for (const course of await api.listCourses()) await api.updateCourse(course.id, { speed_bonus_on: bonus });
-      now = NOW;
-      const c = await teaching();
-      await api.fireQuestion(c.session.id, c.questions[0].id);
-      now += c.questions[0].question.timer_seconds * 1000 + 1;
-      return api.getConsole(c.session.id);
-    };
-    const on = await run(true);
-    const off = await run(false);
-    const pts = (s: ConsoleSnapshot) => s.students.map((x) => x.points).filter((p) => p > 0);
-    expect(pts(off).every((p) => p === POINTS_RIGHT)).toBe(true);
-    expect(pts(on).every((p) => p >= POINTS_RIGHT && p <= POINTS_RIGHT + SPEED_BONUS_MAX)).toBe(true);
-    expect(pts(on).some((p) => p > POINTS_RIGHT)).toBe(true);
+  test("points are 10 and the speed bonus for a right answer, and nothing for a wrong one; the bonus is always on", async () => {
+    const c = await teaching();
+    await api.fireQuestion(c.session.id, c.questions[0].id);
+    now += c.questions[0].question.timer_seconds * 1000 + 1;
+    const snap = await api.getConsole(c.session.id);
+    const pts = snap.students.map((x) => x.points).filter((p) => p > 0);
+    expect(pts.every((p) => p >= POINTS_RIGHT && p <= POINTS_RIGHT + SPEED_BONUS_MAX)).toBe(true);
+    expect(pts.some((p) => p > POINTS_RIGHT)).toBe(true);
     // The number who scored is the number who were right.
-    expect(pts(off).length).toBe(off.questions[0].counts!.right);
+    expect(pts.length).toBe(snap.questions[0].counts!.right);
   });
 
   test("the ranking has real names, everyone who has joined, best first, a tie sharing a place", async () => {
@@ -213,7 +202,7 @@ describe("what the class does", () => {
     await api.fireQuestion(c.session.id, c.questions[0].id);
     now += c.questions[0].question.timer_seconds * 1000 + 1;
     const snap = await api.getConsole(c.session.id);
-    const joined = snap.students.filter((x) => x.attendance === "present" || x.attendance === "late");
+    const joined = snap.students;
     expect(snap.board).toHaveLength(joined.length);
     expect(snap.board.map((r) => r.points)).toEqual([...snap.board.map((r) => r.points)].sort((a, b) => b - a));
     expect(snap.board[0].rank).toBe(1);
@@ -231,7 +220,6 @@ describe("what the class does", () => {
         roster,
         plans: planClass(`seed-${k}`, roster.map((r) => r.id)),
         sim: { started_at: NOW, teaching_at: NOW + 60_000, now: NOW },
-        speedBonusOn: true,
       };
       const play = playOf(run, input);
       expect(play.ended_at).toBeLessThanOrEqual(play.planned_end);
@@ -501,8 +489,8 @@ describe("the projector's snapshot", () => {
   });
 
   test("scores follow scoring.ts", () => {
-    expect(scoreAnswer({ correct: true, remainingMs: 20_000, durationMs: 20_000, speedBonusOn: true })).toEqual({ points: 15, speed_bonus: 5 });
-    expect(scoreAnswer({ correct: false, remainingMs: 20_000, durationMs: 20_000, speedBonusOn: true })).toEqual({ points: 0, speed_bonus: 0 });
+    expect(scoreAnswer({ correct: true, remainingMs: 20_000, durationMs: 20_000 })).toEqual({ points: 15, speed_bonus: 5 });
+    expect(scoreAnswer({ correct: false, remainingMs: 20_000, durationMs: 20_000 })).toEqual({ points: 0, speed_bonus: 0 });
   });
 });
 

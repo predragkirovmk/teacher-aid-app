@@ -3,14 +3,13 @@
 import { CheckCircleIcon, ClipboardTextIcon, MagnifyingGlassIcon, PrinterIcon, ArrowRightIcon, PaperPlaneTiltIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { sendPracticeSet, useCourse, usePracticeResults, useReview } from "@/lib/teacher/api/hooks";
+import { sendPracticeSet, usePracticeResults, useReview } from "@/lib/teacher/api/hooks";
 import { isApiError } from "@/lib/teacher/api/errors";
 import type { AttendanceRow, AttendanceStatus, MissedQuestion } from "@/lib/teacher/api/types";
 import { attendanceText, ATTENDANCE_STATUSES, registerName, sortAttendance, tallyOf, statusWords, type AttendanceWords } from "@/lib/teacher/attendance";
 import { isOne } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
 import { correctWords, REVIEW_MISSED_MAX } from "@/lib/teacher/review";
-import { courseLabel } from "@/lib/teacher/start";
 import { HOME } from "@/lib/teacher/signin";
 import { LoadProblem } from "./LoadProblem";
 import { PageHeader } from "./PageHeader";
@@ -46,14 +45,13 @@ export function EndPage({ sessionId }: { sessionId: string }) {
   const { t } = useT();
   const review = useReview(sessionId);
   const data = review.data;
-  const course = useCourse(data?.session.course_id).data;
   const gone = review.status === "error" && isApiError(review.error) && (review.error.code === "not_found" || review.error.code === "invalid_state");
 
   return (
     <>
       <PageHeader
         title={t("endpage.title")}
-        subtitle={data ? `${course ? `${courseLabel(course.subject.name, course.class.name)}: ` : ""}${data.session.lesson.title}` : undefined}
+        subtitle={data?.session.lesson.title}
         back={HOME}
         backLabel={t("back.lessons")}
         action={
@@ -95,7 +93,6 @@ export function EndPage({ sessionId }: { sessionId: string }) {
             <div className="endpage__frame">
               <Attendance
                 rows={data.attendance}
-                course={course ? courseLabel(course.subject.name, course.class.name) : null}
                 lesson={data.session.lesson.title}
                 day={data.session.ended_at ?? data.session.started_at}
               />
@@ -119,7 +116,7 @@ const COUNT_KEY = {
 } as const satisfies Record<AttendanceStatus, string>;
 
 /** The counts, the list in the register's order, and the two things a teacher does with it: copy it, or print it. */
-function Attendance({ rows, course, lesson, day }: { rows: AttendanceRow[]; course: string | null; lesson: string; day: string }) {
+function Attendance({ rows, lesson, day }: { rows: AttendanceRow[]; lesson: string; day: string }) {
   const { t, locale } = useT();
   const words = useAttendanceWords();
   const [note, setNote] = useState<"copied" | "failed" | null>(null);
@@ -146,9 +143,8 @@ function Attendance({ rows, course, lesson, day }: { rows: AttendanceRow[]; cour
       <div className="att__head">
         <div className="att__name">
           <h2 id="att-title">{t("att.title")}</h2>
-          {/* On paper only: the class, the lesson and the day the list belongs to, above it. */}
+          {/* On paper only: the lesson and the day the list belongs to, above it. */}
           <p className="att-print__title">
-            {course && <span>{course}</span>}
             <span>{lesson}</span>
             <span>{new Date(day).toLocaleDateString(locale === "mk" ? "mk-MK" : "en-GB", { day: "numeric", month: "long", year: "numeric" })}</span>
           </p>

@@ -36,12 +36,9 @@ const pendingDraft = {
   status: "pending",
   failure: null,
   title: null,
-  review_summary: null,
   questions: null,
   source_id: "src-1",
   source: { kind: "typed", file_name: null },
-  subject: { id: "sub-1", name: "Биологија" },
-  year: 2,
   emphasis: null,
   refinements: [],
   previous_draft_id: null,
@@ -54,7 +51,6 @@ const readyDraft = {
   ...pendingDraft,
   status: "ready",
   title: "Фотосинтеза",
-  review_summary: "Растенијата прават шеќер од светлина.",
   questions: [
     { id: "q-1", order: 0, kind: "multiple_choice", prompt: "Што произведува фотосинтезата?", options: ["Шеќер", "Сол"], correct: "0", media: null, explanation: null, timer_seconds: 20, topic: "Фотосинтеза" },
   ],
@@ -88,9 +84,9 @@ describe("the lesson job endpoints (F-03, F-04, BR-LES-08)", () => {
     const pending = pendingDraft;
     answer = json(pending, 202);
     const api = createLiveApi();
-    await expect(api.generateLesson({ source_id: "src-1", subject_id: "sub-1", year: 2, emphasis: "втор дел" })).resolves.toEqual(pending);
+    await expect(api.generateLesson({ source_id: "src-1", emphasis: "втор дел" })).resolves.toEqual(pending);
     expect(last().url).toBe("/api/v1/lessons/generate");
-    expect(bodyOf(last())).toEqual({ source_id: "src-1", subject_id: "sub-1", year: 2, emphasis: "втор дел" });
+    expect(bodyOf(last())).toEqual({ source_id: "src-1", emphasis: "втор дел" });
 
     await api.refineDraft("d-1", "harder");
     expect(last().url).toBe("/api/v1/lessons/drafts/d-1/refine");
@@ -136,7 +132,7 @@ describe("the lesson job endpoints (F-03, F-04, BR-LES-08)", () => {
 });
 
 describe("autosave's keepalive (64 KiB browser quota)", () => {
-  const draft = (chars: number) => ({ title: "Т", review_summary: "ж".repeat(chars), questions: [] });
+  const draft = (chars: number) => ({ title: "ж".repeat(chars), questions: [] });
   // The answer is the draft (or, for Save, the lesson), and the shape of either is checked.
   beforeEach(() => {
     answer = json(readyDraft);
@@ -158,7 +154,7 @@ describe("autosave's keepalive (64 KiB browser quota)", () => {
   });
 
   test("no other call asks for keepalive", async () => {
-    await createLiveApi().saveLesson({ draft_id: "d-1", title: "Т", review_summary: "", questions: [] });
+    await createLiveApi().saveLesson({ draft_id: "d-1", title: "Т", questions: [] });
     expect(last().init.keepalive).toBe(false);
   });
 });

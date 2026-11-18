@@ -39,10 +39,8 @@ describe("the dictionaries", () => {
 });
 
 describe("school type wording", () => {
-  test("the school words fill {students}, {classes} and {teacher}", () => {
-    expect(translate("mk", "school", "start.classes.failed")).toContain("класови");
+  test("the school words fill {students} and {teacher}", () => {
     expect(translate("mk", "school", "lessons.empty.body")).toContain("ученици");
-    expect(translate("mk", "university", "start.classes.failed")).toContain("групи");
     expect(translate("mk", "university", "lessons.empty.body")).toContain("студенти");
     expect(translate("mk", "school", "settings.who", { name: "Марија" })).toBe("Марија, наставник");
     expect(translate("mk", "university", "settings.who", { name: "Марија" })).toBe("Марија, професор");
@@ -55,22 +53,10 @@ describe("school type wording", () => {
     expect(translate("en", "school", "err.not_enrolled")).toContain("student");
   });
 
-  test("the window that starts a lesson asks for a class at a school and a group at a faculty", () => {
-    expect(translate("mk", "school", "start.title")).toBe("Со кој клас?");
-    expect(translate("mk", "university", "start.title")).toBe("Со која група?");
-    expect(translate("en", "school", "start.title")).toBe("Which class?");
-    expect(translate("en", "university", "start.title")).toBe("Which group?");
-    expect(translate("mk", "school", "start.count", { n: 26 })).toBe("26 ученици");
-    expect(translate("mk", "university", "start.count", { n: 26 })).toBe("26 студенти");
-    expect(translate("mk", "school", "start.count.one", { n: 1 })).toBe("1 ученик");
-    expect(translate("mk", "university", "start.count.one", { n: 21 })).toBe("21 студент");
-    expect(translate("mk", "university", "start.noclass.body", { subject: "Физика" })).toContain("ни на една група");
-  });
-
-  test("a lesson's year is a Roman numeral at a school and a study year at a faculty", () => {
-    expect(translate("mk", "school", "lesson.year", { n: 2, roman: "II" })).toBe("II година");
-    expect(translate("mk", "university", "lesson.year", { n: 2, roman: "II" })).toBe("2. година");
-    expect(translate("en", "school", "lesson.year", { n: 2, roman: "II" })).toBe("Year 2");
+  test("the empty lobby names the students of the school type", () => {
+    expect(translate("mk", "school", "live.joined.none")).toContain("Учениците");
+    expect(translate("mk", "university", "live.joined.none")).toContain("Студентите");
+    expect(translate("en", "school", "live.joined.none")).toBe("Students appear here when they scan the code.");
   });
 
   test("a lesson that is already running is a lesson to go back to, not an error about a class", () => {
@@ -136,15 +122,11 @@ describe("a count is in the singular when the language says so", () => {
   const phrase = (locale: "mk" | "en", n: number, one: Key, many: Key) => translate(locale, "school", isOne(n, locale) ? one : many, { n });
 
   test("in Macedonian every number that ends in 1 but 11 takes the singular, the others the plural", () => {
-    expect([1, 2, 5, 11, 12, 21, 26, 31, 101, 111].map((n) => phrase("mk", n, "start.count.one", "start.count"))).toEqual([
-      "1 ученик", "2 ученици", "5 ученици", "11 ученици", "12 ученици", "21 ученик", "26 ученици", "31 ученик", "101 ученик", "111 ученици",
-    ]);
     expect([1, 7, 21].map((n) => phrase("mk", n, "lesson.questions.one", "lesson.questions.many"))).toEqual(["1 прашање", "7 прашања", "21 прашање"]);
     expect([1, 15, 21].map((n) => phrase("mk", n, "question.timer.one", "question.timer"))).toEqual(["Време: 1 секунда", "Време: 15 секунди", "Време: 21 секунда"]);
   });
 
   test("in English only one is singular", () => {
-    expect([1, 2, 21].map((n) => phrase("en", n, "start.count.one", "start.count"))).toEqual(["1 student", "2 students", "21 students"]);
     expect([1, 21].map((n) => phrase("en", n, "lesson.questions.one", "lesson.questions.many"))).toEqual(["1 question", "21 questions"]);
   });
 });

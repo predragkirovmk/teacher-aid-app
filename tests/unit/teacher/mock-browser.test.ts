@@ -67,26 +67,27 @@ describe("the demo in the browser", () => {
     });
     const { api } = createBrowserMock();
     expect((await api.getMe()).name).toBe("Марија Петровска");
-    await api.updateCourse((await api.listCourses())[0].id, { speed_bonus_on: false });
-    expect((await api.listCourses())[0].speed_bonus_on).toBe(false);
+    const [first] = await api.listLessons();
+    await api.deleteLesson(first.id);
+    expect((await api.listLessons()).map((l) => l.id)).not.toContain(first.id);
   });
 
   test("no storage at all gives no session: nobody can be signed in, and the calls say so", async () => {
     browser("blocked");
     const { api } = createBrowserMock();
-    await expect(api.listCourses()).rejects.toMatchObject({ code: "unauthenticated" });
+    await expect(api.listLessons()).rejects.toMatchObject({ code: "unauthenticated" });
   });
 
   test("Reset starts the demo over, and the fresh start is saved", async () => {
     const storage = memory();
     browser(storage);
     const { api, demo } = createBrowserMock();
-    const [course] = await api.listCourses();
-    await api.updateCourse(course.id, { speed_bonus_on: false });
-    expect(JSON.parse(storage.map.get(MOCK_KEY)!).school.speed_bonus).toEqual({ [course.id]: false });
+    const [first] = await api.listLessons();
+    await api.deleteLesson(first.id);
+    expect(JSON.parse(storage.map.get(MOCK_KEY)!).school.deleted).toEqual([first.id]);
     demo.reset();
-    expect((await api.listCourses())[0].speed_bonus_on).toBe(true);
-    expect(JSON.parse(storage.map.get(MOCK_KEY)!).school.speed_bonus).toEqual({});
+    expect((await api.listLessons()).map((l) => l.id)).toContain(first.id);
+    expect(JSON.parse(storage.map.get(MOCK_KEY)!).school.deleted).toEqual([]);
   });
 });
 
@@ -98,19 +99,18 @@ describe("two windows of one browser", () => {
     const sets: string[] = [];
     browser({ getItem: old.getItem, setItem: (k: string) => void sets.push(k) });
     const { api } = createBrowserMock();
-    const [course] = await api.listCourses();
-    expect(course.speed_bonus_on).toBe(true);
+    const [first] = await api.listLessons();
     const heard = vi.fn();
     api.subscribe(heard);
 
     const next = freshState(startOfDay(Date.now()));
-    next.school.speed_bonus = { [course.id]: false };
+    next.school.deleted = [first.id];
     const other = new BroadcastChannel("teacheraid-teacher-mock-changed");
     other.postMessage(serializeState(next));
     await vi.waitFor(() => expect(heard).toHaveBeenCalled());
     other.close();
 
-    expect((await api.listCourses())[0].speed_bonus_on).toBe(false);
+    expect((await api.listLessons()).map((l) => l.id)).not.toContain(first.id);
     // The first read saved nothing: the old text was a good save.
     expect(sets).toEqual([]);
   });

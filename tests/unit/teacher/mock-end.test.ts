@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test } from "vitest";
 import type { TeacherApi } from "@/lib/teacher/api/client";
 import type { ApiError } from "@/lib/teacher/api/errors";
 import { createMockApi, memorySource } from "@/lib/teacher/api/mock";
-import { eventsBetween, planClass } from "@/lib/teacher/api/mock-live";
+import { eventsBetween } from "@/lib/teacher/api/mock-live";
 import { freshState } from "@/lib/teacher/api/mock-state";
 import type { ChannelEvent, ConsoleSnapshot, TeacherChannel } from "@/lib/teacher/api/types";
 import { applyClassEvent } from "@/lib/teacher/live";
@@ -33,8 +33,7 @@ const rejection = async (p: Promise<unknown>): Promise<ApiError> => {
 
 async function lobby(): Promise<ConsoleSnapshot> {
   const [lesson] = (await api.listLessons()).filter((l) => l.times_run === 0);
-  const course = (await api.listCourses()).find((c) => c.class.year === lesson.year)!;
-  return api.createSession({ lesson_id: lesson.id, course_id: course.id });
+  return api.createSession({ lesson_id: lesson.id });
 }
 
 /** A lesson with every question sent, closed and shown, ready to be moved to the review. */
@@ -122,24 +121,20 @@ describe("the anonymous text and the channels", () => {
 });
 
 describe("End", () => {
-  test("writes the register: joined, late, marked without a phone with the reason, and the rest absent", async () => {
+  test("writes the register of the students who joined, each present and marked by the student, and nobody else", async () => {
     const l = await lobby();
     now += 20_000;
-    const planned = new Set(planClass(l.session.id, l.students.map((s) => s.id)).map((p) => p.id));
-    const waiting = l.students.filter((s) => !planned.has(s.id));
-    await api.markNoDevice(l.session.id, waiting[0].id, { reason: "battery" });
-    now += 40_000;
+    const early = await api.getConsole(l.session.id);
+    expect(early.students.length).toBeGreaterThan(0);
     await api.advance(l.session.id, { to: "teaching" });
-    now += 60_000;
+    // Students keep joining after the lesson began: they are listed too, and are not marked late.
+    now += 6 * 60_000;
     const end = await api.endSession(l.session.id);
     expect(end.session.state).toBe("ended");
-    expect(end.attendance).toHaveLength(l.students.length);
+    expect(end.attendance.length).toBeGreaterThanOrEqual(early.students.length);
+    expect(end.attendance.every((a) => a.status === "present" && a.marked_by === "student" && a.no_device_reason === null && a.joined_at !== null)).toBe(true);
     expect(end.tally).toEqual(tallyOf(end.attendance));
-    const marked = end.attendance.find((a) => a.student_id === waiting[0].id)!;
-    expect(marked).toMatchObject({ status: "present_no_device", no_device_reason: "battery", marked_by: "teacher" });
-    expect(end.attendance.filter((a) => a.status === "absent").every((a) => a.marked_by === "system" && a.joined_at === null)).toBe(true);
-    expect(end.tally.absent).toBeGreaterThan(0);
-    expect(end.tally.late).toBeGreaterThanOrEqual(0);
+    expect(end.tally).toMatchObject({ late: 0, absent: 0, present_no_device: 0, total: end.attendance.length });
   });
 
   test("closes the lesson everywhere: no open lesson, the console is gone, the projector says it ended, the review holds the register", async () => {
@@ -183,9 +178,8 @@ describe("End", () => {
   });
 
   test("a lesson of the history can be read the same way", async () => {
-    const [course] = await api.listCourses();
-    const dash = await api.getDashboard(course.id);
-    const review = await api.getReview(dash.sessions[0].id);
+    const held = (await api.listLessons()).find((l) => l.last_session_id !== null)!;
+    const review = await api.getReview(held.last_session_id!);
     expect(review.session.state).toBe("ended");
     expect(review.attendance?.length).toBeGreaterThan(0);
     expect(review.most_missed.every((m) => m.missed > 0)).toBe(true);

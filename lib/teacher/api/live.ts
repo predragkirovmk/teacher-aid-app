@@ -9,8 +9,6 @@ import {
   PUBLIC_EVENT_TYPES,
   type ChannelEvent,
   type ClassViewSnapshot,
-  type CourseDashboard,
-  type CourseSummary,
   type OpenSession,
   type ConsoleSnapshot,
   type DraftSummary,
@@ -109,10 +107,6 @@ export function createLiveApi(): TeacherApi {
       return request<Me>("GET", "/me");
     },
 
-    listCourses: () => request<CourseSummary[]>("GET", "/teacher/courses"),
-    getDashboard: (courseId) => request<CourseDashboard>("GET", `/courses/${id(courseId)}/dashboard`),
-    updateCourse: (courseId, patch) => request<CourseSummary>("PATCH", `/courses/${id(courseId)}`, { body: patch }),
-
     createSource: (input, { signal } = {}) => {
       if (input.kind === "typed") return request<SourceCreated>("POST", "/lessons/sources", { body: { text: input.text }, signal });
       const form = new FormData();
@@ -151,9 +145,6 @@ export function createLiveApi(): TeacherApi {
     revealQuestion: (sessionId, sqId) => request<ConsoleSnapshot>("POST", `${question(sessionId, sqId)}/reveal`),
     skipQuestion: (sessionId, sqId) => request<ConsoleSnapshot>("POST", `${question(sessionId, sqId)}/skip`),
     fireAdhoc: (sessionId, req) => request<ConsoleSnapshot>("POST", `${session(sessionId)}/adhoc`, { body: req }),
-    markNoDevice: (sessionId, studentId, req) =>
-      request<ConsoleSnapshot>("POST", `${session(sessionId)}/attendance/${id(studentId)}/no-device`, { body: req }),
-    clearNoDevice: (sessionId, studentId) => request<ConsoleSnapshot>("DELETE", `${session(sessionId)}/attendance/${id(studentId)}/no-device`),
     markAnonAnswered: (sessionId, anonId, answered) =>
       request("PATCH", `${session(sessionId)}/anon-questions/${id(anonId)}`, { body: { answered } }),
     endSession: (sessionId) => request("POST", `${session(sessionId)}/end`),

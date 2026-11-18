@@ -39,13 +39,13 @@ export function speedBonus(remainingMs: number, durationMs: number): number {
 export type Score = { points: number; speed_bonus: number };
 
 /**
- * What one answer earns. Only a right answer scores, and the bonus only while the course has it on (BR-PTS-04).
+ * What one answer earns. Only a right answer scores, and the speed bonus is always on (BR-PTS-04).
  * `remainingMs` is how long was left on the question's clock when the answer was given; an answer inside the grace
  * window after the close has none left and earns no bonus.
  */
-export function scoreAnswer(input: { correct: boolean; remainingMs: number; durationMs: number; speedBonusOn: boolean }): Score {
+export function scoreAnswer(input: { correct: boolean; remainingMs: number; durationMs: number }): Score {
   if (!input.correct) return { points: 0, speed_bonus: 0 };
-  const bonus = input.speedBonusOn ? speedBonus(input.remainingMs, input.durationMs) : 0;
+  const bonus = speedBonus(input.remainingMs, input.durationMs);
   return { points: POINTS_RIGHT + bonus, speed_bonus: bonus };
 }
 

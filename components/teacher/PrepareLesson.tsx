@@ -1,9 +1,9 @@
 "use client";
 
-import { SparkleIcon, UsersThreeIcon } from "@phosphor-icons/react";
+import { SparkleIcon } from "@phosphor-icons/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { startTransition, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
-import { createSource, generateLesson, useCourses } from "@/lib/teacher/api/hooks";
+import { startTransition, useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { createSource, generateLesson } from "@/lib/teacher/api/hooks";
 import { isApiError } from "@/lib/teacher/api/errors";
 import type { Id } from "@/lib/teacher/api/types";
 import { EMPHASIS_MAX_CHARS } from "@/lib/teacher/lessons";
@@ -11,21 +11,16 @@ import { useT, type Key } from "@/lib/teacher/i18n";
 import {
   checkFile,
   checkForm,
-  chosenSubject,
-  chosenYear,
-  classesOf,
   emphasisOf,
   failureOf,
-  firstProblem,
   focusKeyOf,
+  hasProblems,
   hasWork,
   materialProblemOf,
   REQUEST_LIMIT_MS,
   showsEmphasisCount,
   sourceToKeep,
-  subjectsOf,
   WAIT_LIMIT_MS,
-  yearsOf,
   type Failure,
   type FocusKey,
   type MaterialKind,
@@ -34,20 +29,15 @@ import {
 } from "@/lib/teacher/prepare";
 import { clearRefill, readRefill, rememberForm } from "@/lib/teacher/refill";
 import { backFromLesson, draftUrl, fromOf } from "@/lib/teacher/routes";
-import { romanYear } from "@/lib/teacher/format";
-import { Choices } from "./Choices";
 import { LeaveGuard } from "./LeaveGuard";
-import { LoadProblem } from "./LoadProblem";
 import { MaterialPart } from "./MaterialPart";
 import { PageHeader } from "./PageHeader";
 import { WaitFailure, Waiting, type Phase } from "./PrepareWait";
-import { Problem } from "./Problem";
-import { Bar, Loading } from "./Skeleton";
 
 type Stage = { name: "form" } | { name: "wait"; phase: Phase } | { name: "failed"; failure: Failure; error: unknown };
 
 /**
- * Prepare a lesson (F-03), on one page. The form has three numbered parts and one main button; pressing it checks what it
+ * Prepare a lesson (F-03), on one page. The form has two numbered parts and one main button; pressing it checks what it
  * can on this side, reads the document if there is one (that is the wait here, with Cancel), asks for the questions, and goes on
  * to the page of the draft, which is where the questions are waited for: writing them is a job that goes on without this page
  * (BR-LES-08). Nothing typed or chosen is ever lost: Cancel, Back after a failure and a refusal of the material all return to the
@@ -58,10 +48,7 @@ export function PrepareLesson() {
   const router = useRouter();
   const from = useSearchParams().get("from");
   const back = backFromLesson(from);
-  const courses = useCourses();
 
-  const [pickedSubject, setPickedSubject] = useState<Id | null>(null);
-  const [pickedYear, setPickedYear] = useState<number | null>(null);
   const [kind, setKind] = useState<MaterialKind | null>(null);
   const [file, setFile] = useState<File | null>(null);
   // A document the API already holds, from a wait that was cancelled: shown by its name, and used again without being sent again.
@@ -77,17 +64,15 @@ export function PrepareLesson() {
   // alone says nothing of what has happened.
   const [said, setSaid] = useState<Key | null>(null);
 
-  // The form as a cancelled wait left it, once the subjects are known (a subject that is not offered is not chosen).
+  // The form as a cancelled wait left it.
   const refilled = useRef(false);
   useEffect(() => {
-    if (refilled.current || courses.status !== "ready") return;
+    if (refilled.current) return;
     refilled.current = true;
     const refill = readRefill();
     if (!refill) return;
     clearRefill();
     startTransition(() => {
-      setPickedSubject(refill.subject_id);
-      setPickedYear(refill.year);
       setKind(refill.kind);
       setText(refill.text);
       setEmphasis(refill.emphasis);
@@ -95,12 +80,7 @@ export function PrepareLesson() {
       setSaid(refill.note === "kept" ? "prepare.kept" : "prepare.cancelled");
       setFocusOn({ key: "submit" });
     });
-  }, [courses.status]);
-
-  const subjects = useMemo(() => subjectsOf(courses.data ?? []), [courses.data]);
-  const subject = chosenSubject(subjects, pickedSubject);
-  const years = useMemo(() => yearsOf(courses.data ?? [], subject), [courses.data, subject]);
-  const year = chosenYear(years, pickedYear);
+  }, []);
 
   // The call in flight, and the source it made: a retry after the questions failed asks again with the same source.
   const stop = useRef<AbortController | null>(null);
@@ -152,7 +132,6 @@ export function PrepareLesson() {
    * draft is where they are waited for.
    */
   const start = async (source: Id | null) => {
-    if (subject === null || year === null) return;
     const mine = ++attempt.current;
     const ctl = new AbortController();
     stop.current = ctl;
@@ -176,7 +155,7 @@ export function PrepareLesson() {
         sourceId.current = have;
       }
       setStage({ name: "wait", phase: "writing" });
-      const draft = await within(() => generateLesson({ source_id: have!, subject_id: subject, year, emphasis: emphasisOf(emphasis) }, { signal: ctl.signal }), REQUEST_LIMIT_MS);
+      const draft = await within(() => generateLesson({ source_id: have!, emphasis: emphasisOf(emphasis) }, { signal: ctl.signal }), REQUEST_LIMIT_MS);
       if (mine !== attempt.current) return;
       // What was typed is not on the server: keep it for as long as the tab is open, in case the wait is cancelled.
       rememberForm({ draft_id: draft.id, text, file_size: file?.size ?? held?.size ?? null });
@@ -201,7 +180,7 @@ export function PrepareLesson() {
         setRefusal(e);
         setProblems(next);
         setStage({ name: "form" });
-        setFocusOn({ key: focusKeyOf("material", next, kind) });
+        setFocusOn({ key: focusKeyOf(next, kind) });
         return;
       }
       sourceId.current = sourceToKeep(have, e);
@@ -213,12 +192,11 @@ export function PrepareLesson() {
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const chosen = file ?? (held ? { name: held.name, size: held.size ?? 1 } : null);
-    const found = checkForm({ subject, year, needsYear: subject !== null, kind, file: chosen, text });
+    const found = checkForm({ kind, file: chosen, text });
     setProblems(found);
     setRefusal(null);
-    const first = firstProblem(found);
-    if (first) {
-      setFocusOn({ key: focusKeyOf(first, found, kind) });
+    if (hasProblems(found)) {
+      setFocusOn({ key: focusKeyOf(found, kind) });
       return;
     }
     // A document held from before is used again; anything else is read afresh.
@@ -256,49 +234,6 @@ export function PrepareLesson() {
 
   const header = <PageHeader title={t("lessonsNew.title")} subtitle={t("prepare.sub")} back={back.href} backLabel={t(back.label)} />;
 
-  if (courses.status === "loading") {
-    return (
-      <>
-        {header}
-        <div className="content">
-          <Loading>
-            <div className="card prepare__part" aria-hidden="true">
-              <Bar width="14rem" height="2rem" />
-              <Bar height="4rem" className="skeleton--row" />
-              <Bar height="4rem" className="skeleton--row" />
-            </div>
-          </Loading>
-        </div>
-      </>
-    );
-  }
-  if (courses.status === "error") {
-    return (
-      <>
-        {header}
-        <div className="content">
-          <LoadProblem title={t("prepare.courses.failed")} error={courses.error} onRetry={courses.refetch} />
-        </div>
-      </>
-    );
-  }
-  if (subjects.length === 0) {
-    return (
-      <>
-        {header}
-        <div className="content">
-          <div className="card card--stack">
-            <span className="card__icon">
-              <UsersThreeIcon size={32} aria-hidden="true" />
-            </span>
-            <h2>{t("prepare.none.title")}</h2>
-            <p>{t("prepare.none.body")}</p>
-          </div>
-        </div>
-      </>
-    );
-  }
-
   return (
     <>
       {header}
@@ -311,72 +246,6 @@ export function PrepareLesson() {
         {stage.name === "failed" && <WaitFailure failure={stage.failure} error={stage.error} onRetry={retry} onBack={backToForm} />}
         {stage.name === "form" && (
           <form className="prepare" noValidate onSubmit={submit}>
-            <section className="card prepare__part" aria-labelledby="prepare-1">
-              <h2 id="prepare-1">{t("prepare.part1")}</h2>
-              <div className="prepare__group">
-                {subjects.length === 1 ? (
-                  <Stated label={t("prepare.subject")} text={subjects[0].name} />
-                ) : (
-                  <>
-                    <h3 className="prepare__label" id="prepare-subject">
-                      {t("prepare.subject")}
-                    </h3>
-                    <div className="prepare__tiles prepare__tiles--rows" data-focus="subject">
-                      <Choices
-                        name="subject"
-                        labelledBy="prepare-subject"
-                        describedBy={problems.subject ? "prepare-subject-problem" : undefined}
-                        value={subject}
-                        options={subjects.map((s) => ({ value: s.id, label: s.name }))}
-                        onChange={(id) => {
-                          setPickedSubject(id);
-                          setPickedYear(null);
-                          forget("subject");
-                          forget("year");
-                        }}
-                      />
-                    </div>
-                  </>
-                )}
-                {problems.subject && <Problem id="prepare-subject-problem">{t("prepare.problem.subject")}</Problem>}
-              </div>
-              {subject !== null && (
-                <div className="prepare__group">
-                  {years.length === 1 ? (
-                    <Stated
-                      label={t("prepare.year")}
-                      text={t("prepare.year.value", { n: years[0], roman: romanYear(years[0]) })}
-                      detail={classesOf(courses.data ?? [], subject, years[0]).join(", ")}
-                    />
-                  ) : (
-                    <>
-                      <h3 className="prepare__label" id="prepare-year">
-                        {t("prepare.year")}
-                      </h3>
-                      <div className="prepare__tiles" data-focus="year">
-                        <Choices
-                          name="year"
-                          labelledBy="prepare-year"
-                          describedBy={problems.year ? "prepare-year-problem" : undefined}
-                          value={year === null ? null : String(year)}
-                          options={years.map((y) => ({
-                            value: String(y),
-                            label: t("lesson.year", { n: y, roman: romanYear(y) }),
-                            detail: classesOf(courses.data ?? [], subject, y).join(", "),
-                          }))}
-                          onChange={(value) => {
-                            setPickedYear(Number(value));
-                            forget("year");
-                          }}
-                        />
-                      </div>
-                    </>
-                  )}
-                  {problems.year && <Problem id="prepare-year-problem">{t("prepare.problem.year")}</Problem>}
-                </div>
-              )}
-            </section>
-
             <MaterialPart
               kind={kind}
               onKind={(next) => {
@@ -413,34 +282,16 @@ export function PrepareLesson() {
   );
 }
 
-/**
- * What there is no choice about because there is only one: said as a plain line, "Предмет: Математика", and not as a chosen
- * row. A row with a tick and an edge looks like something to press; this is only something to read.
- */
-function Stated({ label, text, detail }: { label: string; text: string; detail?: string }) {
-  return (
-    <p className="prepare__stated">
-      <span className="prepare__stated-label">{label}:</span> <span className="prepare__stated-value">{text}</span>
-      {detail && (
-        <>
-          {" "}
-          <span aria-hidden="true">·</span> <span className="prepare__stated-detail">{detail}</span>
-        </>
-      )}
-    </p>
-  );
-}
-
-/** Part 3: one optional line. The count shows only near the limit, and says so once at the limit; it never runs on every key. */
+/** Part 2: one optional line. The count shows only near the limit, and says so once at the limit; it never runs on every key. */
 function EmphasisPart({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const { t } = useT();
   const hint = useId();
   const count = useId();
   const near = showsEmphasisCount(value.length);
   return (
-    <section className="card prepare__part" aria-labelledby="prepare-3">
-      <h2 id="prepare-3">
-        {t("prepare.part3")}
+    <section className="card prepare__part" aria-labelledby="prepare-2">
+      <h2 id="prepare-2">
+        {t("prepare.part2")}
         <span className="tag">{t("prepare.optional")}</span>
       </h2>
       <p id={hint} className="prepare__hint">
@@ -451,7 +302,7 @@ function EmphasisPart({ value, onChange }: { value: string; onChange: (value: st
         className="field"
         maxLength={EMPHASIS_MAX_CHARS}
         value={value}
-        aria-labelledby="prepare-3"
+        aria-labelledby="prepare-2"
         aria-describedby={near ? `${hint} ${count}` : hint}
         onChange={(e) => onChange(e.target.value)}
       />

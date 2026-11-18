@@ -1,6 +1,5 @@
 import { nudgeIdle } from "../questions";
 import { isCorrect, rankRows, scoreAnswer } from "../scoring";
-import { hasJoined } from "../live";
 import { rng } from "./mock-data";
 import { simulate, type ClassPlan, type SimInput } from "./mock-live";
 import type {
@@ -44,7 +43,6 @@ export type PlayInput = {
   roster: readonly { id: string; full_name: string }[];
   plans: readonly ClassPlan[];
   sim: SimInput;
-  speedBonusOn: boolean;
 };
 
 export type PlayedAnswer = { student_id: string; response: string; answered_at: number; correct: boolean; points: number; speed_bonus: number };
@@ -72,7 +70,7 @@ const planFor = (input: PlayInput) => new Map(input.plans.map((p) => [p.id, p]))
 export function playOf(run: QuestionRun, input: PlayInput): Play {
   const fired = run.fired_at as number;
   // Everything the play depends on is in the key: another test, or another lesson of the same id, never finds a play that was made for something else.
-  const key = `${input.sessionId}|${run.id}|${fired}|${input.sim.started_at}|${input.sim.teaching_at}|${input.speedBonusOn}|${input.roster.map((r) => r.id).join(",")}|${JSON.stringify(run.question)}`;
+  const key = `${input.sessionId}|${run.id}|${fired}|${input.sim.started_at}|${input.sim.teaching_at}|${input.roster.map((r) => r.id).join(",")}|${JSON.stringify(run.question)}`;
   const held = memo.get(key);
   if (held) return held;
 
@@ -110,7 +108,7 @@ export function playOf(run: QuestionRun, input: PlayInput): Play {
     let response = answerFor(q, wantRight, rs);
     if (isCorrect(q, response) !== wantRight) response = answerFor(q, wantRight, rs, true);
     const correct = isCorrect(q, response);
-    const score = scoreAnswer({ correct, remainingMs: planned - answeredAt, durationMs: dur, speedBonusOn: input.speedBonusOn });
+    const score = scoreAnswer({ correct, remainingMs: planned - answeredAt, durationMs: dur });
     answers.push({ student_id: s.id, response, answered_at: answeredAt, correct, points: score.points, speed_bonus: score.speed_bonus });
   }
   answers.sort((a, b) => a.answered_at - b.answered_at || a.student_id.localeCompare(b.student_id));
@@ -246,7 +244,7 @@ export function withQuestions(students: ConsoleStudent[], shown: Shown, now: num
       online,
       points: points.get(s.id) ?? 0,
       focus_flags: shown.flags.filter((f) => f.student_id === s.id).length,
-      answer_state: !open || !hasJoined(s) ? null : answered ? "answered" : online ? "not_answered" : "offline",
+      answer_state: !open ? null : answered ? "answered" : online ? "not_answered" : "offline",
     };
   });
 }

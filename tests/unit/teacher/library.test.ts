@@ -1,15 +1,10 @@
 import { describe, expect, test } from "vitest";
-import type { LibraryItem, Subject } from "@/lib/teacher/api/types";
+import type { LibraryItem } from "@/lib/teacher/api/types";
 import { newestSavedFirst } from "@/lib/teacher/library";
 
-const MATH: Subject = { id: "math", name: "Математика" };
-const PHYSICS: Subject = { id: "physics", name: "Физика" };
-
-const item = (id: string, saved: string, subject: Subject = MATH, extra: Partial<LibraryItem> = {}): LibraryItem => ({
+const item = (id: string, saved: string, extra: Partial<LibraryItem> = {}): LibraryItem => ({
   lesson_id: id,
   title: `Лекција ${id}`,
-  subject,
-  year: 2,
   question_count: 6,
   owner: { id: "t-1", name: "Зоран Илиев" },
   saved_at: saved,
@@ -19,8 +14,8 @@ const item = (id: string, saved: string, subject: Subject = MATH, extra: Partial
 
 const few = [
   item("a", "2026-10-01T08:00:00.000Z"),
-  item("b", "2026-10-20T08:00:00.000Z", PHYSICS),
-  item("c", "2026-10-10T08:00:00.000Z", MATH),
+  item("b", "2026-10-20T08:00:00.000Z"),
+  item("c", "2026-10-10T08:00:00.000Z"),
 ];
 
 describe("the templates", () => {

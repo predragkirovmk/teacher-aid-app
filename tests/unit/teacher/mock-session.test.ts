@@ -170,8 +170,6 @@ describe("the mock adapter's sign-in and sign-out", () => {
     for (const call of [
       () => api.getMe(),
       () => api.setFirstRunDone(),
-      () => api.listCourses(),
-      () => api.getDashboard("course-ii-4"),
       () => api.listLessons(),
       () => api.getLesson("l-nizi"),
       () => api.listLibrary(),
@@ -191,10 +189,10 @@ describe("the mock adapter's sign-in and sign-out", () => {
 
   test("signing out ends the session for every call after it, and for a second sign-out nothing is left to end", async () => {
     const { api, source } = build("veteran");
-    expect((await api.listCourses()).length).toBe(4);
+    expect((await api.listLessons()).length).toBeGreaterThan(0);
     await api.signOut();
     expect(source.session()).toBeNull();
-    await expect(api.listCourses()).rejects.toMatchObject({ code: "unauthenticated" });
+    await expect(api.listLessons()).rejects.toMatchObject({ code: "unauthenticated" });
     await expect(api.signOut()).resolves.toBeUndefined();
   });
 
