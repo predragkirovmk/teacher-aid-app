@@ -23,7 +23,7 @@ import { IosInstallSteps, PushAskSheet, PushHelpSheet } from "./PushSheets";
 import { PushRunner } from "./PushRunner";
 import { StudentStream } from "./StudentStream";
 import { SignedElsewhere, Splash, Unreachable } from "./SessionScreens";
-import { UIContext, type ConfirmOptions } from "./ui";
+import { TabTapContext, UIContext, type ConfirmOptions } from "./ui";
 
 const NO_TABS = ["/app/scan", "/app/welcome"];
 /** How long after landing on a calm screen the ask about notifications appears: the result is read first. */
@@ -94,6 +94,13 @@ export function Shell({ children }: { children: ReactNode }) {
     document.documentElement.lang = locale;
   }, [locale]);
 
+  // The tab tap that is going somewhere, as the two screens it joins. It holds through the swap, so the old screen's exit and the new
+  // screen's enter both see it (a flag cleared when the path changes would be gone for the enter), and it is forgotten as soon as the
+  // student is on any screen it does not join or taps anything outside the tab bar (a row on the screen it arrived at must not count as a tab tap). See ENTER_TAB.
+  const [tap, setTap] = useState<{ from: string; to: string } | null>(null);
+  if (tap && pathname !== tap.from && pathname !== tap.to) setTap(null);
+  const tabTap = tap !== null;
+
   // A lesson or a practice set has just finished and the student is on a calm screen: after a beat, ask once about notifications.
   const { eligible, shown } = ask;
   useEffect(() => {
@@ -162,19 +169,19 @@ export function Shell({ children }: { children: ReactNode }) {
       <OutboxRunner meId={status === "signedIn" ? me.data?.id : undefined} />
       <StudentStream meId={status === "signedIn" ? me.data?.id : undefined} />
       <PushRunner student={status === "signedIn" && me.data ? { id: me.data.id, notificationsOn: me.data.settings.notificationsOn } : undefined} />
-      <div className="stage">
+      <div className="stage" onClickCapture={(e) => tap && !(e.target as Element).closest(".tabbar") && setTap(null)}>
         <div className="phone">
           <Pager pathname={pathname}>
             {/* Keyed by the route so the screen enters and exits (the layout itself never remounts). Only typed navigations animate; the pager's swipe and redirects carry no type. */}
-            <ViewTransition key={pathname} enter={ENTER} exit={EXIT} default="none">
-              {content}
+            <ViewTransition key={pathname} enter={tabTap ? ENTER_TAB : ENTER} exit={tabTap ? EXIT_TAB : EXIT} default="none">
+              <TabTapContext.Provider value={tabTap}>{content}</TabTapContext.Provider>
             </ViewTransition>
           </Pager>
           {!inQuiz && <ConnectionPill variant="float" />}
           {showTabs && (
             <>
               <div className="edge" aria-hidden="true" />
-              <Dock pathname={pathname} />
+              <Dock pathname={pathname} onTabTap={(href) => setTap(href === pathname ? null : { from: pathname, to: href })} />
             </>
           )}
           {lang && (
@@ -256,10 +263,13 @@ export function Shell({ children }: { children: ReactNode }) {
 }
 
 /** Each navigation type picks its CSS classes in app.css; `lift` marks the screen that travels on top (the new one going deeper, the old one going back). Anything untyped does nothing. */
-const ENTER = { "nav-forward": "nav-forward lift", "nav-back": "nav-back", tab: "tab", default: "none" };
-const EXIT = { "nav-forward": "nav-forward", "nav-back": "nav-back lift", tab: "tab", default: "none" };
+const ENTER = { "nav-forward": "nav-forward lift", "nav-back": "nav-back", tab: "tab", swipe: "none", default: "none" };
+const EXIT = { "nav-forward": "nav-forward", "nav-back": "nav-back lift", tab: "tab", swipe: "none", default: "none" };
+/** While a tap on a tab is on its way the screens crossfade whatever type React hands the transition. React can lose the `tab` the Link added (the router finishes the navigation in a transition of its own, and under load the commit has been seen to arrive untyped), and an untyped swap would show no crossfade at all. */
+const ENTER_TAB = { ...ENTER, default: "tab" };
+const EXIT_TAB = { ...EXIT, default: "tab" };
 
-function Dock({ pathname }: { pathname: string }) {
+function Dock({ pathname, onTabTap }: { pathname: string; onTabTap: (href: string) => void }) {
   const { t } = useT();
   const feed = useNotifications().data;
   const count = (feed ?? []).filter((n) => n.readAt === null).length;
@@ -293,7 +303,10 @@ function Dock({ pathname }: { pathname: string }) {
       className="tab"
       aria-current={shown === href ? "page" : undefined}
       data-checked={chosen === href}
-      onClick={() => setTapped({ href, from: pathname })}
+      onClick={() => {
+        setTapped({ href, from: pathname });
+        onTabTap(href);
+      }}
     >
       {/* The selected tab shows the filled glyph, as a tab bar does on iOS. */}
       <Icon size={24} weight={chosen === href ? "fill" : "regular"} aria-hidden="true" />

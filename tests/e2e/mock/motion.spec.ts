@@ -320,12 +320,15 @@ test.describe("screen transitions", () => {
     await expect.poll(() => lastAsked(page)).toEqual(["nav-back"]);
   });
 
-  test("a tab-bar tap asks for tab and lands on the tab", async ({ page }) => {
+  test("a tab-bar tap never asks for a slide and lands on the tab", async ({ page }) => {
     await home(page);
     await page.locator('.tab[href="/app/notifications"]').click();
     await expect(page).toHaveURL(/\/app\/notifications$/);
     await expect(page.locator('.tab[href="/app/notifications"]')).toHaveAttribute("aria-current", "page");
-    await expect.poll(() => lastAsked(page)).toEqual(["tab"]);
+    // Normally the call carries `tab`; React can lose a type under load, and Shell then crossfades by its own flag
+    // (tab-crossfade.spec.ts proves the crossfade). What a tap must never do is ask for a slide or a swipe.
+    await expect.poll(async () => (await transitions(page)).length).toBeGreaterThan(0);
+    expect((await transitions(page)).flat().filter((type) => type !== "tab")).toEqual([]);
   });
 
   test("a tab swap is a simultaneous opacity-only crossfade: old and new start together, last the same time, no scale, no delay, dock still", async ({ page }) => {

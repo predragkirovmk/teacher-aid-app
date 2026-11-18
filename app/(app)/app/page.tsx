@@ -7,7 +7,7 @@ import { Avatar } from "@/components/app/Avatar";
 import { Mark } from "@/components/app/Mark";
 import { PracticeHomeRow } from "@/components/app/practice/PracticeRows";
 import { QueryState } from "@/components/app/QueryState";
-import { SubjectMark, SubjectRow, TAB_SAFE_MORPH } from "@/components/app/SubjectCard";
+import { SubjectMark, SubjectRow, useSubjectMorph } from "@/components/app/SubjectCard";
 import { useUI } from "@/components/app/ui";
 import { demoOnly } from "@/lib/app/api";
 import {
@@ -246,6 +246,7 @@ function ResultTile({ wide = false }: { wide?: boolean }) {
 /** The demo's school day: the lesson under way or next, the next test, today's timetable. */
 function DemoCards({ now, live }: { now: number; live: boolean }) {
   const { t, locale } = useT();
+  const subjectMorph = useSubjectMorph();
   const scans = useScans();
   const courses = useCourses().data ?? [];
 
@@ -309,7 +310,7 @@ function DemoCards({ now, live }: { now: number; live: boolean }) {
     <>
       {/* What matters first: the lesson under way or next, which is also where you check in. */}
       <div {...rise(0)}>
-        <ViewTransition name={`subject-${course?.id}`} share={TAB_SAFE_MORPH} default="none">
+        <ViewTransition name={`subject-${course?.id}`} share={subjectMorph} default="none">
           <Link
             href={needsScan ? "/app/scan" : `/app/subject/${course?.id}`}
             className="next"
