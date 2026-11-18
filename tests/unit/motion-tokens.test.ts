@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { SPRINGS, sampleSpring, springPhysics } from "@/lib/app/motion";
+import { SPRINGS, position, sampleSpring, sampleThrow, springPhysics } from "@/lib/app/motion";
 
 const css = readFileSync("app/(app)/app.css", "utf8");
 
@@ -57,5 +57,36 @@ describe("the Motion physics of a spring", () => {
     expect(p.stiffness).toBeCloseTo((2 * Math.PI / duration) ** 2, 6);
     expect(p.damping).toBeCloseTo((4 * Math.PI * (1 - bounce)) / duration, 6);
     expect(p.mass).toBe(1);
+  });
+});
+
+describe("a spring that starts with a speed", () => {
+  const names2 = ["snappy", "smooth", "big"] as const;
+  it.each(names2)("starts %s at 0 with the speed it was given", (name) => {
+    for (const v0 of [0, 1.5, 4, -2]) {
+      expect(position(SPRINGS[name], 0, v0)).toBe(0);
+      const h = 1e-6;
+      expect((position(SPRINGS[name], h, v0) - position(SPRINGS[name], 0, v0)) / h).toBeCloseTo(v0, 2);
+    }
+  });
+
+  it.each(names2)("settles %s at 1 whatever the speed", (name) => {
+    for (const v0 of [0, 1.5, 12, -3]) {
+      const s = sampleThrow(SPRINGS[name], v0);
+      expect(s.points[0]).toBe(0);
+      expect(s.points.at(-1)).toBe(1);
+      expect(Math.abs(position(SPRINGS[name], 3, v0) - 1)).toBeLessThan(0.001);
+    }
+  });
+
+  it("gets a fast flick to its goal sooner than a slow one, and a flick travels faster at the start", () => {
+    const slow = sampleThrow(SPRINGS.snappy, 0);
+    const fast = sampleThrow(SPRINGS.snappy, 6);
+    expect(fast.reach).toBeLessThan(slow.reach);
+    expect(fast.points[1]).toBeGreaterThan(slow.points[1]);
+  });
+
+  it("keeps the speed inside a cap", () => {
+    expect(sampleThrow(SPRINGS.smooth, 500).points).toEqual(sampleThrow(SPRINGS.smooth, 12).points);
   });
 });

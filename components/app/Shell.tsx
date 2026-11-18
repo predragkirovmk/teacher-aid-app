@@ -9,6 +9,7 @@ import { invalidate } from "@/lib/app/api/query";
 import { useAuth, useNotifications, useSettings } from "@/lib/app/api/hooks";
 import { useT } from "@/lib/app/i18n";
 import { useAsk, usePush } from "@/lib/app/push";
+import { SPRINGS, throwTo } from "@/lib/app/motion";
 import { isOpenPath, needsNotice, noticeWaits, noticeWasUpdated } from "@/lib/app/privacy";
 import { BACK, goBack } from "@/lib/app/nav";
 import { welcomeUrl } from "@/lib/app/signin";
@@ -364,7 +365,9 @@ export function Sheet({
 }) {
   const { t } = useT();
   const ref = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ y0: number; y: number; t: number; v: number; moved: boolean } | null>(null);
+  const drag = useRef<{ y0: number; y: number; t: number; v: number; moved: boolean; base: number } | null>(null);
+  /** The spring back to rest, while it runs: a new touch catches the sheet where it is. */
+  const settling = useRef<Animation | null>(null);
   const [dy, setDy] = useState(0);
   const [phase, setPhase] = useState<"in" | "drag" | "settle" | "out">("in");
   /** How the sheet leaves: on the drawer curve, or at the speed of the flick that threw it. */
@@ -392,6 +395,21 @@ export function Sheet({
     [onClose],
   );
   const close = useCallback(() => leave(SHEET_EXIT_MS, false), [leave]);
+
+  /** The sheet springs back to rest carrying the finger's speed (px per ms, down is positive); Reduce Motion puts it back at once. */
+  const springBack = (v: number) => {
+    const el = ref.current;
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (el && !calm && Math.abs(dy) >= 1) {
+      const { animation } = throwTo(el, "y", dy, 0, v, SPRINGS.snappy);
+      settling.current = animation;
+      animation.onfinish = () => {
+        if (settling.current === animation) settling.current = null;
+      };
+    }
+    setPhase("settle");
+    setDy(0);
+  };
 
   // The latest close, for the Escape key, without setting the sheet up again on every render.
   const closeRef = useRef(close);
@@ -423,6 +441,7 @@ export function Sheet({
       window.removeEventListener("keydown", key);
       behind.forEach((el) => (el.inert = false));
       prev?.focus?.();
+      settling.current?.cancel();
     };
   }, []);
 
@@ -430,7 +449,7 @@ export function Sheet({
     phase === "drag"
       ? { transform: `translateY(${dy}px)`, transition: "none", animation: "none" }
       : phase === "settle"
-        ? { transform: "translateY(0)", transition: "transform var(--spring-snappy-dur) var(--spring-snappy)", animation: "none" }
+        ? { transform: "translateY(0)", transition: "none", animation: "none" }
         : phase === "out"
           ? {
               transform: "translateY(120%)",
@@ -454,7 +473,17 @@ export function Sheet({
             if (!drag.current?.moved) close();
           }}
           onPointerDown={(e) => {
-            drag.current = { y0: e.clientY, y: e.clientY, t: e.timeStamp, v: 0, moved: false };
+            // A sheet still springing back is caught where it is, and the finger carries on from there.
+            let base = 0;
+            const el = ref.current;
+            if (settling.current && el) {
+              base = new DOMMatrixReadOnly(getComputedStyle(el).transform).m42;
+              settling.current.cancel();
+              settling.current = null;
+              setDy(base);
+              setPhase("drag");
+            }
+            drag.current = { y0: e.clientY, y: e.clientY, t: e.timeStamp, v: 0, moved: false, base };
             e.currentTarget.setPointerCapture(e.pointerId);
           }}
           onPointerMove={(e) => {
@@ -462,6 +491,7 @@ export function Sheet({
             if (!d) return;
             const raw = e.clientY - d.y0;
             if (Math.abs(raw) > 6) d.moved = true;
+            const at = d.base + raw;
             if (!d.moved) return;
             const dt = Math.max(1, e.timeStamp - d.t);
             d.v = 0.8 * d.v + 0.2 * ((e.clientY - d.y) / dt);
@@ -469,19 +499,25 @@ export function Sheet({
             d.t = e.timeStamp;
             setPhase("drag");
             // Pulling up meets resistance instead of moving freely.
-            setDy(raw >= 0 ? raw : -Math.sqrt(-raw) * 3);
+            setDy(at >= 0 ? at : -Math.sqrt(-at) * 3);
           }}
-          onPointerUp={() => {
+          onPointerUp={(e) => {
             const d = drag.current;
-            if (!d?.moved) return;
-            if (dy > 90 || d.v > 0.6) {
+            if (!d) return;
+            if (!d.moved) {
+              // A touch that caught a settling sheet but did not drag lets it go again.
+              if (d.base) springBack(0);
+              return;
+            }
+            // A finger that stopped before it lifted leaves with no speed.
+            const v = e.timeStamp - d.t > 100 ? 0 : d.v;
+            if (dy > 90 || v > 0.6) {
               // A flick keeps its speed instead of starting the exit again from rest.
               const left = (ref.current?.offsetHeight ?? 0) * 1.2 - dy;
-              const flung = d.v > 0 && left / d.v < SHEET_EXIT_MS;
-              leave(flung ? Math.max(120, Math.round(left / d.v)) : SHEET_EXIT_MS, flung);
+              const flung = v > 0 && left / v < SHEET_EXIT_MS;
+              leave(flung ? Math.max(120, Math.round(left / v)) : SHEET_EXIT_MS, flung);
             } else {
-              setPhase("settle");
-              setDy(0);
+              springBack(v);
             }
             // The click that follows this pointerup must not close the sheet.
             setTimeout(() => {
@@ -490,8 +526,7 @@ export function Sheet({
           }}
           onPointerCancel={() => {
             drag.current = null;
-            setPhase("settle");
-            setDy(0);
+            springBack(0);
           }}
         >
           <span className="sheet__grip" />

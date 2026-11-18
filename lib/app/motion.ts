@@ -25,13 +25,14 @@ export function springPhysics({ duration, bounce }: Spring) {
   };
 }
 
-// Position at time t seconds of the spring released from 0 towards 1 (zeta = 1 - bounce, below 1).
-export function position({ duration, bounce }: Spring, t: number) {
+// Position at time t seconds of the spring released from 0 towards 1 (zeta = 1 - bounce, below 1). `v0` is the
+// starting speed in goals per second (a finger leaving at 800 px/s towards a goal 400 px away is 2): zero by default.
+export function position({ duration, bounce }: Spring, t: number, v0 = 0) {
   const w = (2 * Math.PI) / duration;
   const z = 1 - bounce;
-  if (z >= 1) return 1 - (1 + w * t) * Math.exp(-w * t);
+  if (z >= 1) return 1 - (1 + (w - v0) * t) * Math.exp(-w * t);
   const wd = w * Math.sqrt(1 - z * z);
-  return 1 - Math.exp(-z * w * t) * (Math.cos(wd * t) + ((z * w) / wd) * Math.sin(wd * t));
+  return 1 - Math.exp(-z * w * t) * (Math.cos(wd * t) + ((z * w - v0) / wd) * Math.sin(wd * t));
 }
 
 // The settle time is the last moment the spring is more than 0.002 from 1, rounded up to 10 ms
@@ -44,4 +45,39 @@ export function sampleSpring(spring: Spring) {
   const n = Math.round(ms / (1000 / 60));
   const points = Array.from({ length: n }, (_, i) => Number(position(spring, (ms / 1000) * (i / n)).toFixed(4)));
   return { curve: `linear(${[...points, 1].join(", ")})`, ms };
+}
+
+/**
+ * The same spring as keyframes for the Web Animations API, for a move that starts with the finger's speed (a released swipe or
+ * sheet). `points` run 0 to 1 about every 1/60 s; `ms` is the settle time; `reach` is when it first gets to 1, the moment a
+ * thing thrown off the screen is gone. The speed is capped so a wild flick cannot throw the spring into a long ring.
+ */
+export function sampleThrow(spring: Spring, v0: number) {
+  const v = Math.max(-12, Math.min(12, v0));
+  let last = 0;
+  let reach = 0;
+  for (let t = 0; t < 3; t += 0.0005) {
+    const p = position(spring, t, v);
+    if (Math.abs(p - 1) > 0.002) last = t;
+    if (!reach && p >= 1) reach = t;
+  }
+  const ms = Math.max(50, Math.ceil((last * 1000) / 10) * 10);
+  const n = Math.max(2, Math.round(ms / (1000 / 60)));
+  const points = Array.from({ length: n }, (_, i) => position(spring, (ms / 1000) * (i / n), v));
+  return { points: [...points, 1], ms, reach: Math.min(ms, Math.round((reach || last) * 1000)) };
+}
+
+/**
+ * Move `el` along one axis from `from` to `to` px on `spring`, starting at `v` px per ms (the finger's speed, signed like the
+ * move). It runs on the compositor as keyframes, so it keeps its pace while the page works. The caller owns the end state: set
+ * the inline transform to `to` before the animation ends, and cancel the animation to take the element over.
+ */
+export function throwTo(el: HTMLElement, axis: "x" | "y", from: number, to: number, v: number, spring: Spring) {
+  const dist = to - from;
+  const sampled = sampleThrow(spring, Math.abs(dist) < 1 ? 0 : (v * 1000) / dist);
+  const animation = el.animate(
+    sampled.points.map((p) => ({ transform: `translate${axis.toUpperCase()}(${from + dist * p}px)` })),
+    { duration: sampled.ms, easing: "linear" },
+  );
+  return { animation, reach: sampled.reach };
 }

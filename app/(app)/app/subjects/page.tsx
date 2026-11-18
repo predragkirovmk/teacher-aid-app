@@ -4,6 +4,7 @@ import { CaretRightIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Gate } from "@/components/app/QueryState";
+import { MotionList } from "@/components/app/MotionList";
 import { SubjectRow } from "@/components/app/SubjectCard";
 import { demoOnly } from "@/lib/app/api";
 import { useCourses } from "@/lib/app/api/hooks";
@@ -120,19 +121,18 @@ function SubjectList({ all }: { all: Course[] }) {
         </p>
       </div>
 
-      {subjects.length > 0 && (
-        <ul className="list">
-          {subjects.map((c) => (
-            <Found key={c.id} {...arrival(c.id)}>
-              <SubjectRow course={c} />
-            </Found>
-          ))}
-        </ul>
-      )}
+      {/* Always mounted, so the last rows of a search that finds nothing still fade out; an empty list takes no room. */}
+      <MotionList>
+        {subjects.map((c) => (
+          <Found key={c.id} {...arrival(c.id)}>
+            <SubjectRow course={c} />
+          </Found>
+        ))}
+      </MotionList>
       {pages.length > 0 && (
         <>
           <h2 className="section-h">{t("subjects.pages")}</h2>
-          <ul className="list">
+          <MotionList>
             {pages.map(([href, key]) => (
               <Found key={href} {...arrival(href)}>
                 <Link href={href} className="item" transitionTypes={["nav-forward"]}>
@@ -141,7 +141,7 @@ function SubjectList({ all }: { all: Course[] }) {
                 </Link>
               </Found>
             ))}
-          </ul>
+          </MotionList>
         </>
       )}
       {needle && count === 0 && (

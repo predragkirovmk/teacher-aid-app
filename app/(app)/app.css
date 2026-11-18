@@ -718,6 +718,14 @@ button.card:active {
 .list > * + * {
   border-top: 1px solid rgba(255, 255, 255, 0.14);
 }
+/* A list whose rows leave and move (MotionList): a leaving row is held out of the flow at its old place, so the list is the
+   box it fades out of, and the card around it does not clip it while the rest close up. */
+.list--motion {
+  position: relative;
+}
+.list--motion[data-leaving] {
+  overflow: visible;
+}
 .item {
   display: flex;
   align-items: center;
