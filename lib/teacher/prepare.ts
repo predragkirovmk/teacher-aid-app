@@ -239,7 +239,7 @@ type Cancelled = {
 
 /**
  * The form to come back to when a wait for questions is cancelled (F-03): from the draft, and from what the form kept if it kept it
- * for this draft (a draft opened in another tab or from Today has no typed text to give back, and the box is left empty).
+ * for this draft (a draft opened in another tab or from the list has no typed text to give back, and the box is left empty).
  */
 export function refillOf(draft: Cancelled, memory: FormMemory | null, note: Refill["note"] = "cancelled"): Refill {
   const mine = memory !== null && memory.draft_id === draft.id ? memory : null;

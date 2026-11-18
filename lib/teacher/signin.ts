@@ -6,7 +6,8 @@ import type { AuthProvider } from "./api/types";
  * and what the address of the sign-in screen can say. Nothing here touches the browser, so all of it is unit tested.
  */
 
-export const TODAY = "/teacher";
+/** Where the app opens: the teacher's lessons. */
+export const HOME = "/teacher";
 export const SIGN_IN = "/teacher/sign-in";
 export const GUIDE = "/teacher/welcome";
 /** Help is open to anyone, signed in or not. */
@@ -33,12 +34,12 @@ const SEGMENT = /^[A-Za-z0-9._~%-]+$/;
  * A path of the teacher app a sign-in may continue to, or null. Only `/teacher` and the paths below it, made of plain
  * segments, no query and no fragment: a link that was meant for another site, a protocol-relative address (`//host`), a
  * backslash, a dot segment (even percent-encoded, which the router would resolve and climb out of the app) or an encoded
- * slash is refused. A refused `next` is not an error, the teacher simply lands on Today.
+ * slash is refused. A refused `next` is not an error, the teacher simply lands on the lessons.
  */
 export function safeNext(raw: string | null | undefined): string | null {
-  if (!raw || raw.length > 200 || !raw.startsWith(TODAY)) return null;
+  if (!raw || raw.length > 200 || !raw.startsWith(HOME)) return null;
   if (NOT_NEXT.includes(raw)) return null;
-  const rest = raw.slice(TODAY.length);
+  const rest = raw.slice(HOME.length);
   if (rest === "") return raw;
   if (!rest.startsWith("/")) return null; // `/teachers`, `/teacher.evil.example`
   const segments = rest.slice(1).split("/");
@@ -80,7 +81,7 @@ export function signInUrl({ next, notice }: { next?: string | null; notice?: Not
   const query = new URLSearchParams();
   const safe = safeNext(next);
   if (notice) query.set("reason", notice);
-  if (safe && safe !== TODAY) query.set("next", safe);
+  if (safe && safe !== HOME) query.set("next", safe);
   const text = query.toString();
   return text ? `${SIGN_IN}?${text}` : SIGN_IN;
 }
@@ -88,7 +89,7 @@ export function signInUrl({ next, notice }: { next?: string | null; notice?: Not
 /** The welcome guide, carrying the screen a first sign-in was heading for. */
 export function guideUrl(next?: string | null): string {
   const safe = safeNext(next);
-  return safe && safe !== TODAY ? `${GUIDE}?next=${encodeURIComponent(safe)}` : GUIDE;
+  return safe && safe !== HOME ? `${GUIDE}?next=${encodeURIComponent(safe)}` : GUIDE;
 }
 
 /** Where the browser goes to reach a provider: a path of this app (the demo's stand-in), or the provider's own https address. */

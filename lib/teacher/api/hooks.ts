@@ -5,7 +5,6 @@ import { DRAFT_POLL_MS } from "../lessons";
 import { firstName, initials, personName, schoolTypeOf } from "../format";
 import { authStatusOf, type AuthStatus, type EndReason } from "../guard";
 import { applyClassEvent, applyConsoleEvent, consoleNeedsRead, serverOffset, tokenIsStale } from "../live";
-import { preparedLessons } from "../today";
 import { actions, useTeacher } from "../store";
 import { apiMode } from "./config";
 import { api, type CallOptions, type ChannelStatus, type TeacherApi } from "./client";
@@ -389,13 +388,6 @@ export async function signOut(): Promise<void> {
 export function useCourse(courseId: Id | undefined): Query<CourseSummary | null> {
   const q = useCourses();
   return useMemo(() => mapQuery(q, (all) => all.find((c) => c.id === courseId) ?? null), [q, courseId]);
-}
-
-/** The lessons that are prepared and have not been run, the one running now left out: what Today lists. */
-export function usePreparedLessons(): Query<LessonSummary[]> {
-  const lessons = useLessons();
-  const running = useOpenSession().data?.session?.lesson.id ?? null;
-  return useMemo(() => mapQuery(lessons, (all) => preparedLessons(all, running)), [lessons, running]);
 }
 
 /**

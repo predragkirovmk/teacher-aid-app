@@ -20,7 +20,7 @@ import {
 } from "@/lib/teacher/live";
 import { forgetReviewScreen } from "@/lib/teacher/review-screen";
 import { courseLabel } from "@/lib/teacher/start";
-import { TODAY } from "@/lib/teacher/signin";
+import { HOME } from "@/lib/teacher/signin";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { EndLesson } from "./EndLesson";
 import { EndPage } from "./EndPage";
@@ -41,7 +41,7 @@ type PanelTab = "class" | "questions" | "anon";
 
 /**
  * The teacher's own screen of a lesson that is running (F-06, FR-CON-*). It is the one page without the sidebar: in front of a class the
- * window belongs to the lesson, and Back leads to Today. The top bar says which lesson, class and subject this is and holds the button
+ * window belongs to the lesson, and Back leads to the lessons. The top bar says which lesson, class and subject this is and holds the button
  * that opens the projected window, with where that window stands, and the red End. Under it, where the lesson stands; then, at the left,
  * the stage: the one thing to do now (start it in the lobby, the question while teaching). At the right, who has joined; while teaching it
  * shares its place with the list of questions and the anonymous questions, as tabs, so the whole lesson is one screen. Everything comes from `GET /sessions/{id}/console`, kept up to date by the stream, so a
@@ -86,8 +86,8 @@ export function LiveConsole() {
             ? `${courseLabel(snapshot.session.subject_name, snapshot.session.class_name)}: ${snapshot.session.lesson.title}`
             : undefined
         }
-        back={TODAY}
-        backLabel={t("back.today")}
+        back={HOME}
+        backLabel={t("back.lessons")}
         compact
         action={
           snapshot ? (

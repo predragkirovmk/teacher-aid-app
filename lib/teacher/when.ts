@@ -35,50 +35,8 @@ export function relativeDay(then: number, now: number): When {
   return { key: "when.years", n: Math.floor(days / 365) };
 }
 
-export const WEEKDAY_KEYS = ["weekday.0", "weekday.1", "weekday.2", "weekday.3", "weekday.4", "weekday.5", "weekday.6"] as const satisfies readonly Key[];
-export const MONTH_KEYS = [
-  "month.0",
-  "month.1",
-  "month.2",
-  "month.3",
-  "month.4",
-  "month.5",
-  "month.6",
-  "month.7",
-  "month.8",
-  "month.9",
-  "month.10",
-  "month.11",
-] as const satisfies readonly Key[];
-
-/** The parts of "четврток, 29 октомври": the keys of the weekday and month, and the day of the month. */
-export function dateParts(ms: number): { weekday: (typeof WEEKDAY_KEYS)[number]; day: number; month: (typeof MONTH_KEYS)[number] } {
-  const d = new Date(ms);
-  return { weekday: WEEKDAY_KEYS[d.getDay()], day: d.getDate(), month: MONTH_KEYS[d.getMonth()] };
-}
-
 /** "09:05": the time on this computer's clock, always two digits for each part. */
 export const clockTime = (ms: number): string => {
   const d = new Date(ms);
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
-
-/** A lesson that has run for under this many minutes is told in minutes; after that the start time says more. */
-export const MINUTES_LIMIT = 120;
-
-export type Running =
-  | { kind: "now" }
-  | { kind: "minutes"; n: number }
-  /** Started earlier today: the time it began. */
-  | { kind: "time"; time: string }
-  /** Started on an earlier day, for a lesson somebody forgot to end (EC-SES-01). */
-  | { kind: "when"; when: When };
-
-/** How long a lesson has been running, from when it started to `now` (the server's clock, see `OpenSession.server_now`). */
-export function runningFor(startedAt: number, now: number): Running {
-  const minutes = Math.floor((now - startedAt) / 60_000);
-  if (minutes < 1) return { kind: "now" };
-  if (minutes < MINUTES_LIMIT) return { kind: "minutes", n: minutes };
-  const when = relativeDay(startedAt, now);
-  return when.key === "when.today" ? { kind: "time", time: clockTime(startedAt) } : { kind: "when", when };
-}

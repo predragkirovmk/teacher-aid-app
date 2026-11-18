@@ -21,7 +21,7 @@ import { Problem } from "./Problem";
 import { Bar, Loading } from "./Skeleton";
 
 /**
- * The page of a draft, found by its address so that a reload, a link and "Продолжи" on Today all bring it back (EC-LES-09). What it
+ * The page of a draft, found by its address so that a reload, a link and "Продолжи" on the Lessons page all bring it back (EC-LES-09). What it
  * shows is what the draft is doing: being written (the wait, which asks again every few seconds and may be left without losing
  * anything), failed (what happened, and the way to try again), or ready (the editor). A draft that has been saved leads to its
  * lesson instead. An address the API does not know says so and leads to preparing a new one.
@@ -150,7 +150,7 @@ function useGiveUp(draft: LessonDraft, from: string | null, note: "cancelled" | 
 
 /**
  * The wait. The page asks for the draft again every few seconds (see `useDraft`), so there is nothing to do here but wait, and the
- * page may be left: the lesson will be on Today. Cancel asks first, since it throws the draft away, and then returns to the form
+ * page may be left: the lesson will be on the Lessons page. Cancel asks first, since it throws the draft away, and then returns to the form
  * filled in again (or, for a refinement, to the questions as they were). A wait that goes on well past the server's own limit
  * (`DRAFT_STUCK_MS`) is over: the page says so, and the teacher goes back with everything kept or waits on.
  */

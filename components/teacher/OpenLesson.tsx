@@ -9,7 +9,7 @@ import { liveUrl } from "@/lib/teacher/routes";
 import { EndLesson } from "./EndLesson";
 
 /**
- * A lesson is running, said in the frame of every page that does not say it already (Today has its band): the icon, "Час во
+ * A lesson is running, said in the frame of every page but its own screen: the icon, "Час во
  * тек" and the class, and the way back, in one press. It sits in the sidebar on a laptop and in the top bar where the sidebar
  * is a drawer; the shell draws both and the stylesheet shows one. It is a quiet block with the one yellow mark of the frame,
  * the sign that something is live; its own ground, the icon and the words make it stand out from the menu. It does not move.

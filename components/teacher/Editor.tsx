@@ -38,7 +38,7 @@ import { hasUnfinishedNumber, initialState, isEmptyPatch, patchOf, reduce } from
 import { leaveGuideUnsaved } from "@/lib/teacher/first-run";
 import { useT } from "@/lib/teacher/i18n";
 import { DRAFT_RETENTION_DAYS } from "@/lib/teacher/lessons";
-import { backFromDraft, draftUrl, FROM_TODAY, fromOf, savedLessonUrl } from "@/lib/teacher/routes";
+import { backFromDraft, draftUrl, FROM_LIBRARY, fromOf, savedLessonUrl } from "@/lib/teacher/routes";
 import { QUESTIONS_MAX } from "@/lib/teacher/scoring";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { kindLine } from "./LessonCard";
@@ -338,7 +338,7 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
           leaveGuideUnsaved();
         }
       }
-      router.replace(savedLessonUrl(saved.id, edit ? "changes" : "new", fromOf(from) === FROM_TODAY ? FROM_TODAY : undefined));
+      router.replace(savedLessonUrl(saved.id, edit ? "changes" : "new", fromOf(from) === FROM_LIBRARY ? FROM_LIBRARY : undefined));
     } catch (e) {
       setSaveError(e);
       setSaving(false);

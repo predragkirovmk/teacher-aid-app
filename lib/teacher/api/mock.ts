@@ -1501,7 +1501,7 @@ export function createMock(source: MockSource, options: MockOptions = {}): { api
         course_id: course.course_id,
         lesson: { id: shown.id, title: shown.title, version: shown.version },
         state: "lobby",
-        // A lesson in the middle of its time, so Today reads like a lesson that is going on.
+        // A lesson in the middle of its time, so it reads like a lesson that is going on.
         started_at: iso(c.now - 12 * 60_000),
         teaching_at: null,
         marks: [],

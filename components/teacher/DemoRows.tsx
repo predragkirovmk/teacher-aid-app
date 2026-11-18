@@ -9,7 +9,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { SettingRow } from "./SettingRow";
 
 /**
- * The demo's own group of Settings: start the demo school over, and show a lesson that is running, so Today can be seen both ways.
+ * The demo's own group of Settings: start the demo school over, and show a lesson that is running, so the app can be seen both ways.
  * It only touches the demo's own data; it is not a warning, so it is not red. Nothing shows on a live build, where there is no demo.
  */
 export function DemoRows() {
@@ -46,7 +46,7 @@ export function DemoRows() {
             </button>
           )}
         />
-        {/* A lesson that is running has no button to close it here: a lesson is closed by End, from its page, the band on Today or
+        {/* A lesson that is running has no button to close it here: a lesson is closed by End, from its page or
             the reminder on any page, the same as a real one. */}
         <SettingRow
           hint={t(running ? "demo.run.running" : "demo.run.hint")}

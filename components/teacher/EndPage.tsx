@@ -11,7 +11,7 @@ import { isOne } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
 import { correctWords, REVIEW_MISSED_MAX } from "@/lib/teacher/review";
 import { courseLabel } from "@/lib/teacher/start";
-import { TODAY } from "@/lib/teacher/signin";
+import { HOME } from "@/lib/teacher/signin";
 import { LoadProblem } from "./LoadProblem";
 import { PageHeader } from "./PageHeader";
 import { Problem } from "./Problem";
@@ -40,7 +40,7 @@ function useAttendanceWords(): AttendanceWords {
 /**
  * The page a lesson ends on, and the page a held lesson opens to (`/teacher/live/{id}`, the address of the console while it ran): the full attendance list
  * for e-Дневник with its counts, to copy or print (FR-END-03); the questions the class missed most; the practice set to send (F-12); and the one main way on,
- * back to Today. It reads `GET /sessions/{id}/review`, so it is the same after a reload or on another day.
+ * back to the lessons. It reads `GET /sessions/{id}/review`, so it is the same after a reload or on another day.
  */
 export function EndPage({ sessionId }: { sessionId: string }) {
   const { t } = useT();
@@ -54,12 +54,12 @@ export function EndPage({ sessionId }: { sessionId: string }) {
       <PageHeader
         title={t("endpage.title")}
         subtitle={data ? `${course ? `${courseLabel(course.subject.name, course.class.name)}: ` : ""}${data.session.lesson.title}` : undefined}
-        back={TODAY}
-        backLabel={t("back.today")}
+        back={HOME}
+        backLabel={t("back.lessons")}
         action={
           data?.attendance ? (
-            <Link href={TODAY} className="btn btn--primary">
-              {t("endpage.today")}
+            <Link href={HOME} className="btn btn--primary">
+              {t("endpage.lessons")}
               <ArrowRightIcon size={24} weight="bold" aria-hidden="true" />
             </Link>
           ) : undefined
@@ -82,7 +82,7 @@ export function EndPage({ sessionId }: { sessionId: string }) {
             </span>
             <h2>{t("live.notopen.title")}</h2>
             <p>{t("live.notopen.body")}</p>
-            <Link href={TODAY} className="btn btn--primary">
+            <Link href={HOME} className="btn btn--primary">
               {t("notfound.cta")}
             </Link>
           </div>

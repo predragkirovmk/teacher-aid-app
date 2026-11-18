@@ -6,7 +6,7 @@ import { useId } from "react";
 import type { LessonSummary } from "@/lib/teacher/api/types";
 import { isOne, romanYear } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
-import { lessonUrl, type FROM_TODAY } from "@/lib/teacher/routes";
+import { lessonUrl, type FROM_LIBRARY } from "@/lib/teacher/routes";
 import { heldLine, heldText } from "@/lib/teacher/lessons-list";
 import { relativeDay, sayWhen } from "@/lib/teacher/when";
 import { StartButton } from "./StartLessonButton";
@@ -16,7 +16,7 @@ export const kindLine = (t: ReturnType<typeof useT>["t"], lesson: Pick<LessonSum
   `${lesson.subject.name} · ${t("lesson.year", { n: lesson.year, roman: romanYear(lesson.year) })}`;
 
 /**
- * One lesson on Today or on the Lessons page, as a row: its title, one line that says what it is, and one button. The whole row
+ * One lesson on the Lessons page or in the Library, as a row: its title, one line that says what it is, and one button. The whole row
  * opens the lesson (its title is the link, and the arrow at the end says the row goes somewhere); the button starts a class with it,
  * in one press and in words. A lesson that has been held says when it was last held and how many times before what it is, instead
  * of when it was last changed: that is the date the list is in the order of. Deleting is not here: it is on the lesson's own page,
@@ -30,8 +30,8 @@ export function LessonCard({
 }: {
   lesson: LessonSummary;
   today: number | null;
-  /** Where the list is, so that the Back of the lesson goes there: Today says so, the Lessons page leaves it out (Back goes to Lessons). */
-  from?: typeof FROM_TODAY;
+  /** Where the list is, so that the Back of the lesson goes there: the Library says so, the Lessons page leaves it out (Back goes to Lessons). */
+  from?: typeof FROM_LIBRARY;
   onStart: (lesson: LessonSummary) => void;
 }) {
   const { t, locale } = useT();

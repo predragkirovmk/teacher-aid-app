@@ -24,7 +24,7 @@ export function DraftCard({
 }: {
   draft: DraftSummary;
   today: number | null;
-  /** Where the list is, so that the Back of the draft goes there: Today says so, the Lessons page leaves it out (Back goes to Lessons). */
+  /** Where the list is, so that the Back of the draft goes there: the Lessons page leaves it out (Back goes to Lessons). */
   from?: From;
 }) {
   const { t, locale } = useT();

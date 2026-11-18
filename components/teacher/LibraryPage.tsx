@@ -1,110 +1,135 @@
 "use client";
 
-import { BooksIcon, CaretRightIcon, CheckCircleIcon } from "@phosphor-icons/react";
+import { BooksIcon, CaretRightIcon, CheckCircleIcon, ClockCounterClockwiseIcon } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { useCourses, useLibrary } from "@/lib/teacher/api/hooks";
+import { startTransition, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useLessons, useLibrary } from "@/lib/teacher/api/hooks";
 import type { LibraryItem } from "@/lib/teacher/api/types";
 import { useToday } from "@/lib/teacher/day";
 import { isOne } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
-import { libraryChoice, libraryChoices, LIBRARY_LONG, shownLibrary, showsRow } from "@/lib/teacher/library";
-import { shownWords } from "@/lib/teacher/lessons-list";
-import { libraryLessonUrl } from "@/lib/teacher/routes";
-import { MINE, type SubjectChoice } from "@/lib/teacher/subjects";
-import { relativeDay, sayWhen } from "@/lib/teacher/when";
-import { kindLine } from "./LessonCard";
+import { lessonSections } from "@/lib/teacher/lessons-list";
+import { newestSavedFirst } from "@/lib/teacher/library";
+import { FROM_LIBRARY, libraryLessonUrl, TEMPLATES_ANCHOR } from "@/lib/teacher/routes";
+import { kindLine, LessonCard } from "./LessonCard";
 import { LoadProblem } from "./LoadProblem";
 import { PageHeader } from "./PageHeader";
 import { Bar, Loading } from "./Skeleton";
-import { SubjectRow } from "./SubjectRow";
+import { StartDialog, type StartLesson } from "./StartDialog";
+import { TabPanel, Tabs } from "./Tabs";
+
+type Shelf = "mine" | "templates";
 
 /**
- * The school library (F-05): the lessons colleagues of the same school saved, newest first, each with who made it, how many questions it
- * has and whether the teacher has copied it already. Each is a row that opens a preview, where it is read and copied. There is no main button here:
- * the main action, copying, is on the preview. A short library is shown whole; a long one opens on the teacher's own subjects.
+ * The Library, two shelves under one pill: the teacher's own lessons that have been held (to read again or hold once more) on the left,
+ * and templates (lessons to read and copy) on the right. It opens on the teacher's own; the templates have their address (`#sabloni`), so
+ * Back from a template comes back to them. Each shelf is rows on one surface.
  */
 export function LibraryPage() {
-  const { t, locale } = useT();
+  const { t } = useT();
   const today = useToday();
+  const lessons = useLessons();
   const library = useLibrary();
-  const courses = useCourses();
-  const [chosen, setChosen] = useState<SubjectChoice | null>(null);
-  // What the list became when a subject was chosen, said to a screen reader (the list changes where it cannot see).
-  const [result, setResult] = useState("");
+  const [shelf, setShelf] = useState<Shelf>("mine");
+  // The window that starts a lesson belongs to the page, not to the row, as on the Lessons page.
+  const [starting, setStarting] = useState<StartLesson | null>(null);
 
-  const items = useMemo(() => library.data ?? [], [library.data]);
-  // The subjects the teacher teaches. Without the courses (they have not come, or could not) the library is shown whole.
-  const mine = useMemo(() => new Set((courses.data ?? []).map((c) => c.subject.id)), [courses.data]);
-  const choice = libraryChoice(chosen, items, mine);
-  const shown = useMemo(() => shownLibrary(items, choice, mine), [items, choice, mine]);
-  // A long library opens on the teacher's subjects, which needs the courses: wait for them, or the list would change under the teacher's eyes.
-  const loading = library.status === "loading" || (courses.status === "loading" && items.length > LIBRARY_LONG);
-
-  const label = (value: SubjectChoice, name: string | null) => (value === MINE ? t("library.mine") : name ?? t("lessons.subject.all"));
-  const choose = (value: SubjectChoice) => {
-    setChosen(value);
-    const next = libraryChoice(value, items, mine);
-    const named = libraryChoices(items, mine).find((c) => c.value === next);
-    setResult(shownWords(t, locale, shownLibrary(items, next, mine).length, label(next, named?.subject?.name ?? null)));
+  // A link to the templates opens on them; the address follows the shelf, so a reload or Back keeps it.
+  useEffect(() => {
+    if (window.location.hash === `#${TEMPLATES_ANCHOR}`) startTransition(() => setShelf("templates"));
+  }, []);
+  const choose = (next: Shelf) => {
+    setShelf(next);
+    const hash = next === "templates" ? `#${TEMPLATES_ANCHOR}` : "";
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}${hash}`);
   };
+
+  const held = useMemo(() => lessonSections(lessons.data ?? []).held, [lessons.data]);
+  const templates = useMemo(() => newestSavedFirst(library.data ?? []), [library.data]);
 
   return (
     <>
-      <PageHeader title={t("library.title")} subtitle={t("library.sub")} />
+      <PageHeader title={t("library.title")} />
       <div className="content">
-        {loading ? (
-          <Loading>
-            <Bar width="12rem" height="2rem" className="skeleton--heading" />
-            <div className="lessons" aria-hidden="true">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="lesson lesson--skeleton">
-                  <div className="lesson__text">
-                    <Bar width="45%" height="1.5rem" />
-                    <Bar width="65%" height="1.25rem" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Loading>
-        ) : library.status === "error" ? (
-          <LoadProblem title={t("library.error")} error={library.error} onRetry={library.refetch} />
-        ) : items.length === 0 ? (
-          <div className="card card--stack">
-            <span className="card__icon">
-              <BooksIcon size={32} aria-hidden="true" />
-            </span>
-            <h2>{t("library.empty.title")}</h2>
-            <p>{t("library.empty.body")}</p>
-          </div>
-        ) : (
-          <>
-            {showsRow(items, mine) && (
-              <SubjectRow
-                choices={libraryChoices(items, mine).map((c) => ({ value: c.value, label: label(c.value, c.subject?.name ?? null) }))}
-                value={choice}
-                result={result}
-                onChange={choose}
-              />
-            )}
+        <Tabs
+          name="library"
+          label={t("library.title")}
+          tabs={[
+            { id: "mine", label: t("library.tab.mine") },
+            { id: "templates", label: t("library.tab.templates") },
+          ]}
+          value={shelf}
+          onChange={choose}
+        />
+
+        <TabPanel name="library" id="mine" active={shelf === "mine"}>
+          {lessons.status === "loading" ? (
+            <Rows />
+          ) : lessons.status === "error" ? (
+            <LoadProblem title={t("lessons.error")} error={lessons.error} onRetry={lessons.refetch} />
+          ) : held.length === 0 ? (
+            <Empty icon={<ClockCounterClockwiseIcon size={32} aria-hidden="true" />} title={t("library.mine.empty.title")} body={t("library.mine.empty.body")} />
+          ) : (
             <ul className="lessons">
-              {shown.map((item) => (
-                <LibraryCard key={item.lesson_id} item={item} today={today} />
+              {held.map((lesson) => (
+                <LessonCard key={lesson.id} lesson={lesson} today={today} from={FROM_LIBRARY} onStart={setStarting} />
               ))}
             </ul>
-          </>
-        )}
+          )}
+        </TabPanel>
+
+        <TabPanel name="library" id="templates" active={shelf === "templates"}>
+          {library.status === "loading" ? (
+            <Rows />
+          ) : library.status === "error" ? (
+            <LoadProblem title={t("library.error")} error={library.error} onRetry={library.refetch} />
+          ) : templates.length === 0 ? (
+            <Empty icon={<BooksIcon size={32} aria-hidden="true" />} title={t("library.empty.title")} body={t("library.empty.body")} />
+          ) : (
+            <ul className="lessons">
+              {templates.map((item) => (
+                <TemplateCard key={item.lesson_id} item={item} />
+              ))}
+            </ul>
+          )}
+        </TabPanel>
       </div>
+      {starting && <StartDialog lesson={starting} onClose={() => setStarting(null)} />}
     </>
   );
 }
 
-/** One colleague's lesson, as a row: what it is, who made it and when. The row opens it to be read; copying is there. */
-function LibraryCard({ item, today }: { item: LibraryItem; today: number | null }) {
+function Rows() {
+  return (
+    <Loading>
+      <div className="lessons" aria-hidden="true">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="lesson lesson--skeleton">
+            <div className="lesson__text">
+              <Bar width="45%" height="1.5rem" />
+              <Bar width="65%" height="1.25rem" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </Loading>
+  );
+}
+
+function Empty({ icon, title, body }: { icon: ReactNode; title: string; body: string }) {
+  return (
+    <div className="card card--stack">
+      <span className="card__icon">{icon}</span>
+      <h2>{title}</h2>
+      <p>{body}</p>
+    </div>
+  );
+}
+
+/** One template, as a row: what it is and how many questions it has. The row opens it to be read; copying is there. */
+function TemplateCard({ item }: { item: LibraryItem }) {
   const { t, locale } = useT();
   const questions = t(isOne(item.question_count, locale) ? "lesson.questions.one" : "lesson.questions.many", { n: item.question_count });
-  const saved = today === null ? null : t("library.saved", { when: sayWhen(t, relativeDay(Date.parse(item.saved_at), today)) });
-  const owner = t("library.owner", { name: item.owner.name });
   return (
     <li className="lesson">
       <div className="lesson__text">
@@ -114,7 +139,6 @@ function LibraryCard({ item, today }: { item: LibraryItem; today: number | null 
           </Link>
         </h3>
         <p>{`${kindLine(t, item)} · ${questions}`}</p>
-        <p>{saved ? `${owner} · ${saved}` : owner}</p>
         {item.already_copied && (
           <p className="lesson__edit lesson__copied">
             <CheckCircleIcon size={24} weight="fill" aria-hidden="true" />

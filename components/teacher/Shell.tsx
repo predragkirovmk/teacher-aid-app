@@ -2,13 +2,11 @@
 
 import {
   BooksIcon,
-  CalendarCheckIcon,
   ChalkboardTeacherIcon,
   GearSixIcon,
   ListIcon,
   QuestionIcon,
   SignOutIcon,
-  UsersThreeIcon,
   XIcon,
   type Icon,
 } from "@phosphor-icons/react";
@@ -22,7 +20,7 @@ import { ConfirmDialog } from "@/components/teacher/ConfirmDialog";
 import { signOut, useAuth, useOpenSessionAnywhere, useSchoolWording, useTeacherName } from "@/lib/teacher/api/hooks";
 import { useT, type Key } from "@/lib/teacher/i18n";
 import { useNarrow } from "@/lib/teacher/media";
-import { showsOpenLesson } from "@/lib/teacher/routes";
+import { LESSONS, LIBRARY, showsOpenLesson } from "@/lib/teacher/routes";
 import { signInUrl } from "@/lib/teacher/signin";
 import { NavGlide } from "./NavGlide";
 import { OpenLesson } from "./OpenLesson";
@@ -30,12 +28,10 @@ import { PublicFrame } from "./PublicFrame";
 
 type Destination = { href: string; label: Key; Icon: Icon };
 
-/** The four places a teacher goes. Always on screen on a laptop. */
+/** The two places a teacher goes. Always on screen on a laptop. */
 const MAIN: Destination[] = [
-  { href: "/teacher", label: "nav.today", Icon: CalendarCheckIcon },
-  { href: "/teacher/lessons", label: "nav.lessons", Icon: ChalkboardTeacherIcon },
-  { href: "/teacher/classes", label: "nav.classes", Icon: UsersThreeIcon },
-  { href: "/teacher/library", label: "nav.library", Icon: BooksIcon },
+  { href: LESSONS, label: "nav.lessons", Icon: ChalkboardTeacherIcon },
+  { href: LIBRARY, label: "nav.library", Icon: BooksIcon },
 ];
 
 const MORE: Destination[] = [
@@ -76,7 +72,9 @@ function Frame({ children }: { children: ReactNode }) {
   const [signOutProblem, setSignOutProblem] = useState<string | null>(null);
   const wasOpen = useRef(false);
 
-  const isCurrent = (href: string) => (href === "/teacher" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
+  // The lessons are the home page; a lesson, a draft and the page that prepares one are theirs too.
+  const isCurrent = (href: string) =>
+    href === LESSONS ? pathname === href || pathname.startsWith("/teacher/lessons/") : pathname === href || pathname.startsWith(`${href}/`);
 
   // The drawer: focus goes in when it opens and back to the Menu button when it closes, Escape
   // closes it, Tab stays inside it, and the page behind does not scroll.
@@ -179,7 +177,7 @@ function Frame({ children }: { children: ReactNode }) {
           <NavGlide at={pathname} />
           <ul className="nav">{MAIN.map(row)}</ul>
         </nav>
-        {/* Under the four places, not above them: when it appears or goes the menu does not move under the pointer. */}
+        {/* Under the places, not above them: when it appears or goes the menu does not move under the pointer. */}
         {reminder && <OpenLesson session={reminder} where="side" />}
         <nav className="sidebar__foot" aria-label={t("nav.more")}>
           <NavGlide at={pathname} />

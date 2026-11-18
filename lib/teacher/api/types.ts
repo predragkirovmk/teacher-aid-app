@@ -232,7 +232,7 @@ export type DraftSummary = {
   emphasis: string | null;
   source: { kind: SourceKind; file_name: string | null } | null;
   previous_draft_id: Id | null;
-  /** PROPOSED: the lesson a draft edits, so Today can tell it from a new lesson. */
+  /** PROPOSED: the lesson a draft edits, so the list can tell it from a new lesson. */
   lesson_id: Id | null;
   created_at: IsoTime;
   updated_at: IsoTime;

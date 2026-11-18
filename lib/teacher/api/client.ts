@@ -198,7 +198,7 @@ export type SettledPromise<T> = Promise<T> & { settled: { ok: true; value: T } |
 export type DemoControls = {
   /** Start the demo school over: the lessons the teacher made go, and the history is as of today. */
   reset(): void;
-  /** Open a lesson that began twelve minutes ago, so Today and the rest can be seen while one is running. */
+  /** Open a lesson that began twelve minutes ago, so the app can be seen while one is running. */
   simulateRunning(): void;
 };
 

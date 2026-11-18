@@ -97,7 +97,7 @@ export function LibraryPreview() {
         {ready && (
           <>
             <div className="card card--stack">
-              <p>{t("library.note", { name: item.owner.name })}</p>
+              <p>{t("library.note")}</p>
               {item.already_copied && (
                 <p className="lesson__copied" role="status">
                   <CheckCircleIcon size={24} weight="fill" aria-hidden="true" />

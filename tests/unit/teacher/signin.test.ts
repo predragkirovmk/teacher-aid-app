@@ -12,7 +12,7 @@ import {
   safeNext,
   SIGN_IN,
   signInUrl,
-  TODAY,
+  HOME,
   withError,
 } from "@/lib/teacher/signin";
 
@@ -86,7 +86,7 @@ describe("the address of the sign-in screen", () => {
   });
 
   test("does not carry Today (it is where a sign-in goes anyway) or anything unsafe", () => {
-    expect(signInUrl({ next: TODAY })).toBe("/teacher/sign-in");
+    expect(signInUrl({ next: HOME })).toBe("/teacher/sign-in");
     for (const bad of ["//evil.example", "https://evil.example", "/app", "/teacher/x?y=1", SIGN_IN, GUIDE]) {
       expect(signInUrl({ next: bad }), bad).toBe("/teacher/sign-in");
     }
@@ -99,7 +99,7 @@ describe("the address of the sign-in screen", () => {
 
   test("the guide carries the page the first sign-in was heading for", () => {
     expect(guideUrl()).toBe("/teacher/welcome");
-    expect(guideUrl(TODAY)).toBe("/teacher/welcome");
+    expect(guideUrl(HOME)).toBe("/teacher/welcome");
     expect(guideUrl("/teacher/classes")).toBe("/teacher/welcome?next=%2Fteacher%2Fclasses");
     expect(guideUrl("//evil.example")).toBe("/teacher/welcome");
   });

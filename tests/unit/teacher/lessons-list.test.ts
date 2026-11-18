@@ -2,12 +2,8 @@ import { describe, expect, test } from "vitest";
 import type { DraftSummary, LessonSummary, Subject } from "@/lib/teacher/api/types";
 import { heldLine, heldText, lastHeldFirst, lessonSections, newestChangeFirst, unfinishedDrafts } from "@/lib/teacher/lessons-list";
 import { translate, type Key } from "@/lib/teacher/i18n";
-import { ALL, choiceOf, effectiveChoice, needsSubjectRow, subjectOfChoice, subjectsOf } from "@/lib/teacher/subjects";
-import { TODAY_DRAFTS_MAX, shownOnToday } from "@/lib/teacher/today";
 
 const MATH: Subject = { id: "math", name: "Математика" };
-const PHYSICS: Subject = { id: "physics", name: "Физика" };
-const ART: Subject = { id: "art", name: "Ликовно" };
 
 const lesson = (id: string, updated: string, extra: Partial<LessonSummary> = {}): LessonSummary => ({
   last_session_id: null,
@@ -53,7 +49,7 @@ describe("the two sections of lessons", () => {
   ];
 
   test("a lesson never run is prepared, one run once or more is held; the prepared one changed last first, the held one held last first", () => {
-    const { prepared, held } = lessonSections(all, ALL);
+    const { prepared, held } = lessonSections(all);
     expect(prepared.map((l) => l.id)).toEqual(["c", "e", "a"]);
     expect(held.map((l) => l.id)).toEqual(["b", "d"]);
   });
@@ -61,7 +57,7 @@ describe("the two sections of lessons", () => {
   test("the held lessons are in the order of the date their card says, not of when they were changed", () => {
     // b was changed last, but d was held last: the card of d says "held 2 days ago", the card of b "four weeks ago", so d is first.
     const swapped = [lesson("b", "2026-10-20T08:00:00.000Z", { times_run: 1, last_run_at: "2026-10-01T08:00:00.000Z" }), lesson("d", "2026-10-10T08:00:00.000Z", { times_run: 1, last_run_at: "2026-10-27T08:00:00.000Z" })];
-    expect(lessonSections(swapped, ALL).held.map((l) => l.id)).toEqual(["d", "b"]);
+    expect(lessonSections(swapped).held.map((l) => l.id)).toEqual(["d", "b"]);
   });
 
   test("a held lesson with no date is placed by when it was changed, and two held at the same moment keep a fixed order", () => {
@@ -84,21 +80,13 @@ describe("the two sections of lessons", () => {
   });
 
   test("the lesson in a class that has not ended is still prepared: the count is of ended lessons (FR-LES-17)", () => {
-    expect(lessonSections([lesson("a", "2026-10-01T08:00:00.000Z", { times_run: 0 })], ALL).prepared).toHaveLength(1);
+    expect(lessonSections([lesson("a", "2026-10-01T08:00:00.000Z", { times_run: 0 })]).prepared).toHaveLength(1);
   });
 
-  test("a subject shows only its own lessons, in both sections", () => {
-    const mixed = [...all, lesson("p", "2026-10-29T08:00:00.000Z", { subject: PHYSICS }), lesson("q", "2026-10-26T08:00:00.000Z", { subject: PHYSICS, times_run: 3, last_run_at: "2026-10-26T09:00:00.000Z" })];
-    const physics = lessonSections(mixed, choiceOf("physics"));
-    expect(physics.prepared.map((l) => l.id)).toEqual(["p"]);
-    expect(physics.held.map((l) => l.id)).toEqual(["q"]);
-    expect(lessonSections(mixed, choiceOf("math")).prepared.map((l) => l.id)).toEqual(["c", "e", "a"]);
-    expect(lessonSections(mixed, ALL).prepared).toHaveLength(4);
-  });
 
   test("a list is not changed by sorting it", () => {
     const before = all.map((l) => l.id);
-    lessonSections(all, ALL);
+    lessonSections(all);
     expect(all.map((l) => l.id)).toEqual(before);
   });
 });
@@ -106,45 +94,10 @@ describe("the two sections of lessons", () => {
 describe("the lessons that are not finished", () => {
   test("the one changed last first, whatever order the API gave", () => {
     const drafts = [draft("a", "2026-10-01T08:00:00.000Z"), draft("b", "2026-10-28T08:00:00.000Z"), draft("c", "2026-10-15T08:00:00.000Z")];
-    expect(unfinishedDrafts(drafts, ALL).map((d) => d.id)).toEqual(["b", "c", "a"]);
+    expect(unfinishedDrafts(drafts).map((d) => d.id)).toEqual(["b", "c", "a"]);
   });
 
-  test("a subject shows only its own", () => {
-    const drafts = [draft("a", "2026-10-01T08:00:00.000Z", { subject: PHYSICS }), draft("b", "2026-10-28T08:00:00.000Z")];
-    expect(unfinishedDrafts(drafts, choiceOf("physics")).map((d) => d.id)).toEqual(["a"]);
-  });
 
-  test("Today shows the first three, and says how many there are when there are more", () => {
-    const six = [1, 2, 3, 4, 5, 6].map((n) => draft(`d${n}`, `2026-10-0${n}T08:00:00.000Z`));
-    const { shown, more } = shownOnToday(newestChangeFirst(six), TODAY_DRAFTS_MAX);
-    expect(TODAY_DRAFTS_MAX).toBe(3);
-    expect(shown.map((d) => d.id)).toEqual(["d6", "d5", "d4"]);
-    expect(more).toBe(true);
-    expect(shownOnToday(newestChangeFirst(six.slice(0, 3)), TODAY_DRAFTS_MAX).more).toBe(false);
-  });
-});
-
-describe("the row of subjects", () => {
-  test("holds each subject of the lessons and the drafts once, by name, and appears only for more than one", () => {
-    const subjects = subjectsOf([lesson("a", "2026-10-01T08:00:00.000Z"), lesson("b", "2026-10-01T08:00:00.000Z", { subject: PHYSICS })], [draft("c", "2026-10-01T08:00:00.000Z", { subject: ART }), draft("d", "2026-10-01T08:00:00.000Z")]);
-    expect(subjects.map((s) => s.name)).toEqual(["Ликовно", "Математика", "Физика"]);
-    expect(needsSubjectRow(subjects)).toBe(true);
-    expect(needsSubjectRow(subjectsOf([lesson("a", "2026-10-01T08:00:00.000Z")], [draft("c", "2026-10-01T08:00:00.000Z")]))).toBe(false);
-    expect(needsSubjectRow(subjectsOf([]))).toBe(false);
-  });
-
-  test("a subject that has gone from the lists is not a choice any more: everything is shown", () => {
-    const subjects = [MATH, PHYSICS];
-    expect(effectiveChoice(null, subjects)).toBeNull();
-    expect(effectiveChoice(choiceOf("physics"), subjects)).toBe(choiceOf("physics"));
-    expect(effectiveChoice(choiceOf("art"), subjects)).toBe(ALL);
-    expect(effectiveChoice(ALL, subjects)).toBe(ALL);
-  });
-
-  test("a choice names its subject, and 'all' names none", () => {
-    expect(subjectOfChoice(choiceOf("math"))).toBe("math");
-    expect(subjectOfChoice(ALL)).toBeNull();
-  });
 });
 
 describe("when a lesson was held, and how many times, in words", () => {

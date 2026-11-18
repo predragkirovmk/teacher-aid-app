@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { CourseSummary } from "@/lib/teacher/api/types";
-import { backFromLesson, FROM_TODAY, lessonUrl, liveUrl } from "@/lib/teacher/routes";
+import { backFromLesson, FROM_LIBRARY, lessonUrl, liveUrl } from "@/lib/teacher/routes";
 import { chosenCourse, courseLabel, offeredCourses, onlyCourse, startView } from "@/lib/teacher/start";
 
 const course = (id: string, subject: string, name: string, year: number, students = 25): CourseSummary => ({
@@ -88,16 +88,16 @@ describe("what the window says", () => {
 describe("addresses and Back", () => {
   test("a lesson is linked with where the teacher came from, and the live lesson by its session", () => {
     expect(lessonUrl("l-procenti")).toBe("/teacher/lessons/l-procenti");
-    expect(lessonUrl("l-procenti", FROM_TODAY)).toBe("/teacher/lessons/l-procenti?from=today");
+    expect(lessonUrl("l-procenti", FROM_LIBRARY)).toBe("/teacher/lessons/l-procenti?from=library");
     expect(liveUrl("s-n1")).toBe("/teacher/live/s-n1");
     // An id is one segment of the path, whatever it holds.
     expect(lessonUrl("a/b?c")).toBe("/teacher/lessons/a%2Fb%3Fc");
   });
 
-  test("Back goes to Today when the teacher came from Today, and to the lessons otherwise", () => {
-    expect(backFromLesson("today")).toEqual({ href: "/teacher", label: "back.today" });
-    expect(backFromLesson(null)).toEqual({ href: "/teacher/lessons", label: "back.lessons" });
-    expect(backFromLesson("")).toEqual({ href: "/teacher/lessons", label: "back.lessons" });
-    expect(backFromLesson("somewhere-else")).toEqual({ href: "/teacher/lessons", label: "back.lessons" });
+  test("Back goes to the Library when the teacher came from it, and to the lessons otherwise", () => {
+    expect(backFromLesson("library")).toEqual({ href: "/teacher/library", label: "back.library" });
+    expect(backFromLesson(null)).toEqual({ href: "/teacher", label: "back.lessons" });
+    expect(backFromLesson("")).toEqual({ href: "/teacher", label: "back.lessons" });
+    expect(backFromLesson("somewhere-else")).toEqual({ href: "/teacher", label: "back.lessons" });
   });
 });
