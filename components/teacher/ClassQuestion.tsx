@@ -6,7 +6,7 @@ import type { ClassViewSnapshot, LeaderboardRow, PublicQuestion } from "@/lib/te
 import { useServerNow } from "@/lib/teacher/clock";
 import { isOne, personName } from "@/lib/teacher/format";
 import { useT, type Key } from "@/lib/teacher/i18n";
-import { barRows, numericSummary, optionFit, optionLetter, promptSize, secondsLeft, shareLeft, topOfBoard } from "@/lib/teacher/questions";
+import { barRows, numericSummary, optionFit, longNames, optionLetter, promptSize, secondsLeft, shareLeft, topOfBoard } from "@/lib/teacher/questions";
 
 /**
  * What the projector shows of a question, for a whole room that reads it from the back on a weak projector: the prompt as large as it can be (smaller
@@ -139,18 +139,19 @@ export function Board({ rows, className }: { rows: readonly LeaderboardRow[]; cl
   const { t, locale } = useT();
   const top = topOfBoard(rows);
   if (top.length === 0) return null;
+  const names = top.map((r) => personName(r.name, locale));
   return (
-    <section className={className ? `cvb ${className}` : "cvb"} aria-labelledby="cv-board-title" data-testid="cv-board">
+    <section className={className ? `cvb ${className}` : "cvb"} aria-labelledby="cv-board-title" data-testid="cv-board" data-names={longNames(names) ? "long" : undefined}>
       <h2 className="cvb__title" id="cv-board-title">
         {t("cv.board")}
       </h2>
       <ol className="cvb__list">
-        {top.map((r) => (
+        {top.map((r, i) => (
           <li key={r.student_id} className="cvb__row" value={r.rank}>
             <span className="cvb__rank" aria-hidden="true">
               {r.rank}
             </span>
-            <span className="cvb__name">{personName(r.name, locale)}</span>
+            <span className="cvb__name">{names[i]}</span>
             <span className="cvb__points">{t(isOne(r.points, locale) ? "cv.point.one" : "cv.point", { n: r.points })}</span>
           </li>
         ))}

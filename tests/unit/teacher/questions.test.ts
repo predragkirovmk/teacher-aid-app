@@ -13,6 +13,7 @@ import {
   NUDGE_AFTER_SECONDS,
   nextUnsent,
   nudgeIdle,
+  longNames,
   nudgeMinutes,
   numericSummary,
   optionLetter,
@@ -176,6 +177,12 @@ describe("the leaderboard", () => {
   test("a tie at the last place is shown whole, and never more than seven rows", () => {
     expect(topOfBoard(rows([50, 40, 30, 20, 10, 10, 10])).map((r) => r.rank)).toEqual([1, 2, 3, 4, 5, 5, 5]);
     expect(topOfBoard(rows([50, 40, 30, 20, 10, 10, 10, 10, 10])).length).toBe(7);
+  });
+
+  test("a name is long from 19 characters, and an empty ranking has none", () => {
+    expect(longNames(["a".repeat(18), "Ана"])).toBe(false);
+    expect(longNames(["Ана", "a".repeat(19)])).toBe(true);
+    expect(longNames([])).toBe(false);
   });
 
   test("nobody with no points is shown", () => {

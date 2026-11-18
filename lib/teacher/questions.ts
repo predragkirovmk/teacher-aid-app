@@ -140,6 +140,11 @@ export function topOfBoard(rows: readonly LeaderboardRow[], shown = BOARD_SHOWN)
   return scored.filter((r) => r.rank <= shown).slice(0, BOARD_MOST);
 }
 
+/** Whether the longest name of the ranking is over 18 characters: a longer name does not fit on one line beside its points in a wide window. */
+export function longNames(names: readonly string[]): boolean {
+  return names.some((n) => n.length > 18);
+}
+
 // ---- What the projector shows of the lesson ---------------------------------------------------------------
 
 export type ProjectedScreen = "between" | "open" | "closed" | "revealed" | "skipped";

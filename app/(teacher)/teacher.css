@@ -4067,6 +4067,12 @@ body:has(.cv) {
 .cvq--revealed[data-fit="c"] .cvb__title {
   font-size: max(1.5rem, calc(4 * var(--u)));
 }
+/* A long name in a wide window: the ranking steps down to the size it has beside long answers, so the name keeps one line beside its points; a squarish window puts the points under the name instead, below. */
+@media (aspect-ratio > 4/3) {
+  .cvq--revealed .cvb--side[data-names="long"] .cvb__row {
+    font-size: max(1.25rem, calc(3.4 * var(--u)));
+  }
+}
 .cvq__bars {
   list-style: none;
   margin: 0;
@@ -4273,8 +4279,21 @@ body:has(.cv) {
   .cvq--revealed[data-fit="c"] .cvb--side .cvb__row {
     font-size: max(1.5rem, calc(4.4 * var(--u)));
   }
+  /* The column is narrow here, so the points go under the name: the name has the whole width and stays on one line, whoever it is. */
+  .cvq--revealed .cvb--side .cvb__row {
+    grid-template-columns: 1.1em minmax(0, 1fr);
+    row-gap: 0;
+  }
+  .cvq--revealed .cvb--side .cvb__rank {
+    grid-row: 1 / span 2;
+  }
+  .cvq--revealed .cvb--side .cvb__name {
+    line-height: 1.2;
+  }
   .cvq--revealed .cvb--side .cvb__points {
+    grid-column: 2;
     font-size: max(1.25rem, 0.78em);
+    line-height: 1.2;
   }
   .cvq--revealed .cvb--side .cvb__title {
     font-size: max(2rem, calc(5.6 * var(--u)));
