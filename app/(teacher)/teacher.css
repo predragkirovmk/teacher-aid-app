@@ -370,7 +370,9 @@ button {
     position: sticky;
     top: var(--frame);
     height: calc(100dvh - 2 * var(--frame));
-    margin: var(--frame) 0 var(--frame) var(--frame);
+    /* No margin below: its height already leaves the frame there. With one, the sidebar ends flush with the page, and at the very
+       bottom of a page whose height falls on a fraction of a pixel the end of the page pushes it up by that fraction. */
+    margin: var(--frame) 0 0 var(--frame);
     border-radius: var(--r-xl);
     box-shadow: var(--shadow-panel);
   }
