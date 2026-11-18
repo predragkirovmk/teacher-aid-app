@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { FAILURE_ICON } from "@/components/app/quiz/JoinFailure";
 import { startJoin } from "@/lib/app/api/hooks";
 import { toApiError, type ApiErrorCode } from "@/lib/app/api/errors";
+import { HAPTICS, buzz } from "@/lib/app/haptics";
 import { useT } from "@/lib/app/i18n";
 import { FORWARD, leave } from "@/lib/app/nav";
 import { useJoinFailureCopy, useQT } from "@/lib/app/quiz-copy";
@@ -73,7 +74,7 @@ export default function Scan() {
     // The API says whether the code opens a session; the quiz screen carries on from the answer.
     startJoin(scan.code).then(
       () => {
-        navigator.vibrate?.(60);
+        buzz(HAPTICS.send);
         return beat.then(() => router.replace(`/app/play/${scan.code}`, FORWARD));
       },
       (e) => miss(toApiError(e).code),

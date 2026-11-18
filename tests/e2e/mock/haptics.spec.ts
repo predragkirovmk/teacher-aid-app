@@ -84,6 +84,8 @@ test("a right practice answer and the finished set vibrate once each", async ({ 
   await expect(page.getByRole("heading", { name: mk.t("pr.done.score", { score: 4, total: 4 }) })).toBeVisible({ timeout: 5_000 });
   const all = await calls(page);
   expect(all.filter((p) => JSON.stringify(p) === "[20,40,30]")).toHaveLength(1);
+  // Four right answers in a row: each one buzzes once, so a ref guard must not outlive its question.
+  expect(all.filter((p) => JSON.stringify(p) === "[18,60,28]")).toHaveLength(4);
 });
 
 test("a new badge vibrates once", async ({ page }) => {
