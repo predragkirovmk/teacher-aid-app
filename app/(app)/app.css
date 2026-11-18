@@ -2305,6 +2305,10 @@ html[data-rise-seen] .rise {
 .unlock > svg {
   position: relative;
 }
+/* The confetti of a new badge falls behind the badge's words. */
+.unlock ~ .item__main {
+  position: relative;
+}
 .unlock::after {
   content: "";
   position: absolute;

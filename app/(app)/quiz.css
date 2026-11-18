@@ -177,7 +177,12 @@
   border-radius: 50%;
   border: 3px solid var(--yellow);
   pointer-events: none;
-  animation: q-ring-pulse var(--spring-smooth-dur) var(--spring-smooth) 220ms backwards;
+  animation: q-ring-pulse var(--spring-smooth-dur) var(--spring-smooth) 220ms both;
+}
+/* The text of a big moment is drawn over the confetti, never under it. */
+.q-body > .q-hero,
+.q-body > .q-strong {
+  position: relative;
 }
 /* A wrong answer is not a reward: a few pixels of dip and a settle, never a shake. */
 .q-dip {
@@ -1299,9 +1304,11 @@
       opacity: 0;
     }
   }
-  .q-land,
-  .q-badge-wrap::after {
+  .q-land {
     animation: none;
+  }
+  .q-badge-wrap::after {
+    display: none;
   }
   @keyframes q-draw {
     from {

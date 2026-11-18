@@ -127,6 +127,8 @@ test("a finished practice set pops its check with confetti, then removes it", as
   await expect(page.getByRole("heading", { name: mk.t("pr.done.score", { score: 4, total: 4 }) })).toBeVisible({ timeout: 5_000 });
   await expect(page.locator(".confetti")).toHaveCount(1);
   await expect(page.locator(".confetti")).toHaveCount(0, { timeout: 4_000 });
+  // The ring has left too: it must not stay round the badge once it has played.
+  expect(await page.locator(".q-badge-wrap").evaluate((el) => getComputedStyle(el, "::after").opacity)).toBe("0");
 });
 
 test.describe("reduced motion", () => {
