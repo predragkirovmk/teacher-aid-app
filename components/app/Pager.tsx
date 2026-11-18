@@ -53,9 +53,9 @@ export function Pager({ pathname, children }: { pathname: string; children: Reac
    */
   const move = (from: number, to: number, v: number) => {
     const el = ref.current;
-    if (!el) return { reach: 0 };
+    if (!el) return { reach: 0, near: 0 };
     anim.current?.cancel();
-    const { animation: a, reach } = throwTo(el, "x", from, to, v, SPRING);
+    const { animation: a, reach, near } = throwTo(el, "x", from, to, v, SPRING);
     el.style.transform = `translateX(${to}px)`;
     anim.current = a;
     a.onfinish = () => {
@@ -63,7 +63,7 @@ export function Pager({ pathname, children }: { pathname: string; children: Reac
       anim.current = null;
       if (to === 0) el.style.transform = "";
     };
-    return { reach };
+    return { reach, near };
   };
 
   /** Where the screen is now, in px. A move in progress is stopped and left exactly there. */
@@ -196,9 +196,11 @@ export function Pager({ pathname, children }: { pathname: string; children: Reac
           busy.current = false;
           return go();
         }
-        // The section leaves on the spring at the speed of the release, and the route changes as it gets off the screen.
+        // The section leaves on the spring at the speed of the release. The route changes when it is nine tenths off the screen,
+        // not at the very end: the spring's tail takes about 70 ms to cover the last tenth, and the new section lands a frame
+        // or two after the route changes, so waiting for the end left the screen empty for about 100 ms.
         const gone = move(s.pos, -dir * el.clientWidth, v);
-        timers.current.push = setTimeout(go, Math.max(0, gone.reach - 15));
+        timers.current.push = setTimeout(go, gone.near);
       }}
       onPointerCancel={() => {
         const s = g.current;

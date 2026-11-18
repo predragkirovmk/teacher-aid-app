@@ -50,21 +50,23 @@ export function sampleSpring(spring: Spring) {
 /**
  * The same spring as keyframes for the Web Animations API, for a move that starts with the finger's speed (a released swipe or
  * sheet). `points` run 0 to 1 about every 1/60 s; `ms` is the settle time; `reach` is when it first gets to 1, the moment a
- * thing thrown off the screen is gone. The speed is capped so a wild flick cannot throw the spring into a long ring.
+ * thing thrown off the screen is gone; `near` is when it is 90% of the way, with the last tenth of the travel left to the spring's tail. The speed is capped so a wild flick cannot throw the spring into a long ring.
  */
 export function sampleThrow(spring: Spring, v0: number) {
   const v = Math.max(-12, Math.min(12, v0));
   let last = 0;
   let reach = 0;
+  let near = 0;
   for (let t = 0; t < 3; t += 0.0005) {
     const p = position(spring, t, v);
     if (Math.abs(p - 1) > 0.002) last = t;
+    if (!near && p >= 0.9) near = t;
     if (!reach && p >= 1) reach = t;
   }
   const ms = Math.max(50, Math.ceil((last * 1000) / 10) * 10);
   const n = Math.max(2, Math.round(ms / (1000 / 60)));
   const points = Array.from({ length: n }, (_, i) => position(spring, (ms / 1000) * (i / n), v));
-  return { points: [...points, 1], ms, reach: Math.min(ms, Math.round((reach || last) * 1000)) };
+  return { points: [...points, 1], ms, reach: Math.min(ms, Math.round((reach || last) * 1000)), near: Math.min(ms, Math.round((near || last) * 1000)) };
 }
 
 /**
@@ -79,5 +81,5 @@ export function throwTo(el: HTMLElement, axis: "x" | "y", from: number, to: numb
     sampled.points.map((p) => ({ transform: `translate${axis.toUpperCase()}(${from + dist * p}px)` })),
     { duration: sampled.ms, easing: "linear" },
   );
-  return { animation, reach: sampled.reach };
+  return { animation, reach: sampled.reach, near: sampled.near };
 }

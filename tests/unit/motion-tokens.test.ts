@@ -61,7 +61,7 @@ describe("the Motion physics of a spring", () => {
 });
 
 describe("a spring that starts with a speed", () => {
-  const names2 = ["snappy", "smooth", "big"] as const;
+  const names2 = Object.keys(SPRINGS) as (keyof typeof SPRINGS)[]; // every spring, the critically damped ones (bounce 0) included
   it.each(names2)("starts %s at 0 with the speed it was given", (name) => {
     for (const v0 of [0, 1.5, 4, -2]) {
       expect(position(SPRINGS[name], 0, v0)).toBe(0);
@@ -83,6 +83,7 @@ describe("a spring that starts with a speed", () => {
     const slow = sampleThrow(SPRINGS.snappy, 0);
     const fast = sampleThrow(SPRINGS.snappy, 6);
     expect(fast.reach).toBeLessThan(slow.reach);
+    expect(fast.near).toBeLessThan(fast.reach);
     expect(fast.points[1]).toBeGreaterThan(slow.points[1]);
   });
 
