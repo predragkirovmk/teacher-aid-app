@@ -8,6 +8,7 @@ import { demoOnly } from "@/lib/app/api";
 import { useBadges } from "@/lib/app/api/hooks";
 import type { Badge } from "@/lib/app/api/types";
 import { badgeCopy, badgeIcon } from "@/lib/app/badges";
+import { Confetti } from "@/components/app/Confetti";
 import { useT } from "@/lib/app/i18n";
 
 const noop = () => () => {};
@@ -67,6 +68,7 @@ function BadgeList({ all }: { all: Badge[] }) {
           return (
             <li key={b.code} className="item" style={{ minHeight: 84 }}>
               <span className={`item__icon${fresh(b) ? " unlock" : ""}`} style={on ? { background: "var(--yellow)", color: "var(--ink)" } : undefined}>
+                {fresh(b) && <Confetti count={20} />}
                 {on ? <Icon size={22} /> : <LockIcon size={22} />}
               </span>
               <span className="grow item__main">

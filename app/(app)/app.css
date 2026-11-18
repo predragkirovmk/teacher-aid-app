@@ -2300,7 +2300,10 @@ html[data-rise-seen] .rise {
 /* A new achievement pops, with one ring that fades out. */
 .unlock {
   position: relative;
-  animation: unlock-pop var(--spring-bouncy-dur) var(--spring-bouncy) 250ms both;
+  animation: unlock-pop var(--spring-big-dur) var(--spring-big) 250ms both;
+}
+.unlock > svg {
+  position: relative;
 }
 .unlock::after {
   content: "";
@@ -2313,7 +2316,7 @@ html[data-rise-seen] .rise {
 }
 @keyframes unlock-pop {
   from {
-    transform: scale(0.5);
+    transform: scale(0.3);
     opacity: 0.2;
   }
 }
@@ -2325,6 +2328,44 @@ html[data-rise-seen] .rise {
   to {
     transform: scale(1.9);
     opacity: 0;
+  }
+}
+/* Confetti: a few dozen pieces that fly out of their parent and fall, once. Transform and opacity only; the component removes them. */
+.confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.confetti i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 14px;
+  margin: -7px 0 0 -4px;
+  border-radius: 2px;
+  background: var(--c);
+  opacity: 0;
+  animation: confetti-fly 1200ms cubic-bezier(0.2, 0.7, 0.4, 1);
+}
+.confetti i[data-round="true"] {
+  width: 9px;
+  height: 9px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+}
+@keyframes confetti-fly {
+  from {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0) scale(0.5);
+  }
+  35% {
+    opacity: 1;
+    transform: translate(calc(var(--x) * 0.8), calc(var(--up) * -1)) rotate(calc(var(--spin) * 0.4)) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(var(--x), var(--fall)) rotate(var(--spin)) scale(1);
   }
 }
 /* Reduced motion means gentler, not none: entrances fade in place instead of travelling, and

@@ -9,7 +9,8 @@ import { Gate } from "@/components/app/QueryState";
 import { Top } from "@/components/app/Top";
 import { Choices, choiceOf, responseOf, type ChoiceQuestion } from "@/components/app/quiz/choices";
 import { NumberField } from "@/components/app/quiz/Numeric";
-import { CheckDraw, QuizTop, buzz, useCountUp } from "@/components/app/quiz/parts";
+import { Confetti } from "@/components/app/Confetti";
+import { Burst, CheckDraw, QuizTop, buzz, useCountUp } from "@/components/app/quiz/parts";
 import { markNotificationsRead, useCourses, useNotifications } from "@/lib/app/api/hooks";
 import type { PracticeQuestion, PracticeSet } from "@/lib/app/api/types";
 import { useT } from "@/lib/app/i18n";
@@ -214,7 +215,14 @@ function Step({
             <>
               <section id="pr-verdict" className="pr-verdict" role="status" data-right={verdict.correct}>
                 <h2 className="pr-verdict__head">
-                  {verdict.correct ? <CheckCircleIcon size={26} weight="bold" aria-hidden="true" /> : <XCircleIcon size={26} weight="bold" aria-hidden="true" />}
+                  {verdict.correct ? (
+                    <span className="pr-mark">
+                      <Burst />
+                      <CheckCircleIcon size={26} weight="bold" aria-hidden="true" />
+                    </span>
+                  ) : (
+                    <XCircleIcon size={26} weight="bold" aria-hidden="true" />
+                  )}
                   <span className="grow">{verdict.correct ? t("pr.right") : t("pr.wrong")}</span>
                 </h2>
                 {!verdict.correct && <p className="pr-verdict__line">{t("pr.correctIs", { a: text(q, verdict.correctAnswer) })}</p>}
@@ -280,8 +288,11 @@ function End({ set, view, onLeave }: { set: PracticeSet; view: PracticeView; onL
         <ConnectionPill variant="inline" answerShown />
         <QuizTop onLeave={onLeave} leaveLabel={t("pr.leave")} label={label} />
         <div className="q-body q-body--center q-body--tight" role="status">
-          <span className="q-badge q-badge--no">
-            <CheckDraw size={64} />
+          <span className="q-badge-wrap">
+            <Confetti />
+            <span className="q-badge q-badge--no q-badge--big">
+              <CheckDraw size={64} />
+            </span>
           </span>
           <h1 className="q-hero">{t("pr.done.score", { score, total })}</h1>
           <p className="q-strong">{t("pr.done.sub")}</p>

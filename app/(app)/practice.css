@@ -90,6 +90,21 @@
   gap: 8px;
   animation: q-rise var(--spring-smooth-dur) var(--spring-smooth) backwards;
 }
+.pr-verdict[data-right="false"] {
+  animation: q-dip var(--spring-snappy-dur) var(--spring-snappy) backwards;
+}
+/* The check of a right answer pops on the big spring with a small burst round it. */
+.pr-mark {
+  position: relative;
+  display: grid;
+  flex: none;
+}
+.pr-mark > svg {
+  animation: q-badge-big var(--spring-big-dur) var(--spring-big) 40ms backwards;
+}
+.pr-mark .q-burst {
+  --k: 0.45;
+}
 .pr-verdict__head {
   display: flex;
   align-items: center;

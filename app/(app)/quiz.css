@@ -161,6 +161,33 @@
   display: grid;
   place-items: center;
 }
+/* The right answer and the big moments: the badge dips under, then pops past full size on the big spring. */
+.q-badge--big {
+  animation: q-badge-big var(--spring-big-dur) var(--spring-big) 40ms backwards;
+}
+/* The badge sits above the confetti that surrounds it. */
+.q-badge-wrap .q-badge {
+  position: relative;
+}
+/* One ring leaves the badge as it lands. */
+.q-badge-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid var(--yellow);
+  pointer-events: none;
+  animation: q-ring-pulse var(--spring-smooth-dur) var(--spring-smooth) 220ms backwards;
+}
+/* A wrong answer is not a reward: a few pixels of dip and a settle, never a shake. */
+.q-dip {
+  animation: q-dip var(--spring-snappy-dur) var(--spring-snappy) backwards;
+}
+/* A number that has just finished rolling lands squashed, then springs back past its size. It starts after the roll, so no fill before. */
+.q-land {
+  transform-origin: 50% 100%;
+  animation: q-land var(--spring-big-dur) var(--spring-big);
+}
 .q-burst {
   position: absolute;
   inset: 0;
@@ -1145,6 +1172,33 @@
     transform: scale(0.4);
   }
 }
+@keyframes q-badge-big {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+@keyframes q-ring-pulse {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+@keyframes q-dip {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+}
+@keyframes q-land {
+  from {
+    transform: scale(1.18, 0.82);
+  }
+}
 @keyframes q-draw {
   from {
     stroke-dashoffset: 1;
@@ -1160,7 +1214,7 @@
   }
   100% {
     opacity: 0;
-    transform: translate(-50%, -50%) rotate(var(--a)) translateY(calc(var(--d) * -1)) scale(1);
+    transform: translate(-50%, -50%) rotate(var(--a)) translateY(calc(var(--d) * var(--k, 1) * -1)) scale(1);
   }
 }
 @keyframes q-tick {
@@ -1234,6 +1288,20 @@
     from {
       opacity: 0;
     }
+  }
+  @keyframes q-badge-big {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes q-dip {
+    from {
+      opacity: 0;
+    }
+  }
+  .q-land,
+  .q-badge-wrap::after {
+    animation: none;
   }
   @keyframes q-draw {
     from {
