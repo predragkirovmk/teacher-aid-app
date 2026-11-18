@@ -270,6 +270,13 @@ async function recordTransitions(page: Page) {
   });
 }
 const transitions = (page: Page) => page.evaluate(() => (window as unknown as { __vt: string[][] }).__vt);
+/**
+ * The types of the last transition that asked for one. An untyped call (React starting a transition for a screen's own content
+ * arriving, which does nothing: see ENTER and EXIT in Shell) can land after the typed one, and on a slow runner it does, so the
+ * last call overall is not always the one the tap or Back made. And React can make the typed call after the URL and the screen
+ * have changed, so a test polls for it instead of reading once.
+ */
+const lastAsked = async (page: Page) => (await transitions(page)).filter((types) => types.length > 0).at(-1) ?? [];
 const animations = (page: Page) => page.evaluate(() => (window as unknown as { __anims: { pseudo: string; name: string; ms: number; delay: number; props: string[]; start: number }[] }).__anims.filter((a) => !a.pseudo.includes("(dock")));
 const back = (page: Page) => page.getByRole("button", { name: mk.t("back") });
 /** Home with its first card; the card opens a detail screen with a Back button. */
@@ -294,12 +301,12 @@ test.describe("screen transitions", () => {
     await page.locator("a.card.tile").first().click();
     await expect(page).not.toHaveURL(/\/app$/);
     await expect(back(page)).toBeVisible();
-    expect((await transitions(page)).at(-1)).toContain("nav-forward");
+    await expect.poll(() => lastAsked(page)).toContain("nav-forward");
 
     await back(page).click();
     await expect(page).toHaveURL(/\/app$/);
     await expect(page.locator("a.card.tile").first()).toBeVisible();
-    expect((await transitions(page)).at(-1)).toEqual(["nav-back"]);
+    await expect.poll(() => lastAsked(page)).toEqual(["nav-back"]);
   });
 
   test("a row in Settings goes forward and Back returns to Settings", async ({ page }) => {
@@ -307,10 +314,10 @@ test.describe("screen transitions", () => {
     await page.goto("/app/profile");
     await page.locator("a.item").first().click();
     await expect(page).not.toHaveURL(/\/app\/profile$/);
-    expect((await transitions(page)).at(-1)).toContain("nav-forward");
+    await expect.poll(() => lastAsked(page)).toContain("nav-forward");
     await back(page).click();
     await expect(page).toHaveURL(/\/app\/profile$/);
-    expect((await transitions(page)).at(-1)).toEqual(["nav-back"]);
+    await expect.poll(() => lastAsked(page)).toEqual(["nav-back"]);
   });
 
   test("a tab-bar tap asks for tab and lands on the tab", async ({ page }) => {
@@ -318,7 +325,7 @@ test.describe("screen transitions", () => {
     await page.locator('.tab[href="/app/notifications"]').click();
     await expect(page).toHaveURL(/\/app\/notifications$/);
     await expect(page.locator('.tab[href="/app/notifications"]')).toHaveAttribute("aria-current", "page");
-    expect((await transitions(page)).at(-1)).toEqual(["tab"]);
+    await expect.poll(() => lastAsked(page)).toEqual(["tab"]);
   });
 
   test("a tab swap is a simultaneous opacity-only crossfade: old and new start together, last the same time, no scale, no delay, dock still", async ({ page }) => {
@@ -408,9 +415,10 @@ test.describe("screen transitions with reduced motion", () => {
     await page.locator("a.card.tile").first().click();
     await expect(page).not.toHaveURL(/\/app$/);
     await expect(back(page)).toBeVisible();
-    const anims = (await animations(page)).filter((a) => a.pseudo.startsWith("::view-transition-new"));
-    expect(anims.length).toBeGreaterThan(0);
-    for (const a of anims) {
+    // The snapshots' animations start a frame or two after the screen changes; under load, wait until one was seen.
+    const newOnes = async () => (await animations(page)).filter((a) => a.pseudo.startsWith("::view-transition-new"));
+    await expect.poll(async () => (await newOnes()).length).toBeGreaterThan(0);
+    for (const a of await newOnes()) {
       expect(a.name).toBe("vt-fade-in");
       expect(a.ms).toBe(150);
     }

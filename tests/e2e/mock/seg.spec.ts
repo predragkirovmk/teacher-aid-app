@@ -10,10 +10,16 @@ import { expect, mk, start, test } from "../fixtures";
 type Edges = { l: number; r: number; t: number; b: number };
 type Sample = Edges & { at: number };
 
-/** Tap `target` inside `track` from the page itself, then read the piece's edges every frame for `ms`. */
-async function tapAndWatch(page: Page, track: string, target: string, ms = 900) {
+/**
+ * Tap `target` inside `track` from the page itself, then read the piece's edges through the slide. SegGlide moves the piece
+ * with Web Animations, so once they exist they are paused and stepped along their own timeline in 8 ms steps: the samples are
+ * the same on a fast machine and on a slow one. Reading from requestAnimationFrame instead gives one sample per frame, and a
+ * loaded CI runner draws too few to catch the short overshoot or the moment the piece spans both tabs. `wait` is how long to
+ * give the slide to start (0 for a move that must be at once: then the first frame after the tap is the only sample).
+ */
+async function tapAndWatch(page: Page, track: string, target: string, wait = 1500) {
   return page.evaluate(
-    async ([track, target, ms]) => {
+    async ([track, target, wait]) => {
       const el = document.querySelector<HTMLElement>(track)!;
       const glide = el.querySelector<HTMLElement>(":scope > .seg__glide")!;
       // The piece is two round ends and a bridge: its edges are the outer edges of their boxes, as drawn this frame.
@@ -29,23 +35,33 @@ async function tapAndWatch(page: Page, track: string, target: string, ms = 900) 
           b: Math.max(...rects.map((r) => r.bottom)) - y,
         };
       };
+      const frame = () => new Promise<void>((done) => requestAnimationFrame(() => done()));
       const before = read();
       const t0 = performance.now();
       el.querySelector<HTMLElement>(target)!.click();
+      let running: Animation[] = [];
+      do {
+        await frame();
+        running = glide.getAnimations({ subtree: true });
+      } while (!running.length && performance.now() - t0 < wait);
       const samples: Sample[] = [];
-      await new Promise<void>((done) => {
-        const tick = () => {
-          samples.push({ at: performance.now() - t0, ...read() });
-          if (performance.now() - t0 < ms) requestAnimationFrame(tick);
-          else done();
-        };
-        requestAnimationFrame(tick);
-      });
+      if (running.length) {
+        running.forEach((a) => a.pause());
+        const end = Math.max(...running.map((a) => Number(a.effect!.getComputedTiming().endTime)));
+        for (let at = 0; at <= end; at += 8) {
+          running.forEach((a) => (a.currentTime = at));
+          samples.push({ at, ...read() });
+        }
+        // Let it run out and rest: the last sample is where the piece stays.
+        running.forEach((a) => a.finish());
+        await frame();
+      }
+      samples.push({ at: samples.at(-1)?.at ?? 0, ...read() });
       const piece = el.querySelector<HTMLElement>(target)!;
       const goal = { l: piece.offsetLeft, r: piece.offsetLeft + piece.offsetWidth, t: piece.offsetTop, b: piece.offsetTop + piece.offsetHeight };
       return { before, samples, goal };
     },
-    [track, target, ms] as const,
+    [track, target, wait] as const,
   );
 }
 
@@ -67,21 +83,29 @@ function expectOvershootBeforeStop(samples: Sample[], goal: { l: number; r: numb
   for (let i = peak + 1; i < samples.length; i++) expect(samples[i].r).toBeLessThanOrEqual(samples[i - 1].r + 0.3);
 }
 
-/** How many frames, over the 1.2 s after `act`, show a subject's view-transition morph running (the screens' and the dock's own groups are not morphs). */
+/**
+ * How many frames, from `act` until 1.3 s after it, show a subject's view-transition morph running (the screens' and the dock's
+ * own groups are not morphs). The watch starts before `act` and ends only after the wait, not on a clock set beforehand: on a
+ * slow runner the click itself can take long enough to use up a fixed window before the morph begins.
+ */
 async function morphsDuring(page: Page, act: () => Promise<unknown>) {
   await page.evaluate(() => {
-    const w = window as unknown as { morphs: number };
+    const w = window as unknown as { morphs: number; morphsDone: boolean };
     w.morphs = 0;
-    const end = performance.now() + 1200;
+    w.morphsDone = false;
     const look = () => {
       if (document.getAnimations().some((a) => String((a.effect as KeyframeEffect).pseudoElement ?? "").startsWith("::view-transition-group(subject-"))) w.morphs++;
-      if (performance.now() < end) requestAnimationFrame(look);
+      if (!w.morphsDone) requestAnimationFrame(look);
     };
     requestAnimationFrame(look);
   });
   await act();
   await page.waitForTimeout(1300);
-  return page.evaluate(() => (window as unknown as { morphs: number }).morphs);
+  return page.evaluate(() => {
+    const w = window as unknown as { morphs: number; morphsDone: boolean };
+    w.morphsDone = true;
+    return w.morphs;
+  });
 }
 
 test.describe("the welcome screen's language switch", () => {
@@ -113,7 +137,7 @@ test.describe("the welcome screen's language switch", () => {
 
   test("with Reduce Motion the piece moves at once", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
-    const { samples, goal } = await tapAndWatch(page, ".seg-pills", ".pill[lang=en]", 200);
+    const { samples, goal } = await tapAndWatch(page, ".seg-pills", ".pill[lang=en]", 0);
     expect(near(samples[0].l, goal.l) && near(samples[0].r, goal.r)).toBe(true);
   });
 
@@ -124,7 +148,7 @@ test.describe("the welcome screen's language switch", () => {
     await expect.poll(() => page.locator(".pill[lang=en]").evaluate((el: HTMLElement) => el.offsetTop)).toBeGreaterThan(20);
     // The resize placed it on МК, at once.
     await expect.poll(() => glide.evaluate((el) => el.getAnimations({ subtree: true }).length)).toBe(0);
-    const { samples, goal } = await tapAndWatch(page, ".seg-pills", ".pill[lang=en]", 200);
+    const { samples, goal } = await tapAndWatch(page, ".seg-pills", ".pill[lang=en]", 0);
     expect(near(samples[0].t, goal.t) && near(samples[0].b, goal.b) && near(samples[0].l, goal.l)).toBe(true);
   });
 
@@ -158,7 +182,7 @@ test.describe("the tab bar", () => {
     await page.goto("/app");
     const glide = page.locator(".tabbar > .seg__glide");
     await expect(glide).toHaveAttribute("data-on", "true");
-    const { samples } = await tapAndWatch(page, ".tabbar", `.tab[href="/app/profile"]`, 2500);
+    const { samples } = await tapAndWatch(page, ".tabbar", `.tab[href="/app/profile"]`);
     await expect(page).toHaveURL(/\/app\/profile$/);
     const goal = await page
       .locator(`.tab[href="/app/profile"]`)
