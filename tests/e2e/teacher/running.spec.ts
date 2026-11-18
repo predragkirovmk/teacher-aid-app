@@ -4,7 +4,7 @@ import { expect, SETTINGS_KEY, tall, test } from "./fixtures";
 /**
  * The reminder that a lesson is running, on every page but the lesson's own screen (the Lessons page too): in the
  * sidebar on a laptop, in the top bar where the sidebar is a drawer. In mock mode, in Macedonian unless a test changes the
- * language. The demo's running lesson is "Основи на веројатноста" with IV-1.
+ * language. The demo's running lesson is "Основи на веројатноста"; the reminder names it by its title.
  */
 
 const NOW = new Date("2026-10-29T09:30:00+01:00");
@@ -12,9 +12,9 @@ const title = (page: Page) => page.getByRole("heading", { level: 1 });
 const mainMenu = (page: Page) => page.getByRole("navigation").first();
 const mainButton = (page: Page) => page.locator(".btn--primary:visible");
 const demoButton = (page: Page, name: string) => page.getByRole("button", { name });
-/** The words with the class, whichever way the name is put together for a screen reader (a comma may or may not have a space before it). */
-const reminder = (page: Page, name: RegExp | string = /^Час во тек\s*,\s*IV-1$/) => page.getByRole("group", { name });
-const back = (page: Page) => page.getByRole("link", { name: "Врати се на часот, IV-1", exact: true });
+/** The words with the lesson's title, whichever way the name is put together for a screen reader (a comma may or may not have a space before it). */
+const reminder = (page: Page, name: RegExp | string = /^Час во тек\s*,\s*Основи на веројатноста$/) => page.getByRole("group", { name });
+const back = (page: Page) => page.getByRole("link", { name: "Врати се на часот, Основи на веројатноста", exact: true });
 
 /** Every page the sidebar leads to, and the ones under them. */
 const PAGES = [
@@ -37,14 +37,14 @@ async function simulate(page: Page) {
 }
 
 test.describe("with a lesson running, on a laptop", () => {
-  test("every page says so in the sidebar, with the class and the way back", async ({ page }) => {
+  test("every page says so in the sidebar, with the lesson's title and the way back", async ({ page }) => {
     await simulate(page);
     for (const { path, heading } of PAGES) {
       await page.goto(path);
       await expect(title(page)).toHaveText(heading);
       await expect(reminder(page), path).toBeVisible();
-      // What is seen reads "Час во тек · IV-1"; a comma only a screen reader hears sits after the dot.
-      await expect(reminder(page)).toContainText(/Час во тек ·\s*,?\s*IV-1/);
+      // What is seen reads "Час во тек · Основи на веројатноста"; a comma only a screen reader hears sits after the dot.
+      await expect(reminder(page)).toContainText(/Час во тек ·\s*,?\s*Основи на веројатноста/);
       await expect(back(page), path).toHaveAttribute("href", /^\/teacher\/live\/s-n\d+$/);
       await expect(back(page)).toHaveText("Врати се");
     }
@@ -85,19 +85,17 @@ test.describe("with a lesson running, on a laptop", () => {
   test("a lesson started from the Lessons page is there on the next page the teacher goes to", async ({ page }) => {
     await page.goto("/teacher");
     await page.locator(".lessons > li", { hasText: "Проценти и пропорции" }).getByRole("button", { name: "Започни час" }).click();
-    await page.getByRole("dialog", { name: "Со кој клас?" }).getByRole("radio", { name: /III-5/ }).check();
-    await page.getByRole("dialog").getByRole("button", { name: /^Започни( со .+)?$/ }).click();
     await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
     await expect(reminder(page)).toHaveCount(0);
 
     // The lesson's own screen has no menu: Back leads to the Lessons page, which has the reminder too, and the menu is there.
     await page.getByRole("link", { name: "Назад кон Лекции" }).click();
     await expect(title(page)).toHaveText("Лекции");
-    await expect(reminder(page, /^Час во тек\s*,\s*III-5$/)).toBeVisible();
+    await expect(reminder(page, /^Час во тек\s*,\s*Проценти и пропорции$/)).toBeVisible();
     await mainMenu(page).getByRole("link", { name: "Библиотека" }).click();
     await expect(title(page)).toHaveText("Библиотека");
-    await expect(reminder(page, /^Час во тек\s*,\s*III-5$/)).toBeVisible();
-    await expect(page.getByRole("link", { name: "Врати се на часот, III-5", exact: true })).toBeVisible();
+    await expect(reminder(page, /^Час во тек\s*,\s*Проценти и пропорции$/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Врати се на часот, Проценти и пропорции", exact: true })).toBeVisible();
   });
 
   const endFrom = async (page: Page) => {
@@ -193,15 +191,18 @@ test.describe("with a lesson running, on a laptop", () => {
     await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
   });
 
-  test("is in English, and at a faculty it names the group", async ({ page }) => {
+  test("is in English, and at a faculty it names the lesson by its title and no group", async ({ page }) => {
     await page.addInitScript((key) => localStorage.setItem(key, JSON.stringify({ locale: "en", schoolType: "university", schoolSeen: true })), SETTINGS_KEY);
     await page.goto("/teacher/settings");
     await demoButton(page, "Pretend a lesson is running").click();
     await page.getByRole("navigation").first().getByRole("link", { name: "Library" }).click();
-    const tile = page.getByRole("group", { name: /^Lesson running\s*,\s*Група 1А$/ });
+    const tile = page.getByRole("group", { name: /^Lesson running\s*,\s*\S/ });
     await expect(tile).toBeVisible();
-    await expect(tile).toContainText(/Lesson running ·\s*,?\s*Група 1А/);
-    const link = tile.getByRole("link", { name: "Return to the lesson, Група 1А", exact: true });
+    // The words after "Lesson running" are the lesson's own title, which is also what the way back is named by.
+    const link = tile.getByRole("link", { name: /^Return to the lesson, \S/ });
+    const lessonTitle = (await link.getAttribute("aria-label"))!.replace("Return to the lesson, ", "");
+    await expect(tile).toContainText(new RegExp(`Lesson running ·\\s*,?\\s*${lessonTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+    await expect(tile).not.toContainText("Група");
     await expect(link).toHaveText("Return");
   });
 });
@@ -213,11 +214,11 @@ test.describe("with a lesson running, where the sidebar is a drawer", () => {
     await simulate(page);
     await page.goto("/teacher");
     const bar = page.locator("header.topbar");
-    await expect(bar.getByRole("group", { name: /^Час во тек\s*,\s*IV-1$/ })).toBeVisible();
-    await expect(bar.getByRole("link", { name: "Врати се на часот, IV-1", exact: true })).toBeVisible();
+    await expect(bar.getByRole("group", { name: /^Час во тек\s*,\s*Основи на веројатноста$/ })).toBeVisible();
+    await expect(bar.getByRole("link", { name: "Врати се на часот, Основи на веројатноста", exact: true })).toBeVisible();
     // The sidebar's own copy is hidden, so there is one on screen and one for a screen reader.
     await expect(reminder(page)).toHaveCount(1);
-    await expect(page.getByRole("link", { name: "Врати се на часот, IV-1", exact: true })).toHaveCount(1);
+    await expect(page.getByRole("link", { name: "Врати се на часот, Основи на веројатноста", exact: true })).toHaveCount(1);
     // The Menu button and the brand are where they always were.
     const menu = page.getByRole("button", { name: "Мени", exact: true });
     expect((await menu.boundingBox())!.x).toBeLessThan(40);
@@ -237,7 +238,7 @@ test.describe("with a lesson running, where the sidebar is a drawer", () => {
   test("and goes back to the lesson in one press", async ({ page }) => {
     await simulate(page);
     await page.goto("/teacher/help");
-    await page.locator("header.topbar").getByRole("link", { name: "Врати се на часот, IV-1", exact: true }).click();
+    await page.locator("header.topbar").getByRole("link", { name: "Врати се на часот, Основи на веројатноста", exact: true }).click();
     await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
     await expect(reminder(page)).toHaveCount(0);
   });
@@ -266,7 +267,7 @@ test.describe("with a lesson running, in a zoomed window", () => {
         await page.goto(path);
         await expect(page.locator("h1")).toBeVisible();
         const bar = page.locator("header.topbar");
-        await expect(bar.getByRole("link", { name: "Врати се на часот, IV-1", exact: true })).toBeVisible();
+        await expect(bar.getByRole("link", { name: "Врати се на часот, Основи на веројатноста", exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), path).toBeLessThanOrEqual(0);
         // Too short to spare the room: the bar is part of the page, not stuck over it.
         await expect(bar).toHaveCSS("position", "static");
@@ -282,8 +283,8 @@ test.describe("with a lesson running, in a zoomed window", () => {
     await simulate(page);
     await page.goto("/teacher/library");
     const bar = page.locator("header.topbar");
-    const group = bar.getByRole("group", { name: /^Час во тек\s*,\s*IV-1$/ });
-    const link = bar.getByRole("link", { name: "Врати се на часот, IV-1", exact: true });
+    const group = bar.getByRole("group", { name: /^Час во тек\s*,\s*Основи на веројатноста$/ });
+    const link = bar.getByRole("link", { name: "Врати се на часот, Основи на веројатноста", exact: true });
     await expect(group).toBeVisible();
     const [words, button, tile] = [(await group.locator(".running__tag").boundingBox())!, (await link.boundingBox())!, (await group.boundingBox())!];
     expect(button.y).toBeGreaterThanOrEqual(words.y + words.height);
@@ -297,8 +298,8 @@ test.describe("with a lesson running, in a zoomed window", () => {
     await simulate(page);
     await page.goto("/teacher/library");
     const bar = page.locator("header.topbar");
-    const group = bar.getByRole("group", { name: /^Час во тек\s*,\s*IV-1$/ });
-    const [words, button] = [(await group.locator(".running__tag").boundingBox())!, (await bar.getByRole("link", { name: "Врати се на часот, IV-1", exact: true }).boundingBox())!];
+    const group = bar.getByRole("group", { name: /^Час во тек\s*,\s*Основи на веројатноста$/ });
+    const [words, button] = [(await group.locator(".running__tag").boundingBox())!, (await bar.getByRole("link", { name: "Врати се на часот, Основи на веројатноста", exact: true }).boundingBox())!];
     expect(Math.abs(words.y + words.height / 2 - (button.y + button.height / 2))).toBeLessThan(8);
     await expect(bar).toHaveCSS("position", "sticky");
   });
@@ -312,6 +313,6 @@ test.describe("with a lesson running, in a zoomed window", () => {
     await page.mouse.wheel(0, 300);
     await page.waitForTimeout(100);
     expect((await bar.boundingBox())!.y).toBe(0);
-    await expect(bar.getByRole("link", { name: "Врати се на часот, IV-1", exact: true })).toBeInViewport();
+    await expect(bar.getByRole("link", { name: "Врати се на часот, Основи на веројатноста", exact: true })).toBeInViewport();
   });
 });

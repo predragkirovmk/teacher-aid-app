@@ -9,13 +9,13 @@ import { expect } from "./fixtures";
 
 export const T0 = Date.parse("2026-10-29T09:30:05+01:00");
 export const SESSION = "s-n1";
-export const CLASS_IDS = Array.from({ length: 26 }, (_, i) => `st-ii-4-${String(i + 1).padStart(2, "0")}`);
-export const PLANS = planClass(SESSION, CLASS_IDS);
+/** The demo students who may scan the code (the demo's pool of 26); nobody is enrolled anywhere. */
+export const POOL_IDS = Array.from({ length: 26 }, (_, i) => `st-${String(i + 1).padStart(2, "0")}`);
+export const PLANS = planClass(SESSION, POOL_IDS);
 
 export const title = (page: Page) => page.getByRole("heading", { level: 1 });
 export const mainButton = (page: Page) => page.locator(".btn--primary:visible");
 export const cards = (page: Page) => page.locator(".lessons > li");
-export const startDialog = (page: Page) => page.getByRole("dialog", { name: /^Со кој(а)? (клас|група)\?$/ });
 export const people = (page: Page) => page.locator(".person");
 export const count = (page: Page) => page.locator(".roster__count");
 export const code = (page: Page) => page.getByTestId("short-code");
@@ -23,24 +23,21 @@ export const classCode = (page: Page) => page.getByTestId("class-code");
 
 /**
  * Move the clock of every window of the browser to `seconds` after the lesson began, and, with the console's `page`, wait until it shows the
- * class as that moment has it (the console looks again once a second), so that what a test does next is done to the class it can see.
+ * students who have joined as that moment has them (the console looks again once a second), so that what a test does next is done to the class it can see.
  */
 export const at = async (context: BrowserContext, seconds: number, page?: Page, teachingAt: number | null = null) => {
   await context.clock.setFixedTime(T0 + seconds * 1000);
-  if (page) await expect(count(page)).toHaveText(new RegExp(`^${joinedAt(seconds, teachingAt)} (од|of) 26 `));
+  if (page) await expect(count(page)).toHaveText(new RegExp(`^${joinedAt(seconds, teachingAt)} (се приклучија|се приклучи|joined)$`));
 };
 
-/** How many of the class have joined `seconds` after the lesson began, with the lesson moved on at `teachingAt` seconds (null: still in the lobby). */
+/** How many students have joined `seconds` after the lesson began, with the lesson moved on at `teachingAt` seconds (null: still in the lobby). */
 export const joinedAt = (seconds: number, teachingAt: number | null = null) =>
   PLANS.filter((p) => simulate(p, { started_at: T0, teaching_at: teachingAt === null ? null : T0 + teachingAt * 1000, now: T0 + seconds * 1000 }).joined_at !== null).length;
 
-export async function start(page: Page, context: BrowserContext, className = "II-4") {
+export async function start(page: Page, context: BrowserContext) {
   await context.clock.setFixedTime(T0);
   await page.goto("/teacher");
   await cards(page).filter({ hasText: "Проценти и пропорции" }).getByRole("button", { name: "Започни час" }).click();
-  const dialog = startDialog(page);
-  await dialog.getByRole("radio", { name: new RegExp(className) }).check();
-  await dialog.getByRole("button", { name: `Започни со ${className}` }).click();
   await expect(page).toHaveURL(new RegExp(`/teacher/live/${SESSION}$`));
   await expect(count(page)).toBeVisible();
 }
@@ -53,11 +50,6 @@ export async function openProjector(page: Page, context: BrowserContext, name = 
   await projector.waitForLoadState();
   return projector;
 }
-
-/** A student who has not joined at `seconds` and will, a while after: for the tests of a mark that a join then replaces. */
-export const comesLater = (seconds: number) => PLANS.filter((p) => p.kind === "early" && p.after_ms > seconds * 1000).sort((a, b) => a.after_ms - b.after_ms)[0];
-export const row = (page: Page, id: string) => page.locator(".person", { has: page.locator(`[data-mark="${id}"], [data-remove="${id}"]`) });
-
 
 /** What a phone reads from the QR of a class view, as the page hands over its pixels and the test decodes them. */
 export async function readQr(qr: Locator): Promise<string | undefined> {

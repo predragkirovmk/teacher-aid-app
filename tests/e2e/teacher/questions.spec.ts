@@ -351,6 +351,8 @@ test.describe("the quick question", () => {
       await page.setViewportSize(size);
       const dialog = await open(page);
       await dialog.getByRole("radio", { name: "Понудени одговори" }).check();
+      // The window grows into place as it opens, so it is measured once it has settled.
+      await settled(page);
       const box = (await dialog.boundingBox())!;
       // Room above and below, so it reads as a window over the page, not as the page.
       expect(box.y).toBeGreaterThanOrEqual(32);
@@ -368,13 +370,13 @@ test.describe("the quick question", () => {
 });
 
 test.describe("the roster while a question is open", () => {
-  test("each student who is here is one line: the name and the answer, no time repeated, and 26 students are not a column of cards", async ({ page, context }) => {
+  test("each student who joined is one line: the name and the answer, no time repeated, and a full class is not a column of cards", async ({ page, context }) => {
     await teach(page, context);
     await send(page).click();
     await go(context, TEACHING_AT + 12);
     await expect(page.locator(".person__answer").first()).toBeVisible();
-    const here = page.locator(".roster__group").nth(1).locator(".person");
-    // The name and the answer share a line; what is longer (a student who came late, who left the app) goes on one line below, so no row is more than two.
+    const here = page.locator(".roster__list .person");
+    // The name and the answer share a line; what is longer (a student who left the app) goes on one line below, so no row is more than two.
     const heights = await here.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
     expect(heights.length).toBeGreaterThan(10);
     for (const h of heights) expect(h).toBeLessThanOrEqual(72);
@@ -383,9 +385,9 @@ test.describe("the roster while a question is open", () => {
     expect([...plain].sort((a, b) => a - b)[Math.floor(plain.length / 2)]).toBeLessThanOrEqual(56);
     // The answer is an icon and words, and nobody's "joined at" time is said.
     await expect(here.locator(".person__answer svg").first()).toBeVisible();
-    // A time is said only for a student who came late.
+    // No time is said: there is no late mark.
     expect(await here.evaluateAll((els) => els.filter((el) => (el as HTMLElement).dataset.state === "joined").map((el) => (el as HTMLElement).innerText))).not.toContainEqual(expect.stringMatching(/\d\d:\d\d/));
-    const list = (await page.locator(".roster__group").nth(1).boundingBox())!;
+    const list = (await page.locator(".roster__list").boundingBox())!;
     expect(list.height).toBeLessThan(26 * 60);
   });
 });
@@ -469,16 +471,17 @@ test.describe("flags and the nudge", () => {
   test("a student who leaves the app during a question is shown quietly in the roster, in an icon and words, never as a warning", async ({ page, context }) => {
     await teach(page, context);
     await showQuestions(page);
-    // Questions are sent and closed until a student has left the app: it happens in most of them, and the same way every time.
+    // Questions are sent and closed until a student has left the app. A flag shows any time during a question, so it is checked once the question has closed.
     let t = TEACHING_AT;
-    for (let n = 1; n <= 3; n++) {
+    for (let n = 1; n <= 6; n++) {
       await go(context, t);
       await listSend(page, n).click();
-      t += 14;
+      // Each question has its own time (a number question has 45 seconds): the clock moves to its end, read from the countdown.
+      const countdown = panel(page).getByTestId("countdown");
+      await expect(countdown).toHaveText(/^Уште \d+ секунд(а|и)$/);
+      t += Number((await countdown.textContent())!.match(/\d+/)![0]) + 1;
       await go(context, t);
       if ((await page.getByTestId("focus").count()) > 0) break;
-      t += 20;
-      await go(context, t);
       await reveal(page).click();
     }
     await showClass(page);
@@ -745,8 +748,6 @@ test.describe("a picture on a projected question", () => {
     await expect(page).toHaveURL(/\/teacher\/lessons\/l-n\d+$/);
     await page.goto("/teacher");
     await cards(page).filter({ hasText: "Планиметрија" }).getByRole("button", { name: "Започни час" }).click();
-    await page.getByRole("dialog").getByRole("radio", { name: /II-4/ }).check();
-    await page.getByRole("dialog").getByRole("button", { name: "Започни со II-4" }).click();
     await expect(page).toHaveURL(/\/teacher\/live\//);
     const projector = await openProjector(page, context);
     await page.getByRole("button", { name: "Почни го часот" }).click();
@@ -833,8 +834,6 @@ test.describe("words and zoom", () => {
     await context.clock.setFixedTime(T0);
     await page.goto("/teacher");
     await cards(page).filter({ hasText: "Проценти и пропорции" }).getByRole("button", { name: "Start lesson" }).click();
-    await page.getByRole("dialog", { name: "Which class?" }).getByRole("radio", { name: /II-4/ }).check();
-    await page.getByRole("dialog").getByRole("button", { name: "Start with II-4" }).click();
     const projector = await openProjector(page, context, "Open the projector screen");
     await at(context, TEACHING_AT, page);
     await page.getByRole("button", { name: "Start the lesson" }).click();
@@ -871,7 +870,6 @@ test.describe("words and zoom", () => {
     await context.clock.setFixedTime(T0);
     await page.goto("/teacher");
     await cards(page).first().getByRole("button", { name: "Започни час" }).click();
-    await page.getByRole("dialog", { name: "Со која група?" }).getByRole("button", { name: /^Започни со Група 1А$/ }).click();
     await page.getByRole("button", { name: "Почни го часот" }).click();
     await page.getByRole("button", { name: "Да, почни го часот" }).click();
     await expect(panel(page).getByText(/Вашите студенти го гледаат на телефон/)).toBeVisible();

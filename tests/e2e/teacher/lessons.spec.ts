@@ -55,8 +55,6 @@ const draftOf = (extra: Draft = {}): Draft => ({
   id: SEED,
   source_id: null,
   source: { kind: "typed", file_name: null },
-  subject: { id: "math", name: "Математика" },
-  year: 2,
   emphasis: null,
   refinements: [],
   previous_draft_id: null,
@@ -65,7 +63,7 @@ const draftOf = (extra: Draft = {}): Draft => ({
   consumed_at: null,
   lesson_id: null,
   job: null,
-  content: { title: "Квадратни равенки", review_summary: "Квадратна равенка е равенка од втор степен.", questions: QUESTIONS },
+  content: { title: "Квадратни равенки", questions: QUESTIONS },
   ...extra,
 });
 
@@ -248,8 +246,6 @@ test.describe("Lessons", () => {
     const lesson = (n: number, updated: string) => ({
       id: `l-x${n}`,
       title: `Додадена лекција ${n}`,
-      subject: { id: "math", name: "Математика" },
-      year: 2,
       question_count: 5,
       version: 1,
       times_run: 0,
@@ -257,7 +253,6 @@ test.describe("Lessons", () => {
       copied_from: null,
       created_at: updated,
       updated_at: updated,
-      review_summary: "",
       questions: [0, 1, 2, 3, 4].map(q),
       source: null,
       emphasis: null,
@@ -289,7 +284,7 @@ test.describe("Lessons", () => {
       page,
       {
         drafts: [
-          draftOf({ id: "d-pending", job: pendingJob, created_at: ago(1), updated_at: ago(1), content: { title: "Скриено", review_summary: "", questions: [] } }),
+          draftOf({ id: "d-pending", job: pendingJob, created_at: ago(1), updated_at: ago(1), content: { title: "Скриено", questions: [] } }),
           draftOf({ id: "d-ready", created_at: ago(120), updated_at: ago(120) }),
         ],
       },
@@ -352,7 +347,7 @@ test.describe("a teacher with no lessons", () => {
 // ---- The lessons not finished, and their anchor -----------------------------------------------------------------------------
 
 test.describe("the lessons not finished", () => {
-  const many = (n: number) => Array.from({ length: n }, (_, i) => draftOf({ id: `d-${i + 1}`, created_at: ago(10 + i * 10), updated_at: ago(10 + i * 10), content: { title: `Нацрт ${i + 1}`, review_summary: "", questions: QUESTIONS } }));
+  const many = (n: number) => Array.from({ length: n }, (_, i) => draftOf({ id: `d-${i + 1}`, created_at: ago(10 + i * 10), updated_at: ago(10 + i * 10), content: { title: `Нацрт ${i + 1}`, questions: QUESTIONS } }));
 
   test("all of them are on the Lessons page, the ones changed last first, with no cap and no link to the rest", async ({ page }) => {
     await seed(page, { drafts: many(5) }, "/teacher");
@@ -795,7 +790,7 @@ test.describe("the picture of a question", () => {
 
   test("in English, at a faculty", async ({ page }) => {
     await setLanguage(page, "en", "university");
-    await seed(page, { drafts: [draftOf({ subject: { id: "linear-algebra", name: "Linear algebra" } })] }, SEED_URL, "university");
+    await seed(page, { drafts: [draftOf()] }, SEED_URL, "university");
     await card(page, 1).getByRole("button", { name: "Edit", exact: true }).click();
     await expect(open(page).getByRole("heading", { level: 4, name: "Picture" })).toBeVisible();
     await expect(open(page).getByText("JPEG, PNG or WebP, at most 10 MB.")).toBeVisible();
@@ -927,7 +922,7 @@ test.describe("a numeric question", () => {
 
   test("in English, at a faculty", async ({ page }) => {
     await setLanguage(page, "en", "university");
-    await seed(page, { drafts: [draftOf({ subject: { id: "linear-algebra", name: "Linear algebra" } })] }, SEED_URL, "university");
+    await seed(page, { drafts: [draftOf()] }, SEED_URL, "university");
     await card(page, 3).getByRole("button", { name: "Edit", exact: true }).click();
     await expect(open(page).getByRole("button", { name: "More options" })).toHaveAttribute("aria-expanded", "false");
     await open(page).getByRole("button", { name: "More options" }).click();
@@ -969,7 +964,7 @@ test.describe("the library: my lessons", () => {
   test("a held lesson is its title and one line: when it was held first, without the date of its last change, which is not the date the list is in the order of", async ({ page }) => {
     await page.goto("/teacher/library");
     const lesson = held(page).filter({ hasText: "Тригонометрија на правоаголен триаголник" });
-    await expect(lesson.locator(".lesson__text p")).toHaveText("Одржана пред 6 дена · 3 пати · Математика · III година · 5 прашања");
+    await expect(lesson.locator(".lesson__text p")).toHaveText("Одржана пред 6 дена · 3 пати · 5 прашања");
     await expect(lesson).not.toContainText("Последна промена");
   });
 
@@ -1052,7 +1047,7 @@ test.describe("the library", () => {
     await expect(page.getByRole("navigation", { name: "Главно мени" }).getByRole("link", { name: "Библиотека" })).toHaveAttribute("aria-current", "page");
   });
 
-  test("the templates are rows: title, subject, year and how many questions, with no owner and no date; the title is the link", async ({ page }) => {
+  test("the templates are rows: title and how many questions, with no subject, year, owner and no date; the title is the link", async ({ page }) => {
     await page.goto("/teacher/library");
     await templatesTab(page).click();
     await expect(templatesTab(page)).toHaveAttribute("aria-selected", "true");
@@ -1068,8 +1063,8 @@ test.describe("the library", () => {
       "Основи на комбинаториката",
     ]);
     // One line under the title: what it is, and nothing about whose it is or when it was saved.
-    await expect(templates(page).nth(0).locator(".lesson__text p")).toHaveText("Физика · I година · 6 прашања");
-    await expect(templates(page).nth(1).locator(".lesson__text p")).toHaveText("Математика · II година · 5 прашања");
+    await expect(templates(page).nth(0).locator(".lesson__text p")).toHaveText("6 прашања");
+    await expect(templates(page).nth(1).locator(".lesson__text p")).toHaveText("5 прашања");
     await expect(page.locator("#library-panel-templates")).not.toContainText(/Од |Зачувана|колег/);
     await expect(page.getByText("Марија Петровска")).toHaveCount(1); // only the name at the top right
     await expect(page.getByText("Веќе го копиравте")).toHaveCount(0);
@@ -1112,17 +1107,14 @@ test.describe("the library", () => {
     await expect(page).toHaveURL(/\/teacher\/library$/);
   });
 
-  test("at a faculty it has the faculty's templates, each with its own subject", async ({ page }) => {
+  test("at a faculty it has the faculty's templates, each a row with the number of its questions", async ({ page }) => {
     await setLanguage(page, "mk", "university");
     await page.goto("/teacher/library#sabloni");
     await expect(templates(page)).toHaveCount(4);
     await expect(page.locator(".head__sub")).toHaveCount(0);
     await expect(page.getByRole("radiogroup")).toHaveCount(0);
     const lines = templates(page).locator(".lesson__text p");
-    await expect(lines.nth(0)).toHaveText(/^Веројатност и статистика · \d+\. година · \d+ прашањ/);
-    await expect(lines.nth(1)).toHaveText(/^Линеарна алгебра · \d+\. година · \d+ прашањ/);
-    await expect(lines.nth(2)).toHaveText(/^Математичка анализа 1 · \d+\. година · \d+ прашањ/);
-    await expect(lines.nth(3)).toHaveText(/^Дискретна математика · \d+\. година · \d+ прашањ/);
+    for (const line of await lines.all()) await expect(line).toHaveText(/^\d+ прашањ[ае]$/);
   });
 
   test("with no templates the shelf is one honest card, with nothing to press", async ({ page }) => {
@@ -1149,7 +1141,7 @@ test.describe("the library", () => {
     await templates(page).filter({ hasText: "Статистика: средна вредност и медијана" }).getByRole("link").click();
     await expect(page).toHaveURL(/\/teacher\/library\/lib-statistika$/);
     await expect(title(page)).toHaveText("Статистика: средна вредност и медијана");
-    await expect(page.locator(".head__sub")).toHaveText("Математика · III година");
+    await expect(page.locator(".head__sub")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Назад кон Библиотека" })).toHaveAttribute("href", "/teacher/library#sabloni");
     await expect(page.getByText("Ова е шаблон. Ако го копирате, добивате своја лекција што можете да ја уредувате. Шаблонот не се менува.")).toBeVisible();
     await expect(page.getByText(/Билјана|Зоран|Весна|колег/)).toHaveCount(0);
@@ -1351,7 +1343,7 @@ test.describe("zoomed and small windows", () => {
     test(`at ${zoom} the pages of this step do not run off the side`, async ({ page }) => {
       await page.setViewportSize(viewport);
       await setLanguage(page, "mk", "university");
-      await seed(page, { drafts: [draftOf({ subject: { id: "linear-algebra", name: "Линеарна алгебра" } })] }, "/teacher", "university");
+      await seed(page, { drafts: [draftOf()] }, "/teacher", "university");
       await expect(title(page)).toHaveText("Лекции");
       await expect(unfinished(page).first()).toBeVisible();
       expect(await overflow(page)).toBeLessThanOrEqual(0);

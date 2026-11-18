@@ -41,7 +41,7 @@ test.describe("the sidebar", () => {
 });
 
 test.describe("the frame on a long page", () => {
-  // A long page is one that scrolls: the new lesson's form with its sentences open.
+  // A long page is one that scrolls: a lesson with its six questions, each with its answers.
   for (const [width, height] of [
     [1440, 900],
     [1280, 720],
@@ -50,8 +50,8 @@ test.describe("the frame on a long page", () => {
   ] as const) {
     test(`at ${width} x ${height}, scrolled to the bottom: the skip link is out of sight and the sidebar (or the top bar) still keeps its place`, async ({ page }) => {
       await page.setViewportSize({ width, height });
-      await page.goto("/teacher/lessons/new");
-      await page.getByRole("radio", { name: /^Неколку реченици/ }).check();
+      await page.goto("/teacher/lessons/l-procenti");
+      await expect(page.locator(".questions > li")).toHaveCount(6);
       await page.mouse.move(width / 2, height / 2);
       for (let i = 0; i < 12; i++) await page.mouse.wheel(0, 400);
       await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(200);
@@ -127,29 +127,22 @@ test.describe("settings", () => {
     await expect(page.locator("html")).toHaveAttribute("lang", "mk");
   });
 
-  test("the type of institution changes the words: classes and students, or groups and students", async ({ page }) => {
+  test("the type of institution changes the words: students of a school, or of a faculty", async ({ page }) => {
     await page.goto("/teacher/settings");
     await expect(page.getByText("Марија Петровска, наставник")).toBeVisible();
 
     await page.getByRole("radio", { name: "Факултет" }).check();
     await expect(page.getByText("Марија Петровска, професор")).toBeVisible();
 
-    // It is kept, and Lessons asks for a group and speaks of the students of a faculty.
+    // It is kept.
     await page.reload();
-    await mainMenu(page).getByRole("link", { name: "Лекции" }).click();
-    await page.getByRole("button", { name: "Започни час" }).first().click();
-    await expect(page.getByRole("dialog", { name: "Со која група?" })).toContainText("28 студенти");
-    await page.getByRole("button", { name: "Откажи" }).click();
+    await expect(page.getByText("Марија Петровска, професор")).toBeVisible();
 
-    await moreMenu(page).getByRole("link", { name: "Поставки" }).click();
     await page.getByRole("radio", { name: "Средно училиште" }).check();
-    await mainMenu(page).getByRole("link", { name: "Лекции" }).click();
-    await page.getByRole("button", { name: "Започни час" }).first().click();
-    await expect(page.getByRole("dialog", { name: "Со кој клас?" })).toContainText("28 ученици");
-    await page.getByRole("button", { name: "Откажи" }).click();
+    await expect(page.getByText("Марија Петровска, наставник")).toBeVisible();
   });
 
-  test("in English a faculty has groups and a school has classes", async ({ page }) => {
+  test("in English a faculty has professors and a school has teachers", async ({ page }) => {
     await page.goto("/teacher/settings");
     await page.getByRole("radio", { name: "English" }).check();
     await page.getByRole("radio", { name: "University" }).check();
@@ -166,7 +159,6 @@ test.describe("settings", () => {
     await page.evaluate((key) => {
       const state = JSON.parse(localStorage.getItem(key) ?? "null");
       state.school.counter = 7;
-      state.school.speed_bonus = { "course-ii-4": false };
       localStorage.setItem(key, JSON.stringify(state));
     }, MOCK_KEY);
     const saved = () => page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "null"), MOCK_KEY);
@@ -201,8 +193,7 @@ test.describe("settings", () => {
     await expect(page.getByRole("status")).toBeFocused();
     const after = await saved();
     expect(after.school.counter).toBe(0);
-    expect(after.school.speed_bonus).toEqual({});
-    expect(after.v).toBe(1);
+    expect(after.v).toBe(2);
     await expect(title(page)).toHaveText("Settings");
     await expect(page.getByRole("radio", { name: "University" })).toBeChecked();
   });
@@ -299,10 +290,10 @@ test.describe("help", () => {
     const first = list.locator("details").first();
     await expect(first.locator("summary")).toHaveText("Како да подготвам лекција?");
     expect(await tall(first.locator("summary"))).toBeGreaterThanOrEqual(56);
-    await expect(page.getByText("Изберете предмет и година", { exact: false })).toBeHidden();
+    await expect(page.getByText("притиснете „Подготви лекција“", { exact: false })).toBeHidden();
     await first.locator("summary").click();
     await expect(first).toHaveAttribute("open", "");
-    await expect(first.getByText("Изберете предмет и година", { exact: false })).toBeVisible();
+    await expect(first.getByText("притиснете „Подготви лекција“", { exact: false })).toBeVisible();
     // It opens with a move (the owner's note on step 6): the row grows to its answer and the plus turns into a minus.
     const motion = (el: Element) => {
       const content = getComputedStyle(el, "::details-content");

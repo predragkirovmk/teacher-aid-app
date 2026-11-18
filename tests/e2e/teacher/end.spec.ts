@@ -1,11 +1,11 @@
 import type { BrowserContext, Page } from "@playwright/test";
 import { expect, tall, test } from "./fixtures";
-import { CLASS_IDS, go, next, openProjector, panel, PLANS, reveal, row, send, SESSION, start, TEACHING_AT, teach, mainButton, at } from "./live-helpers";
+import { go, next, openProjector, panel, reveal, send, SESSION, start, TEACHING_AT, teach, mainButton, at } from "./live-helpers";
 
 /**
  * The end of a lesson, step 10: the way from teaching to the review, the review on the console and on the projector, End with its question, the end page with the
  * attendance list for e-Дневник, the practice set, a second window, a failure and a reload. In mock mode, in Macedonian. The clock is the test's; the lesson is
- * "Проценти и пропорции" for II-4 as in the other live specs (6 questions).
+ * "Проценти и пропорции" as in the other live specs (6 questions).
  */
 
 const LIVE = `/teacher/live/${SESSION}`;
@@ -13,7 +13,6 @@ const endButton = (page: Page) => page.getByRole("button", { name: "Заврши
 const question = (page: Page) => page.getByRole("alertdialog", { name: "Дали сакате да го завршите часот?" });
 const toReview = (page: Page) => panel(page).getByRole("button", { name: "Премини на прегледот", exact: true });
 const early = (page: Page) => panel(page).getByRole("button", { name: "Премини на прегледот сега" });
-const neverJoins = CLASS_IDS.filter((id) => !PLANS.some((p) => p.id === id));
 
 /** Send, close and show the answer of the first `count` questions, a minute apart on the test's clock. Ends with the answer of the last shown. */
 async function ask(page: Page, context: BrowserContext, count: number) {
@@ -330,14 +329,10 @@ test.describe("End", () => {
   });
 });
 
-/** A whole lesson, ended with a student marked present without a phone: the end page. */
+/** A whole lesson, ended: the end page. */
 async function endedLesson(page: Page, context: BrowserContext) {
   await start(page, context);
   const projector = await openProjector(page, context);
-  await at(context, 3, page);
-  await row(page, neverJoins[0]).getByRole("button", { name: /^Без телефон/ }).click();
-  await page.getByRole("dialog").getByRole("radio", { name: "Празна батерија" }).check();
-  await page.getByRole("dialog").getByRole("button", { name: "Означи како присутен" }).click();
   await at(context, TEACHING_AT, page);
   await page.getByRole("button", { name: "Почни го часот" }).click();
   await page.getByRole("button", { name: "Да, почни го часот" }).click();
@@ -349,19 +344,20 @@ async function endedLesson(page: Page, context: BrowserContext) {
 }
 
 test.describe("the end page", () => {
-  test("every enrolled student in the register's order, four statuses, the counts above, the reason for no phone", async ({ page, context }) => {
+  test("only the students who joined, in the register's order, all present, the counts above", async ({ page, context }) => {
     await endedLesson(page, context);
     const rows = page.getByTestId("att-row");
-    await expect(rows).toHaveCount(26);
-    const nums = await Promise.all(["present", "late", "absent", "present_no_device"].map(async (s) => Number(await page.getByTestId(`count-${s}`).innerText())));
-    expect(nums.reduce((a, b) => a + b, 0)).toBe(26);
-    expect(await page.getByTestId("count-total").innerText()).toBe("26");
-    expect(nums[0]).toBeGreaterThan(0);
-    expect(nums[2]).toBeGreaterThan(0);
-    expect(nums[3]).toBe(1);
-    await expect(page.locator('[data-status="late"][data-testid="att-row"]').first()).toContainText("Задоцнет/а");
-    await expect(page.locator('[data-status="present_no_device"][data-testid="att-row"]')).toContainText("Присутен/а без телефон (празна батерија)");
-    await expect(page.locator('[data-status="absent"][data-testid="att-row"]').first()).toContainText("Отсутен/а");
+    const total = Number(await page.getByTestId("count-total").innerText());
+    // Nobody who never scanned the code is on the list, and nobody is written late, absent or without a phone.
+    expect(total).toBeGreaterThan(0);
+    expect(total).toBeLessThan(26);
+    await expect(rows).toHaveCount(total);
+    expect(Number(await page.getByTestId("count-present").innerText())).toBe(total);
+    for (const status of ["late", "absent", "present_no_device"]) {
+      expect(Number(await page.getByTestId(`count-${status}`).innerText())).toBe(0);
+      await expect(page.locator(`[data-status="${status}"][data-testid="att-row"]`)).toHaveCount(0);
+    }
+    await expect(page.locator('[data-status="present"][data-testid="att-row"]')).toHaveCount(total);
     // By surname, then name: the first word of each name is the surname, in the Macedonian alphabet.
     const surnames = (await rows.locator("th").allInnerTexts()).map((n) => n.split(" ")[0]);
     expect(surnames).toEqual([...surnames].sort((a, b) => a.localeCompare(b, "mk")));
@@ -400,9 +396,8 @@ test.describe("the end page", () => {
     await expect(note).toBeFocused();
     const text = await page.evaluate(() => navigator.clipboard.readText());
     const lines = text.split("\n");
-    expect(lines).toHaveLength(26);
-    for (const line of lines) expect(line).toMatch(/^\S+ [^:]+: (присутен\/а|задоцнет\/а|отсутен\/а|присутен\/а без телефон \(.+\))$/u);
-    expect(lines.some((l) => l.endsWith("присутен/а без телефон (празна батерија)"))).toBe(true);
+    expect(lines).toHaveLength(Number(await page.getByTestId("count-total").innerText()));
+    for (const line of lines) expect(line).toMatch(/^\S+ [^:]+: присутен\/а$/u);
   });
 
   test("it can be printed: on paper only the list is shown, black on white", async ({ page, context }) => {
@@ -411,9 +406,8 @@ test.describe("the end page", () => {
     await page.emulateMedia({ media: "print" });
     await expect(page.locator(".att-print__title")).toBeVisible();
     await expect(page.locator(".att-print .att__actions")).toBeHidden();
-    // Only the heading, the class, the lesson and the day above the list: no counts, no buttons.
+    // Only the heading, the lesson and the day above the list: no counts, no buttons.
     await expect(page.locator(".att-print .att__counts")).toBeHidden();
-    await expect(page.locator(".att-print__title")).toContainText("II-4");
     await expect(page.locator(".att-print__title")).toContainText("Проценти и пропорции");
     await expect(page.locator(".att-print__title")).toContainText(/\d{4}/);
     await expect(page.locator(".att-print h2")).toHaveCSS("color", "rgb(0, 0, 0)");
@@ -454,7 +448,7 @@ test.describe("the practice set", () => {
     await expect(page.getByTestId("practice-sent")).toHaveText("Вежбите се испратени");
     await expect(page.getByTestId("practice-count")).toContainText(/Имаат \d+ прашањ(е|а)\. Учениците ги решаваат сами, без поени\./);
     await expect(sendButton).toHaveCount(0);
-    await expect(page.getByTestId("practice-done")).toHaveText("0 од 26 завршија");
+    await expect(page.getByTestId("practice-done")).toHaveText(/^0 од \d+ завршија$/);
     // Time passes, and some have done it.
     await go(context, TEACHING_AT + 6 * 61 + 30 * 60);
     await page.reload();
