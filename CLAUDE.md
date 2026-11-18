@@ -29,7 +29,7 @@ Running the teacher tests quickly while you work:
 
     NEXT_PUBLIC_E2E=1 pnpm exec next build          # the flag is needed: see playwright.config.ts
     pnpm exec next start -p 3100 &
-    E2E_SKIP_BUILD=1 pnpm exec playwright test --project=teacher tests/e2e/teacher/today.spec.ts
+    E2E_SKIP_BUILD=1 pnpm exec playwright test --project=teacher tests/e2e/teacher/start.spec.ts
 
 In a cloud container the browser is already installed: do not run `playwright install`; use the
 config made for it, `-c scripts/teacher-redesign/playwright.cloud.config.ts`. Rebuild after every
@@ -38,7 +38,11 @@ CSS or component change; the tests run against the build, not against `next dev`
 ## The work in progress: the teacher redesign
 
 The owner finds the teacher app crowded and confusing and wants it simple, with an Apple-like
-calm. Every feature stays; the UI and UX change. The plan, the status and the record of each step
+calm. On 2026-11-17 the owner went further: the app is made "absolutely simple" by removing features
+(Today, Classes, the subject filters, the prepare form's subject and year, the review summary, the class
+picker, the roster before students scan, the Review phase). The list and the owner's answers are in
+"The owner's simplification" in `docs/teacher-plan.md`; it overrides older rules here and in the plans
+that keep a removed feature. Everything not on that list stays. The plan, the status and the record of each step
 are in `docs/teacher-redesign-plan.md`. Read it first, every session. `docs/teacher-plan.md` holds
 the rules of the app itself ("Simplicity first", "Design tokens"); keep the two in step.
 `docs/teacher-redesign-handoff.md` says how a step is actually carried out (the commands, the

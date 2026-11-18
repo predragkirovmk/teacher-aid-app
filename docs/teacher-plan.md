@@ -10,6 +10,30 @@ Source of truth for behaviour and data: the backend spec
 (sections 1.9, 2, 3, 4, 5 F-01 to F-12, 7, 8, 11.1). The owner's decisions below override it
 where they differ.
 
+## The owner's simplification (2026-11-17, overrides what follows where they differ)
+
+The owner asked for the teacher app to be "absolutely simple", by removing features, in eleven items built
+in groups of four (branch `teacher-simple`), each group checked with the owner before the next:
+
+1. Today is removed. The app opens on Lessons (`/teacher`).
+2. Classes are removed from the sidebar, and the class concept with them.
+3. Lessons shows only the prepared lessons (and the unfinished ones) and the button to prepare one. Lessons
+   already held are in the Library.
+4. The subject (class-specific) filters are removed.
+5. Preparing a lesson asks only for the material and what to emphasise: no subject, class or year.
+6. The review summary ("Резиме за повторување") is removed.
+7. "Започни час" starts the lesson at once, with no class to choose; the waiting step with the QR code stays.
+8. The console's right side lists only the students who scanned the QR code: no names before that.
+9. When a question's time is up, the right answer shows by itself.
+10. After the last question the teacher is asked to end the lesson; they can stay, since students can still
+    ask questions, but there is no Review phase.
+11. The end page is one review of the students who were present (name and score), across the whole screen,
+    with Copy and Print; nothing on the right.
+
+The owner's answers: the Library has a segmented pill, "Мои лекции" (held lessons) on the left and "Шаблони"
+on the right; there are no colleagues anywhere, and their lessons become templates. Segmented controls still
+merge (`SegGlide`).
+
 ## Owner decisions (2026-10-27, do not re-ask)
 
 - Installable web app at `/teacher`, branch `teacher-v1` off `main`. The student app (`/app`)
@@ -20,7 +44,7 @@ where they differ.
   accent; see "Design tokens" below and `docs/teacher-redesign-plan.md`.)
 - v1 scope: lesson prep, live lesson (console plus projected class view, End), class results.
   School admin is out.
-- No timetable. "Today" lists prepared lessons, as the spec says.
+- No timetable. Lessons (the home page) lists prepared lessons.
 - Red only for warnings and End, never for wrong answers.
 - Students are "ученици" in a secondary school and "студенти" at a university; a class is
   "клас" or "група" in the same way. Set once per school.
