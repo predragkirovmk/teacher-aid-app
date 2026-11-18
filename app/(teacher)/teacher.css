@@ -4250,9 +4250,23 @@ body:has(.cv) {
 }
 .cvb--between {
   flex: 1;
+  /* A flex item does not shrink below its content by default: without this a long name keeps the column wide and the rows spill out of the window. */
+  min-width: 0;
 }
 .cvb--between .cvb__row {
   font-size: max(2rem, calc(6.4 * var(--u)));
+}
+/* A long name steps the rows down so that it keeps one line beside its points. */
+.cvb--between[data-names="long"] .cvb__row {
+  font-size: max(1.75rem, calc(5.4 * var(--u)));
+}
+/* Beside the ranking the corner is a column: its words go under the QR and are no wider than it, so the ranking keeps the width. */
+.cv__rest:has(.cv__between) .cv__corner {
+  flex-direction: column;
+  text-align: center;
+}
+.cv__rest:has(.cv__between) .cv__corner .cv__label {
+  max-width: min(16ch, 38vh, 24vw);
 }
 .cvb--between .cvb__title {
   font-size: max(2rem, calc(6 * var(--u)));
