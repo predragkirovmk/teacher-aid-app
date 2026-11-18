@@ -9,18 +9,14 @@ import { go, openProjector, panel, reveal, send, start, teach, TEACHING_AT, T0 }
  */
 
 const SCREENS: [string, string][] = [
-  ["today", "/teacher"],
-  ["lessons", "/teacher/lessons"],
+  ["lessons", "/teacher"],
   ["new lesson", "/teacher/lessons/new"],
   ["a lesson", "/teacher/lessons/l-procenti"],
   ["library", "/teacher/library"],
+  ["library, templates", "/teacher/library#sabloni"],
   ["a library lesson", "/teacher/library/lib-statistika"],
   ["settings", "/teacher/settings"],
   ["help", "/teacher/help"],
-  ["classes", "/teacher/classes"],
-  ["a course", "/teacher/classes/course-ii-4"],
-  ["a course, who comes", "/teacher/classes/course-ii-4#attendance"],
-  ["a course, its settings", "/teacher/classes/course-ii-4#settings"],
   ["not found", "/teacher/nothing-here"],
 ];
 
@@ -92,10 +88,11 @@ void panel; void teach; void T0;
 
 test.describe("reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
-  test("nothing moves: the drawer, the dialogs, the waiting dots and the switches slide, scale and turn no more, and only short colour and opacity fades are left", async ({ page }) => {
-    // The class's settings, open: its dialog and its switch are on the page.
-    await page.goto("/teacher/classes/course-ii-4#settings");
-    await expect(page.getByRole("switch")).toBeVisible();
+  test("nothing moves: the drawer, the dialogs and the waiting dots slide, scale and turn no more, and only short colour and opacity fades are left", async ({ page }) => {
+    // A lesson with its question to delete it open: a dialog is on the page.
+    await page.goto("/teacher/lessons/l-procenti");
+    await page.getByRole("button", { name: "Избриши лекција" }).click();
+    await expect(page.getByRole("alertdialog")).toBeVisible();
     await page.waitForLoadState("load");
     const moving = await page.evaluate(() =>
       [...document.querySelectorAll("*")]

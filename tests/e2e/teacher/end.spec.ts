@@ -286,22 +286,23 @@ test.describe("End", () => {
     await expect(endButton(other)).toBeVisible();
     await endIt(page);
     await expect(other.getByRole("heading", { level: 1 })).toHaveText("Часот заврши", { timeout: 10_000 });
-    for (const url of ["/teacher", "/teacher/lessons"]) {
+    for (const url of ["/teacher", "/teacher/library"]) {
       await page.goto(url);
       await expect(page.getByText("Час во тек")).toHaveCount(0);
     }
   });
 
-  test("from the band on Today and from the reminder on another page: the same question, then the end page", async ({ page, context }) => {
+  test("from the reminder on any page, Lessons included: the same question, then the end page", async ({ page, context }) => {
     await start(page, context);
-    await page.goto("/teacher");
-    await expect(page.locator(".band")).toBeVisible();
-    await page.locator(".band").getByRole("button", { name: "Заврши го часот" }).click();
+    for (const url of ["/teacher", "/teacher/library"]) {
+      await page.goto(url);
+      await expect(page.locator(".running--side")).toBeVisible();
+    }
+    await page.locator(".running--side").getByRole("button", { name: "Заврши го часот" }).click();
     await expect(question(page).getByRole("button", { name: "Не, часот останува отворен" })).toBeFocused();
     await page.keyboard.press("Escape");
-    await expect(page.locator(".band")).toBeVisible();
+    await expect(page.locator(".running--side")).toBeVisible();
 
-    await page.goto("/teacher/lessons");
     await page.locator(".running--side").getByRole("button", { name: "Заврши го часот" }).click();
     await question(page).getByRole("button", { name: "Да, заврши го часот" }).click();
     await expect(page).toHaveURL(new RegExp(`${LIVE}$`));
@@ -365,7 +366,7 @@ test.describe("the end page", () => {
     const surnames = (await rows.locator("th").allInnerTexts()).map((n) => n.split(" ")[0]);
     expect(surnames).toEqual([...surnames].sort((a, b) => a.localeCompare(b, "mk")));
     // One main button, the way on, at the right of the title, where it is found without reading the page.
-    await expect(mainButton(page)).toHaveText(/Оди на Денес/);
+    await expect(mainButton(page)).toHaveText(/Оди на Лекции/);
     await expect(mainButton(page)).toHaveCount(1);
     await expect(page.locator(".head").locator(".btn--primary")).toHaveCount(1);
     await expect(page.getByText("Часот е зачуван меѓу одржаните часови.")).toBeVisible();

@@ -12,15 +12,15 @@ import {
  */
 
 test.describe("starting", () => {
-  test("from Today: the button names the class, and the lesson opens on its console with the subject, class and lesson in plain words", async ({ page, context }) => {
+  test("from Lessons: the button names the class, and the lesson opens on its console with the subject, class and lesson in plain words", async ({ page, context }) => {
     await start(page, context);
     await expect(title(page)).toHaveText("Час во тек");
     await expect(page.getByText("Математика, II-4: Проценти и пропорции")).toBeVisible();
-    // The lesson has the whole window: no sidebar and no menu, and the way out is the Back to Today. Before teaching the class stands alone, with no tabs.
+    // The lesson has the whole window: no sidebar and no menu, and the way out is the Back to Lessons. Before teaching the class stands alone, with no tabs.
     await expect(page.locator(".sidebar, .topbar")).toHaveCount(2);
     for (const part of await page.locator(".sidebar, .topbar").all()) await expect(part).toBeHidden();
     await expect(page.getByRole("navigation", { name: "Главно мени" })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Назад кон Денес" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Назад кон Лекции" })).toHaveAttribute("href", "/teacher");
     await expect(page.getByRole("tablist")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Кој се приклучи" })).toBeVisible();
     await expect(page).toHaveTitle("Час во тек · TeacherAid");
@@ -29,7 +29,7 @@ test.describe("starting", () => {
   test("a lesson that is not the open one is not found, plainly, with the way back", async ({ page }) => {
     await page.goto("/teacher/live/s-none");
     await expect(page.getByRole("heading", { name: "Овој час не е во тек" })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Денес|Назад/ }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: /Лекции|Назад/ }).first()).toBeVisible();
   });
 });
 
@@ -756,8 +756,8 @@ test.describe("the reminder", () => {
   test("is not shown on the console, which says it itself, and is shown on every other page", async ({ page, context }) => {
     await start(page, context);
     await expect(page.getByRole("group", { name: /Час во тек/ })).toHaveCount(0);
-    // The console has no menu: the way to another page is the Back to Today, and from there the menu.
-    await page.getByRole("link", { name: "Назад кон Денес" }).click();
+    // The console has no menu: the way to another page is the Back to Lessons, and from there the menu.
+    await page.getByRole("link", { name: "Назад кон Лекции" }).click();
     await page.getByRole("link", { name: "Библиотека" }).click();
     await expect(page.getByRole("group", { name: /Час во тек/ })).toBeVisible();
   });

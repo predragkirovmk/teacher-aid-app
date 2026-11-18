@@ -4,7 +4,7 @@ import { expect, MOCK_KEY, SETTINGS_KEY, tall, test } from "./fixtures";
 /**
  * The editor (F-03 step 5, F-04, FR-LES-07 to -22): a draft that is ready is a lesson to change, one question open at a time,
  * with every change saved by itself; the four refinements, each a job with an undo; saving it as a lesson, or as the next version
- * of one that was saved; and the lessons not finished, listed on Today. In mock mode, in Macedonian unless a test changes the
+ * of one that was saved; and the lessons not finished, listed on the Lessons page. In mock mode, in Macedonian unless a test changes the
  * language. Drafts are put straight into the demo's saved state (as the AI would have left them), so that a test does not wait
  * for the AI; the wait itself, and the way from the form to the draft, are in prepare.spec.ts, and the first lesson of a first
  * run is the last describe here.
@@ -176,8 +176,8 @@ test.describe("at rest", () => {
     });
     expect(order).toEqual([true, true, true]);
     // What happens to an unfinished lesson is said under the button.
-    await expect(page.getByText("Ако не ја зачувате сега, ја чуваме до 30 дена и ја наоѓате на Денес.")).toBeAttached();
-    await expect(saveButton(page)).toHaveAccessibleDescription(/Откако ќе ја зачувате, лекцијата е на Денес/);
+    await expect(page.getByText("Ако не ја зачувате сега, ја чуваме до 30 дена и ја наоѓате во Лекции.")).toBeAttached();
+    await expect(saveButton(page)).toHaveAccessibleDescription(/Откако ќе ја зачувате, лекцијата е во Лекции/);
   });
 
   test("the main button and where saving stands are one bar that stays in the window, and is the only place that says it", async ({ page }) => {
@@ -246,7 +246,7 @@ test.describe("at rest", () => {
   });
 
   test("Back goes to Lessons, where the teacher came from", async ({ page }) => {
-    await expect(page.getByRole("link", { name: "Назад кон Лекции", exact: true })).toHaveAttribute("href", "/teacher/lessons");
+    await expect(page.getByRole("link", { name: "Назад кон Лекции", exact: true })).toHaveAttribute("href", "/teacher");
   });
 });
 
@@ -698,7 +698,7 @@ test.describe("saving as it goes", () => {
     await expect(page.getByRole("status").filter({ hasText: "Промените не се зачувани." })).toHaveCount(1);
     expect((await draftOnDisk(page)).content.title).toBe("Квадратни равенки");
     // Leaving would lose it, so the page asks, with the safe answer in hand.
-    await menu(page).getByRole("link", { name: "Денес" }).click();
+    await menu(page).getByRole("link", { name: "Лекции" }).click();
     await expect(leaveDialog(page)).toBeVisible();
     await expect(leaveDialog(page)).toContainText("Последните промени уште не се зачувани.");
     await expect(leaveDialog(page).getByRole("button", { name: "Не, остани" })).toBeFocused();
@@ -707,18 +707,18 @@ test.describe("saving as it goes", () => {
     await saved(page);
     expect((await draftOnDisk(page)).content.title).toBe("Без врска");
     // Saved, and nothing is asked any more.
-    await menu(page).getByRole("link", { name: "Денес" }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Денес" })).toBeVisible();
+    await menu(page).getByRole("link", { name: "Лекции" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Лекции" })).toBeVisible();
     await expect(leaveDialog(page)).toHaveCount(0);
   });
 
   test("a change that is only waiting for its moment is sent as the page is left, and nothing is asked", async ({ page }) => {
     await titleField(page).fill("Брзо заминување");
-    await menu(page).getByRole("link", { name: "Денес" }).click();
+    await menu(page).getByRole("link", { name: "Лекции" }).click();
     await expect(leaveDialog(page)).toHaveCount(0);
-    await expect(page.getByRole("heading", { level: 1, name: "Денес" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Лекции" })).toBeVisible();
     expect((await draftOnDisk(page)).content.title).toBe("Брзо заминување");
-    // And Today lists the lesson, by its new title.
+    // And the Lessons page lists the lesson, by its new title.
     await expect(page.locator(".lessons > li", { hasText: "Брзо заминување" })).toBeVisible();
   });
 
@@ -726,11 +726,11 @@ test.describe("saving as it goes", () => {
     await edit(page, 3).click();
     await moreOptions(page).click();
     await tolerance(page).fill("0,");
-    await menu(page).getByRole("link", { name: "Денес" }).click();
+    await menu(page).getByRole("link", { name: "Лекции" }).click();
     await expect(leaveDialog(page)).toBeVisible();
     await leaveDialog(page).getByRole("button", { name: "Не, остани" }).click();
     await tolerance(page).fill("0,5");
-    await menu(page).getByRole("link", { name: "Денес" }).click();
+    await menu(page).getByRole("link", { name: "Лекции" }).click();
     await expect(leaveDialog(page)).toHaveCount(0);
   });
 });
@@ -801,13 +801,13 @@ test.describe("changing all the questions", () => {
     expect((await draftOnDisk(page)).content.questions[0]).toMatchObject({ prompt: "Моето прашање?", timer_seconds: 25 });
   });
 
-  test("the new draft is the one on Today, and a reload while it is written finds the wait again", async ({ page }) => {
+  test("the new draft is the one on the Lessons page, and a reload while it is written finds the wait again", async ({ page }) => {
     await refine(page, "Потешки").click();
     await expect(waitHeading(page)).toBeVisible();
     await page.reload();
     await expect(waitHeading(page)).toBeVisible();
     await expect(page.getByRole("button", { name: "Врати ги претходните прашања" })).toBeVisible({ timeout: 15_000 });
-    await menu(page).getByRole("link", { name: "Денес" }).click();
+    await menu(page).getByRole("link", { name: "Лекции" }).click();
     // One lesson that is not finished, not two: the latest of the chain.
     await expect(page.locator(".lessons > li", { hasText: "Квадратни равенки" })).toHaveCount(1);
   });
@@ -874,7 +874,7 @@ test.describe("changing all the questions", () => {
 // ---- Saving ---------------------------------------------------------------------------------------------------------------
 
 test.describe("saving the lesson", () => {
-  test("'Зачувај лекција' makes a lesson, lands on its page with a line that it is saved and where it is, and Today lists it", async ({ page }) => {
+  test("'Зачувај лекција' makes a lesson, lands on its page with a line that it is saved and where it is, and the Lessons page lists it", async ({ page }) => {
     await titleField(page).fill("Мојата нова лекција");
     await edit(page, 2).click();
     await prompt(page).fill("Исправено прашање?");
@@ -884,7 +884,7 @@ test.describe("saving the lesson", () => {
     await expect(page).toHaveURL(/\/teacher\/lessons\/l-n\d+$/);
     await expect(title(page)).toHaveText("Мојата нова лекција");
     const line = page.locator(".draft__note");
-    await expect(line).toContainText("Лекцијата е зачувана. Ќе ја најдете на Денес, подготвена за час.");
+    await expect(line).toContainText("Лекцијата е зачувана. Ќе ја најдете во Лекции, подготвена за час.");
     await expect(page.getByRole("status").filter({ hasText: "Лекцијата е зачувана." })).toHaveCount(1);
     // One main button on the lesson page: start a class. Editing is a quiet button beside it.
     await expect(mainButton(page)).toHaveCount(1);
@@ -901,7 +901,7 @@ test.describe("saving the lesson", () => {
     // The draft is saved with it and is not listed any more.
     expect(state.school.drafts.find((d) => d.id === SEED)).toMatchObject({ consumed_at: expect.any(String), lesson_id: state.school.lessons[0].id });
     await page.goto("/teacher");
-    await expect(page.getByRole("heading", { level: 2, name: "Недовршени лекции" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 2, name: /^Недовршени/ })).toHaveCount(0);
     await expect(page.locator(".lessons > li").first()).toContainText("Мојата нова лекција");
     await expect(page.locator(".lessons > li")).toHaveCount(3);
   });
@@ -1013,9 +1013,9 @@ test.describe("saving the lesson", () => {
 // ---- Editing a lesson that is saved ---------------------------------------------------------------------------------------
 
 test.describe("editing a saved lesson", () => {
-  const LESSON_URL = "/teacher/lessons/l-zadaci?from=today";
+  const LESSON_URL = "/teacher/lessons/l-zadaci?from=library";
 
-  /** The demo teacher's own prepared lesson (the demo's own are in today.spec.ts): five true-or-false questions. */
+  /** The demo teacher's own prepared lesson (the demo's own are in start.spec.ts): five true-or-false questions. */
   const lesson = (extra: Record<string, unknown> = {}) => ({
     id: "l-zadaci",
     title: "Задачи за проценти",
@@ -1044,7 +1044,7 @@ test.describe("editing a saved lesson", () => {
     await expect(mainButton(page)).toHaveCount(1);
     await expect(mainButton(page)).toHaveText("Започни час");
     await page.getByRole("button", { name: "Уреди лекција" }).click();
-    await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d\d+\?from=today$/);
+    await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d\d+\?from=library$/);
     await expect(title(page)).toHaveText("Задачи за проценти");
     await expect(titleField(page)).toHaveValue("Задачи за проценти");
     await expect(cards(page)).toHaveCount(5);
@@ -1052,8 +1052,8 @@ test.describe("editing a saved lesson", () => {
     await expect(mainButton(page)).toHaveText("Зачувај ги промените");
     await expect(page.getByText("Новата верзија важи за следните часови. Веќе одржаните остануваат какви што беа.")).toBeAttached();
     // What is kept is the changes: the lesson itself is there already.
-    await expect(page.getByText("Ако не ги зачувате промените сега, ги чуваме до 30 дена и ги наоѓате на Денес.")).toBeAttached();
-    await expect(page.getByRole("link", { name: "Назад кон лекцијата", exact: true })).toHaveAttribute("href", "/teacher/lessons/l-zadaci?from=today");
+    await expect(page.getByText("Ако не ги зачувате промените сега, ги чуваме до 30 дена и ги наоѓате во Лекции.")).toBeAttached();
+    await expect(page.getByRole("link", { name: "Назад кон лекцијата", exact: true })).toHaveAttribute("href", "/teacher/lessons/l-zadaci?from=library");
   });
 
   test("while the questions of an edit are being changed the page is about editing the lesson, and Back is still the lesson", async ({ page }) => {
@@ -1063,14 +1063,14 @@ test.describe("editing a saved lesson", () => {
     // Not "Подготви лекција": nothing is being prepared, a lesson is being changed.
     await expect(title(page)).toHaveText("Уреди лекција");
     await expect(page.locator(".head__sub")).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Назад кон лекцијата", exact: true })).toHaveAttribute("href", "/teacher/lessons/l-zadaci?from=today");
+    await expect(page.getByRole("link", { name: "Назад кон лекцијата", exact: true })).toHaveAttribute("href", "/teacher/lessons/l-zadaci?from=library");
     await expect(page.getByRole("link", { name: "Назад кон лекцијата", exact: true })).toBeVisible();
     // When it is ready, the editor has the same Back.
     await expect(page.getByRole("button", { name: "Врати ги претходните прашања" })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole("link", { name: "Назад кон лекцијата", exact: true })).toHaveAttribute("href", "/teacher/lessons/l-zadaci?from=today");
+    await expect(page.getByRole("link", { name: "Назад кон лекцијата", exact: true })).toHaveAttribute("href", "/teacher/lessons/l-zadaci?from=library");
   });
 
-  test("saving it is the next version of the same lesson: the lesson page says so, and Today shows it changed", async ({ page }) => {
+  test("saving it is the next version of the same lesson: the lesson page says so, and the Lessons page shows it changed", async ({ page }) => {
     await page.getByRole("button", { name: "Уреди лекција" }).click();
     await titleField(page).fill("Проценти, нова верзија");
     await edit(page, 1).click();
@@ -1078,21 +1078,21 @@ test.describe("editing a saved lesson", () => {
     await done(page).click();
     await saveButton(page).click();
 
-    await expect(page).toHaveURL(/\/teacher\/lessons\/l-zadaci\?from=today$/);
+    await expect(page).toHaveURL(/\/teacher\/lessons\/l-zadaci\?from=library$/);
     await expect(title(page)).toHaveText("Проценти, нова верзија");
     await expect(page.locator(".draft__note")).toContainText("Промените се зачувани. Важат за следните часови; веќе одржаните остануваат какви што беа.");
     await expect(page.locator(".questions > li").first()).toContainText("Колку е 10% од 200?");
     const state = await demo(page);
     expect(state.school.lessons.map((l) => [l.id, l.version, l.title])).toEqual([["l-zadaci", 4, "Проценти, нова верзија"]]);
-    // The draft is saved with it: no second lesson, nothing left unfinished on Today.
+    // The draft is saved with it: no second lesson, nothing left unfinished on the Lessons page.
     expect(state.school.drafts[0]).toMatchObject({ consumed_at: expect.any(String), lesson_id: "l-zadaci" });
     await page.goto("/teacher");
-    await expect(page.getByRole("heading", { level: 2, name: "Недовршени лекции" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 2, name: /^Недовршени/ })).toHaveCount(0);
     await expect(page.locator(".lessons > li", { hasText: "Проценти, нова верзија" })).toHaveCount(1);
     await expect(page.locator(".lessons > li", { hasText: "Задачи за проценти" })).toHaveCount(0);
   });
 
-  test("a lesson open for editing is one draft: asking again gives the same one, with the edits in it, and Today lists it as changes", async ({ page }) => {
+  test("a lesson open for editing is one draft: asking again gives the same one, with the edits in it, and the Lessons page lists it as changes", async ({ page }) => {
     await page.getByRole("button", { name: "Уреди лекција" }).click();
     await titleField(page).fill("Во тек на измена");
     await saved(page);
@@ -1118,15 +1118,15 @@ test.describe("editing a saved lesson", () => {
     // It leaves by the way Back does: to the saved lesson, which is as it was.
     await expect(page).toHaveURL(/\/teacher\/lessons\/l-zadaci/);
     await page.goto("/teacher");
-    await expect(page.getByRole("heading", { level: 1, name: "Денес" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Лекции" })).toBeVisible();
     await expect(draft).toHaveCount(0);
     await expect(page.locator(".lessons > li", { hasText: "Задачи за проценти" })).toHaveCount(1);
   });
 });
 
-// ---- Today: the lessons that are not finished ---------------------------------------------------------------------------------
+// ---- The Lessons page: the lessons that are not finished ---------------------------------------------------------------------
 
-test.describe("Today lists what is not finished", () => {
+test.describe("the Lessons page lists what is not finished", () => {
   const second = (extra: Draft) => draftOf({ created_at: iso(Date.now() - 30_000), updated_at: iso(Date.now() - 30_000), ...extra });
 
   test("a draft being written, one that failed and one that is ready, below the prepared lessons, with 'Отвори' or 'Продолжи' and 'Фрли', and one main button", async ({ page }) => {
@@ -1143,13 +1143,13 @@ test.describe("Today lists what is not finished", () => {
       },
       "/teacher",
     );
-    await expect(page.getByRole("heading", { level: 1, name: "Денес" })).toBeVisible();
-    const section = page.getByRole("heading", { level: 2, name: "Недовршени лекции" });
+    await expect(page.getByRole("heading", { level: 1, name: "Лекции" })).toBeVisible();
+    const section = page.getByRole("heading", { level: 2, name: /^Недовршени/ });
     await expect(section).toBeVisible();
-    // Below the prepared lessons: Today is for the lesson of the day, and a few forgotten drafts must not push it off a laptop's screen.
+    // Below the prepared lessons: the page is for the lesson of the day, and a few forgotten drafts must not push it off a laptop's screen.
     const y = async (l: ReturnType<typeof page.locator>) => (await l.boundingBox())!.y;
-    expect(await y(section)).toBeGreaterThan(await y(page.getByRole("heading", { level: 2, name: "Подготвени лекции" })));
-    const drafts = page.locator("section[aria-labelledby=unfinished] .lessons > li");
+    expect(await y(section)).toBeGreaterThan(await y(page.getByRole("heading", { level: 2, name: /^Подготвени/ })));
+    const drafts = page.locator("section[aria-labelledby=nedovrseni] .lessons > li");
     await expect(drafts).toHaveCount(3);
     // Newest first, with the words of what each is doing in place of a title it does not have.
     await expect(drafts.nth(0).getByRole("heading", { level: 3 })).toHaveText("Се подготвува");
@@ -1177,9 +1177,9 @@ test.describe("Today lists what is not finished", () => {
     await expect(page.locator("section[aria-labelledby=prepared] .lessons > li")).toHaveCount(2);
   });
 
-  test("a draft whose title the teacher emptied is still named on Today", async ({ page }) => {
+  test("a draft whose title the teacher emptied is still named on the Lessons page", async ({ page }) => {
     await seed(page, { drafts: [draftOf({ content: { title: "  ", review_summary: "", questions: QUESTIONS } })] }, "/teacher");
-    const draft = page.locator("section[aria-labelledby=unfinished] .lessons > li");
+    const draft = page.locator("section[aria-labelledby=nedovrseni] .lessons > li");
     await expect(draft.getByRole("heading", { level: 3 })).toHaveText("Предложена лекција");
   });
 
@@ -1187,20 +1187,20 @@ test.describe("Today lists what is not finished", () => {
     await page.setViewportSize({ width: 1024, height: 768 });
     const many = Array.from({ length: 6 }, (_, i) => draftOf({ id: `d-many-${i}`, created_at: iso(Date.now() - (i + 1) * 3_600_000), updated_at: iso(Date.now() - (i + 1) * 3_600_000) }));
     await seed(page, { drafts: many }, "/teacher");
-    // Three of them, and a way to the rest.
-    await expect(page.locator("section[aria-labelledby=unfinished] .lessons > li")).toHaveCount(3);
-    await expect(page.getByRole("link", { name: "Сите недовршени (6)" })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 2, name: "Подготвени лекции" })).toBeInViewport();
+    // All of them, after the prepared ones: the Lessons page is the one list, so there is no link to more.
+    await expect(page.locator("section[aria-labelledby=nedovrseni] .lessons > li")).toHaveCount(6);
+    await expect(page.getByRole("link", { name: /^Сите недовршени/ })).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 2, name: /^Подготвени/ })).toBeInViewport();
     await expect(page.locator("section[aria-labelledby=prepared] .lessons > li").first().getByRole("button", { name: /^Започни час/ })).toBeInViewport();
     expect(await overflow(page)).toBeLessThanOrEqual(0);
     await expect(mainButton(page)).toHaveCount(1);
   });
 
-  test("a draft that is being written turns into its lesson on Today, without a reload", async ({ page }) => {
+  test("a draft that is being written turns into its lesson on the Lessons page, without a reload", async ({ page }) => {
     const now = Date.now();
     const job = { started_at: iso(now - 1_000), done_at: iso(now + 6_000), outcome: "ready" };
     await seed(page, { drafts: [draftOf({ job, created_at: iso(now - 1_000), updated_at: iso(now - 1_000) })] }, "/teacher");
-    const draft = page.locator("section[aria-labelledby=unfinished] .lessons > li");
+    const draft = page.locator("section[aria-labelledby=nedovrseni] .lessons > li");
     await expect(draft.getByRole("heading", { level: 3 })).toHaveText("Се подготвува");
     await expect(draft.getByRole("heading", { level: 3 })).toHaveText("Квадратни равенки", { timeout: 15_000 });
     await expect(draft).toContainText("6 прашања");
@@ -1220,15 +1220,15 @@ test.describe("Today lists what is not finished", () => {
       },
       "/teacher",
     );
-    const drafts = page.locator("section[aria-labelledby=unfinished] .lessons > li");
+    const drafts = page.locator("section[aria-labelledby=nedovrseni] .lessons > li");
     await drafts.nth(2).getByRole("link", { name: "Продолжи" }).click();
-    await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d-ready\?from=today$/);
+    await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d-ready$/);
     await expect(titleField(page)).toHaveValue("Квадратни равенки");
-    await page.getByRole("link", { name: "Назад кон Денес" }).click();
+    await page.getByRole("link", { name: "Назад кон Лекции" }).click();
 
     await drafts.nth(0).getByRole("link", { name: "Отвори" }).click();
     await expect(page.getByRole("heading", { level: 2, name: "Ги пишуваме прашањата" })).toBeVisible();
-    await page.getByRole("link", { name: "Назад кон Денес" }).click();
+    await page.getByRole("link", { name: "Назад кон Лекции" }).click();
 
     await drafts.nth(1).getByRole("link", { name: "Отвори" }).click();
     await expect(alerts(page)).toContainText("Не успеавме да ги напишеме прашањата");
@@ -1240,7 +1240,7 @@ test.describe("Today lists what is not finished", () => {
 
   test("'Фрли ја лекцијата', at the end of the draft's page, asks first: staying keeps it, and yes throws it away for good", async ({ page }) => {
     await seed(page, { drafts: [draftOf()] }, "/teacher");
-    const draft = page.locator("section[aria-labelledby=unfinished] .lessons > li");
+    const draft = page.locator("section[aria-labelledby=nedovrseni] .lessons > li");
     await draft.getByRole("link", { name: "Продолжи" }).click();
     const discard = page.getByRole("button", { name: "Фрли ја лекцијата" });
     // It is the last thing on the page, after the bar that saves, and it is a quiet button.
@@ -1258,20 +1258,20 @@ test.describe("Today lists what is not finished", () => {
 
     await discard.click();
     await dialog.getByRole("button", { name: "Да, фрли" }).click();
-    // It leaves by the way Back does, to Today, where the lesson is no longer listed.
+    // It leaves by the way Back does, to the Lessons page, where the lesson is no longer listed.
     await expect(page).toHaveURL(/\/teacher$/);
-    await expect(page.getByRole("heading", { level: 1, name: "Денес" })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 2, name: "Недовршени лекции" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 1, name: "Лекции" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: /^Недовршени/ })).toHaveCount(0);
     expect((await demo(page)).school.drafts).toEqual([]);
     // The lesson itself is not there either: this is the one the AI made, never saved.
     await page.reload();
-    await expect(page.getByRole("heading", { level: 2, name: "Недовршени лекции" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 2, name: /^Недовршени/ })).toHaveCount(0);
   });
 
   test("a draft being written is stopped from its own page: the row opens the wait, and its 'Откажи' asks first", async ({ page }) => {
     const job = { started_at: iso(Date.now() - 1_000), done_at: iso(Date.now() + 5 * 60_000), outcome: "ready" };
     await seed(page, { drafts: [second({ job, content: { title: "Скриено", review_summary: "", questions: [] } })] }, "/teacher");
-    const row = page.locator("section[aria-labelledby=unfinished] .lessons > li");
+    const row = page.locator("section[aria-labelledby=nedovrseni] .lessons > li");
     await expect(row.getByRole("button")).toHaveCount(0);
     await row.getByRole("link", { name: "Отвори" }).click();
     await page.getByRole("button", { name: "Откажи" }).click();
@@ -1282,10 +1282,10 @@ test.describe("Today lists what is not finished", () => {
 test.describe("a new teacher with one draft and no lesson", () => {
   test.use({ account: "novice" });
 
-  test("Today has its one button and the draft, and not the empty welcome", async ({ page }) => {
+  test("the Lessons page has its one button and the draft, and not the empty welcome", async ({ page }) => {
     await seed(page, { drafts: [draftOf()], first_run_done: true }, "/teacher", "novice");
-    await expect(page.getByRole("heading", { level: 2, name: "Недовршени лекции" })).toBeVisible();
-    await expect(page.locator("section[aria-labelledby=unfinished] .lessons > li")).toHaveCount(1);
+    await expect(page.getByRole("heading", { level: 2, name: /^Недовршени/ })).toBeVisible();
+    await expect(page.locator("section[aria-labelledby=nedovrseni] .lessons > li")).toHaveCount(1);
     await expect(page.getByRole("heading", { level: 2, name: "Немате подготвени лекции" })).toHaveCount(0);
     await expect(mainButton(page)).toHaveCount(1);
     await expect(mainButton(page)).toHaveText("Подготви лекција");
@@ -1314,16 +1314,16 @@ test.describe("the first run", () => {
     await expect(mainButton(page)).toHaveText("Подготви ја првата лекција");
     // The longest label of the guide is read on one line (a button of 48px, not two lines of words in a taller one), beside Back.
     expect(await tall(mainButton(page))).toBeLessThanOrEqual(60);
-    await expect(page.getByRole("button", { name: "Не сега, оди на Денес" })).toHaveClass(/btn--quiet/);
+    await expect(page.getByRole("button", { name: "Не сега, оди на Лекции" })).toHaveClass(/btn--quiet/);
     await expect(page.getByText("Да почнеме со вистинска лекција")).toBeVisible();
     // Nothing is marked done by arriving here.
     expect((await demo(page)).novice.school.first_run_done).toBe(false);
   });
 
-  test("'Не сега' ends the guide as before: the first run is done, and Today is next", async ({ page }) => {
+  test("'Не сега' ends the guide as before: the first run is done, and the Lessons page is next", async ({ page }) => {
     await toLastScreen(page);
-    await page.getByRole("button", { name: "Не сега, оди на Денес" }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Денес" })).toBeVisible();
+    await page.getByRole("button", { name: "Не сега, оди на Лекции" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Лекции" })).toBeVisible();
     expect((await demo(page)).novice.school.first_run_done).toBe(true);
   });
 
@@ -1350,13 +1350,13 @@ test.describe("the first run", () => {
     await expect(page).toHaveURL(/\/teacher\/lessons\/l-n\d+$/);
     await expect(page.locator(".draft__note")).toContainText("Лекцијата е зачувана.");
     expect((await demo(page)).novice.school.first_run_done).toBe(true);
-    // Done: the guide does not come back, and Today has the lesson.
+    // Done: the guide does not come back, and the Lessons page has the lesson.
     await page.goto("/teacher");
-    await expect(page.getByRole("heading", { level: 1, name: "Денес" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Лекции" })).toBeVisible();
     await expect(page.locator(".lessons > li")).toHaveCount(1);
   });
 
-  test("until the first lesson is saved, leaving for any other page goes back to the guide, and the draft is waiting on Today afterwards", async ({ page }) => {
+  test("until the first lesson is saved, leaving for any other page goes back to the guide, and the draft is waiting on the Lessons page afterwards", async ({ page }) => {
     await toLastScreen(page);
     await page.getByRole("button", { name: "Подготви ја првата лекција" }).click();
     await page.getByRole("radio", { name: /^II година/ }).check();
@@ -1367,8 +1367,8 @@ test.describe("the first run", () => {
     await page.goto("/teacher");
     await expect(page).toHaveURL(/\/teacher\/welcome/);
     await page.getByRole("button", { name: "Прескокни го водичот" }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Денес" })).toBeVisible();
-    await expect(page.locator("section[aria-labelledby=unfinished] .lessons > li")).toHaveCount(1);
+    await expect(page.getByRole("heading", { level: 1, name: "Лекции" })).toBeVisible();
+    await expect(page.locator("section[aria-labelledby=nedovrseni] .lessons > li")).toHaveCount(1);
   });
 
   test("seen again from Settings, the guide ends as it always did", async ({ page }) => {
@@ -1469,7 +1469,7 @@ test.describe("wording", () => {
     for (const name of ["Easier", "Harder", "More questions", "Shorter time"]) await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Review summary" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Save lesson" })).toHaveClass(/btn--primary/);
-    await expect(page.getByText("If you do not save it now, we keep it for up to 30 days, and you will find it on Today.")).toBeVisible();
+    await expect(page.getByText("If you do not save it now, we keep it for up to 30 days, and you will find it in Lessons.")).toBeVisible();
 
     await card(page, 5).getByRole("button", { name: "Edit" }).click();
     await expect(page.getByRole("textbox", { name: "The question" })).toBeVisible();

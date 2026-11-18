@@ -156,15 +156,15 @@ test.describe("the form", () => {
     await expect(page.getByRole("status").filter({ hasText: "Тоа е најмногу што може да се напише: 200 знаци." })).toHaveCount(1);
   });
 
-  test("Back names where the teacher came from and goes there: Today, else Lessons", async ({ page }) => {
-    await expect(page.getByRole("link", { name: "Назад кон Лекции", exact: true })).toHaveAttribute("href", "/teacher/lessons");
+  test("Back names where the teacher came from and goes there: Lessons", async ({ page }) => {
+    await expect(page.getByRole("link", { name: "Назад кон Лекции", exact: true })).toHaveAttribute("href", "/teacher");
     await page.goto("/teacher");
     await page.getByRole("link", { name: "Подготви лекција" }).click();
     await expect(title(page)).toHaveText("Подготви лекција");
-    await expect(page).toHaveURL(/\/teacher\/lessons\/new\?from=today$/);
-    await page.getByRole("link", { name: "Назад кон Денес", exact: true }).click();
+    await expect(page).toHaveURL(/\/teacher\/lessons\/new$/);
+    await page.getByRole("link", { name: "Назад кон Лекции", exact: true }).click();
     await expect(page).toHaveURL(/\/teacher$/);
-    await expect(title(page)).toHaveText("Денес");
+    await expect(title(page)).toHaveText("Лекции");
   });
 });
 
@@ -303,11 +303,11 @@ test.describe("the wait", () => {
     await go(page).click();
 
     // The sentences were taken at once, so there is no reading part, and the wait is on the page of the draft.
-    await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d\d+\?from=today$/);
+    await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d\d+$/);
     await expect(title(page)).toHaveText("Подготви лекција");
     await expect(phase(page, "Ги пишуваме прашањата")).toBeFocused();
     await expect(page.getByText(/^Чекор \d од 2$/)).toHaveCount(0);
-    await expect(page.getByText("Ова може да потрае до 3 минути. Можете да ја напуштите страницата: лекцијата ќе Ве чека на Денес.")).toBeVisible();
+    await expect(page.getByText("Ова може да потрае до 3 минути. Можете да ја напуштите страницата: лекцијата ќе Ве чека во Лекции.")).toBeVisible();
     await expect(cancel(page)).toHaveClass(/btn--secondary/);
     await expect(mainButton(page)).toHaveCount(0);
     await expect(page.locator("main").getByText(/\d\s*%/)).toHaveCount(0);
@@ -318,7 +318,7 @@ test.describe("the wait", () => {
     // Back from the draft goes to where the teacher started, never to the form or the wait.
     await page.goBack();
     await expect(page).toHaveURL(/\/teacher$/);
-    await expect(title(page)).toHaveText("Денес");
+    await expect(title(page)).toHaveText("Лекции");
   });
 
   test("a document: first it is read on the form, then the questions are written on the page of the draft, and the file is named Word's own", async ({ page }) => {
@@ -354,21 +354,21 @@ test.describe("the wait", () => {
     expect((await demo(page)).drafts).toHaveLength(1);
   });
 
-  test("the wait may be left without a question, and the lesson is on Today, being prepared, until it is ready", async ({ page }) => {
+  test("the wait may be left without a question, and the lesson is in Lessons, being prepared, until it is ready", async ({ page }) => {
     await yearTwo(page);
     await typeSentences(page);
     await go(page).click();
     await expect(page).toHaveURL(DRAFT_URL);
     await expect(phase(page, "Ги пишуваме прашањата")).toBeVisible();
-    await menu(page).getByRole("link", { name: "Денес" }).click();
+    await menu(page).getByRole("link", { name: "Лекции" }).click();
     await expect(leaveDialog(page)).toHaveCount(0);
-    await expect(title(page)).toHaveText("Денес");
+    await expect(title(page)).toHaveText("Лекции");
     const card = page.locator(".lessons > li", { hasText: "Се подготвува" });
     await expect(card).toHaveCount(1);
     // A lesson that is being written has nothing to carry on, so it is opened to be looked at (it is "Продолжи" once it is ready).
     await expect(card.getByRole("link", { name: "Отвори" })).toBeVisible();
     await expect(card.getByRole("link", { name: "Продолжи" })).toHaveCount(0);
-    // When it is ready, Today says so without being asked.
+    // When it is ready, Lessons says so without being asked.
     await expect(page.locator(".lessons > li", { hasText: "Квадратни равенки" })).toBeVisible({ timeout: 20_000 });
     await expect(card).toHaveCount(0);
   });
@@ -401,7 +401,7 @@ test.describe("the wait", () => {
     await expect(page.getByRole("radio", { name: /^Неколку реченици/ })).toBeChecked();
     await expect(textbox(page)).toHaveValue(TYPED);
     await expect(emphasis(page)).toHaveValue("Повеќе примери.");
-    // The draft is gone and does not turn up later; nor is it on Today.
+    // The draft is gone and does not turn up later; nor is it in Lessons.
     expect((await demo(page)).drafts).toHaveLength(0);
     await page.waitForTimeout(9_000);
     expect((await demo(page)).drafts).toHaveLength(0);
@@ -660,7 +660,7 @@ test.describe("leaving the form", () => {
     await go(page).click();
     await expect(page).toHaveURL(DRAFT_URL);
     await expect(phase(page, "Ги пишуваме прашањата")).toBeVisible();
-    for (const link of ["Библиотека", "Денес"]) {
+    for (const link of ["Библиотека", "Лекции"]) {
       await menu(page).getByRole("link", { name: link }).click();
       await expect(leaveDialog(page)).toHaveCount(0);
       await expect(title(page)).toHaveText(link);
@@ -668,15 +668,15 @@ test.describe("leaving the form", () => {
     }
     // The wait is not a form that holds work: closing the tab asks nothing either.
     await page.goto(page.url());
-    await page.locator("section[aria-labelledby=unfinished]").getByRole("link", { name: "Отвори" }).click();
+    await page.locator("section[aria-labelledby=nedovrseni]").getByRole("link", { name: "Отвори" }).click();
     await expect(phase(page, "Ги пишуваме прашањата")).toBeVisible();
     const closing = page.close({ runBeforeUnload: true });
     await closing;
   });
 
   test("the form itself is left without a question when it is empty, and the document that is being read is work", async ({ page }) => {
-    await menu(page).getByRole("link", { name: "Денес" }).click();
-    await expect(title(page)).toHaveText("Денес");
+    await menu(page).getByRole("link", { name: "Лекции" }).click();
+    await expect(title(page)).toHaveText("Лекции");
     await expect(leaveDialog(page)).toHaveCount(0);
 
     await page.getByRole("link", { name: "Подготви лекција" }).click();
@@ -684,7 +684,7 @@ test.describe("leaving the form", () => {
     await chooseDocument(page);
     await go(page).click();
     await expect(phase(page, "Го читаме документот")).toBeVisible();
-    await menu(page).getByRole("link", { name: "Денес" }).click();
+    await menu(page).getByRole("link", { name: "Лекции" }).click();
     await expect(leaveDialog(page)).toBeVisible();
     await expect(leaveDialog(page)).toContainText("Ако излезете, она што го внесовте се губи.");
     await expect(leaveDialog(page).getByRole("button", { name: "Не, остани" })).toBeFocused();
@@ -700,7 +700,7 @@ test.describe("leaving a form that holds work", () => {
   test("typed sentences are asked about before the page is left: Остани keeps them, Излези goes", async ({ page }) => {
     await yearTwo(page);
     await typeSentences(page);
-    await menu(page).getByRole("link", { name: "Денес" }).click();
+    await menu(page).getByRole("link", { name: "Лекции" }).click();
     const dialog = leaveDialog(page);
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText("Ако излезете, она што го внесовте се губи.");
@@ -724,26 +724,26 @@ test.describe("leaving a form that holds work", () => {
     await yearTwo(page);
     await page.getByRole("radio", { name: /^Документ/ }).check();
     await page.getByRole("radio", { name: /^Неколку реченици/ }).check();
-    await menu(page).getByRole("link", { name: "Денес" }).click();
-    await expect(title(page)).toHaveText("Денес");
+    await menu(page).getByRole("link", { name: "Лекции" }).click();
+    await expect(title(page)).toHaveText("Лекции");
     await expect(leaveDialog(page)).toHaveCount(0);
 
     await page.goto(NEW);
     await emphasis(page).fill("Повеќе примери.");
-    await menu(page).getByRole("link", { name: "Денес" }).click();
+    await menu(page).getByRole("link", { name: "Лекции" }).click();
     await expect(leaveDialog(page)).toBeVisible();
     await leaveDialog(page).getByRole("button", { name: "Не, остани" }).click();
     await emphasis(page).fill("");
     await chooseDocument(page);
-    await menu(page).getByRole("link", { name: "Денес" }).click();
+    await menu(page).getByRole("link", { name: "Лекции" }).click();
     await expect(leaveDialog(page)).toBeVisible();
   });
 
   test("an empty form is left without a question, in the drawer layout too", async ({ page }) => {
     await page.setViewportSize({ width: 900, height: 700 });
     await page.getByRole("button", { name: "Мени", exact: true }).click();
-    await menu(page).getByRole("link", { name: "Денес" }).click();
-    await expect(title(page)).toHaveText("Денес");
+    await menu(page).getByRole("link", { name: "Лекции" }).click();
+    await expect(title(page)).toHaveText("Лекции");
     await expect(leaveDialog(page)).toHaveCount(0);
   });
 });
@@ -759,7 +759,7 @@ test.describe("the draft page", () => {
     await typeSentences(page);
     await emphasis(page).fill("Повеќе примери.");
     await go(page).click();
-    await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d\d+(\?from=today)?$/, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d\d+$/, { timeout: 20_000 });
     await expect(title(page)).toHaveText("Квадратни равенки", { timeout: 20_000 });
   }
 
@@ -795,16 +795,17 @@ test.describe("the draft page", () => {
     await expect(title(page)).toHaveText("Лекции");
   });
 
-  test("Back from the draft goes to where the teacher started: Today when it began there, where the draft is waiting", async ({ page }) => {
+  test("Back from the draft goes to Lessons, where the draft is waiting", async ({ page }) => {
     await page.goto("/teacher");
     await page.getByRole("link", { name: "Подготви лекција" }).click();
     await makeDraft(page);
-    await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d\d+\?from=today$/);
-    await page.getByRole("link", { name: "Назад кон Денес", exact: true }).click();
-    await expect(title(page)).toHaveText("Денес");
-    // The draft is not a lesson yet: Today lists it among the lessons that are not finished, and the prepared ones are as they were.
-    await expect(page.getByRole("heading", { level: 2, name: "Недовршени лекции" })).toBeVisible();
-    await expect(page.locator(".lessons > li")).toHaveCount(3);
+    await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d\d+$/);
+    await page.getByRole("link", { name: "Назад кон Лекции", exact: true }).click();
+    await expect(page).toHaveURL(/\/teacher$/);
+    await expect(title(page)).toHaveText("Лекции");
+    // The draft is not a lesson yet: Lessons lists it among the lessons that are not finished, apart from the prepared ones.
+    await expect(page.locator("section[aria-labelledby=nedovrseni]").getByRole("heading", { level: 3, name: "Квадратни равенки" })).toBeVisible();
+    await expect(page.locator("section[aria-labelledby=prepared]")).toBeVisible();
   });
 
   test("a reload finds it again, from the API (EC-LES-09), and so does its link in a new tab", async ({ page, context }) => {
@@ -883,7 +884,7 @@ test.describe("keyboard only", () => {
   test("the question about leaving the form is answered with the keyboard: Enter stays", async ({ page }) => {
     await yearTwo(page);
     await typeSentences(page);
-    await menu(page).getByRole("link", { name: "Денес" }).focus();
+    await menu(page).getByRole("link", { name: "Лекции" }).focus();
     await page.keyboard.press("Enter");
     await expect(leaveDialog(page)).toBeVisible();
     await page.keyboard.press("Enter");
@@ -947,7 +948,7 @@ test.describe("wording", () => {
     await page.getByRole("textbox", { name: "Write a few sentences about the topic" }).fill("Вектори и матрици. Операции со матрици и детерминанти на матрици.");
     await page.getByRole("button", { name: "Prepare questions", exact: true }).click();
     await expect(page.getByRole("heading", { level: 2, name: "We are writing the questions" })).toBeVisible();
-    await expect(page.getByText("This can take up to 3 minutes. You can leave this page: the lesson will wait for you on Today.")).toBeVisible();
+    await expect(page.getByText("This can take up to 3 minutes. You can leave this page: the lesson will wait for you in Lessons.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Cancel", exact: true })).toHaveClass(/btn--secondary/);
     await expect(page).toHaveURL(/\/teacher\/lessons\/drafts\/d\d+$/);
     await expect(page.locator(".head__sub")).toContainText("Линеарна алгебра · Year 2", { timeout: 20_000 });
@@ -1043,12 +1044,12 @@ test.describe("the drawer layout and a laptop's small window", () => {
     expect(await tall(cancel(page))).toBeGreaterThanOrEqual(44);
     await expect(cancel(page)).toBeInViewport();
 
-    // Leaving loses nothing, so the drawer's links go where they say, and the lesson waits on Today.
+    // Leaving loses nothing, so the drawer's links go where they say, and the lesson waits in Lessons.
     await page.getByRole("button", { name: "Мени", exact: true }).click();
-    await menu(page).getByRole("link", { name: "Денес" }).click();
+    await menu(page).getByRole("link", { name: "Лекции" }).click();
     await expect(leaveDialog(page)).toHaveCount(0);
-    await expect(title(page)).toHaveText("Денес");
-    await page.locator("section[aria-labelledby=unfinished]").getByRole("link", { name: "Отвори" }).click();
+    await expect(title(page)).toHaveText("Лекции");
+    await page.locator("section[aria-labelledby=nedovrseni]").getByRole("link", { name: "Отвори" }).click();
 
     await expect(retry(page)).toBeVisible({ timeout: 20_000 });
     expect(await overflow(page)).toBeLessThanOrEqual(0);
