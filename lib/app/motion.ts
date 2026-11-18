@@ -14,8 +14,6 @@ export const SPRINGS = {
   big: { duration: 0.31, bounce: 0.5 }, // the big moment only
 } as const satisfies Record<string, Spring>;
 
-export type SpringName = keyof typeof SPRINGS;
-
 // SwiftUI's mapping with mass 1: stiffness (2 pi / duration)^2, damping 4 pi (1 - bounce) / duration.
 export function springPhysics({ duration, bounce }: Spring) {
   return {

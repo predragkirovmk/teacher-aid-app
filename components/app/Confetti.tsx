@@ -6,7 +6,7 @@ const noop = () => () => {};
 const calmNow = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const COLORS = ["--yellow", "--ice", "--yellow-soft", "--ice-2"];
 /** The longest a piece lives: its animation plus its delay, with a little room. The container leaves the DOM after it. */
-export const CONFETTI_MS = 1700;
+const CONFETTI_MS = 1700;
 
 /** Where each piece goes: spread evenly round the circle, with a little variety, and no randomness so the layout is the same every time. */
 export function confettiPieces(n: number) {
