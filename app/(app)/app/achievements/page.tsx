@@ -1,7 +1,7 @@
 "use client";
 
 import { LockIcon } from "@phosphor-icons/react";
-import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { Gate } from "@/components/app/QueryState";
 import { Top } from "@/components/app/Top";
 import { demoOnly } from "@/lib/app/api";
@@ -13,6 +13,8 @@ import { HAPTICS, buzz } from "@/lib/app/haptics";
 import { useT } from "@/lib/app/i18n";
 
 const noop = () => () => {};
+/** The delay of `.unlock`'s pop in app.css: the buzz waits as long, so it lands as the badge starts to pop. */
+const POP_DELAY_MS = 250;
 const SEEN_KEY = "teacheraid-achievements-seen";
 // The raw string, so the snapshot is stable between renders.
 const readSeen = () => {
@@ -45,13 +47,17 @@ function BadgeList({ all }: { all: Badge[] }) {
   const seen = useSyncExternalStore(noop, readSeen, () => "*").split(",");
   const fresh = (b: Badge) => b.earned && !(demoOnly && b.code === STARTING_BADGE) && !seen.includes(b.code) && !seen.includes("*");
 
-  // One short double for the unlock, as it starts, however many badges are new; a ref keeps a remount from buzzing twice.
+  // One short double as the badge starts to pop, however many badges are new. A layout effect runs in the commit, inside the screen's
+  // view transition (a passive effect would wait for the slide to end); the ref is set when the buzz fires, so a remount buzzes once.
   const buzzed = useRef(false);
   const anyFresh = list.some(fresh);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!anyFresh || buzzed.current) return;
-    buzzed.current = true;
-    buzz(HAPTICS.badge);
+    const id = setTimeout(() => {
+      buzzed.current = true;
+      buzz(HAPTICS.badge);
+    }, POP_DELAY_MS);
+    return () => clearTimeout(id);
   }, [anyFresh]);
 
   // Mark them seen once the unlock has played, so it only happens the first time.
