@@ -81,3 +81,53 @@ Rules for the server:
 ## Realtime
 
 No event is added or removed. `student.joined` changes meaning as described above, and every snapshot an event may carry has the shapes above.
+
+## Group 3: the answer shows by itself, no Review phase, the end list, no practice set
+
+Source: the owner's simplification of 2026-11-17, group 3 (items 9 to 11 in `docs/teacher-plan.md`, "The owner's simplification"). The types are in `lib/teacher/api/types.ts`; the live adapter is `lib/teacher/api/live.ts`. This section replaces what the "End of a lesson and attendance" section above says about the end list.
+
+### Endpoints removed
+
+| Endpoint | Why |
+|---|---|
+| `POST /sessions/{id}/questions/{sqid}/reveal` | The right answer shows by itself when the question ends. There is no button. |
+| `POST /sessions/{id}/practice-set` | The practice set is removed from the teacher app. |
+| `GET /sessions/{id}/practice-set` | Same. |
+
+The `advance` endpoint stays and takes only `{ "to": "teaching" }`. `{ "to": "review" }` is `validation_failed`.
+
+### The question ends and its answer shows
+
+- `QuestionStatus` is `ready | open | revealed | skipped`. `closed` is gone.
+- A question goes from `open` to `revealed` the moment it ends: at its time (`closes_at`), or sooner when every student who is there and online has answered (BR-TIME-04). The server decides the end; no teacher call is involved.
+- `ConsoleQuestion.closed_at` is removed. `revealed_at` is when the question ended (so it equals `closes_at` once the end is reached early). `counts` is set from then on.
+- `ClassViewSnapshot.reveal` is set once the question has ended (it was: once the teacher revealed it). `PublicQuestion.status` is `revealed` then.
+- Events: `question.closed` is removed from the public, class and console channels. `question.revealed` (with `correct_answer`, `explanation`, `counts`) is sent at the end. `question.progress` with the final count and `leaderboard.updated` are sent just before it, in that order, so the projector can show the ranking beside the answer.
+- Skipping: `POST .../skip` is allowed for a `ready` or `open` question, and is `invalid_state` for a `revealed` one (a question whose answer has shown is part of the lesson).
+- A question still open when the teacher presses End is not counted in the end list (see below).
+
+### No Review phase
+
+- `SessionState` is `lobby | teaching | ended`. The lesson goes `lobby` to `teaching` with `advance`, and from either to `ended` with End (`POST /sessions/{id}/end`), as before.
+- Removed: `ClassViewSnapshot.review` and the `ClassViewReview` type, the `review.ready` event on the class and console channels, and the `MissedQuestion` type.
+- `question_open` is no longer an answer of `advance`.
+- Anonymous questions are read from the console only (`ConsoleSnapshot.anon_questions` and `anon_question.received`), in the teacher's tab, for as long as the lesson is open. Nothing about them goes to the class channel any more.
+
+### The end list
+
+`SessionReview` is now:
+
+```
+{ server_now, session: SessionRef, students: ResultRow[] }
+ResultRow = { student_id, full_name, correct: number, asked: number }
+```
+
+- `GET /sessions/{id}/review` answers it once the session has ended, and `invalid_state` (409) before. `POST /sessions/{id}/end` answers the same object. The `EndResult` type is removed.
+- `students` are the students who joined, in register order (surname, then given name, Macedonian alphabet). No student who never joined is listed.
+- `asked` is the number of questions that were put to the student: sent after the student joined (`student.joined_at <= question.fired_at`), not skipped, and with a right answer. A quick question made on the spot with `correct: null` is a poll and counts for nobody. `correct` is how many of those the student answered rightly (BR-ANS-01..03). A question that had not ended when End was pressed is not counted.
+- Removed from the answer: `attendance`, `tally`, `most_missed`, `anon_questions`. Removed types: `AttendanceRow`, `AttendanceStatus`, `AttendanceTally`, `NoDeviceReason`, `MissedQuestion`, `EndResult`.
+- Lessons ended earlier are read the same way, from the answers they already hold.
+
+### The practice set is removed
+
+Removed types: `PracticeSetSummary`, `PracticeSetResult`, `PracticeResults`. The teacher app no longer sends missed questions as homework and no longer shows who did it. What the student app does with practice sets is not part of this change.

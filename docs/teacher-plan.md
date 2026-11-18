@@ -34,6 +34,12 @@ The owner's answers: the Library has a segmented pill, "Мои лекции" (he
 on the right; there are no colleagues anywhere, and their lessons become templates. Segmented controls still
 merge (`SegGlide`).
 
+The owner's answers for items 9 to 11 (2026-11-18): the score on the end page is the correct answers of the
+questions put to that student ("4 од 6": sent after they joined, not skipped, with a right answer); the
+practice set is removed from the teacher app; after the last question the question panel itself says so and
+offers the red End (nothing pops up), and the anonymous questions stay in their tab; on the waiting step a
+student's row is just the name. The projector's ranking between questions keeps a name on one line.
+
 ## Owner decisions (2026-10-27, do not re-ask)
 
 - Installable web app at `/teacher`, branch `teacher-v1` off `main`. The student app (`/app`)
