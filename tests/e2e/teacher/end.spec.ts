@@ -58,7 +58,7 @@ test.describe("End", () => {
       await expect(q).toContainText("Часот се затвора. Учениците повеќе не можат да се приклучат ниту да одговараат, и се запишува списокот со нивните резултати.");
       await expect(q.getByRole("button", { name: "Не, часот останува отворен" })).toBeFocused();
       await expect(q.getByRole("button", { name: "Не, часот останува отворен" })).toHaveClass(/btn--primary/);
-      await expect(q.getByRole("button", { name: "Да, заврши го часот" })).toHaveClass(/btn--danger|btn--secondary/);
+      await expect(q.getByRole("button", { name: "Да, заврши го часот" })).toHaveClass(/btn--danger/);
       // No is safe: nothing happened.
       await page.keyboard.press("Escape");
       await expect(q).toBeHidden();

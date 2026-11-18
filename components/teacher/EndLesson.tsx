@@ -62,6 +62,7 @@ export function EndLesson({
         problem={problem ?? undefined}
         stay={t("end.q.stay")}
         confirm={t("end.q.yes")}
+        danger
         onStay={() => {
           setAsking(false);
           setProblem(null);

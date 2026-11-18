@@ -69,7 +69,7 @@ screen by that.
 
 - **One job per screen.** One main button a screen: deep teal, 48px, a pill. Everything else is
   quiet (44px). Nothing is hidden behind hover, right-click, drag or a shortcut.
-- **Yellow means a lesson is live** and nothing else. Red is for End and for warnings.
+- **Yellow means a lesson is live** and nothing else. Red is for End, for deleting a lesson and for warnings.
 - **Type carries the order**: one large title, 17px body, 16px floor, bold only for names and
   numbers. Golos Text everywhere.
 - **Calm surfaces**: white panels on the pale ground, a hairline ring, radius 20 to 22px, one soft

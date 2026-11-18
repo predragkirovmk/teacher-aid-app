@@ -105,7 +105,7 @@ The values live in `:root` of `app/(teacher)/teacher.css`; this table is the sum
 | `--teal` | `#124554` | The accent: the main button, links, what is selected (white on it 10.5:1) |
 | `--tint` | `#E1ECEE` | The fill of a quiet button and of the selected row (teal on it 8.7:1) |
 | `--yellow` | `#FFC83E` | A lesson is live, and nothing else (ink on it 9.7:1) |
-| `--red` | `#B42318` | End and what went wrong (6.6:1 on white), as words and an edge, not a block |
+| `--red` | `#B42318` | End, deleting a lesson and what went wrong (6.6:1 on white), as words and an edge, not a block |
 | `--hairline`, `--edge`, `--edge-strong` | ink at 9%, ink at 20%, `#77898F` | A line between rows; the edge of a quiet control; the edge of a box to write in (3.7:1) |
 
 Contrast: every pair of words and ground above is 4.5:1 or more, so there is no rule about which

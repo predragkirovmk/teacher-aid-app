@@ -370,11 +370,11 @@ test.describe("the lessons not finished", () => {
 // ---- Deleting a lesson -------------------------------------------------------------------------------------------------------
 
 test.describe("deleting a lesson", () => {
-  test("is the last thing on the lesson's page, a quiet button away from the buttons that are pressed every day", async ({ page }) => {
+  test("is the last thing on the lesson's page, a red-edged button away from the buttons that are pressed every day", async ({ page }) => {
     await page.goto(PROCENTI);
     await expect(title(page)).toHaveText("Проценти и пропорции");
     await expect(deleteButton(page)).toBeVisible();
-    await expect(deleteButton(page)).toHaveClass(/btn--secondary/);
+    await expect(deleteButton(page)).toHaveClass(/btn--danger/);
     await expect(mainButton(page)).toHaveCount(1);
     await expect(mainButton(page)).toHaveText("Започни час");
     const y = async (l: ReturnType<typeof page.locator>) => (await l.boundingBox())!.y;
@@ -394,7 +394,7 @@ test.describe("deleting a lesson", () => {
     await expect(question).toContainText("Ова не може да се врати.");
     await expect(question.getByRole("button", { name: "Не, задржи ја" })).toHaveClass(/btn--primary/);
     await expect(question.getByRole("button", { name: "Не, задржи ја" })).toBeFocused();
-    await expect(question.getByRole("button", { name: "Да, избриши ја" })).toHaveClass(/btn--secondary/);
+    await expect(question.getByRole("button", { name: "Да, избриши ја" })).toHaveClass(/btn--danger/);
     // "No" and Escape both keep the lesson.
     await question.getByRole("button", { name: "Не, задржи ја" }).click();
     await expect(question).toBeHidden();
