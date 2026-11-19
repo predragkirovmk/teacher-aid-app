@@ -2818,9 +2818,21 @@ button {
 /* The projector, in the console's top bar: the button, under it one line that says where its window stands, and the one warning that
    matters. The line keeps its room while it has nothing to say, so the bar is the same height before and after the window is opened. */
 .projector {
+  position: relative;
   display: grid;
   justify-items: start;
   gap: 0.25rem;
+}
+/* From a laptop's width the status line hangs under its button instead of making the tools block taller than the title block, so the buttons
+   centre on the title. The room under the bar (.head--compact) is made for it. With the blocked-popup callout the line stays in flow. */
+@media (min-width: 64rem) {
+  .projector:not(:has(.callout)) .projector__status {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 0.25rem;
+    white-space: nowrap;
+  }
 }
 .projector__status {
   display: flex;
@@ -2912,7 +2924,7 @@ button {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.25rem;
+  gap: 0.5rem;
 }
 /* A student is one line: the name, then what is worth saying (an icon and a word). It wraps below the name only when it must. */
 .person {
@@ -3312,7 +3324,7 @@ body:has(.cv) {
 
 /* While teaching the Back, the title and the course share a row, so the panel is in the first screen of a laptop. */
 .head--compact {
-  margin-bottom: var(--sp-2);
+  margin-bottom: var(--sp-4);
   align-items: center;
 }
 /* The Back on the left, the title and the course in one column beside it, so the course sits under the title it belongs to. */
@@ -3360,7 +3372,7 @@ body:has(.cv) {
 
 .qpanel {
   display: grid;
-  gap: var(--sp-2);
+  gap: var(--sp-1);
   justify-items: start;
   /* The question that is open is what is live on this page: the yellow edge. */
   border: 2px solid var(--yellow);
@@ -3463,6 +3475,24 @@ body:has(.cv) {
 }
 .qpanel .qpanel__said svg {
   margin-top: 0.0625rem;
+}
+/* The card groups by nearness: 8px inside a group, 24px between groups (the 8px gap plus a 16px margin on the first line of a group).
+   Heading: the title with the label, the state or the skipped line that follows it, 4px under the title.
+   The question: the prompt, and in the revealed step the answer. The live numbers: the timer with the progress, or the counts.
+   The doing: the buttons, with their footnote close under them. The nudge and a problem are each a group of their own. */
+.qpanel .qpanel__title + * {
+  margin-top: calc(var(--sp-1) / -2);
+}
+.qpanel .qpanel__prompt,
+.qpanel .qpanel__timer,
+.qpanel .qpanel__counts,
+.qpanel .qpanel__actions,
+.qpanel .qpanel__nudge,
+.qpanel > .problem {
+  margin-top: var(--sp-2);
+}
+.qpanel .qpanel__actions + .qpanel__hint {
+  margin-top: var(--sp-1);
 }
 
 .qlist {
@@ -4899,7 +4929,7 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
 .live__tools {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--sp-1) var(--sp-3);
 }
 
@@ -4918,14 +4948,34 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   margin-top: 0;
 }
 /* What a teacher reads once: how to place the projected window, and where help is. Quiet, at the foot of the stage. */
-.live__notes {
+.live__notes,
+.live__notes-body {
   display: grid;
   justify-items: start;
   gap: var(--sp-1);
+}
+.live__notes-body[hidden] {
+  display: none;
+}
+/* One left edge for the whole block: the warning's own text starts a padding in from its box, so the hint starts there too and the quiet buttons
+   (whose words sit a button padding in) are pulled back by the difference. */
+.live__notes .projector__hint {
   padding-inline: var(--sp-2);
 }
 .live__notes .btn--quiet {
-  margin-left: calc(var(--sp-2) * -1);
+  margin-left: calc(var(--sp-2) - 0.75rem);
+}
+/* While teaching the notes wait behind "За проекторот": the caret turns when they are shown, and the words say so too. */
+.live__how svg {
+  transition: transform var(--dur) var(--ease);
+}
+.live__how[data-open="true"] svg {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .live__how svg {
+    transition: none;
+  }
 }
 .live__panel {
   display: flex;
@@ -4934,8 +4984,22 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   min-width: 0;
 }
 @media (min-width: 64rem) {
+  /* The stage is the one job, so it gets the wider column: with the card's larger padding, "Испрати го следното прашање" and "Прескокни"
+     still share a line from 1280 wide. */
   .live__frame {
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    column-gap: var(--sp-4);
+  }
+  /* The question sits in air: one step more padding than other cards. */
+  .live__stage .qpanel {
+    padding: var(--sp-4);
+  }
+}
+/* Where Back sits beside the title the head is short, and the status line hanging under the projector button reaches below it: more room
+   under the bar, so that line never sits on the stage. */
+@media (min-width: 75rem) {
+  .head--compact:has(.live__tools) {
+    margin-bottom: var(--sp-5);
   }
 }
 /* On a laptop the lesson is one screen: the panel is as tall as the window allows and a long class or a long list scrolls inside it. */
@@ -4943,7 +5007,7 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   .live__panel {
     position: sticky;
     top: var(--sp-3);
-    max-height: calc(100dvh - 12.5rem);
+    max-height: calc(100dvh - 13rem);
   }
   .live__panel .tabs__panel[data-active="true"] {
     /* Positioned, so the lines only a screen reader meets scroll with the list and do not make the page longer. */

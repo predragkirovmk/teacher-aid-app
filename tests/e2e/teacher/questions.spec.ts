@@ -888,6 +888,8 @@ test.describe("words and zoom", () => {
     await expect(panel(page).getByTestId("right-answer")).toHaveText("Right answer: 36");
     await expect(projector.getByTestId("cv-answer")).toHaveText("The right number is 36");
     await expect(projector.getByRole("heading", { name: "Best so far" })).toBeVisible();
+    // While teaching, Help waits with the other projector notes behind "About the projector".
+    await page.getByRole("button", { name: "About the projector", exact: true }).click();
     await expect(page.getByRole("link", { name: /^Help/ })).toHaveAttribute("target", "_blank");
   });
 

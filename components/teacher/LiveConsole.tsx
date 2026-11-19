@@ -1,9 +1,9 @@
 "use client";
 
-import { PlayIcon, QuestionIcon } from "@phosphor-icons/react";
+import { CaretDownIcon, PlayIcon, QuestionIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useLayoutEffect, useState } from "react";
+import { useId, useLayoutEffect, useState } from "react";
 import {
   advanceSession,
   useConsole,
@@ -126,22 +126,7 @@ export function LiveConsole() {
               <div className="live__stage">
                 {teaching && <QuestionPanel snapshot={snapshot} />}
                 <JoinCard snapshot={snapshot} />
-                <div className="live__notes">
-                  <MirrorWarning />
-                  <p className="projector__hint">
-                    {t("live.projector.hint")}
-                  </p>
-                  <Link
-                    href="/teacher/help"
-                    className="btn btn--quiet"
-                    target="_blank"
-                    rel="noopener"
-                  >
-                    <QuestionIcon size={24} aria-hidden="true" />
-                    {t("nav.help")}
-                    <span className="sr">{`, ${t("link.newtab")}`}</span>
-                  </Link>
-                </div>
+                <ProjectorNotes folded={teaching} />
               </div>
               {/* Who is here keeps its place from the lobby on; while teaching the questions and what the class writes share it, one at a time. */}
               <div className="live__panel">
@@ -195,6 +180,47 @@ export function LiveConsole() {
         )}
       </div>
     </>
+  );
+}
+
+/**
+ * What a teacher reads once: the mirror warning, how to place the projected window, and where Help is. In the lobby, where there is time, it is
+ * shown. While teaching it waits behind one quiet button that says in words whether it is open, so the question has the stage to itself.
+ */
+function ProjectorNotes({ folded }: { folded: boolean }) {
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+  const notes = useId();
+  return (
+    <div className="live__notes">
+      {folded && (
+        <button
+          type="button"
+          className="btn btn--quiet live__how"
+          aria-expanded={open}
+          aria-controls={notes}
+          data-open={open}
+          onClick={() => setOpen((was) => !was)}
+        >
+          <CaretDownIcon size={20} aria-hidden="true" />
+          {t(open ? "live.notes.hide" : "live.notes.show")}
+        </button>
+      )}
+      <div id={notes} className="live__notes-body" hidden={folded && !open}>
+        <MirrorWarning />
+        <p className="projector__hint">{t("live.projector.hint")}</p>
+        <Link
+          href="/teacher/help"
+          className="btn btn--quiet"
+          target="_blank"
+          rel="noopener"
+        >
+          <QuestionIcon size={24} aria-hidden="true" />
+          {t("nav.help")}
+          <span className="sr">{`, ${t("link.newtab")}`}</span>
+        </Link>
+      </div>
+    </div>
   );
 }
 

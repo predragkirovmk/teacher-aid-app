@@ -43,6 +43,10 @@ student's row is just the name. The projector's ranking between questions keeps 
 - 2026-11-19: the line of the lesson's steps (Чекаме ученици, Предавање, Крај) is gone from the console and the end page; the
   title and the card in front already say where the lesson is.
 
+- 2026-11-19: the teaching console breathes: the projector notes sit behind „За проекторот“ while teaching (shown in the lobby), the
+  top bar's buttons line up with the title, the question card groups its lines, the gutter between the columns is wider and the
+  roster rows are further apart.
+
 ## Owner decisions (2026-10-27, do not re-ask)
 
 - Installable web app at `/teacher`, branch `teacher-v1` off `main`. The student app (`/app`)

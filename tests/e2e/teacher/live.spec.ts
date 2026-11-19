@@ -244,6 +244,40 @@ test.describe("the projector", () => {
     await expect(item.getByText(/mirroring/)).toBeVisible();
   });
 
+  test("while teaching, the projector notes wait behind „За проекторот“, which opens and closes them and says which", async ({ page, context }) => {
+    await start(page, context);
+    await at(context, 30, page);
+    await page.getByRole("button", { name: "Почни го часот" }).click();
+    await page.getByRole("button", { name: "Да, почни го часот" }).click();
+    await expect(page.locator(".qpanel")).toBeVisible();
+    const warning = page.getByText(/Проекторот мора да го прикажува само екранот за проектор/);
+    const hint = page.getByText(/Влечете го прозорецот/);
+    const help = page.getByRole("link", { name: /^Помош/ });
+    const show = page.getByRole("button", { name: "За проекторот", exact: true });
+    // Closed at first: the button is there, 44px tall, and none of the notes is.
+    await expect(show).toBeVisible();
+    await expect(show).toHaveAttribute("aria-expanded", "false");
+    expect(await tall(show)).toBe(44);
+    await expect(warning).toBeHidden();
+    await expect(hint).toBeHidden();
+    await expect(help).toHaveCount(0);
+    // The one main button of the screen is still the question's.
+    await expect(mainButton(page)).toHaveCount(1);
+    await show.click();
+    const hide = page.getByRole("button", { name: "Сокриј за проекторот", exact: true });
+    await expect(hide).toHaveAttribute("aria-expanded", "true");
+    await expect(warning).toBeVisible();
+    await expect(hint).toBeVisible();
+    await expect(help).toBeVisible();
+    expect(await tall(hide)).toBe(44);
+    await expect(mainButton(page)).toHaveCount(1);
+    await hide.click();
+    await expect(page.getByRole("button", { name: "За проекторот", exact: true })).toHaveAttribute("aria-expanded", "false");
+    await expect(warning).toBeHidden();
+    await expect(hint).toBeHidden();
+    await expect(help).toHaveCount(0);
+  });
+
   test("a fullscreen button hides itself in full screen and nothing else hides", async ({ page, context }) => {
     await start(page, context);
     const projector = await openProjector(page, context);
