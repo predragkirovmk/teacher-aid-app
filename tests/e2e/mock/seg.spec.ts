@@ -163,10 +163,10 @@ test.describe("the tab bar", () => {
       .locator(`.tab[href="/app/profile"]`)
       .evaluate((el: HTMLElement) => ({ l: el.offsetLeft, r: el.offsetLeft + el.offsetWidth }));
     const home = await page.locator(`.tab[href="/app"]`).evaluate((el: HTMLElement) => ({ l: el.offsetLeft, r: el.offsetLeft + el.offsetWidth }));
-    // One piece bridges both tabs for a moment: while it is still a quarter tab inside Home, it already reaches a quarter tab
-    // into Profile, so it spans the scan between them (a rest at either tab, or a piece that jumps, never does).
-    const quarter = (goal.r - goal.l) / 4;
-    expect(samples.some((s) => s.l < home.r - quarter && s.r > goal.l + quarter)).toBe(true);
+    // One piece, not two: while its trailing edge is still over Home, the leading edge has run out across the scan pill, so
+    // the piece is stretched past two tabs wide (a piece that rests at each tab, or jumps, is never wider than one).
+    const tab = goal.r - goal.l;
+    expect(samples.some((s) => s.l < home.r && s.r - s.l > 2 * tab)).toBe(true);
     // Then it settles on Profile.
     const last = samples.at(-1)!;
     expect(near(last.l, goal.l) && near(last.r, goal.r)).toBe(true);

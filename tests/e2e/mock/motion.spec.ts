@@ -40,6 +40,14 @@ const TARGETS: Target[] = [
     },
   },
   {
+    name: "the scan pill",
+    min: 0.91,
+    open: async (page) => {
+      await page.goto("/app");
+      return page.locator(".scan-pill");
+    },
+  },
+  {
     name: "the round back button",
     open: async (page) => {
       await page.goto("/app/settings");
@@ -294,6 +302,13 @@ async function swipe(page: Page, from: number, to: number) {
 }
 
 test.describe("screen transitions", () => {
+  test("the scan pill goes forward to the scanner", async ({ page }) => {
+    await home(page);
+    await page.locator(".scan-pill").click();
+    await expect(page).toHaveURL(/\/app\/scan$/);
+    await expect.poll(() => lastAsked(page)).toContain("nav-forward");
+  });
+
   test("going deeper asks for nav-forward and lands on the screen, and Back asks for nav-back and returns", async ({ page }) => {
     await home(page);
     await page.locator("main.screen ul.list a.item").first().click();

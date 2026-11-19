@@ -10,7 +10,8 @@ test("mark all alerts read clears the unread count", async ({ page }) => {
   await bell.click();
   await expect(unreadRows).toHaveCount(3);
   // Let the slide in finish: a second view transition started while it runs skips it, which the browser reports as an error.
-  await page.waitForFunction(() => document.getAnimations().length === 0);
+  // The scan pill's idle cycle never ends, so only animations that finish count.
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.effect?.getComputedTiming().iterations === Infinity));
 
   await page.getByRole("button", { name: mk.t("notif.markAll") }).click();
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon, HouseSimpleIcon, ScanIcon, UserIcon, type Icon } from "@phosphor-icons/react";
+import { CheckIcon, HouseSimpleIcon, QrCodeIcon, UserIcon, type Icon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition, type ReactNode } from "react";
@@ -326,13 +326,18 @@ function Dock({ pathname, onTabTap }: { pathname: string; onTabTap: (href: strin
 
   return (
     <nav className="dock" aria-label={t("nav.main")}>
-      {/* Two sections with the scan between them, raised because it is an action, not a section. The one piece under the
+      {/* Two sections with the scan between them, a call to action rather than a section. The one piece under the
           current tab is SegGlide's, and it slides over the scan from one section to the other. */}
       <div className="tabbar glass">
         <SegGlide at={chosen} />
         {tab("/app", t("nav.home"), HouseSimpleIcon)}
-        <Link href="/app/scan" className="scan-fab" transitionTypes={["nav-forward"]} aria-label={t("nav.scan")}>
-          <ScanIcon size={30} aria-hidden="true" />
+        {/* The halo sits outside the face, which clips the shine; the press scales the whole link. */}
+        <Link href="/app/scan" className="scan-pill" transitionTypes={["nav-forward"]}>
+          <span className="scan-pill__halo" aria-hidden="true" />
+          <span className="scan-pill__face">
+            <QrCodeIcon className="scan-pill__glyph" size={22} weight="bold" aria-hidden="true" />
+            {t("nav.scanJoin")}
+          </span>
         </Link>
         {tab("/app/profile", t("nav.profile"), UserIcon)}
       </div>
