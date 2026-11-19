@@ -265,3 +265,7 @@ Builders: two runs in turn. The first does item 1, the second items 2 and 3. The
   middle tab now shows "Скенирај" (EN "Scan", new key `nav.scan`) under the glyph like Home and Profile, and that text is its
   accessible name; the `aria-label` is gone. `nav.scanJoin` stays for the big button on `/app/join`. `tabs.spec` checks the
   label, the box and the glyph and label alignment against the other two; the other specs find the tab by `nav.scan`.
+- **Notifications and the quiet Practice card, 2026-11-19.** The owner said that in Macedonian the word is "Известувања", not
+  "Известија": `notif.title` (the alerts screen's title and the bell's name) and `data.n.alerts` now say it; English is
+  unchanged. The Practice card with nothing waiting is the same full yellow as the waiting card (the half-strength mix read
+  as beige on the owner's phone); only the copy and the missing button differ. `home.spec` asserts the two backgrounds match.
