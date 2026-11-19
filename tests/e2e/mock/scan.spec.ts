@@ -40,7 +40,10 @@ test("an empty or malformed code says so in place, tied to the field", async ({ 
   await field.press("Enter");
   const note = page.locator(".scan-code__err");
   await expect(note).toHaveText(mk.t("scan.codeEmpty"));
-  await expect(field).toHaveAttribute("aria-describedby", (await note.getAttribute("id"))!);
+  // The hint line stays in the field's description, and the note joins it.
+  const describedBy = (await field.getAttribute("aria-describedby"))!.split(" ");
+  expect(describedBy).toContain((await note.getAttribute("id"))!);
+  expect(describedBy).toHaveLength(2);
   await field.fill("hello there");
   await page.getByRole("button", { name: mk.t("scan.codeGo") }).click();
   await expect(note).toHaveText(mk.t("scan.codeBad"));
