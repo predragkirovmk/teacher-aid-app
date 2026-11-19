@@ -18,7 +18,7 @@ const { alertCopy } = await import("@/lib/app/alerts");
 type PushApi = {
   parse(raw: unknown): { id: string; kind: string; title: string; body: string; lang: string; link: string; icon: string; badge: string };
   options(n: ReturnType<PushApi["parse"]>): Record<string, unknown>;
-  deepLink(kind: string, payload: unknown): string;
+  deepLink(kind: string, payload: unknown, id?: string): string;
   appPath(path: unknown): string | null;
   withAlert(link: string, id: string): string;
   pickWindow(windows: { url: string; focused?: boolean; visibilityState?: string }[], origin: string): unknown;
@@ -100,16 +100,20 @@ describe("the screen a notification opens", () => {
     ["result_ready", { session_id: "se-1" }, "/app/summary/se-1"],
     ["result_ready", {}, "/app/summary"],
     ["practice_set_sent", { practice_set_id: "ps-9", course_id: "c-math" }, "/app/practice/ps-9"],
-    ["practice_set_sent", { course_id: "c-math" }, "/app/subject/c-math"],
-    ["practice_set_sent", {}, "/app/notifications"],
+    ["practice_set_sent", { course_id: "c-math" }, "/app/practice"],
+    ["practice_set_sent", {}, "/app/practice"],
     ["marked_late", { course_id: "c-math" }, "/app/attendance"],
     ["badge_earned", { badge_code: "answer" }, "/app/achievements"],
-    ["generic", { course_id: "c-phys" }, "/app/subject/c-phys"],
-    ["generic", {}, "/app/notifications"],
-    ["a_kind_from_the_future", {}, "/app/notifications"],
-    ["generic", null, "/app/notifications"],
+    ["generic", { course_id: "c-phys" }, "/app/notifications/n-7"],
+    ["generic", {}, "/app/notifications/n-7"],
+    ["a_kind_from_the_future", {}, "/app/notifications/n-7"],
+    ["generic", null, "/app/notifications/n-7"],
   ])("%s with %j opens %s", (kind, payload, link) => {
-    expect(Push.deepLink(kind, payload)).toBe(link);
+    expect(Push.deepLink(kind, payload, "n-7")).toBe(link);
+  });
+
+  it("opens the Alerts list for a push that names no alert", () => {
+    expect(Push.deepLink("generic", {})).toBe("/app/notifications");
   });
 
   it("escapes an id so it stays one segment, and falls back to the Alerts tab for one that cannot be a path", () => {
@@ -129,7 +133,7 @@ describe("the screen a notification opens", () => {
     }
   });
 
-  it("is the screen the Alerts tab sends the same alert to", () => {
+  it("is the screen the Alerts screen sends the same alert to", () => {
     const t = (key: Parameters<typeof translate>[1], vars?: Record<string, string | number>) => translate("en", key, vars);
     const item = (kind: AlertItem["kind"], payload: AlertItem["payload"]): AlertItem => ({
       id: "n1",
@@ -154,7 +158,7 @@ describe("the screen a notification opens", () => {
       ["generic", { title: "x", body: "y" }],
     ];
     for (const [kind, payload] of cases) {
-      expect(Push.deepLink(kind, wire(payload)), `${kind} ${JSON.stringify(payload)}`).toBe(alertCopy(t, "en", item(kind, payload)).link);
+      expect(Push.deepLink(kind, wire(payload), "n1"), `${kind} ${JSON.stringify(payload)}`).toBe(alertCopy(t, "en", item(kind, payload)).link);
     }
   });
 

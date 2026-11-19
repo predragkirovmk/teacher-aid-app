@@ -65,12 +65,12 @@ export type AlertCopy = { title: string; body: string; link: string; action: str
 /** The words and the destination of an alert, by what it is about. */
 export function alertCopy(t: TFn, locale: Locale, n: AlertItem): AlertCopy {
   const subject = n.subjectId ? subjectLabel(t, n.subjectId, n.subjectName ?? "") : "";
-  const toSubject = n.courseId ? `/app/subject/${n.courseId}` : "/app/notifications";
-  // The button names where it goes instead of a bare "Open".
-  const openSubject = n.courseId ? t("notif.open.subject", { subject }) : t("notif.all");
+  // An alert with nowhere else to go opens its own detail; that screen shows no button for it.
+  const toSelf = `/app/notifications/${n.id}`;
+  const openSelf = t("notif.all");
   switch (n.kind) {
     case "checkin":
-      return { title: t("notif.checkin.title", { subject }), body: t("notif.checkin.body"), link: toSubject, action: openSubject };
+      return { title: t("notif.checkin.title", { subject }), body: t("notif.checkin.body"), link: toSelf, action: openSelf };
     case "result_ready":
       return {
         title: t("notif.result_ready.title", { subject }),
@@ -89,12 +89,12 @@ export function alertCopy(t: TFn, locale: Locale, n: AlertItem): AlertCopy {
       return {
         title: t("notif.practice_set_sent.title", { subject }),
         body: t("notif.practice_set_sent.body"),
-        link: n.payload.practiceSetId ? `/app/practice/${encodeURIComponent(n.payload.practiceSetId)}` : toSubject,
-        action: n.payload.practiceSetId ? t("notif.open.practice") : openSubject,
+        link: n.payload.practiceSetId ? `/app/practice/${encodeURIComponent(n.payload.practiceSetId)}` : "/app/practice",
+        action: t("notif.open.practice"),
       };
     case "badge_earned":
       return { title: t("notif.badge_earned.title"), body: t("notif.badge_earned.body"), link: "/app/achievements", action: t("notif.open.achievements") };
     case "generic":
-      return { title: n.payload.title ?? "", body: n.payload.body ?? "", link: toSubject, action: openSubject };
+      return { title: n.payload.title ?? "", body: n.payload.body ?? "", link: toSelf, action: openSelf };
   }
 }

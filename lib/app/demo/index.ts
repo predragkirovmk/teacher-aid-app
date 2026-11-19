@@ -4,7 +4,7 @@ import { useMemo, useSyncExternalStore } from "react";
 import { demoOnly } from "../api";
 import { useAttendance } from "../api/hooks";
 import type { TFn } from "../i18n";
-import { CLASS_SUBJECTS, DOCS, NOTIFS, SUBJECTS } from "../api/mock/data";
+import { CLASS_SUBJECTS, DOCS, NOTIFS } from "../api/mock/data";
 import { actions, useApp } from "../api/mock/store";
 import { ROOMS, demoTime, type ClockId, type Scan } from "./schedule";
 
@@ -75,7 +75,6 @@ export const DEMO_DOCS = DOCS;
 
 /** Screens the offline worker should keep, which only the demo knows the names of. */
 export const demoRoutes = () => [
-  ...SUBJECTS.map((s) => `/app/subject/${s.id}`),
   ...CLASS_SUBJECTS.flatMap((s) => [`/app/play/${s.code}`, `/app/checkin/${s.code}`]),
   ...NOTIFS.map((n) => `/app/notifications/${n.id}`),
   "/app/practice/ps-session-math-1",

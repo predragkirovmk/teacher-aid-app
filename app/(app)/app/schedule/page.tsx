@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Top } from "@/components/app/Top";
 import { demoOnly } from "@/lib/app/api";
@@ -36,7 +35,7 @@ export default function Schedule() {
               <ul className="list">
                 {lessonsOn(date.getTime()).map((l) => (
                   <li key={l.period}>
-                    <Link href={`/app/subject/${l.subject}`} className="item" transitionTypes={["nav-forward"]}>
+                    <div className="item">
                       <span className="t-label" style={{ minWidth: 52, flex: "none", fontVariantNumeric: "tabular-nums" }}>
                         {l.from}
                       </span>
@@ -44,7 +43,7 @@ export default function Schedule() {
                         <span className="item__title">{subjectLabel(t, l.subject, l.subject)}</span>
                         {l.kind !== "lesson" && <span className="pill">{t(`kind.${l.kind}`)}</span>}
                       </span>
-                    </Link>
+                    </div>
                   </li>
                 ))}
               </ul>

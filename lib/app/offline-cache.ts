@@ -18,7 +18,6 @@ export const APP_ROUTES = [
   "/app/faq",
   "/app/welcome",
   "/app/qr-kit",
-  "/app/subjects",
   "/app/privacy",
   "/app/terms",
   "/app/data",

@@ -163,40 +163,6 @@ test("English reads the same, in English", async ({ page }) => {
   await expect(page.getByText("The right answer: 8")).toBeVisible();
 });
 
-test("a subject shows its practice, its recent lessons and a chart of each topic with the numbers behind it", async ({ page }) => {
-  await page.goto("/app/subject/math");
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("pr.state.new")) })).toBeVisible();
-
-  // Three lessons are shown, the rest one tap away.
-  const lessons = page.getByRole("heading", { name: mk.t("res.recent") }).locator("xpath=ancestor::section[1]");
-  await expect(lessons.getByRole("listitem")).toHaveCount(3);
-  await lessons.getByRole("button", { name: mk.t("res.all", { n: 4 }) }).click();
-  await expect(lessons.getByRole("listitem")).toHaveCount(4);
-
-  // The topic that was tested three times is a line from 40 % to 80 %; the one tested once is only words.
-  const equations = page.getByRole("figure").filter({ hasText: "Линеарни равенки" });
-  await expect(equations.getByText(mk.t("topic.range", { from: 40, to: 80, n: 3 }))).toBeVisible();
-  const table = equations.getByRole("table", { name: mk.t("topic.table", { topic: "Линеарни равенки" }) });
-  await expect(table.getByRole("row")).toHaveCount(4);
-  await expect(table.getByRole("row").nth(1)).toContainText("25 сеп");
-  await expect(table.getByRole("row").nth(1)).toContainText("40%");
-  await expect(table.getByRole("row").nth(3)).toContainText("80%");
-  const fractions = page.getByRole("figure").filter({ hasText: "Дропки" });
-  await expect(fractions.getByText(mk.t("topic.one", { right: 4, total: 5 }))).toBeVisible();
-  await expect(fractions.locator(".tc__chart")).toHaveCount(0);
-
-  // Tapping a dot says what that lesson was.
-  await equations.locator(".tc__dot").nth(1).click();
-  await expect(equations.getByText(mk.t("topic.point", { date: "2 окт", right: 3, total: 5, pct: 60 }))).toBeVisible();
-});
-
-test("a subject with no history says so and draws no chart", async ({ page }) => {
-  await page.goto("/app/subject/german");
-  await expect(page.getByText(mk.t("res.none"))).toBeVisible();
-  await expect(page.getByRole("heading", { name: mk.t("topic.title") })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: mk.t("pr.title") })).toHaveCount(0);
-});
-
 test("results: every lesson newest first, and one lesson's summary with its practice set", async ({ page }) => {
   await page.goto("/app/summary");
   await expect(page.getByRole("heading", { name: mk.t("res.title") })).toBeVisible();
