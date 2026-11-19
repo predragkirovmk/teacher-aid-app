@@ -24,6 +24,16 @@ test("with nothing waiting the card says so and opens the list", async ({ page }
   await expect(card).toContainText(mk.t("pr.home.none"));
   await expect(card).toHaveClass(/next--quiet/);
   await expect(card.locator(".next__action")).toHaveCount(0);
+  // The same full yellow as the waiting card, which paints `.next` with var(--yellow).
+  const bg = await card.evaluate((el) => {
+    const probe = document.createElement("a");
+    probe.className = "next";
+    el.parentElement!.appendChild(probe);
+    const waiting = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return [getComputedStyle(el).backgroundColor, waiting];
+  });
+  expect(bg[0]).toBe(bg[1]);
   await card.click();
   await expect(page).toHaveURL(/\/app\/practice$/);
 });

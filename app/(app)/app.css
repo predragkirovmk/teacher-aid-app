@@ -1776,9 +1776,9 @@ a.join-cta {
   font-size: var(--fs-callout);
   font-weight: 650;
 }
-/* Nothing waiting: the same card with the yellow at half strength (painted, not dimmed, so the ink keeps its contrast). */
+/* Nothing waiting: the same full yellow as the waiting card (a washed-out yellow read as beige); only the copy and the
+   missing button differ, so the card is shorter. */
 .next--quiet {
-  background: color-mix(in srgb, var(--yellow) 50%, var(--ice));
   min-height: 0;
 }
 .next__name {
