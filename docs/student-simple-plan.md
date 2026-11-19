@@ -216,3 +216,24 @@ Builders: two runs in turn. The first does item 1, the second items 2 and 3. The
   `pnpm build`, mock and teacher e2e (753 passed, two failures of my own fixed and re-run green), live e2e 89 of 89. JS
   (gzip, from `js-size.json`): all screens 431,536 and Home's first load 302,964, from 483,581 and 338,255 at the end of
   the motion work. Review of batch 1: the bell's accessible name now carries the unread count (its aria-label had hidden it), the tab bar's stretch check says the piece reaches a quarter tab into both Home and Profile at once (measured: it spans 1.6 tabs, not 1.4), the mark-all alert test waits for the slide to finish, and the dead `res.*` keys went; perf at 4x CPU shows no long task and no gap over 43 ms.
+- **Batch 2, 2026-11-19.** Two builders (5ffd7e2..60c00ed, then this run). First builder: the new Home (the Practice
+  card, the last quizzes, the teachers' documents), the alert announcer on every screen, JS +10K over batch 1 and still
+  42K under the motion work's end. Second builder: the middle of the dock is a yellow pill, "Скенирај за влез" (EN "Scan to
+  join", `nav.scanJoin`; `nav.scan` is gone), 56 px tall and 181 px wide at 390 and 360, with Home and Profile 84 and 69 px
+  wide; it did not need a shorter label at 360. Its idle is one CSS cycle of 4.5 s with no timer: in about 1.2 s a soft
+  shine sweeps across (ease-in-out), the QR glyph breathes to 1.1 on `--spring-bouncy`, and a halo ring scales out and
+  fades; then 3.3 s of rest. The first cycle waits 600 ms. All of it is transform and opacity, on the pill's children, so
+  the press (`scale` on the link: 0.92 down on `--spring-press`, back on `--spring-big`) never restarts it. The tiny hop
+  was tried and left out: it moved the pill while a press was read. Reduced motion has no idle at all and the press dims.
+  The scan screen: the four frame corners snap in from the frame's centre on `--spring-pop` (a fade with reduced motion);
+  "Внеси код" opens a labelled field (placeholder MATH-7B) under the camera, reachable in every no-camera state; a
+  well-formed code goes through `handle`, the same path as a scan (buzz, then `/app/play/<code>`), a code nobody issued
+  shows the `Miss` sheet, and an empty or malformed one shows a calm inline message tied to the field with
+  `aria-describedby` and `buzz(HAPTICS.problem)`; the camera area is a labelled region and axe is clean in both states.
+  Backend handoff 2.15 in the brain (both documents): the proposed `GET /me/documents` and `POST /me/documents/{id}/opened`
+  (OPEN-18, demo only), the four endpoints the student app no longer calls, attendance on join unchanged, typing the code
+  back (OPEN-03). Tests: tabs, motion (press target and the forward slide), seg (the piece is one stretched piece past two
+  tabs, since the pill widened the gap) and alerts (waits only for animations that finish, as the pill never stops) follow
+  the pill; new `scan.spec.ts` for the code field; the capture tool has states 67 and 68. Checks: lint, types, 1570 unit,
+  `pnpm build`, mock and teacher e2e 772 passed and 4 skipped (the teacher's live-code specs, not mine), live e2e 91 of 91.
+  JS (gzip): all screens 440,750 and Home's first load 313,373. Perf at 4x CPU, pill idling: no long task, worst gap 41 ms.
