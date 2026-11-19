@@ -122,6 +122,7 @@ function Cards() {
     (notifications.data ?? []).filter((n) => n.kind === "result_ready" && n.readAt === null).map((n) => n.payload.sessionId),
   );
   const recent = (results.data ?? []).slice(0, RECENT);
+  // The two "all" links do not prefetch: they are the less taken way, and a prefetch would add their screens to Home's first load.
   // Documents are not in the API yet (OPEN-18), so live mode hides the section rather than show made-up files.
   const docs = demoOnly ? DEMO_DOCS : [];
   let i = 0;
@@ -150,7 +151,7 @@ function Cards() {
           </ul>
         )}
         {recent.length > 0 && (
-          <Link href="/app/summary" className="more press rise" style={{ "--i": i++ } as CSSProperties} transitionTypes={["nav-forward"]}>
+          <Link href="/app/summary" prefetch={false} className="more press rise" style={{ "--i": i++ } as CSSProperties} transitionTypes={["nav-forward"]}>
             {t("home.allResults")}
             <CaretRightIcon size={16} weight="bold" aria-hidden="true" />
           </Link>
@@ -173,7 +174,7 @@ function Cards() {
             ))}
           </ul>
           {docs.length > RECENT && (
-            <Link href="/app/documents" className="more press rise" style={{ "--i": i++ } as CSSProperties} transitionTypes={["nav-forward"]}>
+            <Link href="/app/documents" prefetch={false} className="more press rise" style={{ "--i": i++ } as CSSProperties} transitionTypes={["nav-forward"]}>
               {t("docs.all")}
               <CaretRightIcon size={16} weight="bold" aria-hidden="true" />
             </Link>
