@@ -12,10 +12,17 @@ type Target = { name: string; open: (page: Page) => Promise<Locator>; min?: numb
 
 const TARGETS: Target[] = [
   {
-    name: "the last quiz tile on Home",
+    name: "the practice card on Home",
     open: async (page) => {
       await page.goto("/app");
-      return page.locator("a.card.tile");
+      return page.locator("a.next");
+    },
+  },
+  {
+    name: "a recent quiz row on Home",
+    open: async (page) => {
+      await page.goto("/app");
+      return page.locator("main.screen ul.list a.item").first();
     },
   },
   {
@@ -289,14 +296,14 @@ async function swipe(page: Page, from: number, to: number) {
 test.describe("screen transitions", () => {
   test("going deeper asks for nav-forward and lands on the screen, and Back asks for nav-back and returns", async ({ page }) => {
     await home(page);
-    await page.locator("a.card.tile").first().click();
+    await page.locator("main.screen ul.list a.item").first().click();
     await expect(page).not.toHaveURL(/\/app$/);
     await expect(back(page)).toBeVisible();
     await expect.poll(() => lastAsked(page)).toContain("nav-forward");
 
     await back(page).click();
     await expect(page).toHaveURL(/\/app$/);
-    await expect(page.locator("a.card.tile").first()).toBeVisible();
+    await expect(page.locator("main.screen ul.list a.item").first()).toBeVisible();
     await expect.poll(() => lastAsked(page)).toEqual(["nav-back"]);
   });
 
@@ -362,22 +369,22 @@ test.describe("screen transitions", () => {
 
   test("the browser's own history move starts no view transition", async ({ page }) => {
     await home(page);
-    await page.locator("a.card.tile").first().click();
+    await page.locator("main.screen ul.list a.item").first().click();
     await expect(back(page)).toBeVisible();
     const before = (await transitions(page)).length;
     await page.goBack();
     await expect(page).toHaveURL(/\/app$/);
-    await expect(page.locator("a.card.tile").first()).toBeVisible();
+    await expect(page.locator("main.screen ul.list a.item").first()).toBeVisible();
     expect((await transitions(page)).length).toBe(before);
   });
 
   test("a tap while a screen is still sliding in lands: Back at once returns to Home", async ({ page }) => {
     await home(page);
-    await page.locator("a.card.tile").first().click();
+    await page.locator("main.screen ul.list a.item").first().click();
     // No waiting for the slide: the overlay lets the tap through to the live page.
     await back(page).click();
     await expect(page).toHaveURL(/\/app$/);
-    await expect(page.locator("a.card.tile").first()).toBeVisible();
+    await expect(page.locator("main.screen ul.list a.item").first()).toBeVisible();
   });
 
   test("a tab tapped during a tab swap lands on the last tab", async ({ page }) => {
@@ -406,7 +413,7 @@ test.describe("screen transitions with reduced motion", () => {
 
   test("a forward screen change still lands, as a short opacity fade with no slide", async ({ page }) => {
     await home(page);
-    await page.locator("a.card.tile").first().click();
+    await page.locator("main.screen ul.list a.item").first().click();
     await expect(page).not.toHaveURL(/\/app$/);
     await expect(back(page)).toBeVisible();
     // The snapshots' animations start a frame or two after the screen changes; under load, wait until one was seen.
@@ -573,7 +580,7 @@ test.describe("entrances", () => {
   test("a deeper screen has no entrance on top of its slide", async ({ page }) => {
     await page.goto("/app");
     await expect(page.locator("html")).toHaveAttribute("data-rise-seen", "");
-    await page.locator("a.card.tile").first().click();
+    await page.locator("main.screen ul.list a.item").first().click();
     await expect(page).not.toHaveURL(/\/app$/);
     for (let i = 0; i < 6; i++) {
       expect(await running(page)).toEqual([]);

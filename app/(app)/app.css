@@ -1533,6 +1533,7 @@ button.pill {
 }
 .next__when {
   position: relative;
+  min-height: 1.5em; /* holds the line's place until practice has loaded */
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1555,6 +1556,34 @@ button.pill {
   color: var(--yellow);
   font-size: var(--fs-callout);
   font-weight: 650;
+}
+/* Nothing waiting: the same card with the yellow at half strength (painted, not dimmed, so the ink keeps its contrast). */
+.next--quiet {
+  background: color-mix(in srgb, var(--yellow) 50%, var(--ice));
+  min-height: 0;
+}
+.next__name {
+  display: block;
+}
+/* Home's sections: a title over a list, with the link to all of it under the list. */
+.home-sec .section-h {
+  margin: 16px 4px 8px;
+}
+.home-sec .home-sub {
+  margin: -4px 4px 8px;
+}
+.home-empty {
+  margin: 0 4px;
+}
+.more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  margin: 4px 4px 0;
+  font-size: var(--fs-callout);
+  font-weight: 650;
+  color: var(--yellow);
 }
 .next__foot {
   position: relative;

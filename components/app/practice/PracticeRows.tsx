@@ -2,7 +2,6 @@
 
 import { CaretRightIcon, CheckCircleIcon, CircleHalfIcon, NotePencilIcon } from "@phosphor-icons/react";
 import Link from "next/link";
-import { Row } from "@/components/app/Row";
 import { useCourses } from "@/lib/app/api/hooks";
 import type { PracticeSet } from "@/lib/app/api/types";
 import { formatDate } from "@/lib/app/format";
@@ -71,33 +70,39 @@ export function PracticeRow({ set, withSubject = true }: { set: PracticeSet; wit
 }
 
 /**
- * Home's quiet row, there only while a set is waiting (new, or started and not finished). With one it opens that set, with more it
- * opens the list. It is a plain row, never the yellow object of the screen: practice is optional.
+ * Home's yellow card. Waiting sets (new, or started and not finished) say so and open that set, or the list when more wait.
+ * With none waiting it is quieter and opens the list, where finished sets can be done again.
  */
-export function PracticeHomeRow() {
+export function PracticeCard() {
   const { t } = useT();
   const sets = usePracticeSets();
   const courses = useCourses();
   const waiting = openSets(sets.data ?? []);
-  if (waiting.length === 0) return null;
   const fresh = waiting.filter((s) => practiceStatus(s) === "new");
   const first = waiting[0];
-  const course = courses.data?.find((c) => c.id === first.courseId);
+  const course = first ? courses.data?.find((c) => c.id === first.courseId) : undefined;
   const subject = course ? subjectLabel(t, course.subjectId, course.subjectName) : "";
-  const value =
-    fresh.length > 1
-      ? t("pr.home.newN", { n: fresh.length })
-      : fresh.length === 1
-        ? t("pr.home.new1", { subject })
-        : t("pr.home.resume", { subject });
+  const line = !sets.data
+    ? ""
+    : waiting.length === 0
+      ? t("pr.home.none")
+      : fresh.length > 1
+        ? t("pr.home.newN", { n: fresh.length })
+        : fresh.length === 1
+          ? t("pr.home.new1", { subject })
+          : t("pr.home.resume", { subject });
   return (
-    <div className="list" style={{ marginBottom: 16 }}>
-      <Row
-        icon={NotePencilIcon}
-        label={t("pr.title")}
-        value={value}
-        href={waiting.length === 1 ? `/app/practice/${encodeURIComponent(first.id)}` : "/app/practice"}
-      />
-    </div>
+    <Link
+      href={waiting.length === 1 ? `/app/practice/${encodeURIComponent(first.id)}` : "/app/practice"}
+      className={waiting.length === 0 && sets.data ? "next next--quiet" : "next"}
+      transitionTypes={["nav-forward"]}
+    >
+      <span className="next__sign" aria-hidden="true">
+        <NotePencilIcon size={136} />
+      </span>
+      <span className="next__name">{t("pr.title")}</span>
+      <span className="next__when">{line}</span>
+      {waiting.length > 0 && <span className="next__action">{t(fresh.length === 0 ? "pr.continue" : "pr.start")}</span>}
+    </Link>
   );
 }

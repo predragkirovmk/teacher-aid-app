@@ -25,7 +25,7 @@ async function typeNumber(page: Page, value: string) {
 
 test("a set is opened from Home, answered, left and carried on, and finished with its points", async ({ page }) => {
   await page.goto("/app");
-  const row = page.getByRole("link", { name: new RegExp(`^${mk.t("pr.title")}`) });
+  const row = page.locator("main.screen a.next");
   await expect(row).toContainText(mk.t("pr.home.new1", { subject: mk.t("subj.math") }));
   await row.click();
   await expect(page).toHaveURL(new RegExp(`${SET}$`));
@@ -86,10 +86,11 @@ test("a set is opened from Home, answered, left and carried on, and finished wit
   // A finished practice set earns nothing: the points the demo keeps stay where they were.
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("teacheraid-app-v1")!).quizPoints)).toBe(0);
 
-  // A finished set is not offered again on Home, and no yellow control is added to it.
+  // A finished set is not offered again on Home: the card says there is nothing new, and has no button.
   await page.getByRole("button", { name: mk.t("close"), exact: true }).click();
   await expect(page).toHaveURL(/\/app$/);
-  await expect(page.getByRole("link", { name: new RegExp(`^${mk.t("pr.title")}`) })).toHaveCount(0);
+  await expect(page.locator("main.screen a.next")).toContainText(mk.t("pr.home.none"));
+  await expect(page.locator("main.screen .next__action")).toHaveCount(0);
 });
 
 test("progress is kept across a reload, and shows in the list", async ({ page }) => {
@@ -181,9 +182,9 @@ test("results: every lesson newest first, and one lesson's summary with its prac
   await expect(page).toHaveURL(new RegExp(`${SET}$`));
 });
 
-test("Home's last result opens that lesson's own summary", async ({ page }) => {
+test("Home's newest result opens that lesson's own summary", async ({ page }) => {
   await page.goto("/app");
-  await page.getByRole("link", { name: new RegExp(mk.t("home.summary")) }).click();
+  await page.locator("main.screen ul.list a.item").first().click();
   await expect(page).toHaveURL(/\/app\/summary\/session-math-1$/);
   await expect(page.getByText(exact("Математика, дропки"))).toBeVisible();
 });

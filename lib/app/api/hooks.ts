@@ -66,12 +66,6 @@ export function useCourse(id: Id): Query<Course | null> {
   return useMemo(() => mapQuery(q, (all) => all.find((c) => c.id === id) ?? null), [q, id]);
 }
 
-/** The newest finished session, or null when there is none yet. */
-export function useLatestResult(): Query<SessionResult | null> {
-  const q = useResults();
-  return useMemo(() => mapQuery(q, (all) => all[0] ?? null), [q]);
-}
-
 /** One finished session's result by id, or null when the list does not have it (yet). */
 export function useResult(sessionId: Id): Query<SessionResult | null> {
   const q = useResults();

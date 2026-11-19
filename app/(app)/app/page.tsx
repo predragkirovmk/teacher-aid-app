@@ -5,16 +5,17 @@ import Link from "next/link";
 import { useEffect, type CSSProperties } from "react";
 import { Bell } from "@/components/app/Bell";
 import { Mark } from "@/components/app/Mark";
-import { PracticeHomeRow } from "@/components/app/practice/PracticeRows";
+import { DocRow } from "@/components/app/DocRow";
+import { PracticeCard } from "@/components/app/practice/PracticeRows";
+import { ResultRow } from "@/components/app/Results";
 import { QueryState } from "@/components/app/QueryState";
 import { useUI } from "@/components/app/ui";
 import { demoOnly } from "@/lib/app/api";
-import { useLatestResult, useMe, useNotifications } from "@/lib/app/api/hooks";
-import { useDemoClock, useNow } from "@/lib/app/demo";
+import { useMe, useNotifications, useResults } from "@/lib/app/api/hooks";
+import { DEMO_DOCS, useDemoClock, useNow } from "@/lib/app/demo";
 import { formatLongDate, formatTime } from "@/lib/app/format";
 import { useT } from "@/lib/app/i18n";
 import { useSelf } from "@/lib/app/profile";
-import { subjectLabel } from "@/lib/app/subjects";
 
 /** Set once the intro has played this session; the root layout reads it before the first paint. */
 const RISE_KEY = "teacheraid-home-rise";
@@ -25,6 +26,9 @@ const RISE_KEY = "teacheraid-home-rise";
  * real time is in.
  */
 const STAND_IN = new Date(2026, 9, 12, 7, 45).getTime();
+
+/** How many quizzes and documents Home shows before the link to all of them. */
+const RECENT = 3;
 
 const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
@@ -107,48 +111,75 @@ export default function Home() {
   );
 }
 
-/** Practice, then the last quiz: the two cards Home keeps for now. */
+/** The three sections of Home: practice, the last quizzes, and the teachers' documents (demo only). */
 function Cards() {
+  const { t } = useT();
+  const { toast } = useUI();
+  const results = useResults();
+  const notifications = useNotifications();
+  // The alert that announced a result stays unread until its summary has been opened.
+  const fresh = new Set(
+    (notifications.data ?? []).filter((n) => n.kind === "result_ready" && n.readAt === null).map((n) => n.payload.sessionId),
+  );
+  const recent = (results.data ?? []).slice(0, RECENT);
+  // Documents are not in the API yet (OPEN-18), so live mode hides the section rather than show made-up files.
+  const docs = demoOnly ? DEMO_DOCS : [];
+  let i = 0;
   return (
     <>
-      <div {...rise(0)}>
-        <PracticeHomeRow />
+      <div {...rise(i++)}>
+        <PracticeCard />
       </div>
-      <div {...rise(1)}>
-        <div className="grid2">
-          <ResultTile wide />
-        </div>
-      </div>
-    </>
-  );
-}
 
-function ResultTile({ wide = false }: { wide?: boolean }) {
-  const { t } = useT();
-  const latest = useLatestResult();
-  const notifications = useNotifications();
-  const result = latest.data;
-  // The alert that announced the result stays unread until the summary has been opened.
-  const isNew =
-    !!result &&
-    !!notifications.data?.some((n) => n.kind === "result_ready" && n.payload.sessionId === result.sessionId && n.readAt === null);
-  const subject = result ? subjectLabel(t, result.subjectId, result.subjectName) : "";
-  return (
-    <Link href={result ? `/app/summary/${encodeURIComponent(result.sessionId)}` : "/app/summary"} className="card tile" transitionTypes={["nav-forward"]} style={wide ? { gridColumn: "1 / -1" } : undefined}>
-      <span className="tile__head">
-        <span className="t-label">{t("home.summary")}</span>
-        <CaretRightIcon size={16} aria-hidden="true" />
-      </span>
-      <span className="tile-big">{result ? `${result.right}/${result.total}` : "–"}</span>
-      {!result ? (
-        <span className="t-cap">{latest.status === "ready" ? t("home.noResult") : null}</span>
-      ) : isNew ? (
-        <span className="t-cap">
-          <b className="tile__new">{t("home.new")}</b> · {subject}
-        </span>
-      ) : (
-        <span className="t-cap">{t("home.correct", { s: subject })}</span>
+      <section className="home-sec" aria-labelledby="home-recent">
+        <h2 id="home-recent" className="section-h rise" style={{ "--i": i++ } as CSSProperties}>
+          {t("home.recent")}
+        </h2>
+        {results.data && recent.length === 0 && (
+          <p className="t-cap home-empty rise" style={{ "--i": i++ } as CSSProperties}>
+            {t("home.noQuizzes")}
+          </p>
+        )}
+        {recent.length > 0 && (
+          <ul className="list">
+            {recent.map((r) => (
+              <li key={r.sessionId} {...rise(i++)}>
+                <ResultRow result={r} isNew={fresh.has(r.sessionId)} />
+              </li>
+            ))}
+          </ul>
+        )}
+        {recent.length > 0 && (
+          <Link href="/app/summary" className="more press rise" style={{ "--i": i++ } as CSSProperties} transitionTypes={["nav-forward"]}>
+            {t("home.allResults")}
+            <CaretRightIcon size={16} weight="bold" aria-hidden="true" />
+          </Link>
+        )}
+      </section>
+
+      {docs.length > 0 && (
+        <section className="home-sec" aria-labelledby="home-docs">
+          <h2 id="home-docs" className="section-h rise" style={{ "--i": i++ } as CSSProperties}>
+            {t("docs.title")}
+          </h2>
+          <p className="t-cap home-sub rise" style={{ "--i": i++ } as CSSProperties}>
+            {t("docs.sub")}
+          </p>
+          <ul className="list">
+            {docs.slice(0, RECENT).map((d) => (
+              <li key={d} {...rise(i++)}>
+                <DocRow id={d} onOpen={() => toast(t("doc.demo"))} />
+              </li>
+            ))}
+          </ul>
+          {docs.length > RECENT && (
+            <Link href="/app/documents" className="more press rise" style={{ "--i": i++ } as CSSProperties} transitionTypes={["nav-forward"]}>
+              {t("docs.all")}
+              <CaretRightIcon size={16} weight="bold" aria-hidden="true" />
+            </Link>
+          )}
+        </section>
       )}
-    </Link>
+    </>
   );
 }

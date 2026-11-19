@@ -27,9 +27,11 @@ test("Home draws the API's student and latest result, and asks for no ranking or
   await page.goto("/app");
 
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Live");
-  const latest = page.getByRole("link", { name: new RegExp(mk.t("home.summary")) });
-  await expect(latest).toContainText("4/5");
+  const latest = page.locator("main.screen ul.list a.item").first();
+  await expect(latest).toContainText(mk.t("res.score", { right: 4, total: 5 }));
   await expect(latest).toContainText(mk.t("subj.math"));
+  // The documents are not in the API yet (OPEN-18), so live Home has no such section.
+  await expect(page.getByRole("heading", { name: mk.t("docs.title") })).toHaveCount(0);
 
   const { calls } = await serverState(request);
   expect(calls).toEqual(expect.arrayContaining(["GET /me", "GET /me/results"]));
@@ -38,9 +40,17 @@ test("Home draws the API's student and latest result, and asks for no ranking or
   expect(calls).not.toContain("GET /me/attendance");
 });
 
+test("Home's practice card works live, and with no results it says there are no quizzes yet", async ({ page }) => {
+  await page.route("**/me/results", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+  await page.goto("/app");
+  await expect(page.locator("main.screen a.next")).toContainText(mk.t("pr.title"));
+  await expect(page.getByText(mk.t("home.noQuizzes"))).toBeVisible();
+  await expect(page.getByRole("link", { name: mk.t("home.allResults") })).toHaveCount(0);
+});
+
 test("Home hides the demo clock", async ({ page }) => {
   await page.goto("/app");
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.summary")) })).toContainText("4/5");
+  await expect(page.locator("main.screen ul.list a.item").first()).toContainText(mk.t("res.score", { right: 4, total: 5 }));
 
   await expect(page.getByText(mk.t("home.demoTime"), { exact: true })).toHaveCount(0);
 });

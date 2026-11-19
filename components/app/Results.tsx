@@ -9,7 +9,7 @@ import { useT } from "@/lib/app/i18n";
 import { subjectLabel } from "@/lib/app/subjects";
 
 /** One finished lesson: its title, the subject and the day, and how many questions were right. It opens that lesson's summary. */
-export function ResultRow({ result, withSubject = true }: { result: SessionResult; withSubject?: boolean }) {
+export function ResultRow({ result, withSubject = true, isNew = false }: { result: SessionResult; withSubject?: boolean; isNew?: boolean }) {
   const { t, locale } = useT();
   const subject = subjectLabel(t, result.subjectId, result.subjectName);
   const date = formatDate(result.endedAt, locale);
@@ -23,7 +23,14 @@ export function ResultRow({ result, withSubject = true }: { result: SessionResul
           <span className="item__title" style={{ display: "block" }}>
             {result.lessonTitle}
           </span>
-          <span className="t-cap">{withSubject ? `${subject} · ${date}` : date}</span>
+          <span className="t-cap">
+            {isNew && (
+              <>
+                <b className="tile__new">{t("home.new")}</b> ·{" "}
+              </>
+            )}
+            {withSubject ? `${subject} · ${date}` : date}
+          </span>
         </span>
         <span className="status">{t("res.score", { right: result.right, total: result.total })}</span>
       </span>
