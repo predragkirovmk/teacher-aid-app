@@ -1,8 +1,8 @@
 "use client";
 
-import { CameraIcon, ImageIcon, WarningIcon, XIcon } from "@phosphor-icons/react";
+import { CameraIcon, ImageIcon, KeyboardIcon, WarningIcon, XIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { FAILURE_ICON } from "@/components/app/quiz/JoinFailure";
 import { startJoin } from "@/lib/app/api/hooks";
 import { toApiError, type ApiErrorCode } from "@/lib/app/api/errors";
@@ -53,6 +53,12 @@ export default function Scan() {
   const [note, setNote] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
   const lockTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Typing the code is the way in for a student with no camera, or one who prefers it.
+  const [typing, setTyping] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [codeProblem, setCodeProblem] = useState<"codeEmpty" | "codeBad" | null>(null);
+  const codeId = useId();
+  const codeErrorId = `${codeId}-err`;
 
   const handle = useCallback((raw: string) => {
     if (handled.current) return;
@@ -82,6 +88,16 @@ export default function Scan() {
   }, [router]);
 
   useEffect(() => () => clearTimeout(lockTimer.current), []);
+
+  const submitCode = (e: FormEvent) => {
+    e.preventDefault();
+    const text = typed.trim();
+    // Nothing, or something that is not shaped like a class code, never reaches the API: say so in place.
+    const problem = !text ? "codeEmpty" : interpretCode(text).kind === "other" ? "codeBad" : null;
+    setCodeProblem(problem);
+    if (problem) return buzz(HAPTICS.problem);
+    handle(text);
+  };
 
   useEffect(() => {
     if (result || needIntro || !visible) return;
@@ -171,7 +187,7 @@ export default function Scan() {
 
   return (
     <main className="scan">
-      <div className="scan__view">
+      <div className="scan__view" role="region" aria-label={t("scan.camera")}>
         <video ref={videoRef} playsInline muted aria-hidden="true" />
         <canvas ref={canvasRef} hidden />
         <div className="scan__top">
@@ -236,6 +252,49 @@ export default function Scan() {
           <ImageIcon size={20} aria-hidden="true" />
           {t("scan.upload")}
         </button>
+        {typing ? (
+          <form className="scan-code span2" onSubmit={submitCode} noValidate>
+            <label htmlFor={codeId} className="scan-code__label">
+              {t("scan.codeLabel")}
+            </label>
+            <div className="scan-code__row">
+              <input
+                id={codeId}
+                className="scan-code__input"
+                type="text"
+                inputMode="text"
+                autoCapitalize="characters"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                enterKeyHint="go"
+                maxLength={24}
+                placeholder="MATH-7B"
+                autoFocus
+                value={typed}
+                aria-invalid={codeProblem !== null}
+                aria-describedby={codeProblem ? codeErrorId : undefined}
+                onChange={(e) => {
+                  setTyped(e.target.value);
+                  setCodeProblem(null);
+                }}
+              />
+              <button className="btn btn--primary" type="submit">
+                {t("scan.codeGo")}
+              </button>
+            </div>
+            {codeProblem && (
+              <p id={codeErrorId} className="scan-code__err" role="alert">
+                {t(`scan.${codeProblem}`)}
+              </p>
+            )}
+          </form>
+        ) : (
+          <button className="btn btn--ghost span2" onClick={() => setTyping(true)}>
+            <KeyboardIcon size={20} aria-hidden="true" />
+            {t("scan.code")}
+          </button>
+        )}
       </div>
 
       {needIntro && (

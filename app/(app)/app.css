@@ -803,6 +803,29 @@ button.item:active {
   height: 38px;
   border: 5px solid var(--yellow);
 }
+/* On arrival the four corners snap in from the middle of the frame: scale 0.9 about the frame's centre, so each travels
+   a few px outward and settles past its place on the pop spring. The scale property keeps the compositor's transform free. */
+.frame i {
+  animation: corner-snap var(--spring-pop-dur) var(--spring-pop) backwards;
+}
+.frame i:nth-child(1) {
+  transform-origin: 50cqw 50cqh;
+}
+.frame i:nth-child(2) {
+  transform-origin: calc(38px - 50cqw) 50cqh;
+}
+.frame i:nth-child(3) {
+  transform-origin: 50cqw calc(38px - 50cqh);
+}
+.frame i:nth-child(4) {
+  transform-origin: calc(38px - 50cqw) calc(38px - 50cqh);
+}
+@keyframes corner-snap {
+  from {
+    scale: 0.9;
+    opacity: 0;
+  }
+}
 .frame i:nth-child(1) {
   top: 0;
   left: 0;
@@ -882,6 +905,47 @@ button.item:active {
 .scan__tools .span2 {
   --press-scale: 0.96;
   grid-column: 1 / -1;
+}
+.scan-code {
+  display: grid;
+  gap: 8px;
+}
+.scan-code__label {
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--text-2);
+}
+.scan-code__row {
+  display: flex;
+  gap: 8px;
+}
+.scan-code__input {
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: 26px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-callout);
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.scan-code__input::placeholder {
+  text-transform: none;
+  color: var(--text-2);
+}
+.scan-code__input[aria-invalid="true"] {
+  border-color: var(--yellow);
+}
+.scan-code__err {
+  margin: 0;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--yellow);
 }
 .warn {
   display: flex;
@@ -1337,70 +1401,6 @@ button.pill {
   z-index: 1;
   margin: 0 4px;
   color: var(--ink);
-  box-shadow: 0 2px 8px rgba(2, 8, 24, 0.25);
-}
-.scan-pill:active .scan-pill__face {
-  background: var(--yellow-soft);
-}
-/* ---- one piece per track ----
-   Every segmented control and tab row (the tab bar, the welcome screen's language switch) has one piece for the whole
-   track, and a choice flows into the next: the edge in front leaves first, runs a little past its place and comes back
-   (bounce 0.2), and the edge behind follows 60 ms later with no bounce, so for a moment the old piece and the new one are
-   one, then it settles with the overshoot already behind it. SegGlide draws the piece as two round ends and a
-   flat bridge and moves them only by transform, so the compositor runs the slide and nothing is painted per frame. The
-   parts are one group under one opacity (--seg-alpha), so a translucent piece does not darken where they overlap. While
-   the piece is there, the chosen piece's own ground steps aside. The chosen piece says it is the one by itself too: a
-   filled glyph that lands on the big spring, heavier words. */
-.seg__glide {
-  --seg-round: 24px;
-  --seg-color: #fff;
-  --seg-alpha: 0.22;
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 160ms;
-}
-.seg__glide[data-on="true"] {
-  opacity: 1;
-}
-.seg__face {
-  position: absolute;
-  inset: 0;
-  opacity: var(--seg-alpha);
-}
-.seg__face > span {
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  background: var(--seg-color);
-  transform-origin: 0 0;
-}
-.seg__cap {
-  border-radius: var(--seg-round);
-}
-.seg__bridge {
-  width: 1px;
-}
-.tab[data-checked="true"] {
-  font-weight: 750;
-}
-.tab[data-checked="true"] svg {
-  animation: tab-land var(--spring-big-dur) var(--spring-big) backwards;
-}
-@keyframes tab-land {
-  from {
-    scale: 0.6;
-    translate: 0 4px;
-  }
-}
-
-/* The welcome screen's language switch: a dark track with a yellow piece and ink words on it. */
-.seg-pills {
-  position: relative;
 }
 /* The bigger squash of the app's main action releases on the big spring (the base rule's pop is smaller). */
 a.scan-pill {
@@ -1418,14 +1418,14 @@ a.scan-pill {
   padding: 0 16px 0 14px;
   border-radius: 28px;
   background: var(--yellow);
-  display: flex;
+  box-shadow: 0 2px 8px rgba(2, 8, 24, 0.25);
   font-size: 14px;
   font-weight: 750;
   white-space: nowrap;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 999px;
+}
+.scan-pill:active .scan-pill__face {
+  background: var(--yellow-soft);
+}
 .scan-pill__face::after {
   content: "";
   position: absolute;
@@ -1502,6 +1502,70 @@ a.scan-pill {
     animation: none;
   }
 }
+/* ---- one piece per track ----
+   Every segmented control and tab row (the tab bar, the welcome screen's language switch) has one piece for the whole
+   track, and a choice flows into the next: the edge in front leaves first, runs a little past its place and comes back
+   (bounce 0.2), and the edge behind follows 60 ms later with no bounce, so for a moment the old piece and the new one are
+   one, then it settles with the overshoot already behind it. SegGlide draws the piece as two round ends and a
+   flat bridge and moves them only by transform, so the compositor runs the slide and nothing is painted per frame. The
+   parts are one group under one opacity (--seg-alpha), so a translucent piece does not darken where they overlap. While
+   the piece is there, the chosen piece's own ground steps aside. The chosen piece says it is the one by itself too: a
+   filled glyph that lands on the big spring, heavier words. */
+.seg__glide {
+  --seg-round: 24px;
+  --seg-color: #fff;
+  --seg-alpha: 0.22;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms;
+}
+.seg__glide[data-on="true"] {
+  opacity: 1;
+}
+.seg__face {
+  position: absolute;
+  inset: 0;
+  opacity: var(--seg-alpha);
+}
+.seg__face > span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: var(--seg-color);
+  transform-origin: 0 0;
+}
+.seg__cap {
+  border-radius: var(--seg-round);
+}
+.seg__bridge {
+  width: 1px;
+}
+.tab[data-checked="true"] {
+  font-weight: 750;
+}
+.tab[data-checked="true"] svg {
+  animation: tab-land var(--spring-big-dur) var(--spring-big) backwards;
+}
+@keyframes tab-land {
+  from {
+    scale: 0.6;
+    translate: 0 4px;
+  }
+}
+
+/* The welcome screen's language switch: a dark track with a yellow piece and ink words on it. */
+.seg-pills {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
   background: rgba(7, 22, 47, 0.3);
 }
 .seg-pills > .seg__glide {
@@ -1981,6 +2045,9 @@ html[data-rise-seen] .rise {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .frame i {
+    animation: arrive-fade 150ms linear backwards;
+  }
   .frame--locked {
     transform: translate(-50%, -50%);
   }

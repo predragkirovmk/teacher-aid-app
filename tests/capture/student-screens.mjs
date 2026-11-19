@@ -368,6 +368,17 @@ add("65-quiz-ask-sent", "/app/play/ASK-7B", "a question typed and sent from the 
   await page.getByRole("dialog").getByRole("heading").waitFor();
 }, { clock: "paused" });
 add("66-scan-no-camera", "/app/scan", "camera intro already seen; this browser has no camera", `${APP}/scan/page.tsx`, go("/app/scan"), { init: () => localStorage.setItem("teacheraid-camera-intro", "1") });
+add("67-scan-code", "/app/scan", "no camera; Enter the code opened, nothing typed yet", `${APP}/scan/page.tsx`, async (page) => {
+  await page.goto(`${base}/app/scan`);
+  await page.getByRole("button", { name: "Внеси код" }).click();
+  await page.locator(".scan-code__input").waitFor();
+}, { init: () => localStorage.setItem("teacheraid-camera-intro", "1") });
+add("68-scan-code-error", "/app/scan", "no camera; Enter the code submitted empty, so the inline message shows", `${APP}/scan/page.tsx`, async (page) => {
+  await page.goto(`${base}/app/scan`);
+  await page.getByRole("button", { name: "Внеси код" }).click();
+  await page.locator(".scan-code__input").press("Enter");
+  await page.locator(".scan-code__err").waitFor();
+}, { init: () => localStorage.setItem("teacheraid-camera-intro", "1") });
 
 // ---- Run ----------------------------------------------------------------------------------------------------------------
 const inventory = [];
