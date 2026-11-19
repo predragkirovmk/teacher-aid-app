@@ -40,11 +40,18 @@ const TARGETS: Target[] = [
     },
   },
   {
-    name: "the scan pill",
-    min: 0.91,
+    name: "the Scan tab",
     open: async (page) => {
       await page.goto("/app");
-      return page.locator(".scan-pill");
+      return page.locator('.tab[href="/app/join"]');
+    },
+  },
+  {
+    name: "the join button on the Scan tab",
+    min: 0.91,
+    open: async (page) => {
+      await page.goto("/app/join");
+      return page.locator(".join-cta");
     },
   },
   {
@@ -302,9 +309,11 @@ async function swipe(page: Page, from: number, to: number) {
 }
 
 test.describe("screen transitions", () => {
-  test("the scan pill goes forward to the scanner", async ({ page }) => {
-    await home(page);
-    await page.locator(".scan-pill").click();
+  test("the join button goes forward to the scanner", async ({ page }) => {
+    await recordTransitions(page);
+    await page.goto("/app/join");
+    await expect(page.locator("main.screen")).toBeVisible();
+    await page.locator(".join-cta").click();
     await expect(page).toHaveURL(/\/app\/scan$/);
     await expect.poll(() => lastAsked(page)).toContain("nav-forward");
   });
@@ -374,7 +383,7 @@ test.describe("screen transitions", () => {
     await home(page);
     await page.waitForTimeout(600);
     await swipe(page, 330, 60);
-    await expect(page).toHaveURL(/\/app\/profile$/);
+    await expect(page).toHaveURL(/\/app\/join$/);
     await page.waitForTimeout(500);
     // The swipe type has no class in Shell, so nothing in the transition animates: the pager's own slide is the only
     // motion, with no crossfade after it. (It is a type of its own, not none, so other transitions can be off for it.)
@@ -585,7 +594,7 @@ test.describe("entrances", () => {
     await home(page);
     await expect(page.locator("html")).toHaveAttribute("data-rise-seen", "");
     await swipe(page, 330, 60);
-    await expect(page).toHaveURL(/\/app\/profile$/);
+    await expect(page).toHaveURL(/\/app\/join$/);
     for (let i = 0; i < 8; i++) {
       expect(await running(page)).toEqual([]);
       await page.waitForTimeout(60);

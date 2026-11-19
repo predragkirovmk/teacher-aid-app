@@ -44,7 +44,7 @@ async function record(page: Page) {
   });
 }
 
-const TABS = ["/app", "/app/profile"];
+const TABS = ["/app", "/app/join", "/app/profile"];
 
 for (const rate of [1, 4]) {
   test.describe(`a tab tap crossfades (CPU ${rate}x)`, () => {

@@ -133,7 +133,7 @@ const scenarios = [
     await page.waitForTimeout(1500);
     const tabs = page.getByRole("navigation", { name: "Делови" });
     await m();
-    for (const href of ["/app/profile", "/app"]) {
+    for (const href of ["/app/join", "/app/profile", "/app"]) {
       await tabs.locator(`a[href="${href}"]`).click();
       await page.waitForURL(`**${href}`);
       await page.waitForTimeout(700);
@@ -144,8 +144,17 @@ const scenarios = [
     await page.locator("main.screen:not([data-pending])").waitFor();
     await page.waitForTimeout(1500);
     await m();
-    // Two sections now: across and back, three times.
-    for (const [from, to] of [[330, 60], [60, 330], [330, 60], [60, 330], [330, 60], [60, 330]]) await swipe(page, from, to);
+    // Three sections: across to the last and back, twice.
+    for (const [from, to] of [[330, 60], [330, 60], [60, 330], [60, 330], [330, 60], [330, 60], [60, 330], [60, 330]]) await swipe(page, from, to);
+  }],
+  ["join-idle", {}, async (page, m) => {
+    // The Scan tab with its button idling: one full cycle and a bit (the first waits 600 ms, a cycle is 4.5 s), then a press.
+    await page.goto(`${base}/app/join`);
+    await page.locator(".join-cta").waitFor();
+    await page.waitForTimeout(800);
+    await m();
+    await page.waitForTimeout(6000);
+    await press(page, page.locator(".join-cta"));
   }],
   ["result-open-and-back", {}, async (page, m) => {
     // A result is opened from the list of results and Back returns to the list.

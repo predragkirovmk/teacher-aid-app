@@ -1137,6 +1137,10 @@
   text-align: center;
   animation: q-sheet var(--spring-snappy-dur) var(--spring-snappy) backwards;
 }
+/* On a screen with the tab bar the sheet sits above it, not under it. */
+.scan-miss--tabs {
+  bottom: calc(var(--tab-h) + env(safe-area-inset-bottom) + 24px);
+}
 .scan-miss__badge {
   width: 4rem;
   height: 4rem;

@@ -18,7 +18,7 @@ import { ClockOptions } from "./ClockOptions";
 import { ConnectionPill } from "./ConnectionPill";
 import { NoticeScreen } from "./NoticeScreen";
 import { OutboxRunner } from "./OutboxRunner";
-import { Pager } from "./Pager";
+import { Pager, TAB_ORDER } from "./Pager";
 import { SegGlide } from "./SegGlide";
 import { IosInstallSteps, PushAskSheet, PushHelpSheet } from "./PushSheets";
 import { PushRunner } from "./PushRunner";
@@ -301,16 +301,18 @@ function Dock({ pathname, onTabTap }: { pathname: string; onTabTap: (href: strin
   // the screen it was made on (a swipe back), and send the piece to the old tab.
   const [tapped, setTapped] = useState<{ href: string; from: string } | null>(null);
   if (tapped && tapped.from !== pathname) setTapped(null);
-  const shown = pathname === "/app" ? "/app" : pathname === "/app/profile" ? "/app/profile" : "";
+  const shown = TAB_ORDER.includes(pathname) ? pathname : "";
   const chosen = tapped?.from === pathname ? tapped.href : shown;
 
-  const tab = (href: string, label: string, Icon: Icon) => (
+  // An icon-only tab (the scan) has no visible label; its name is `name`.
+  const tab = (href: string, label: string, Icon: Icon, name?: string) => (
     // Switching tabs replaces the history entry, so Back leaves the section instead of replaying tabs.
     <Link
       href={href}
       replace
       transitionTypes={["tab"]}
       className="tab"
+      aria-label={name}
       aria-current={shown === href ? "page" : undefined}
       data-checked={chosen === href}
       onClick={() => {
@@ -326,19 +328,10 @@ function Dock({ pathname, onTabTap }: { pathname: string; onTabTap: (href: strin
 
   return (
     <nav className="dock" aria-label={t("nav.main")}>
-      {/* Two sections with the scan between them, a call to action rather than a section. The one piece under the
-          current tab is SegGlide's, and it slides over the scan from one section to the other. */}
       <div className="tabbar glass">
         <SegGlide at={chosen} />
         {tab("/app", t("nav.home"), HouseSimpleIcon)}
-        {/* The halo sits outside the face, which clips the shine; the press scales the whole link. */}
-        <Link href="/app/scan" className="scan-pill" transitionTypes={["nav-forward"]}>
-          <span className="scan-pill__halo" aria-hidden="true" />
-          <span className="scan-pill__face">
-            <QrCodeIcon className="scan-pill__glyph" size={22} weight="bold" aria-hidden="true" />
-            {t("nav.scanJoin")}
-          </span>
-        </Link>
+        {tab("/app/join", "", QrCodeIcon, t("nav.scanJoin"))}
         {tab("/app/profile", t("nav.profile"), UserIcon)}
       </div>
     </nav>

@@ -1,57 +1,38 @@
 import { expect, mk, test } from "../fixtures";
 
-test.describe("the scan pill", () => {
-  test("sits in the middle of the bar, reads Scan to join, and opens the scanner", async ({ page }) => {
-    await page.goto("/app");
-    const bar = page.getByRole("navigation", { name: mk.t("nav.main") });
-    const pill = bar.getByRole("link", { name: mk.t("nav.scanJoin") });
-    await expect(pill).toHaveText(mk.t("nav.scanJoin"));
-    const [b, p, home, profile] = await Promise.all([
-      bar.boundingBox(),
-      pill.boundingBox(),
-      bar.getByRole("link", { name: mk.t("nav.home") }).boundingBox(),
-      bar.getByRole("link", { name: mk.t("nav.profile") }).boundingBox(),
-    ]);
-    expect(Math.abs(p!.x + p!.width / 2 - (b!.x + b!.width / 2))).toBeLessThan(2);
-    expect(p!.x).toBeGreaterThan(home!.x + home!.width - 1);
-    expect(p!.x + p!.width).toBeLessThan(profile!.x + 1);
-    // The text sits on one line, and Home and Profile keep room for their words.
-    expect(p!.height).toBeLessThan(80);
-    expect(home!.width).toBeGreaterThan(70);
-    await pill.click();
-    await expect(page).toHaveURL(/\/app\/scan$/);
-    await expect(page.getByRole("heading", { level: 1, name: mk.t("scan.title") })).toBeVisible();
-  });
-
-  test("idles with transform and opacity only", async ({ page }) => {
-    await page.goto("/app");
-    const props = await page.evaluate(() =>
-      document
-        .querySelector(".scan-pill")!
-        .getAnimations({ subtree: true })
-        .flatMap((a) => (a.effect as KeyframeEffect).getKeyframes().flatMap((k) => Object.keys(k)))
-        .filter((k) => !["offset", "easing", "composite", "computedOffset"].includes(k)),
-    );
-    expect(props.length).toBeGreaterThan(0);
-    expect(new Set(props)).toEqual(new Set(["transform", "opacity"]));
-  });
-
-  test.describe("with reduced motion", () => {
-    test.use({ reducedMotion: "reduce" });
-    test("nothing idles", async ({ page }) => {
-      await page.goto("/app");
-      await expect(page.locator(".scan-pill")).toBeVisible();
-      expect(await page.evaluate(() => document.querySelector(".scan-pill")!.getAnimations({ subtree: true }).length)).toBe(0);
-    });
-  });
-});
-
-test("the tab bar has three slots: Home, the scan in the middle, Profile", async ({ page }) => {
+test("the tab bar has three equal tabs: Home, Scan (icon only), Profile", async ({ page }) => {
   await page.goto("/app");
-  const tabs = page.getByRole("navigation", { name: mk.t("nav.main") });
+  const bar = page.getByRole("navigation", { name: mk.t("nav.main") });
   const names = [mk.t("nav.home"), mk.t("nav.scanJoin"), mk.t("nav.profile")];
-  await expect(tabs.getByRole("link")).toHaveCount(names.length);
-  for (const [i, name] of names.entries()) await expect(tabs.getByRole("link").nth(i)).toHaveAccessibleName(name);
+  await expect(bar.getByRole("link")).toHaveCount(names.length);
+  for (const [i, name] of names.entries()) await expect(bar.getByRole("link").nth(i)).toHaveAccessibleName(name);
+  // Scan is a tab like the others: the same size to within a pixel, the same label style, no idle motion of its own.
+  const boxes = await Promise.all(names.map((n) => bar.getByRole("link", { name: n }).boundingBox()));
+  for (const b of boxes) {
+    expect(Math.abs(b!.width - boxes[0]!.width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(b!.height - boxes[0]!.height)).toBeLessThanOrEqual(1);
+  }
+  const style = (n: string) =>
+    bar.getByRole("link", { name: n }).evaluate((el) => {
+      const s = getComputedStyle(el);
+      return [s.fontSize, s.fontWeight, s.color, s.backgroundColor, s.borderRadius].join("|");
+    });
+  expect(await style(names[1])).toBe(await style(names[2]));
+  // Icon only: the name is for assistive technology, nothing is written in the tab, and its glyph is centred in the same box as the others.
+  const scan = bar.getByRole("link", { name: names[1] });
+  expect(((await scan.innerText()) ?? "").trim()).toBe("");
+  const [sb, gb] = await Promise.all([scan.boundingBox(), scan.locator("svg").boundingBox()]);
+  expect(Math.abs(gb!.x + gb!.width / 2 - (sb!.x + sb!.width / 2))).toBeLessThanOrEqual(1);
+  expect(Math.abs(gb!.y + gb!.height / 2 - (sb!.y + sb!.height / 2))).toBeLessThanOrEqual(1);
+  // The same glyph size as the other tabs (as set; a selected tab's glyph lands with a small bounce, which moves its box).
+  const size = (n: string) => bar.getByRole("link", { name: n }).locator("svg").getAttribute("width");
+  expect(await size(names[1])).toBe(await size(names[2]));
+  expect(await bar.getByRole("link", { name: names[1] }).evaluate((el) => el.getAnimations({ subtree: true }).length)).toBe(0);
+  // The tab opens the join screen and becomes the current one.
+  await bar.getByRole("link", { name: names[1] }).click();
+  await expect(page).toHaveURL(/\/app\/join$/);
+  await expect(page.getByRole("heading", { level: 1, name: mk.t("join.title") })).toBeVisible();
+  await expect(bar.locator("[aria-current=page]")).toHaveAttribute("aria-label", mk.t("nav.scanJoin"));
 });
 
 test("the tab bar switches between Home and Profile", async ({ page }) => {

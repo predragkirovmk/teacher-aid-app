@@ -54,7 +54,7 @@ test.describe("the pager carries the finger's speed", () => {
     await expect(page.locator("main.screen:not([data-pending])")).toBeVisible();
     // 60 px is well under a quarter of the phone: only the speed can carry it.
     await flick(page, 330, 270);
-    await expect(page).toHaveURL(/\/app\/profile$/);
+    await expect(page).toHaveURL(/\/app\/join$/);
     await expect.poll(() => pagerAnimations(page)).toBeGreaterThan(0);
     await expect.poll(() => page.evaluate(() => (document.querySelector(".pager") as HTMLElement).style.transform)).toBe("");
   });
@@ -123,7 +123,7 @@ test.describe("the pager carries the finger's speed", () => {
     await flick(page, 330, 270);
     expect(await pagerAnimations(page)).toBe(0);
     expect(await pagerX(page)).toBe(0);
-    await expect(page).toHaveURL(/\/app\/profile$/);
+    await expect(page).toHaveURL(/\/app\/join$/);
     expect(await pagerAnimations(page)).toBe(0);
   });
 });

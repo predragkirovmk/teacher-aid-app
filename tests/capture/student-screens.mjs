@@ -379,6 +379,18 @@ add("68-scan-code-error", "/app/scan", "no camera; Enter the code submitted empt
   await page.locator(".scan-code__input").press("Enter");
   await page.locator(".scan-code__err").waitFor();
 }, { init: () => localStorage.setItem("teacheraid-camera-intro", "1") });
+add("69-join", "/app/join", "the Scan tab, with the dock", `${APP}/join/page.tsx`, go("/app/join"));
+add("70-join-code", "/app/join", "Enter the code opened, nothing typed yet", `${APP}/join/page.tsx, ${C}/JoinCode.tsx`, async (page) => {
+  await page.goto(`${base}/app/join`);
+  await page.getByRole("button", { name: "Внеси код" }).click();
+  await page.locator(".scan-code__input").waitFor();
+});
+add("71-join-code-error", "/app/join", "Enter the code submitted empty, so the inline message shows", `${APP}/join/page.tsx, ${C}/JoinCode.tsx`, async (page) => {
+  await page.goto(`${base}/app/join`);
+  await page.getByRole("button", { name: "Внеси код" }).click();
+  await page.locator(".scan-code__input").press("Enter");
+  await page.locator(".scan-code__err").waitFor();
+});
 
 // ---- Run ----------------------------------------------------------------------------------------------------------------
 const inventory = [];

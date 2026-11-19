@@ -5,6 +5,7 @@ import { demoRoutes } from "./demo";
 export const APP_ROUTES = [
   "/app",
   "/app/scan",
+  "/app/join",
   "/app/notifications",
   "/app/profile",
   "/app/summary",

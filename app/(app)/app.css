@@ -338,7 +338,7 @@ button.card:active {
    (its colour change), so it passes its timing in through --press-bg, which both rules below use for
    the background. Every other element on the list has no transition of its own, so it needs nothing. */
 :is(
-  .press, .btn, a.card, button.card, .round, .next, .scan-pill, .provider, .q-opt, .q-tf__btn, .n-minus, .pe-photo-btn,
+  .press, .btn, a.card, button.card, .round, .next, .join-cta, .provider, .q-opt, .q-tf__btn, .n-minus, .pe-photo-btn,
   a.item, button.item, .tab, .opt, .switch, button.pill, .pe-bar__text
 ) {
   transition:
@@ -347,7 +347,7 @@ button.card:active {
     opacity var(--press-fade, 0s) linear;
 }
 :is(
-  .press, .btn, a.card, button.card, .round, .next, .scan-pill, .provider, .q-opt, .q-tf__btn, .n-minus, .pe-photo-btn,
+  .press, .btn, a.card, button.card, .round, .next, .join-cta, .provider, .q-opt, .q-tf__btn, .n-minus, .pe-photo-btn,
   a.item, button.item, .tab, .opt, .switch, button.pill, .pe-bar__text
 ):not(:disabled, [aria-disabled="true"]):active {
   scale: var(--press-reduce, var(--press-scale, 0.94));
@@ -1357,7 +1357,7 @@ button.pill {
   }
 }
 
-/* ---- dock: Home, the scan in the middle, Profile ---- */
+/* ---- dock: Home, Scan, Profile: three equal tabs ---- */
 .dock {
   position: absolute;
   z-index: 20;
@@ -1369,7 +1369,7 @@ button.pill {
   min-height: var(--tab-h);
   border-radius: 34px;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: repeat(3, 1fr);
   align-items: center;
   padding: 4px;
 }
@@ -1414,68 +1414,87 @@ button.pill {
   display: grid;
   place-items: center;
 }
-/* The scan is the call to action of the app: a yellow pill in the middle of the bar, inside it like the tabs.
-   It idles on one CSS cycle of 4.5 s: about 1.2 s of motion (a shine across, the glyph breathing, a halo),
-   then 3.3 s of rest, so it keeps calling without buzzing. Everything animates by transform and opacity. The idle
-   cycle runs on the children (`transform`) and the press on the link (`scale`), so a press never restarts or jumps the cycle. The first cycle waits
-   600 ms, so it does not compete with the screen's own arrival. Reduced motion removes all of it. */
-.scan-pill {
+/* ---- the Scan tab's call to action ---- */
+.join {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.join__stage {
+  display: grid;
+  place-items: center;
+  /* Room for the halo, which reaches past the button. The button sits a fixed way down, so opening the field does not move it. */
+  padding: 32px 0 16px;
+  margin-top: clamp(0px, 14vh, 120px);
+}
+/* The fun of the app: a big yellow button that idles on one CSS cycle of 4.5 s, about 1.2 s of motion (a shine across, the
+   glyph breathing, a halo of warm light) and then 3.3 s of rest, so it keeps calling without buzzing. Everything animates by
+   transform and opacity: the halo is painted once and only fades and grows. The idle runs on the children (`transform`)
+   and the press on the link (`scale`), so a press never restarts or jumps the cycle. The first cycle waits 600 ms, so it
+   does not compete with the screen's own arrival. Reduced motion removes all of it. */
+.join-cta {
   --press-scale: 0.92;
   position: relative;
-  z-index: 1;
-  margin: 0 4px;
+  display: block;
+  width: 100%;
+  max-width: 360px;
   color: var(--ink);
 }
 /* The bigger squash of the app's main action releases on the big spring (the base rule's pop is smaller). */
-a.scan-pill {
+a.join-cta {
   transition:
     scale var(--spring-big-dur) var(--spring-big),
     opacity var(--press-fade, 0s) linear;
 }
-.scan-pill__face {
+.join-cta__face {
   position: relative;
   overflow: hidden;
   display: flex;
   align-items: center;
-  gap: 6px;
-  height: 56px;
-  padding: 0 16px 0 14px;
-  border-radius: 28px;
+  justify-content: center;
+  gap: 14px;
+  min-height: 96px;
+  padding: 16px 20px;
+  border-radius: 36px;
   background: var(--yellow);
-  box-shadow: 0 2px 8px rgba(2, 8, 24, 0.25);
-  font-size: 14px;
+  box-shadow: 0 4px 16px rgba(2, 8, 24, 0.3);
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  line-height: 1.15;
   font-weight: 750;
-  white-space: nowrap;
+  text-align: center;
 }
-.scan-pill:active .scan-pill__face {
+.join-cta:active .join-cta__face {
   background: var(--yellow-soft);
 }
-.scan-pill__face::after {
+.join-cta__face::after {
   content: "";
   position: absolute;
   top: -10%;
   bottom: -10%;
   left: 0;
   width: 34%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
   transform: translateX(-150%) skewX(-20deg);
   opacity: 0;
-  animation: scan-shine 4.5s 600ms infinite;
+  animation: join-shine 4.5s 600ms infinite;
 }
-.scan-pill__glyph {
+.join-cta__glyph {
   flex: none;
-  animation: scan-breathe 4.5s 600ms infinite;
+  animation: join-breathe 4.5s 600ms infinite;
 }
-.scan-pill__halo {
+.join-cta__halo {
   position: absolute;
   inset: 0;
-  border-radius: 28px;
-  border: 3px solid var(--yellow);
+  border-radius: 36px;
+  /* Light, not a line: the button's own yellow under it, with a soft glow, so there is no dark gap or hard edge as it grows and fades. */
+  background: var(--yellow);
+  box-shadow: 0 0 36px 10px rgba(255, 200, 61, 0.85);
   opacity: 0;
   pointer-events: none;
-  animation: scan-halo 4.5s 600ms infinite;
+  animation: join-halo 4.5s 600ms infinite;
 }
-@keyframes scan-shine {
+@keyframes join-shine {
   0% {
     transform: translateX(-150%) skewX(-20deg);
     opacity: 0;
@@ -1493,13 +1512,13 @@ a.scan-pill {
     opacity: 0;
   }
 }
-@keyframes scan-breathe {
+@keyframes join-breathe {
   0% {
     transform: scale(1);
     animation-timing-function: var(--spring-bouncy);
   }
   8% {
-    transform: scale(1.1);
+    transform: scale(1.14);
     animation-timing-function: var(--spring-bouncy);
   }
   26.7%,
@@ -1507,7 +1526,7 @@ a.scan-pill {
     transform: scale(1);
   }
 }
-@keyframes scan-halo {
+@keyframes join-halo {
   0% {
     transform: scale(1);
     opacity: 1;
@@ -1515,14 +1534,14 @@ a.scan-pill {
   }
   26.7%,
   100% {
-    transform: scale(1.22, 1.5);
+    transform: scale(1.1, 1.3);
     opacity: 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .scan-pill__face::after,
-  .scan-pill__glyph,
-  .scan-pill__halo {
+  .join-cta__face::after,
+  .join-cta__glyph,
+  .join-cta__halo {
     animation: none;
   }
 }
@@ -1945,7 +1964,7 @@ a.scan-pill {
   .toast,
   .btn,
   .round,
-  .scan-pill__face {
+  .join-cta__face {
     border: 1px solid CanvasText;
   }
   /* Decoration only, and its text backplate would cover the card's title. */
@@ -2087,7 +2106,7 @@ html[data-rise-seen] .rise {
   /* Taps reach the live page while a transition runs. */
   pointer-events: none;
 }
-/* The tab bar and the scan pill stay still, above the moving screens. They get a name only while a transition
+/* The tab bar stays still, above the moving screens. They get a name only while a transition
    runs: a name makes an element a backdrop root, which would flatten the glass of the bar at rest. */
 :root:active-view-transition .dock {
   view-transition-name: dock;

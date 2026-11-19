@@ -152,28 +152,54 @@ test.describe("the welcome screen's language switch", () => {
 });
 
 test.describe("the tab bar", () => {
-  test("one piece slides from Home to Profile over the scan, and never sits under the scan", async ({ page }) => {
-    await start(page, {});
-    await page.goto("/app");
-    const glide = page.locator(".tabbar > .seg__glide");
-    await expect(glide).toHaveAttribute("data-on", "true");
-    const { samples } = await tapAndWatch(page, ".tabbar", `.tab[href="/app/profile"]`);
-    await expect(page).toHaveURL(/\/app\/profile$/);
-    const goal = await page
-      .locator(`.tab[href="/app/profile"]`)
-      .evaluate((el: HTMLElement) => ({ l: el.offsetLeft, r: el.offsetLeft + el.offsetWidth }));
-    const home = await page.locator(`.tab[href="/app"]`).evaluate((el: HTMLElement) => ({ l: el.offsetLeft, r: el.offsetLeft + el.offsetWidth }));
-    // One piece, not two: while its trailing edge is still over Home, the leading edge has run out across the scan pill, so
-    // the piece is stretched past two tabs wide (a piece that rests at each tab, or jumps, is never wider than one).
-    const tab = goal.r - goal.l;
-    expect(samples.some((s) => s.l < home.r && s.r - s.l > 2 * tab)).toBe(true);
-    // Then it settles on Profile.
-    const last = samples.at(-1)!;
-    expect(near(last.l, goal.l) && near(last.r, goal.r)).toBe(true);
-    // Just past Profile, a little, on the way in, and back.
-    expectOvershootBeforeStop(samples, goal, goal.l - samples[0].l);
-    await expect(page.getByRole("navigation", { name: mk.t("nav.main") }).locator("[aria-current=page]")).toHaveText(mk.t("nav.profile"));
-  });
+  const HREF = { home: "/app", scan: "/app/join", profile: "/app/profile" } as const;
+  type Tab = keyof typeof HREF;
+  const edgesOf = (page: Page, tab: Tab) =>
+    page.locator(`.tab[href="${HREF[tab]}"]`).evaluate((el: HTMLElement) => ({ l: el.offsetLeft, r: el.offsetLeft + el.offsetWidth }));
+  /** How far the piece covers a tab at one sampled moment. */
+  const covers = (s: Sample, tab: { l: number; r: number }) => Math.min(s.r, tab.r) - Math.max(s.l, tab.l);
+
+  for (const tab of Object.keys(HREF) as Tab[]) {
+    test(`the piece rests under ${tab}, exactly on its tab`, async ({ page }) => {
+      await start(page, {});
+      await page.goto(HREF[tab]);
+      await expect(page.locator(".tabbar > .seg__glide")).toHaveAttribute("data-on", "true");
+      const goal = await edgesOf(page, tab);
+      await expect
+        .poll(() => page.locator(".tabbar .seg__cap").first().evaluate((el) => el.getBoundingClientRect().left - el.closest(".tabbar")!.getBoundingClientRect().left))
+        .toBeCloseTo(goal.l + 1, 0);
+      await expect(page.locator(".tabbar")).toHaveAttribute("data-glide", "on");
+    });
+  }
+
+  for (const [from, to, over] of [
+    ["home", "scan", null],
+    ["scan", "profile", null],
+    ["home", "profile", "scan"],
+  ] as const) {
+    test(`one piece slides from ${from} to ${to}${over ? `, passing over ${over}` : ""}: a real part of two tabs at once`, async ({ page }) => {
+      await start(page, {});
+      await page.goto(HREF[from]);
+      await expect(page.locator(".tabbar > .seg__glide")).toHaveAttribute("data-on", "true");
+      const { samples } = await tapAndWatch(page, ".tabbar", `.tab[href="${HREF[to]}"]`);
+      await expect(page).toHaveURL(new RegExp(`${HREF[to]}$`));
+      const [a, b] = await Promise.all([edgesOf(page, from), edgesOf(page, to)]);
+      const quarter = (b.r - b.l) / 4;
+      // One piece, not two: at some moment a quarter tab of it is inside both tabs (two pieces resting at each, or a jump, never are).
+      expect(samples.some((s) => covers(s, a) >= quarter && covers(s, b) >= quarter)).toBe(true);
+      if (over) {
+        const mid = await edgesOf(page, over);
+        // On a longer way it passes over the tab between.
+        expect(samples.some((s) => covers(s, a) >= quarter && covers(s, mid) >= quarter)).toBe(true);
+        expect(samples.some((s) => covers(s, mid) >= quarter && covers(s, b) >= quarter)).toBe(true);
+      }
+      // Then it settles on the goal, a little past it on the way in and back.
+      const last = samples.at(-1)!;
+      expect(near(last.l, b.l) && near(last.r, b.r)).toBe(true);
+      expectOvershootBeforeStop(samples, b, b.l - samples[0].l);
+      await expect(page.getByRole("navigation", { name: mk.t("nav.main") }).locator("[aria-current=page]")).toHaveAttribute("href", HREF[to]);
+    });
+  }
 
   test("the slide is drawn by the compositor: nothing on the main thread animates but transforms", async ({ page }) => {
     await start(page, {});
@@ -198,8 +224,8 @@ test.describe("the tab bar", () => {
     await start(page, {});
     await page.goto("/app");
     const tabs = page.getByRole("navigation", { name: mk.t("nav.main") });
-    await tabs.getByRole("link", { name: mk.t("nav.profile") }).click();
-    await expect(page).toHaveURL(/\/app\/profile$/);
+    await tabs.getByRole("link", { name: mk.t("nav.scanJoin") }).click();
+    await expect(page).toHaveURL(/\/app\/join$/);
     // A finger drags the screen to the right: back to Home.
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 100, y: 400 }] });
