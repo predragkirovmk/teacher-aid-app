@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition, type ReactNode } from "react";
 import { invalidate } from "@/lib/app/api/query";
-import { useAuth, useSettings } from "@/lib/app/api/hooks";
+import { NOTIFICATIONS_PAGE } from "@/lib/app/api/config";
+import { useAuth, useNotifications, useSettings } from "@/lib/app/api/hooks";
 import { useT } from "@/lib/app/i18n";
 import { useAsk, usePush } from "@/lib/app/push";
 import { SPRINGS, throwTo } from "@/lib/app/motion";
@@ -251,6 +252,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <p className="sr" role="status">
             {toastMsg ?? ""}
           </p>
+          {status === "signedIn" && <AlertAnnouncer />}
           {toastMsg && (
             <div className={`toast glass${toastOut ? " toast--out" : ""}`} aria-hidden="true" onClick={dismissToast}>
               {toastMsg}
@@ -259,6 +261,27 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </div>
     </UIContext.Provider>
+  );
+}
+
+/** Says out loud, once and politely, that a new alert arrived, on whichever screen the student is on. */
+function AlertAnnouncer() {
+  const { t } = useT();
+  const feed = useNotifications().data;
+  const count = (feed ?? []).filter((n) => n.readAt === null).length;
+  const shownCount = count >= NOTIFICATIONS_PAGE ? `${NOTIFICATIONS_PAGE}+` : count;
+  // The first load is not news.
+  const [seen, setSeen] = useState<number | null>(feed === undefined ? null : count);
+  const [arrived, setArrived] = useState("");
+  if (feed !== undefined && seen !== count) {
+    setSeen(count);
+    if (seen !== null && count > seen) setArrived(t("notif.arrived", { n: shownCount }));
+  }
+  // Always present: a live region that appears together with its text is often not read.
+  return (
+    <span className="sr" role="status">
+      {arrived}
+    </span>
   );
 }
 

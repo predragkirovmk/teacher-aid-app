@@ -1244,10 +1244,18 @@ test.describe("alerts and push", () => {
       await expect(bell(page)).toHaveAccessibleName(named(unread(2)));
       await control(request, "notify", { title: "Quiz moved", body: "To Friday." });
       await expect(bell(page)).toHaveAccessibleName(named(unread(3)));
-      // Said to a screen reader from the bell, which is always in the page.
+      // Said to a screen reader from a live region that every screen has.
       await expect(page.getByRole("status").filter({ hasText: mk.t("notif.arrived", { n: 3 }) })).toBeAttached();
       await bell(page).click();
       await expect(page.getByRole("link", { name: /Quiz moved/ })).toBeVisible();
+    });
+
+    test("a new alert is announced on a screen that is not Home, on Profile", async ({ page, request }) => {
+      await page.goto("/app/profile");
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      await expect.poll(async () => ((await (await request.get(`${API}/__control/state`)).json()) as { streams: number }).streams).toBe(1);
+      await control(request, "notify", { title: "Quiz moved", body: "To Friday." });
+      await expect(page.getByRole("status").filter({ hasText: mk.t("notif.arrived", { n: 3 }) })).toBeAttached();
     });
 
     test("a new alert slides into the open list, on top", async ({ page, request }) => {
