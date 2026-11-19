@@ -14,11 +14,12 @@ export type Locale = "mk" | "en";
 
 // ---- Enumerations (spec 3.2) ---------------------------------------------------------------------
 
-export type SessionState = "lobby" | "teaching" | "review" | "ended";
-/** The states a pop-up question goes through (4.2). `ready` is a question that has not been fired. */
-export type QuestionStatus = "ready" | "open" | "closed" | "revealed" | "skipped";
-export type AttendanceStatus = "present" | "late" | "absent" | "present_no_device";
-export type NoDeviceReason = "no_phone" | "battery" | "no_data" | "no_focus_authorization";
+export type SessionState = "lobby" | "teaching" | "ended";
+/**
+ * The states a pop-up question goes through (4.2). `ready` is a question that has not been fired. `revealed` is a question that
+ * has ended: the right answer shows by itself the moment it does.
+ */
+export type QuestionStatus = "ready" | "open" | "revealed" | "skipped";
 export type QuestionKind = "multiple_choice" | "true_false" | "numeric";
 /** What a student has done with the open question, as the console shows it (FR-CON-01). */
 export type AnswerState = "answered" | "not_answered" | "offline";
@@ -28,7 +29,7 @@ export type SourceKind = "upload" | "typed";
 
 /**
  * What kind of institution a school is (3.1 School.type: гимназија, стручно, уметничко, faculty).
- * PROPOSED codes. A `faculty` is a university: the app words it "студенти" and "група".
+ * PROPOSED codes. A `faculty` is a university: the app words it "студенти".
  */
 export type SchoolKind = "gymnasium" | "vocational" | "arts" | "faculty";
 
@@ -63,28 +64,6 @@ export type SignInRequest = { provider: AuthProvider; return_to?: string };
 
 /** The answer: where to send the browser, that provider's own sign-in address with no login hint. `redirect` is the only method. */
 export type SignInRedirect = { method: "redirect"; url: string };
-
-// ---- Courses and classes (3.1, OPEN-02) ----------------------------------------------------------
-
-export type Subject = { id: Id; name: string };
-/** A school class (II-4) or a study group at a faculty. `year` is I to IV as 1 to 4, or the study year. */
-export type ClassRef = { id: Id; name: string; year: number };
-
-/** One item of GET /teacher/courses. PROPOSED. */
-export type CourseSummary = {
-  id: Id;
-  subject: Subject;
-  class: ClassRef;
-  student_count: number;
-  /** BR-PTS-04: the teacher may switch the speed bonus off per course. */
-  speed_bonus_on: boolean;
-  /** Finished lessons run for this course. */
-  lessons_run: number;
-  last_session_at: IsoTime | null;
-};
-
-/** PATCH /courses/{id}. */
-export type CoursePatch = { speed_bonus_on: boolean };
 
 // ---- Questions and lessons (3.1, BR-Q-*, FR-LES-*) -----------------------------------------------
 
@@ -122,11 +101,9 @@ export type NumericQuestion = QuestionBase & {
 };
 export type Question = MultipleChoiceQuestion | TrueFalseQuestion | NumericQuestion;
 
-/** What a teacher edits: the questions and the review summary, plus the title. */
+/** What a teacher edits: the title and the questions. */
 export type LessonContent = {
   title: string;
-  /** The text of the review, which the teacher reads out when the lesson turns to review (FR-LES-04). PROPOSED as one text. */
-  review_summary: string;
   questions: Question[];
 };
 
@@ -134,13 +111,10 @@ export type LessonContent = {
 export type LessonSummary = {
   id: Id;
   title: string;
-  subject: Subject;
-  /** The year the lesson is for (3.1 Lesson.year). */
-  year: number;
   question_count: number;
   /** The number of the current version (FR-LES-09). */
   version: number;
-  /** How many times it has been run, for any course. 0 is a prepared lesson that has not been run. */
+  /** How many times it has been run. 0 is a prepared lesson that has not been run. */
   times_run: number;
   last_run_at: IsoTime | null;
   /** Set on a copy from the school library (F-05). */
@@ -166,7 +140,7 @@ export type SourceInput = { kind: "upload"; file: File } | { kind: "typed"; text
 export type SourceCreated = { source_id: Id };
 
 /** POST /lessons/generate. */
-export type GenerateRequest = { source_id: Id; subject_id: Id; year: number; emphasis?: string | null };
+export type GenerateRequest = { source_id: Id; emphasis?: string | null };
 
 /** What a draft is doing (3.2 `draft.status`): being written, written, or the AI could not. */
 export type DraftStatus = "pending" | "ready" | "failed";
@@ -185,8 +159,6 @@ type DraftBase = {
   source_id: Id | null;
   /** PROPOSED: the item of `GET /lessons/drafts` has it, and the wait on the draft page needs to know a document from sentences. */
   source: { kind: SourceKind; file_name: string | null } | null;
-  subject: Subject;
-  year: number;
   emphasis: string | null;
   /** The refinements applied so far, oldest first. */
   refinements: Refinement[];
@@ -207,14 +179,14 @@ type DraftBase = {
 
 /**
  * A draft: the output of a generation or a refinement before the teacher saves it, and the job that makes it (BR-LES-08). Nothing
- * reaches students before the teacher reviews it (BR-LES-04). `title`, `review_summary` and `questions` are null until it is ready
+ * reaches students before the teacher reviews it (BR-LES-04). `title` and `questions` are null until it is ready
  * (INTERPRETATION); `failure` is null unless it failed.
  */
 export type LessonDraft = DraftBase &
   (
-    | { status: "pending"; failure: null; title: null; review_summary: null; questions: null }
-    | { status: "failed"; failure: "generation_failed"; title: null; review_summary: null; questions: null }
-    | { status: "ready"; failure: null; title: string; review_summary: string; questions: DraftQuestion[] }
+    | { status: "pending"; failure: null; title: null; questions: null }
+    | { status: "failed"; failure: "generation_failed"; title: null; questions: null }
+    | { status: "ready"; failure: null; title: string; questions: DraftQuestion[] }
   );
 
 export type ReadyDraft = Extract<LessonDraft, { status: "ready" }>;
@@ -225,14 +197,12 @@ export type DraftSummary = {
   status: DraftStatus;
   failure: "generation_failed" | null;
   title: string | null;
-  subject: Subject;
-  year: number;
   question_count: number | null;
   refinements: Refinement[];
   emphasis: string | null;
   source: { kind: SourceKind; file_name: string | null } | null;
   previous_draft_id: Id | null;
-  /** PROPOSED: the lesson a draft edits, so Today can tell it from a new lesson. */
+  /** PROPOSED: the lesson a draft edits, so the list can tell it from a new lesson. */
   lesson_id: Id | null;
   created_at: IsoTime;
   updated_at: IsoTime;
@@ -243,7 +213,7 @@ export type DraftSummary = {
  * A ready draft only (`invalid_state`, 409, for a pending, failed or saved one). The draft may hold unfinished content (DraftQuestion);
  * the answer is the draft.
  */
-export type DraftPatch = { title?: string; review_summary?: string; questions?: DraftQuestion[] };
+export type DraftPatch = { title?: string; questions?: DraftQuestion[] };
 
 /** POST /lessons: the draft as the teacher edited it (FR-LES-07) becomes a lesson at version 1. PROPOSED body. */
 export type SaveLessonRequest = LessonContent & { draft_id: Id };
@@ -257,8 +227,6 @@ export type UpdateLessonRequest = LessonContent & { draft_id?: Id };
 export type LibraryItem = {
   lesson_id: Id;
   title: string;
-  subject: Subject;
-  year: number;
   question_count: number;
   owner: { id: Id; name: string };
   saved_at: IsoTime;
@@ -290,7 +258,7 @@ export type PublicQuestion = {
 
 /** A question in the console's run order, with what only the teacher sees. PROPOSED. */
 export type ConsoleQuestion = {
-  /** The session question's id, the one fire, reveal and skip take. */
+  /** The session question's id, the one fire and skip take. */
   id: Id;
   question: Question;
   status: QuestionStatus;
@@ -298,13 +266,13 @@ export type ConsoleQuestion = {
   adhoc: boolean;
   fired_at: IsoTime | null;
   closes_at: IsoTime | null;
-  closed_at: IsoTime | null;
+  /** When the question ended and its answer showed: at its time, or sooner when everyone there and online had answered (BR-TIME-04). */
   revealed_at: IsoTime | null;
   skipped_at: IsoTime | null;
   answered: number;
   /** How many students had joined when it opened. */
   joined: number;
-  /** PROPOSED: the counts once the question has closed (right, wrong, unanswered, and by response), so the console can say them at the reveal. Null before. */
+  /** PROPOSED: the counts once the question has ended (right, wrong, unanswered, and by response), so the console can say them at the reveal. Null before. */
   counts: RevealCounts | null;
 };
 
@@ -321,10 +289,9 @@ export type LeaderboardRow = { student_id: Id; name: string; points: number; ran
 
 // ---- Sessions (F-06, 4.1) ------------------------------------------------------------------------
 
-/** A live run of a lesson for one course. */
+/** A live run of a lesson. */
 export type SessionRef = {
   id: Id;
-  course_id: Id;
   lesson: { id: Id; title: string; version: number };
   state: SessionState;
   started_at: IsoTime;
@@ -332,24 +299,22 @@ export type SessionRef = {
 };
 
 /** POST /sessions. */
-export type CreateSessionRequest = { lesson_id: Id; course_id: Id };
+export type CreateSessionRequest = { lesson_id: Id };
 
 /** GET /sessions/open (FR-END-04): any open session of the teacher, so End works from anywhere. PROPOSED shape. */
 export type OpenSession = {
   server_now: IsoTime;
-  session: (SessionRef & { class_name: string; subject_name: string }) | null;
+  session: SessionRef | null;
 };
 
 /** The QR token and the short code beside it, both rotating every 30 s (BR-JOIN-02). */
 export type JoinToken = { token: string; short_code: string; valid_to: IsoTime };
 
+/** A student who has scanned the code and joined. The console lists no one else (owner's simplification, 2026-11-17). */
 export type ConsoleStudent = {
   id: Id;
   full_name: string;
-  /** Null until the student joins. */
-  attendance: AttendanceStatus | null;
-  joined_at: IsoTime | null;
-  no_device_reason: NoDeviceReason | null;
+  joined_at: IsoTime;
   /** Realtime presence: what tells `offline` from `not_answered` (FR-CON-02). */
   online: boolean;
   /** For the open question, else null. */
@@ -380,7 +345,7 @@ export type FocusFlag = {
 /** GET /sessions/{id}/console: everything the teacher's own screen shows, for a reload or a reopened window (FR-SES-08). */
 export type ConsoleSnapshot = {
   server_now: IsoTime;
-  session: SessionRef & { class_name: string; subject_name: string };
+  session: SessionRef;
   /**
    * PROPOSED: the code the console reads out, `short_code`, and the token behind the QR; null once students may no longer join. The
    * teacher's own screen may hold it (it is the teacher's lesson), unlike a channel students read.
@@ -395,31 +360,6 @@ export type ConsoleSnapshot = {
   nudge: { idle_seconds: number } | null;
 };
 
-/** One of the most-missed questions, worst first (FR-REV-01). */
-export type MissedQuestion = {
-  session_question_id: Id;
-  order: number;
-  prompt: string;
-  kind: QuestionKind;
-  topic: string;
-  /** Wrong or unanswered, among the students the question was put to (one who joined after it was sent is left out, BR-PRA-07). */
-  missed: number;
-  joined: number;
-  /**
-   * PROPOSED, the four fields below: the review says the right answer and why (FR-REV-01), on the projector too, and the spec's shape has
-   * none of it. `correct_answer` is in the encoding of 3.2 (the option's index, "true" or "false", the number).
-   */
-  correct_answer: string;
-  explanation: string | null;
-  /** The choices of a multiple-choice question, so the answer can be said in words; null for the other kinds. */
-  options: string[] | null;
-  /** The unit of a numeric answer. */
-  unit: string | null;
-};
-
-/** What the class view shows in review: no names anywhere (BR-PRIV-01). */
-export type ClassViewReview = { most_missed: MissedQuestion[]; anon_questions: { id: Id; text: string }[] };
-
 /** GET /sessions/{id}/class-view: the projected window's snapshot. No private data (FR-SES-02). */
 export type ClassViewSnapshot = {
   server_now: IsoTime;
@@ -427,8 +367,6 @@ export type ClassViewSnapshot = {
     id: Id;
     state: SessionState;
     lesson_title: string;
-    class_name: string;
-    subject_name: string;
     joined_count: number;
     /** PROPOSED: the names of the last five to join, newest first, for the lobby (the `recent` of `joined.count`, so a reload shows them too). */
     recent: string[];
@@ -437,16 +375,15 @@ export type ClassViewSnapshot = {
   join: JoinToken | null;
   question: PublicQuestion | null;
   progress: { answered: number; joined: number } | null;
-  /** Once the teacher reveals the question. */
+  /** Once the question has ended. */
   reveal: { session_question_id: Id; correct_answer: string; explanation: string | null; counts: RevealCounts } | null;
   /** The open or last question was skipped: the view says it does not count (BR-SKIP-01). */
   skipped: boolean;
   board: LeaderboardRow[];
-  review: ClassViewReview | null;
 };
 
-/** POST /sessions/{id}/advance. Forward only: lobby, teaching, review (4.1, INTERPRETATION). */
-export type AdvanceRequest = { to: "teaching" | "review" };
+/** POST /sessions/{id}/advance: from the lobby to teaching (4.1, INTERPRETATION). There is no review phase after it. */
+export type AdvanceRequest = { to: "teaching" };
 
 /**
  * POST /sessions/{id}/adhoc (FR-POP-04). PROPOSED, and OPEN-14: its types and whether it scores are not decided.
@@ -463,135 +400,26 @@ export type AdhocRequest = {
   numeric?: { unit: string | null; tolerance: number; allow_negative: boolean };
 };
 
-/** POST /sessions/{id}/attendance/{student_id}/no-device (FR-ATT-04, F-11). */
-export type NoDeviceRequest = { reason: NoDeviceReason };
+/** A student who joined, with how many of the questions put to them they got right (the end page). */
+export type ResultRow = { student_id: Id; full_name: string; correct: number; asked: number };
 
-/** One row of the attendance list the teacher copies into e-Дневник: every enrolled student (FR-END-03, OPEN-06 on the format). */
-export type AttendanceRow = {
-  student_id: Id;
-  full_name: string;
-  status: AttendanceStatus;
-  joined_at: IsoTime | null;
-  no_device_reason: NoDeviceReason | null;
-  /** Who wrote the mark (3.1 Attendance.marked_by). */
-  marked_by: "student" | "teacher" | "system";
-};
-
-export type AttendanceTally = Record<AttendanceStatus, number> & { total: number };
-
-/** POST /sessions/{id}/end (F-10, FR-END-02). PROPOSED shape. */
-export type EndResult = {
-  server_now: IsoTime;
-  session: SessionRef;
-  attendance: AttendanceRow[];
-  tally: AttendanceTally;
-  most_missed: MissedQuestion[];
-};
-
-/** GET /sessions/{id}/review (FR-REV-01, FR-REV-02). PROPOSED shape. */
+/**
+ * GET /sessions/{id}/review and POST /sessions/{id}/end (FR-END-02). PROPOSED shape. The review answers only once the session has
+ * ended (`invalid_state`, 409, before). `students` are those who joined, by surname. `asked` counts the questions sent after the
+ * student joined that were not skipped and have a right answer (an ad-hoc question with `correct: null` is a poll and counts for
+ * nobody); `correct` is how many of those they answered right.
+ */
 export type SessionReview = {
   server_now: IsoTime;
   session: SessionRef;
-  most_missed: MissedQuestion[];
-  anon_questions: AnonQuestionItem[];
-  /** The full list, once the session has ended. */
-  attendance: AttendanceRow[] | null;
-};
-
-/** A practice set (3.1, BR-PRA-01). */
-export type PracticeSetSummary = {
-  id: Id;
-  session_id: Id;
-  course_id: Id;
-  created_at: IsoTime;
-  question_count: number;
-};
-
-/** POST /sessions/{id}/practice-set. `practice_set` is null when no question was missed (EC-PRA-07). PROPOSED. */
-export type PracticeSetResult = { practice_set: PracticeSetSummary | null };
-
-/** GET /sessions/{id}/practice-set (FR-PRA-04). PROPOSED: the spec says the teacher sees who did it, and lists no endpoint. */
-export type PracticeResults = {
-  practice_set: PracticeSetSummary;
-  students: { student_id: Id; full_name: string; score: number | null; completed_at: IsoTime | null }[];
-};
-
-// ---- Course dashboard (FR-DASH-01, GET /courses/{id}/dashboard) ----------------------------------
-
-/** All PROPOSED: the spec says what the screen shows and lists no payload. */
-export type DashboardStudent = {
-  id: Id;
-  full_name: string;
-  /** Joined the class partway through the year (FR-DASH-04, BR-ROS-01). */
-  joined_mid_year: boolean;
-  joined_class_at: IsoTime | null;
-  /** The season's points in this course. */
-  points: number;
-};
-
-/** One finished lesson in the course's history; `lesson_id` makes it reusable (FR-DASH-01). */
-export type DashboardSession = {
-  id: Id;
-  lesson: { id: Id; title: string; version: number };
-  started_at: IsoTime;
-  ended_at: IsoTime;
-  question_count: number;
-  tally: AttendanceTally;
-  /** Answers given per pop-up per joined student, 0 to 1 (the report's "engagement", OPEN-19). */
-  participation: number;
-  /** Right answers among the answers given, 0 to 1. */
-  right_rate: number;
-  /** Points the class earned in the lesson. */
-  points: number;
-};
-
-/** One student at one lesson. A reason accompanies `present_no_device` so a zero is not read as disengagement (FR-DASH-03). */
-export type DashboardAttendance = {
-  session_id: Id;
-  student_id: Id;
-  status: AttendanceStatus;
-  no_device_reason: NoDeviceReason | null;
-};
-
-/** How the class, and each student, did on a topic across all lessons (BR-TOP-01, FR-DASH-01). */
-export type DashboardTopic = {
-  topic: string;
-  right: number;
-  total: number;
-  by_student: { student_id: Id; right: number; total: number }[];
-};
-
-export type DashboardFocusFlag = FocusFlag & { session_id: Id; away_seconds: number | null };
-
-export type DashboardAnonQuestion = AnonQuestionItem & { session_id: Id };
-
-export type DashboardPractice = {
-  practice_set: PracticeSetSummary;
-  /** Students in the class when it was sent. */
-  students: number;
-  completed: number;
-  /** The mean of the completed students' scores, or null when nobody finished. */
-  average_score: number | null;
-};
-
-export type CourseDashboard = {
-  server_now: IsoTime;
-  course: CourseSummary;
-  students: DashboardStudent[];
-  /** Newest first. */
-  sessions: DashboardSession[];
-  attendance: DashboardAttendance[];
-  topics: DashboardTopic[];
-  focus_flags: DashboardFocusFlag[];
-  anon_questions: DashboardAnonQuestion[];
-  practice: DashboardPractice[];
+  students: ResultRow[];
 };
 
 // ---- Realtime (11.2, 11.4) -----------------------------------------------------------------------
 
 /**
  * `session.{id}.public`: what a student may read too (11.2). `session.{id}.class` (PROPOSED): the projected window's own channel,
- * for what only the class view and the teacher may read: the live join token and the text of anonymous questions in the review.
+ * for what only the class view and the teacher may read: the live join token.
  * `session.{id}.console`: the teacher only, and everything the other two carry.
  */
 export type PublicChannel = `session.${string}.public`;
@@ -607,7 +435,6 @@ export type PublicEvent =
   | Event<"joined.count", { joined_count: number; recent?: string[] }>
   | Event<"question.opened", { question: PublicQuestion }>
   | Event<"question.progress", { session_question_id: Id; answered: number; joined: number }>
-  | Event<"question.closed", { session_question_id: Id }>
   | Event<
       "question.revealed",
       { session_question_id: Id; correct_answer: string; explanation: string | null; counts: RevealCounts }
@@ -618,9 +445,9 @@ export type PublicEvent =
 /**
  * On the class channel (PROPOSED), and so on the console's: nothing a student may read. The spec puts `join_token.rotated` on the
  * public channel and calls it "class view only", and students subscribe to that channel (11.2), so a student at home could follow the
- * rotating token; the text of the review's anonymous questions conflicts with BR-ANON-06 the same way (OPEN-36).
+ * rotating token; the text of anonymous questions would conflict with BR-ANON-06 the same way (OPEN-36).
  */
-export type ClassOnlyEvent = Event<"join_token.rotated", JoinToken> | Event<"review.ready", ClassViewReview>;
+export type ClassOnlyEvent = Event<"join_token.rotated", JoinToken>;
 
 /** Only on the console channel. All PROPOSED fields. */
 export type ConsoleOnlyEvent =
@@ -644,14 +471,13 @@ export const PUBLIC_EVENT_TYPES = [
   "joined.count",
   "question.opened",
   "question.progress",
-  "question.closed",
   "question.revealed",
   "question.skipped",
   "leaderboard.updated",
   "ping",
 ] as const satisfies readonly ChannelEventType[];
 
-export const CLASS_EVENT_TYPES = [...PUBLIC_EVENT_TYPES, "join_token.rotated", "review.ready"] as const satisfies readonly ChannelEventType[];
+export const CLASS_EVENT_TYPES = [...PUBLIC_EVENT_TYPES, "join_token.rotated"] as const satisfies readonly ChannelEventType[];
 
 export const CONSOLE_EVENT_TYPES = [
   ...CLASS_EVENT_TYPES,

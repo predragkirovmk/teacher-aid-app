@@ -5,87 +5,32 @@ import type {
   ConsoleSnapshot,
   ConsoleStudent,
   FocusFlag,
-  NoDeviceReason,
-  QuestionStatus,
   SessionState,
 } from "./api/types";
 
 /**
- * The rules of a live lesson that need no browser: where the lesson stands, how a student is shown and in what order, how many have
- * joined, the reasons for a student without a phone, when the join token changes, whether the projected window is still open, and how
+ * The rules of a live lesson that need no browser: where the lesson stands, how a student is shown, when the join token changes, whether the projected window is still open, and how
  * the realtime events change what a screen holds. All of it is unit tested.
  */
 
 // ---- Where the lesson stands -----------------------------------------------------------------------
 
-/** The four states of a session, in order (4.1). The lesson only moves forward. */
-export const STATES: readonly SessionState[] = ["lobby", "teaching", "review", "ended"];
-
-export type StateStep = { state: SessionState; position: "done" | "current" | "next" };
-
-/** The line of four states, each marked as one that is past, the one the lesson is in, or one still to come. */
-export function stateSteps(current: SessionState): StateStep[] {
-  const at = STATES.indexOf(current);
-  return STATES.map((state, i) => ({ state, position: i < at ? "done" : i === at ? "current" : "next" }));
-}
+/** The three states of a session, in order (4.1). The lesson only moves forward. */
+export const STATES: readonly SessionState[] = ["lobby", "teaching", "ended"];
 
 /** How far along a state is: events and moves only ever go forward (4.1). */
 export const stateRank = (state: SessionState): number => STATES.indexOf(state);
 
 /** The state a lesson is moved to from `state`, or null when there is none to move to: forward, one at a time, and End is not a move (4.1). */
-export const nextState = (state: SessionState): "teaching" | "review" | null => (state === "lobby" ? "teaching" : state === "teaching" ? "review" : null);
+export const nextState = (state: SessionState): "teaching" | null => (state === "lobby" ? "teaching" : null);
 
 // ---- The students ------------------------------------------------------------------------------------
 
-/**
- * How one student is shown, in one word: not here yet, here, here after the lesson began, here but the connection is lost, or marked
- * present without a phone. The teacher sees these as an icon and a word, never colour alone.
- */
-export type StudentState = "not_yet" | "joined" | "late" | "offline" | "no_device";
+/** How one student is shown, in one word: here, or here but the connection is lost. The teacher sees these as an icon and a word, never colour alone. */
+export type StudentState = "joined" | "offline";
 
-export function studentState(s: Pick<ConsoleStudent, "attendance" | "online">): StudentState {
-  if (s.attendance === "present_no_device") return "no_device";
-  if (s.attendance === null || s.attendance === "absent") return "not_yet";
-  if (!s.online) return "offline";
-  return s.attendance === "late" ? "late" : "joined";
-}
-
-/** Whether the student came in with a phone, which is what "joined" counts (a mark the teacher wrote is not a join, BR-ATT-01). */
-export const hasJoined = (s: Pick<ConsoleStudent, "attendance">): boolean => s.attendance === "present" || s.attendance === "late";
-
-/** "12 of 26": how many of the class have joined with a phone, and how many marked present without one. */
-export function joinedCount(students: readonly Pick<ConsoleStudent, "attendance">[]): { joined: number; withoutPhone: number; total: number } {
-  return {
-    joined: students.filter(hasJoined).length,
-    withoutPhone: students.filter((s) => s.attendance === "present_no_device").length,
-    total: students.length,
-  };
-}
-
-/** How many of the class are still not here and not marked: the ones the teacher is waiting for. */
-export const missingCount = (students: readonly Pick<ConsoleStudent, "attendance" | "online">[]): number =>
-  students.filter((s) => studentState(s) === "not_yet").length;
-
-export type RosterSection = "missing" | "here";
-
-/**
- * The class in two calm groups: those who are not here yet, then those who are (or are marked). A student moves between the groups only
- * when something changes about them, and inside a group the order is the register's, as the API sends it, so nothing shuffles. In the
- * group of those who are here, a student whose connection is lost comes first: that one is worth a look.
- */
-export function rosterSections<T extends Pick<ConsoleStudent, "attendance" | "online">>(students: readonly T[]): Record<RosterSection, T[]> {
-  const missing = students.filter((s) => studentState(s) === "not_yet");
-  const here = students.filter((s) => studentState(s) !== "not_yet");
-  return { missing, here: [...here.filter((s) => studentState(s) === "offline"), ...here.filter((s) => studentState(s) !== "offline")] };
-}
-
-// ---- Present without a phone (F-11, FR-ATT-04, BR-ATT-01) --------------------------------------------
-
-/** The four reasons, in the order they are offered (3.2). */
-export const NO_DEVICE_REASONS: readonly NoDeviceReason[] = ["no_phone", "battery", "no_data", "no_focus_authorization"];
-
-/** Whether a student may be marked present without a phone: only one who has not joined with one (a join stands, and a mark never overrides it). */
-export const canMarkNoDevice = (s: Pick<ConsoleStudent, "attendance">): boolean => !hasJoined(s);
+/** Only students who have scanned the code are listed, so a student is here unless the connection is lost. */
+export const studentState = (s: Pick<ConsoleStudent, "online">): StudentState => (s.online ? "joined" : "offline");
 
 // ---- The join token and the code ---------------------------------------------------------------------
 
@@ -182,15 +127,12 @@ const stamped = (e: ChannelEvent) => Date.parse(e.server_now);
 
 /** The names of the last five to join, newest first (the `recent` of `joined.count`). */
 export const RECENT_NAMES = 5;
-export function recentNames(students: readonly Pick<ConsoleStudent, "full_name" | "attendance" | "joined_at">[]): string[] {
-  return students
-    .filter((s) => hasJoined(s) && s.joined_at !== null)
-    .sort((a, b) => Date.parse(b.joined_at as string) - Date.parse(a.joined_at as string))
+export function recentNames(students: readonly Pick<ConsoleStudent, "full_name" | "joined_at">[]): string[] {
+  return [...students]
+    .sort((a, b) => Date.parse(b.joined_at) - Date.parse(a.joined_at))
     .slice(0, RECENT_NAMES)
     .map((s) => s.full_name);
 }
-
-const questionRank = (status: QuestionStatus): number => ["ready", "open", "closed", "revealed"].indexOf(status);
 
 /** A console question after a lifecycle event: a status only moves forward (4.2), so an event that repeats or comes late changes nothing. */
 function moveQuestion(q: ConsoleQuestion, event: ChannelEvent): ConsoleQuestion {
@@ -198,10 +140,8 @@ function moveQuestion(q: ConsoleQuestion, event: ChannelEvent): ConsoleQuestion 
   switch (event.type) {
     case "question.opened":
       return q.status === "ready" ? { ...q, status: "open", fired_at: event.question.fired_at, closes_at: event.question.closes_at, answered: 0 } : q;
-    case "question.closed":
-      return questionRank(q.status) < questionRank("closed") ? { ...q, status: "closed", closed_at: event.server_now } : q;
     case "question.revealed":
-      return q.status !== "revealed" ? { ...q, status: "revealed", revealed_at: event.server_now, counts: event.counts, closed_at: q.closed_at ?? event.server_now } : q;
+      return q.status !== "revealed" ? { ...q, status: "revealed", revealed_at: event.server_now, counts: event.counts } : q;
     case "question.skipped":
       return { ...q, status: "skipped", skipped_at: event.server_now };
     case "question.progress":
@@ -230,13 +170,18 @@ export function applyConsoleEvent(snapshot: ConsoleSnapshot, event: ChannelEvent
     case "join_token.rotated":
       return { ...snapshot, join: { token: event.token, short_code: event.short_code, valid_to: event.valid_to } };
     case "student.joined":
-      return { ...snapshot, students: snapshot.students.map((s) => (s.id === event.student.id ? event.student : s)) };
+      // A student appears when they join, at any point until End. The event may repeat, so a student already listed is replaced, not added twice.
+      return {
+        ...snapshot,
+        students: snapshot.students.some((s) => s.id === event.student.id)
+          ? snapshot.students.map((s) => (s.id === event.student.id ? event.student : s))
+          : [...snapshot.students, event.student],
+      };
     case "student.presence":
       return { ...snapshot, students: snapshot.students.map((s) => (s.id === event.student_id ? { ...s, online: event.online } : s)) };
     case "student.answer_state":
       return { ...snapshot, students: snapshot.students.map((s) => (s.id === event.student_id ? { ...s, answer_state: event.state } : s)) };
     case "question.opened":
-    case "question.closed":
     case "question.revealed":
     case "question.skipped":
     case "question.progress": {
@@ -245,7 +190,7 @@ export function applyConsoleEvent(snapshot: ConsoleSnapshot, event: ChannelEvent
       const changed = questions.some((q, i) => q !== snapshot.questions[i]);
       // Only the question that is open holds the "answered" marks: skipping or revealing another one leaves them alone.
       const closing =
-        (event.type === "question.closed" || event.type === "question.skipped" || event.type === "question.revealed") &&
+        (event.type === "question.skipped" || event.type === "question.revealed") &&
         snapshot.questions.some((q) => q.id === id && q.status === "open");
       const students = closing ? snapshot.students.map((s) => (s.answer_state === null ? s : { ...s, answer_state: null })) : snapshot.students;
       // A question sent clears the nudge: the line is only for a lesson that has gone quiet.
@@ -277,13 +222,11 @@ export function applyClassEvent(snapshot: ClassViewSnapshot, event: ChannelEvent
   const asked = snapshot.question;
   switch (event.type) {
     case "state.changed":
-      // The lesson ended: the projector keeps nothing of it (no ranking, no review, no code) beyond the words that it is over.
+      // The lesson ended: the projector keeps nothing of it (no ranking, no code) beyond the words that it is over.
       if (event.state === "ended" && snapshot.session.state !== "ended") {
-        return { ...snapshot, session: { ...snapshot.session, state: "ended", recent: [] }, join: null, question: null, progress: null, reveal: null, skipped: false, board: [], review: null };
+        return { ...snapshot, session: { ...snapshot.session, state: "ended", recent: [] }, join: null, question: null, progress: null, reveal: null, skipped: false, board: [] };
       }
       return stateRank(event.state) > stateRank(snapshot.session.state) ? { ...snapshot, session: { ...snapshot.session, state: event.state } } : snapshot;
-    case "review.ready":
-      return { ...snapshot, review: { most_missed: event.most_missed, anon_questions: event.anon_questions } };
     case "join_token.rotated":
       return { ...snapshot, join: { token: event.token, short_code: event.short_code, valid_to: event.valid_to } };
     case "joined.count":
@@ -292,8 +235,6 @@ export function applyClassEvent(snapshot: ClassViewSnapshot, event: ChannelEvent
       return { ...snapshot, question: event.question, progress: { answered: 0, joined: snapshot.session.joined_count }, reveal: null, skipped: false };
     case "question.progress":
       return asked && asked.id === event.session_question_id ? { ...snapshot, progress: { answered: event.answered, joined: event.joined } } : snapshot;
-    case "question.closed":
-      return asked && asked.id === event.session_question_id && questionRank(asked.status) < questionRank("closed") ? { ...snapshot, question: { ...asked, status: "closed" } } : snapshot;
     case "question.revealed":
       return asked && asked.id === event.session_question_id
         ? {

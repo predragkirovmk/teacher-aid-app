@@ -483,7 +483,7 @@ From `docs/teacher-plan.md` ("Simplicity first", "Design tokens"):
 ## What stays
 
 Every feature and flow. Macedonian first, English second, the same wording. Right and wrong as
-an icon and a word, never colour alone; red for End and warnings only. A word beside every icon.
+an icon and a word, never colour alone; red for End, deleting and warnings only. A word beside every icon.
 Work saves itself; anything that cannot be undone asks first, the safe answer first. AA
 contrast, keyboard, 200% zoom, Reduce Motion. The API contract: no screen needs new data, so the
 backend handoff documents are not touched. The student app and the website.

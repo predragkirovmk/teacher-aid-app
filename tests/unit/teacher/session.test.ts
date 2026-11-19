@@ -80,8 +80,8 @@ describe("watching every call", () => {
   });
 
   test("a call that works says the teacher was signed in only when it is GET /me", async () => {
-    const api = watchSession(adapter({ listCourses: () => Promise.resolve([]), listLessons: refused }));
-    await api.listCourses();
+    const api = watchSession(adapter({ listLibrary: () => Promise.resolve([]), listLessons: refused }));
+    await api.listLibrary();
     await flush();
     await expect(api.listLessons()).rejects.toBeDefined();
     await flush();
@@ -100,8 +100,8 @@ describe("watching every call", () => {
 
   test("the promise a call returns is the adapter's own, so a settled answer stays settled", () => {
     const settled = Object.assign(Promise.resolve("x"), { settled: { ok: true as const, value: "x" } });
-    const api = watchSession(adapter({ listCourses: () => settled }));
-    expect(api.listCourses()).toBe(settled);
+    const api = watchSession(adapter({ listLibrary: () => settled }));
+    expect(api.listLibrary()).toBe(settled);
   });
 
   test("arguments go through unchanged", async () => {

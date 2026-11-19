@@ -6,7 +6,8 @@ import { Problem } from "./Problem";
 /**
  * A question before something that cannot be undone, in plain words, with the safe answer in hand: it is the main
  * button and it has the focus. The safe button comes first in the markup because that is the one `showModal()` focuses
- * (a closed dialog cannot take an `autoFocus`). Escape and the backdrop-less close both answer "stay".
+ * (a closed dialog cannot take an `autoFocus`). Escape and the backdrop-less close both answer "stay". When `danger` is set, only the "yes" button
+ * turns red, and the safe answer stays the main button.
  */
 export function ConfirmDialog({
   open,
@@ -15,6 +16,7 @@ export function ConfirmDialog({
   problem,
   stay,
   confirm,
+  danger,
   onStay,
   onConfirm,
 }: {
@@ -25,6 +27,8 @@ export function ConfirmDialog({
   problem?: string;
   stay: string;
   confirm: string;
+  /** What is asked about destroys something, ending a lesson or deleting one: its "yes" wears the red edge of End, and the safe answer stays the main button. */
+  danger?: boolean;
   onStay: () => void;
   onConfirm: () => void | Promise<void>;
 }) {
@@ -78,7 +82,7 @@ export function ConfirmDialog({
         <button type="button" className="btn btn--primary" onClick={onStay}>
           {stay}
         </button>
-        <button type="button" className="btn btn--secondary" onClick={() => void yes()}>
+        <button type="button" className={danger ? "btn btn--danger" : "btn btn--secondary"} onClick={() => void yes()}>
           {confirm}
         </button>
       </div>

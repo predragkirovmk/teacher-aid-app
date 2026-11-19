@@ -1,20 +1,16 @@
 import { describe, expect, test } from "vitest";
 import { ApiError, VALIDATION_REASONS } from "@/lib/teacher/api/errors";
-import type { CourseSummary } from "@/lib/teacher/api/types";
 import { dictionaries, translate, type Key } from "@/lib/teacher/i18n";
 import { EMPHASIS_MAX_CHARS, LESSON_UPLOAD_MAX_BYTES, TYPED_TEXT_MAX_CHARS, TYPED_TEXT_MIN_CHARS } from "@/lib/teacher/lessons";
 import {
   checkFile,
   checkForm,
   checkText,
-  chosenSubject,
-  chosenYear,
-  classesOf,
   emphasisOf,
   failureOf,
   fileSize,
-  firstProblem,
   focusKeyOf,
+  hasProblems,
   hasWork,
   isFormMemory,
   isRefill,
@@ -24,65 +20,9 @@ import {
   showsEmphasisCount,
   sourceToKeep,
   STILL_WORKING_MS,
-  subjectsOf,
   WAIT_LIMIT_MS,
-  yearsOf,
   type FormInput,
 } from "@/lib/teacher/prepare";
-
-const course = (id: string, subject: string, className: string, year: number): CourseSummary => ({
-  id,
-  subject: { id: subject, name: subject.toUpperCase() },
-  class: { id: `c-${className}`, name: className, year },
-  student_count: 20,
-  speed_bonus_on: true,
-  lessons_run: 0,
-  last_session_at: null,
-});
-
-const SCHOOL = [course("1", "math", "IV-1", 4), course("2", "math", "II-4", 2), course("3", "math", "II-6", 2), course("4", "physics", "III-5", 3)];
-const MATH_ONLY = SCHOOL.filter((c) => c.subject.id === "math");
-
-describe("the subjects and years a teacher is offered (part 1)", () => {
-  test("the subjects of the teacher's courses, each once, in the API's order", () => {
-    expect(subjectsOf(SCHOOL).map((s) => s.id)).toEqual(["math", "physics"]);
-    expect(subjectsOf([])).toEqual([]);
-  });
-
-  test("the years are the teacher's own classes' years in that subject, each once, the first year first", () => {
-    expect(yearsOf(SCHOOL, "math")).toEqual([2, 4]);
-    expect(yearsOf(SCHOOL, "physics")).toEqual([3]);
-    expect(yearsOf(SCHOOL, "chemistry")).toEqual([]);
-    // Until a subject is chosen no year is offered.
-    expect(yearsOf(SCHOOL, null)).toEqual([]);
-  });
-
-  test("a year can be told by its classes", () => {
-    expect(classesOf(SCHOOL, "math", 2)).toEqual(["II-4", "II-6"]);
-    expect(classesOf(SCHOOL, "math", 3)).toEqual([]);
-    expect(classesOf(SCHOOL, "physics", 3)).toEqual(["III-5"]);
-  });
-
-  test("a subject or a year that is the only one is chosen already; nothing else is", () => {
-    const [math, physics] = subjectsOf(SCHOOL);
-    expect(chosenSubject([math], null)).toBe("math");
-    expect(chosenSubject([math, physics], null)).toBeNull();
-    expect(chosenSubject([math, physics], "physics")).toBe("physics");
-    // A pick that is not offered is no pick.
-    expect(chosenSubject([math, physics], "chemistry")).toBeNull();
-    expect(chosenSubject([], null)).toBeNull();
-    expect(chosenYear([3], null)).toBe(3);
-    expect(chosenYear([2, 4], null)).toBeNull();
-    expect(chosenYear([2, 4], 4)).toBe(4);
-    expect(chosenYear([2, 4], 3)).toBeNull();
-    expect(chosenYear([], null)).toBeNull();
-  });
-
-  test("a teacher with one subject and several years is offered the years only", () => {
-    expect(subjectsOf(MATH_ONLY)).toHaveLength(1);
-    expect(yearsOf(MATH_ONLY, chosenSubject(subjectsOf(MATH_ONLY), null))).toEqual([2, 4]);
-  });
-});
 
 describe("a document, judged before it is sent (BR-LES-05)", () => {
   test("a PDF or a Word (.docx) file is taken, whatever the case of its name", () => {
@@ -121,19 +61,15 @@ describe("typed sentences, judged before they are sent (BR-LES-06)", () => {
 });
 
 describe("the whole form", () => {
-  const good: FormInput = { subject: "math", year: 2, needsYear: true, kind: "typed", file: null, text: "x".repeat(60) };
+  const good: FormInput = { kind: "typed", file: null, text: "x".repeat(60) };
 
   test("a form with everything in it has no problems", () => {
     expect(checkForm(good)).toEqual({});
     expect(checkForm({ ...good, kind: "file", file: { name: "план.pdf", size: 10 }, text: "" })).toEqual({});
   });
 
-  test("nothing chosen asks for the subject and for how the material is added, and not yet for the year", () => {
-    expect(checkForm({ subject: null, year: null, needsYear: false, kind: null, file: null, text: "" })).toEqual({ subject: true, material: "pick" });
-  });
-
-  test("a subject with no year chosen asks for the year", () => {
-    expect(checkForm({ ...good, year: null })).toEqual({ year: true });
+  test("nothing chosen asks for how the material is added", () => {
+    expect(checkForm({ kind: null, file: null, text: "" })).toEqual({ material: "pick" });
   });
 
   test("the document kind with no document says so; with a wrong one it says what is wrong", () => {
@@ -152,21 +88,17 @@ describe("the whole form", () => {
     expect(checkForm({ ...good, text: "Кратко." })).toEqual({ material: "text_too_short" });
   });
 
-  test("the first problem is the top-most one, and the focus goes to the control that fixes it", () => {
-    expect(firstProblem({})).toBeNull();
-    expect(firstProblem({ material: "pick", year: true })).toBe("year");
-    expect(firstProblem({ material: "pick", subject: true })).toBe("subject");
-    expect(firstProblem({ material: "no_file" })).toBe("material");
-    expect(focusKeyOf("subject", { subject: true }, null)).toBe("subject");
-    expect(focusKeyOf("year", { year: true }, null)).toBe("year");
-    expect(focusKeyOf("material", { material: "pick" }, null)).toBe("kind");
-    expect(focusKeyOf("material", { material: "no_file" }, "file")).toBe("file");
-    expect(focusKeyOf("material", { material: "no_text" }, "file")).toBe("file");
-    expect(focusKeyOf("material", { material: "text_too_short" }, "typed")).toBe("text");
+  test("any problem is a problem, and the focus goes to the control that fixes it", () => {
+    expect(hasProblems({})).toBe(false);
+    expect(hasProblems({ material: "no_file" })).toBe(true);
+    expect(focusKeyOf({ material: "pick" }, null)).toBe("kind");
+    expect(focusKeyOf({ material: "no_file" }, "file")).toBe("file");
+    expect(focusKeyOf({ material: "no_text" }, "file")).toBe("file");
+    expect(focusKeyOf({ material: "text_too_short" }, "typed")).toBe("text");
   });
 });
 
-describe("a refusal of the material, said at part 2 (EC-LES-06, EC-LES-07)", () => {
+describe("a refusal of the material, said at part 1 (EC-LES-06, EC-LES-07)", () => {
   const refused = (reason?: (typeof VALIDATION_REASONS)[number]) => new ApiError("validation_failed", { status: 422, reason });
 
   test("every reason the API gives is its own problem", () => {
@@ -194,7 +126,7 @@ describe("a refusal of the material, said at part 2 (EC-LES-06, EC-LES-07)", () 
 describe("what the teacher would have to do again (leaving the form asks first)", () => {
   const empty = { file: null, text: "", emphasis: "" };
 
-  test("a form with nothing typed or chosen as a document holds no work, however many years and kinds were picked", () => {
+  test("a form with nothing typed or chosen as a document holds no work, however a way to add the material was picked", () => {
     expect(hasWork(empty)).toBe(false);
     expect(hasWork({ ...empty, text: "   \n " })).toBe(false);
     expect(hasWork({ ...empty, emphasis: "  " })).toBe(false);
@@ -274,7 +206,7 @@ describe("the words of the page", () => {
     }
   });
 
-  test("the third part says it is optional once, the wait says it may be left, and the failure's second button does not say Back", () => {
+  test("the second part says it is optional once, the wait says it may be left, and the failure's second button does not say Back", () => {
     for (const locale of ["mk", "en"] as const) {
       expect(translate(locale, "school", "prepare.emphasis.hint")).not.toMatch(/не мора|do not have to/i);
       expect(translate(locale, "school", "prepare.fail.change")).not.toBe(translate(locale, "school", "back"));
@@ -282,14 +214,9 @@ describe("the words of the page", () => {
       expect(translate(locale, "school", "prepare.wait.time")).not.toMatch(/Оставете ја оваа страница отворена|Please keep this page open/);
     }
     expect(translate("mk", "school", "prepare.optional")).toBe("По желба");
-    // The year of a teacher with one year is said by its number alone, after "Година:".
-    expect(translate("mk", "school", "prepare.year.value", { n: 2, roman: "II" })).toBe("II");
-    expect(translate("mk", "university", "prepare.year.value", { n: 2, roman: "II" })).toBe("2");
   });
 
-  test("the page is worded for a faculty too: groups, students", () => {
-    expect(translate("mk", "school", "prepare.none.title")).toContain("клас");
-    expect(translate("mk", "university", "prepare.none.title")).toContain("група");
+  test("the page is worded for a faculty too: students", () => {
     expect(translate("mk", "school", "prepare.file.privacy")).toContain("ученици");
     expect(translate("mk", "university", "prepare.file.privacy")).toContain("студенти");
     expect(translate("en", "university", "prepare.go.note")).toContain("students");
@@ -311,7 +238,7 @@ describe("typed sentences have a most (BR-LES-14)", () => {
       expect(translate(locale, "school", "prepare.problem.text_too_long.body")).toMatch(/20[ ,]000/);
       expect(translate(locale, "school", "prepare.typed.max")).toMatch(/20[ ,]000/);
     }
-    expect(checkForm({ subject: "m", year: 2, needsYear: true, kind: "typed", file: null, text: "а".repeat(20_001) })).toEqual({ material: "text_too_long" });
+    expect(checkForm({ kind: "typed", file: null, text: "а".repeat(20_001) })).toEqual({ material: "text_too_long" });
   });
 
   test("the call that asks for the questions answers at once, so it has the short limit, not the document's", () => {
@@ -323,17 +250,15 @@ describe("typed sentences have a most (BR-LES-14)", () => {
 describe("cancelling the wait gives the form back (F-03)", () => {
   const draft = (patch: Record<string, unknown> = {}) => ({
     id: "d3",
-    subject: { id: "math", name: "Математика" },
-    year: 2,
     emphasis: "Повеќе примери." as string | null,
     source_id: "src-n1" as string | null,
     source: { kind: "typed" as "typed" | "upload", file_name: null as string | null },
     ...patch,
   });
 
-  test("typed sentences come back from what the form kept for this draft, with the subject, the year and the emphasis", () => {
+  test("typed sentences come back from what the form kept for this draft, with the emphasis", () => {
     const refill = refillOf(draft(), { draft_id: "d3", text: "Моите реченици.", file_size: null });
-    expect(refill).toEqual({ subject_id: "math", year: 2, emphasis: "Повеќе примери.", kind: "typed", text: "Моите реченици.", document: null, note: "cancelled" });
+    expect(refill).toEqual({ emphasis: "Повеќе примери.", kind: "typed", text: "Моите реченици.", document: null, note: "cancelled" });
     // Back from a failure says that what was entered is kept, not that anything was cancelled.
     expect(refillOf(draft(), null, "kept").note).toBe("kept");
   });
@@ -346,8 +271,6 @@ describe("cancelling the wait gives the form back (F-03)", () => {
   test("a document comes back by its name and its source, to be used again and not sent again; its size if the form kept it", () => {
     const upload = draft({ source: { kind: "upload", file_name: "Логаритми.docx" }, emphasis: null });
     expect(refillOf(upload, { draft_id: "d3", text: "", file_size: 2048 })).toEqual({
-      subject_id: "math",
-      year: 2,
       emphasis: "",
       kind: "file",
       text: "",
@@ -364,7 +287,7 @@ describe("cancelling the wait gives the form back (F-03)", () => {
   test("what is read back from the tab is trusted only if it has the shape", () => {
     const good = refillOf(draft(), null);
     expect(isRefill(good)).toBe(true);
-    expect(isRefill({ ...good, year: "2" })).toBe(false);
+    expect(isRefill({ ...good, emphasis: 2 })).toBe(false);
     expect(isRefill({ ...good, kind: "pdf" })).toBe(false);
     expect(isRefill({ ...good, note: "other" })).toBe(false);
     expect(isRefill({ ...good, document: { name: 4 } })).toBe(false);

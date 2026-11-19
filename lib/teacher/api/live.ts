@@ -9,8 +9,6 @@ import {
   PUBLIC_EVENT_TYPES,
   type ChannelEvent,
   type ClassViewSnapshot,
-  type CourseDashboard,
-  type CourseSummary,
   type OpenSession,
   type ConsoleSnapshot,
   type DraftSummary,
@@ -109,10 +107,6 @@ export function createLiveApi(): TeacherApi {
       return request<Me>("GET", "/me");
     },
 
-    listCourses: () => request<CourseSummary[]>("GET", "/teacher/courses"),
-    getDashboard: (courseId) => request<CourseDashboard>("GET", `/courses/${id(courseId)}/dashboard`),
-    updateCourse: (courseId, patch) => request<CourseSummary>("PATCH", `/courses/${id(courseId)}`, { body: patch }),
-
     createSource: (input, { signal } = {}) => {
       if (input.kind === "typed") return request<SourceCreated>("POST", "/lessons/sources", { body: { text: input.text }, signal });
       const form = new FormData();
@@ -148,18 +142,12 @@ export function createLiveApi(): TeacherApi {
     getClassView: (sessionId) => request<ClassViewSnapshot>("GET", `${session(sessionId)}/class-view`),
     advance: (sessionId, req) => request<ConsoleSnapshot>("POST", `${session(sessionId)}/advance`, { body: req }),
     fireQuestion: (sessionId, sqId) => request<ConsoleSnapshot>("POST", `${question(sessionId, sqId)}/fire`),
-    revealQuestion: (sessionId, sqId) => request<ConsoleSnapshot>("POST", `${question(sessionId, sqId)}/reveal`),
     skipQuestion: (sessionId, sqId) => request<ConsoleSnapshot>("POST", `${question(sessionId, sqId)}/skip`),
     fireAdhoc: (sessionId, req) => request<ConsoleSnapshot>("POST", `${session(sessionId)}/adhoc`, { body: req }),
-    markNoDevice: (sessionId, studentId, req) =>
-      request<ConsoleSnapshot>("POST", `${session(sessionId)}/attendance/${id(studentId)}/no-device`, { body: req }),
-    clearNoDevice: (sessionId, studentId) => request<ConsoleSnapshot>("DELETE", `${session(sessionId)}/attendance/${id(studentId)}/no-device`),
     markAnonAnswered: (sessionId, anonId, answered) =>
       request("PATCH", `${session(sessionId)}/anon-questions/${id(anonId)}`, { body: { answered } }),
     endSession: (sessionId) => request("POST", `${session(sessionId)}/end`),
     getReview: (sessionId) => request("GET", `${session(sessionId)}/review`),
-    createPracticeSet: (sessionId) => request("POST", `${session(sessionId)}/practice-set`),
-    getPracticeResults: (sessionId) => request("GET", `${session(sessionId)}/practice-set`),
 
     // Server-Sent Events with the session cookie (spec 11.4), kept open by sse.ts. Each message is `event: <type>` and a JSON body of 11.2.
     openChannel: (channel, { onEvent, onStatus }) =>

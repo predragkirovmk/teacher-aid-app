@@ -7,7 +7,7 @@ import { useT } from "@/lib/teacher/i18n";
 import { PageTitle } from "./PageTitle";
 
 /**
- * Every screen starts here: a plain title that says where you are, an optional date and one-line subtitle, and on deep
+ * Every screen starts here: a plain title that says where you are, an optional one-line subtitle, and on deep
  * screens a quiet Back above the title (it names where it goes when `backLabel` says so). A list page puts its one way to
  * make something new at the right of the title (`action`), where it is found without reading the list. Who is signed in is
  * at the foot of the sidebar.
@@ -15,7 +15,6 @@ import { PageTitle } from "./PageTitle";
 export function PageHeader({
   title,
   subtitle,
-  date,
   back,
   backLabel,
   compact,
@@ -23,7 +22,6 @@ export function PageHeader({
 }: {
   title: string;
   subtitle?: string;
-  date?: string;
   back?: string;
   backLabel?: string;
   /** A lesson that is running: the Back, the title and the line under it share the height of a title, so what the teacher does is in the first screen. */
@@ -43,7 +41,6 @@ export function PageHeader({
           </Link>
         )}
         <h1 className="head__title">{title}</h1>
-        {date && <p className="head__sub head__date">{date}</p>}
         {subtitle && <p className="head__sub">{subtitle}</p>}
       </div>
       {action && <div className="head__action">{action}</div>}

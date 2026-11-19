@@ -11,12 +11,11 @@ import { defaultTimerSeconds, parseNumeric, QUESTIONS_MAX, QUESTIONS_MIN } from 
  * chosen. Those are not refused as they are typed. They are listed, in plain words and in page order, when the teacher saves.
  */
 
-/** What the teacher edits: the title, the review summary and the questions (FR-LES-07). */
-export type DraftContent = { title: string; review_summary: string; questions: DraftQuestion[] };
+/** What the teacher edits: the title and the questions (FR-LES-07). */
+export type DraftContent = { title: string; questions: DraftQuestion[] };
 
 export const contentOf = (draft: ReadyDraft): DraftContent => ({
   title: draft.title,
-  review_summary: draft.review_summary,
   questions: [...draft.questions].sort((a, b) => a.order - b.order),
 });
 
@@ -243,7 +242,7 @@ export function lessonOf(content: DraftContent, raw: RawText = {}): LessonConten
         return { ...base, kind: q.kind, correct: normalizeNumber(q.correct), tolerance: q.tolerance, unit: q.unit?.trim() || null, allow_negative: q.allow_negative };
     }
   });
-  const lesson = { title: content.title.trim(), review_summary: content.review_summary.trim(), questions };
+  const lesson = { title: content.title.trim(), questions };
   return isValidContent(lesson) ? lesson : null;
 }
 

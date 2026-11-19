@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { firstName, initials, personName, romanYear, schoolTypeOf, transliterate } from "@/lib/teacher/format";
+import { firstName, initials, personName, schoolTypeOf, transliterate } from "@/lib/teacher/format";
 import { isValidContent, isValidQuestion } from "@/lib/teacher/lessons";
 import { bankQuestions, BANK } from "@/lib/teacher/api/mock-bank";
 
@@ -40,7 +40,7 @@ describe("questions and lessons (BR-Q-01, BR-Q-02)", () => {
       expect(questions.length, lesson.key).toBeGreaterThanOrEqual(5);
       expect(questions.length, lesson.key).toBeLessThanOrEqual(8);
       expect(questions.every(isValidQuestion), lesson.key).toBe(true);
-      expect(isValidContent({ title: lesson.title, review_summary: lesson.summary, questions }), lesson.key).toBe(true);
+      expect(isValidContent({ title: lesson.title, questions }), lesson.key).toBe(true);
     }
   });
 
@@ -96,10 +96,3 @@ describe("questions and lessons (BR-Q-01, BR-Q-02)", () => {
   });
 });
 
-describe("school years", () => {
-  test("are Roman numerals, as a secondary school writes them", () => {
-    expect(["1", "2", "3", "4", "5", "6"].map((y) => romanYear(Number(y)))).toEqual(["I", "II", "III", "IV", "V", "VI"]);
-    expect(romanYear(11)).toBe("11");
-    expect(romanYear(0)).toBe("0");
-  });
-});

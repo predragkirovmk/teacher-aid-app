@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { dictionaries, translate } from "@/lib/teacher/i18n";
-import { clockTime, dateParts, MINUTES_LIMIT, relativeDay, runningFor, type When } from "@/lib/teacher/when";
+import { relativeDay, type When } from "@/lib/teacher/when";
 
 /** A local time, as a person on this computer reads it. */
 const at = (month: number, day: number, hour = 12, minute = 0) => new Date(2026, month - 1, day, hour, minute).getTime();
@@ -65,47 +65,4 @@ describe("how long ago, in a person's words", () => {
   });
 });
 
-describe("today's date in words", () => {
-  test("is the weekday, the day and the month: четврток, 29 октомври", () => {
-    const parts = dateParts(NOW);
-    expect(parts.day).toBe(29);
-    const say = (locale: "mk" | "en") =>
-      translate(locale, "school", "today.date", { weekday: translate(locale, "school", parts.weekday), day: parts.day, month: translate(locale, "school", parts.month) });
-    expect(say("mk")).toBe("четврток, 29 октомври");
-    expect(say("en")).toBe("Thursday, 29 October");
-  });
 
-  test("starts the week on Sunday as the calendar does, and has a name for each day and month", () => {
-    expect(dateParts(at(11, 1)).weekday).toBe("weekday.0");
-    expect(dateParts(at(11, 2)).weekday).toBe("weekday.1");
-    expect(dateParts(at(1, 1)).month).toBe("month.0");
-    expect(dateParts(at(12, 31)).month).toBe("month.11");
-    for (let i = 0; i < 7; i++) expect(dictionaries.mk[`weekday.${i}` as "weekday.0"]).toBeDefined();
-    for (let i = 0; i < 12; i++) expect(dictionaries.en[`month.${i}` as "month.0"]).toBeDefined();
-  });
-});
-
-describe("how long a lesson has been running", () => {
-  const start = at(10, 29, 8, 0);
-
-  test("a lesson that has just begun says so, then counts minutes", () => {
-    expect(runningFor(start, start + 59_000)).toEqual({ kind: "now" });
-    expect(runningFor(start, start + 60_000)).toEqual({ kind: "minutes", n: 1 });
-    expect(runningFor(start, start + 12 * 60_000 + 59_000)).toEqual({ kind: "minutes", n: 12 });
-    expect(runningFor(start, start + (MINUTES_LIMIT - 1) * 60_000)).toEqual({ kind: "minutes", n: MINUTES_LIMIT - 1 });
-  });
-
-  test("a start time that is a little ahead of the clock is just begun, not a negative number", () => {
-    expect(runningFor(start, start - 5 * 60_000)).toEqual({ kind: "now" });
-  });
-
-  test("after two hours it tells when it began instead of a long count of minutes", () => {
-    expect(runningFor(start, start + MINUTES_LIMIT * 60_000)).toEqual({ kind: "time", time: "08:00" });
-    expect(clockTime(at(10, 29, 9, 5))).toBe("09:05");
-  });
-
-  test("a lesson nobody ended says which day it began (EC-SES-01)", () => {
-    expect(runningFor(at(10, 28, 14, 0), NOW)).toEqual({ kind: "when", when: { key: "when.yesterday" } });
-    expect(runningFor(at(10, 20, 14, 0), NOW)).toEqual({ kind: "when", when: { key: "when.week" } });
-  });
-});

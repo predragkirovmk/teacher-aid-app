@@ -9,8 +9,8 @@ import { liveUrl } from "@/lib/teacher/routes";
 import { EndLesson } from "./EndLesson";
 
 /**
- * A lesson is running, said in the frame of every page that does not say it already (Today has its band): the icon, "Час во
- * тек" and the class, and the way back, in one press. It sits in the sidebar on a laptop and in the top bar where the sidebar
+ * A lesson is running, said in the frame of every page but its own screen: the icon, "Час во
+ * тек" and the lesson's title, and the way back, in one press. It sits in the sidebar on a laptop and in the top bar where the sidebar
  * is a drawer; the shell draws both and the stylesheet shows one. It is a quiet block with the one yellow mark of the frame,
  * the sign that something is live; its own ground, the icon and the words make it stand out from the menu. It does not move.
  */
@@ -25,7 +25,7 @@ export function OpenLesson({ session, where }: { session: NonNullable<OpenSessio
           {t("running.tag")}
           <span aria-hidden="true"> · </span>
           <span className="sr">, </span>
-          <span className="nowrap">{session.class_name}</span>
+          <span>{session.lesson.title}</span>
         </span>
       </p>
       {/* The words on the button are the short ones; the name a screen reader gives says which lesson, and starts with them. */}
@@ -34,7 +34,7 @@ export function OpenLesson({ session, where }: { session: NonNullable<OpenSessio
           href={liveUrl(session.id)}
           prefetch={false}
           className="btn btn--secondary btn--small running__back"
-          aria-label={t("running.here.name", { class: session.class_name })}
+          aria-label={t("running.here.name", { title: session.lesson.title })}
         >
           <ArrowUUpLeftIcon size={24} weight="bold" aria-hidden="true" />
           {t("running.here.back")}

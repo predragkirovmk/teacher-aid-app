@@ -32,7 +32,6 @@ export const initialState = (draft: ReadyDraft): EditorState => ({ content: cont
 
 export type EditorAction =
   | { type: "title"; text: string }
-  | { type: "summary"; text: string }
   | { type: "open"; id: string }
   | { type: "close" }
   /** A question changed in any way but its timer and its tolerance, which are typed (below). */
@@ -77,8 +76,6 @@ export function reduce(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
     case "title":
       return action.text === content.title ? state : { ...state, content: { ...content, title: action.text } };
-    case "summary":
-      return action.text === content.review_summary ? state : { ...state, content: { ...content, review_summary: action.text } };
     case "open":
       return state.open === action.id ? state : { ...state, open: action.id, adding: false };
     case "close":
@@ -154,7 +151,6 @@ export const hasUnfinishedNumber = (raw: RawText): boolean => Object.values(raw)
 export function patchOf(sent: DraftContent, now: DraftContent): DraftPatch {
   const patch: DraftPatch = {};
   if (now.title !== sent.title) patch.title = now.title;
-  if (now.review_summary !== sent.review_summary) patch.review_summary = now.review_summary;
   if (now.questions !== sent.questions && JSON.stringify(now.questions) !== JSON.stringify(sent.questions)) patch.questions = now.questions;
   return patch;
 }

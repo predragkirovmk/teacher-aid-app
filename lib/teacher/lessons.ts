@@ -72,10 +72,10 @@ export function isDraftQuestion(q: unknown): q is DraftQuestion {
   }
 }
 
-/** A lesson's content: a title, a review summary and five to eight valid questions (BR-Q-02). */
+/** A lesson's content: a title and five to eight valid questions (BR-Q-02). */
 export function isValidContent(c: unknown): c is LessonContent {
   if (!isObject(c)) return false;
-  if (!isText(c.title) || !c.title.trim() || !isText(c.review_summary)) return false;
+  if (!isText(c.title) || !c.title.trim()) return false;
   const questions = c.questions;
   return Array.isArray(questions) && questions.length >= QUESTIONS_MIN && questions.length <= QUESTIONS_MAX && questions.every(isValidQuestion);
 }

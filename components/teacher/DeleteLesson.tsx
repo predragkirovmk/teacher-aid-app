@@ -12,7 +12,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 
 /**
  * "Избриши лекција", at the very end of the lesson's page, away from the buttons pressed every day. It asks first, in plain words, and
- * "Откажи" is the answer in hand. A lesson that a class is being held with cannot be deleted: instead of the button the page says
+ * "Не, задржи ја" is the answer in hand, and the button wears the red edge of End. A lesson that a class is being held with cannot be deleted: instead of the button the page says
  * to end the lesson first. The open lesson is asked of the API (`GET /sessions/open`), and a refusal from the API (`invalid_state`, for
  * a lesson started in another window) says the same.
  */
@@ -66,7 +66,7 @@ export function DeleteLesson({ lesson }: { lesson: Lesson }) {
         </div>
       ) : (
         <>
-          <button type="button" className="btn btn--secondary" aria-haspopup="dialog" onClick={() => setAsking(true)}>
+          <button type="button" className="btn btn--danger" aria-haspopup="dialog" onClick={() => setAsking(true)}>
             <TrashIcon size={24} aria-hidden="true" />
             {t("lesson.delete")}
           </button>
@@ -77,6 +77,7 @@ export function DeleteLesson({ lesson }: { lesson: Lesson }) {
             problem={problem === null ? undefined : te(problem)}
             stay={t("lesson.delete.stay")}
             confirm={t("lesson.delete.confirm")}
+            danger
             onStay={stay}
             onConfirm={remove}
           />

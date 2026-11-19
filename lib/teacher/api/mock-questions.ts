@@ -1,6 +1,5 @@
 import { nudgeIdle } from "../questions";
 import { isCorrect, rankRows, scoreAnswer } from "../scoring";
-import { hasJoined } from "../live";
 import { rng } from "./mock-data";
 import { simulate, type ClassPlan, type SimInput } from "./mock-live";
 import type {
@@ -16,7 +15,7 @@ import type {
 
 /**
  * The questions of a lesson, played by the demo from the clock alone, like the class itself (mock-live.ts). What the teacher did is saved: when each
- * question was sent, skipped or had its answer shown. What the class does is not: who answers, how fast, who is right, who leaves the app for a moment,
+ * question was sent or skipped. What the class does is not: who answers, how fast, who is right, who leaves the app for a moment,
  * who loses the connection and who writes to the teacher are all worked out from the session's id, the question and the clock, so the same lesson plays
  * the same way every time, two windows agree without talking, and a test that moves the clock knows what the class is doing.
  *
@@ -25,7 +24,7 @@ import type {
  * - one or two who had joined never answer;
  * - one student loses the connection during the question and does not answer;
  * - now and then a student leaves the app for a few seconds (the focus flag);
- * - a question closes by its own time, or sooner when every student who is there and online has answered (BR-TIME-04).
+ * - a question ends by its own time, or sooner when every student who is there and online has answered (BR-TIME-04).
  * Points follow scoring.ts: 10 for a right answer and up to 5 for speed, 0 for a wrong or missing one.
  */
 
@@ -36,7 +35,6 @@ export type QuestionRun = {
   adhoc: boolean;
   fired_at: number | null;
   skipped_at: number | null;
-  revealed_at: number | null;
 };
 
 export type PlayInput = {
@@ -44,7 +42,6 @@ export type PlayInput = {
   roster: readonly { id: string; full_name: string }[];
   plans: readonly ClassPlan[];
   sim: SimInput;
-  speedBonusOn: boolean;
 };
 
 export type PlayedAnswer = { student_id: string; response: string; answered_at: number; correct: boolean; points: number; speed_bonus: number };
@@ -57,7 +54,7 @@ export type Play = {
   /** The student who loses the connection during the question, and for how long. */
   away: { student_id: string; from: number; to: number } | null;
   flags: PlayedFlag[];
-  /** When the question really ended: its time, or sooner if everyone there had answered. */
+  /** When the question really ended and its answer showed: its time, or sooner if everyone there had answered. */
   ended_at: number;
   planned_end: number;
 };
@@ -72,7 +69,7 @@ const planFor = (input: PlayInput) => new Map(input.plans.map((p) => [p.id, p]))
 export function playOf(run: QuestionRun, input: PlayInput): Play {
   const fired = run.fired_at as number;
   // Everything the play depends on is in the key: another test, or another lesson of the same id, never finds a play that was made for something else.
-  const key = `${input.sessionId}|${run.id}|${fired}|${input.sim.started_at}|${input.sim.teaching_at}|${input.speedBonusOn}|${input.roster.map((r) => r.id).join(",")}|${JSON.stringify(run.question)}`;
+  const key = `${input.sessionId}|${run.id}|${fired}|${input.sim.started_at}|${input.sim.teaching_at}|${input.roster.map((r) => r.id).join(",")}|${JSON.stringify(run.question)}`;
   const held = memo.get(key);
   if (held) return held;
 
@@ -110,12 +107,12 @@ export function playOf(run: QuestionRun, input: PlayInput): Play {
     let response = answerFor(q, wantRight, rs);
     if (isCorrect(q, response) !== wantRight) response = answerFor(q, wantRight, rs, true);
     const correct = isCorrect(q, response);
-    const score = scoreAnswer({ correct, remainingMs: planned - answeredAt, durationMs: dur, speedBonusOn: input.speedBonusOn });
+    const score = scoreAnswer({ correct, remainingMs: planned - answeredAt, durationMs: dur });
     answers.push({ student_id: s.id, response, answered_at: answeredAt, correct, points: score.points, speed_bonus: score.speed_bonus });
   }
   answers.sort((a, b) => a.answered_at - b.answered_at || a.student_id.localeCompare(b.student_id));
 
-  // BR-TIME-04: closed as soon as everyone who is there and online has answered.
+  // BR-TIME-04: ended as soon as everyone who is there and online has answered.
   let ended = planned;
   const given = new Map<string, number>();
   for (const a of answers) {
@@ -185,40 +182,38 @@ export function showQuestions(runs: readonly QuestionRun[], input: PlayInput, no
   const plays = new Map<string, Play>();
   const questions: ConsoleQuestion[] = runs.map((run): ConsoleQuestion => {
     const skipped = run.skipped_at !== null && run.skipped_at <= now;
-    const base = { id: run.id, question: run.question, adhoc: run.adhoc, closed_at: null, revealed_at: null, skipped_at: skipped ? iso(run.skipped_at as number) : null } as const;
+    const base = { id: run.id, question: run.question, adhoc: run.adhoc, revealed_at: null, skipped_at: skipped ? iso(run.skipped_at as number) : null } as const;
     if (run.fired_at === null || run.fired_at > now) {
       return { ...base, status: skipped ? "skipped" : "ready", fired_at: null, closes_at: null, answered: 0, joined: 0, counts: null };
     }
     const play = playOf(run, input);
     plays.set(run.id, play);
     const over = now >= play.ended_at;
-    const revealed = !skipped && run.revealed_at !== null && run.revealed_at <= now;
-    const status = skipped ? "skipped" : revealed ? "revealed" : over ? "closed" : "open";
+    const status = skipped ? "skipped" : over ? "revealed" : "open";
     const upTo = Math.min(now, play.ended_at);
     return {
       ...base,
       status,
       fired_at: iso(run.fired_at),
       closes_at: iso(over ? play.ended_at : play.planned_end),
-      closed_at: over && !skipped ? iso(play.ended_at) : null,
-      revealed_at: revealed ? iso(run.revealed_at as number) : null,
+      revealed_at: over && !skipped ? iso(play.ended_at) : null,
       answered: skipped ? 0 : play.answers.filter((a) => a.answered_at <= upTo).length,
       joined: play.joined,
       counts: !skipped && over ? countsOf(play, run.question, play.ended_at) : null,
     };
   });
 
-  // The session ranking: everyone who has joined, by the points of the questions that have closed and were not skipped (BR-PTS-09).
+  // The session ranking: everyone who has joined, by the points of the questions that have ended and were not skipped (BR-PTS-09).
   const points = new Map<string, number>();
-  let anyClosed = false;
+  let anyEnded = false;
   for (const q of questions) {
-    if (q.status !== "closed" && q.status !== "revealed") continue;
-    anyClosed = true;
+    if (q.status !== "revealed") continue;
+    anyEnded = true;
     for (const a of (plays.get(q.id) as Play).answers) points.set(a.student_id, (points.get(a.student_id) ?? 0) + a.points);
   }
   const plansById = planFor(input);
   const joined = input.roster.filter((s) => simulate(plansById.get(s.id), { ...input.sim, now }).joined_at !== null);
-  const board = anyClosed ? rankRows(joined.map((s) => ({ student_id: s.id, name: s.full_name, points: points.get(s.id) ?? 0 }))) : [];
+  const board = anyEnded ? rankRows(joined.map((s) => ({ student_id: s.id, name: s.full_name, points: points.get(s.id) ?? 0 }))) : [];
 
   const flags: FocusFlag[] = [];
   for (const q of questions) {
@@ -246,7 +241,7 @@ export function withQuestions(students: ConsoleStudent[], shown: Shown, now: num
       online,
       points: points.get(s.id) ?? 0,
       focus_flags: shown.flags.filter((f) => f.student_id === s.id).length,
-      answer_state: !open || !hasJoined(s) ? null : answered ? "answered" : online ? "not_answered" : "offline",
+      answer_state: !open ? null : answered ? "answered" : online ? "not_answered" : "offline",
     };
   });
 }
@@ -306,7 +301,7 @@ export function nudgeAt(snapshot: Pick<ConsoleSnapshot, "questions" | "session">
   }
   const idle = nudgeIdle({
     teaching: snapshot.session.state === "teaching",
-    busy: qs.some((q) => q.status === "open" || q.status === "closed"),
+    busy: qs.some((q) => q.status === "open"),
     unsent: qs.some((q) => !q.adhoc && q.status === "ready"),
     idleSince: since,
     now,

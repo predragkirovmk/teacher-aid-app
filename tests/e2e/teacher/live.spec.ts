@@ -1,26 +1,26 @@
-import { simulate, tokenAt } from "../../../lib/teacher/api/mock-live";
+import { tokenAt } from "../../../lib/teacher/api/mock-live";
 import { expect, SETTINGS_KEY, tall, test } from "./fixtures";
 import {
-  at, cards, classCode, code, comesLater, count, joinedAt, nextEdge, openProjector, people, PLANS, readQr, row, SESSION, start, T0, title, mainButton, classTab, inboxTab, questionsTab, tabs,
+  at, cards, classCode, code, count, joinedAt, nextEdge, openProjector, people, PLANS, readQr, SESSION, start, T0, title, mainButton, classTab, inboxTab, questionsTab, tabs,
 } from "./live-helpers";
 
 /**
- * The live lesson, step 8: starting a lesson with a class, the console, the class view in a second window, and what each shows. In mock mode, in
- * Macedonian unless a test changes the language. The class is played from the clock alone (lib/teacher/api/mock-live.ts), and the clock is the
+ * The live lesson, step 8: starting a lesson, the console, the class view in a second window, and what each shows. In mock mode, in
+ * Macedonian unless a test changes the language. The students who scan the code are played from the clock alone (lib/teacher/api/mock-live.ts), and the clock is the
  * test's: it stands still at `T0` and moves only when a test moves it, so who has joined is known exactly, with nothing slow and nothing that
- * can flake. The first lesson started in a fresh demo is the session `s-n1`, and II-4 has 26 students.
+ * can flake. The first lesson started in a fresh demo is the session `s-n1`, and the demo has 26 students who may scan the code.
  */
 
 test.describe("starting", () => {
-  test("from Today: the button names the class, and the lesson opens on its console with the subject, class and lesson in plain words", async ({ page, context }) => {
+  test("from Lessons: one press, and the lesson opens on its console with its title in plain words", async ({ page, context }) => {
     await start(page, context);
     await expect(title(page)).toHaveText("Час во тек");
-    await expect(page.getByText("Математика, II-4: Проценти и пропорции")).toBeVisible();
-    // The lesson has the whole window: no sidebar and no menu, and the way out is the Back to Today. Before teaching the class stands alone, with no tabs.
+    await expect(page.locator(".head__sub")).toHaveText("Проценти и пропорции");
+    // The lesson has the whole window: no sidebar and no menu, and the way out is the Back to Lessons. Before teaching the students stand alone, with no tabs.
     await expect(page.locator(".sidebar, .topbar")).toHaveCount(2);
     for (const part of await page.locator(".sidebar, .topbar").all()) await expect(part).toBeHidden();
     await expect(page.getByRole("navigation", { name: "Главно мени" })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Назад кон Денес" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Назад кон Лекции" })).toHaveAttribute("href", "/teacher");
     await expect(page.getByRole("tablist")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Кој се приклучи" })).toBeVisible();
     await expect(page).toHaveTitle("Час во тек · TeacherAid");
@@ -29,86 +29,78 @@ test.describe("starting", () => {
   test("a lesson that is not the open one is not found, plainly, with the way back", async ({ page }) => {
     await page.goto("/teacher/live/s-none");
     await expect(page.getByRole("heading", { name: "Овој час не е во тек" })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Денес|Назад/ }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: /Лекции|Назад/ }).first()).toBeVisible();
   });
 });
 
 test.describe("the lobby", () => {
-  test("says where the lesson stands in four words, the current one by a word and a mark, and gives the page one main button", async ({ page, context }) => {
+  test("shows no line of steps, says it is the lobby by the start button, and gives the page one main button", async ({ page, context }) => {
     await start(page, context);
-    const states = page.getByRole("list", { name: "Каде е часот" });
-    await expect(states.getByRole("listitem")).toHaveText([/Чекаме ученици/, /Предавање/, /Преглед/, /Крај/]);
-    const now = states.locator("[aria-current=step]");
-    await expect(now).toHaveCount(1);
-    await expect(now).toContainText("Чекаме ученици");
-    await expect(now).toContainText("Сега");
+    await expect(page.locator(".states")).toHaveCount(0);
+    await expect(page.getByRole("list", { name: "Каде е часот" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Почни го часот" })).toBeVisible();
     await expect(mainButton(page)).toHaveCount(1);
     await expect(mainButton(page)).toHaveText("Почни го часот");
-    // The ones that are not current are told apart by more than colour: a screen reader is told which are done and which are still to come.
-    await expect(states.getByRole("listitem").nth(1)).toContainText("следно");
   });
 
-  test("no code is shown to read out while students cannot type it, and the class is listed with nobody here", async ({ page, context }) => {
+  test("no code is shown to read out while students cannot type it, and nobody is listed before anyone scans: the list says students appear then", async ({ page, context }) => {
     await start(page, context);
     await expect(code(page)).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Код за приклучување" })).toHaveCount(0);
     await expect(page.getByText(/Кодот се менува/)).toHaveCount(0);
-    await expect(count(page)).toHaveText("0 од 26 се приклучија");
-    await expect(people(page)).toHaveCount(26);
-    await expect(page.getByRole("heading", { name: "Уште не се тука (26)" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Тука се (0)" })).toBeVisible();
+    await expect(count(page)).toHaveText("0 се приклучија");
+    await expect(people(page)).toHaveCount(0);
+    await expect(page.getByText("Учениците се појавуваат овде кога ќе го скенираат кодот.")).toBeVisible();
+    // No roster of the school's students, no "not here yet" group, no "no phone" button.
+    await expect(page.getByRole("heading", { name: /Уште не се тука|Тука се/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Без телефон/ })).toHaveCount(0);
   });
 
-  test("students join as the clock runs, at an uneven pace, up to 70 to 85 percent, and each moves from one group to the other", async ({ page, context }) => {
+  test("students appear as the clock runs, at an uneven pace, up to 70 to 85 percent of the 26, each one just the name, and the line that told to wait goes", async ({ page, context }) => {
     await start(page, context);
     let last = 0;
     for (const seconds of [6, 15, 30, 50, 75]) {
       await at(context, seconds, page);
       const n = joinedAt(seconds);
-      await expect(count(page)).toHaveText(`${n} од 26 се приклучија`);
-      await expect(page.getByRole("heading", { name: `Тука се (${n})` })).toBeVisible();
-      await expect(page.getByRole("heading", { name: `Уште не се тука (${26 - n})` })).toBeVisible();
+      await expect(count(page)).toHaveText(`${n} се приклучија`);
+      await expect(people(page)).toHaveCount(n);
       expect(n).toBeGreaterThanOrEqual(last);
       last = n;
     }
     expect(last / 26).toBeGreaterThanOrEqual(0.7);
     expect(last / 26).toBeLessThanOrEqual(0.85);
-    // Everybody is still listed, by name, and each one's state is an icon and a word.
-    await expect(people(page)).toHaveCount(26);
-    for (const state of ["joined", "not_yet"]) await expect(page.locator(`.person[data-state="${state}"] .person__state svg`).first()).toBeVisible();
-    await expect(page.locator(".person[data-state=joined] .person__word").first()).toHaveText("Се приклучи");
-    await expect(page.locator(".person[data-state=not_yet] .person__word").first()).toHaveText("Уште не е тука");
+    await expect(page.getByText("Учениците се појавуваат овде кога ќе го скенираат кодот.")).toHaveCount(0);
+    // A student who is here is just the name: no icon and no word repeated on every row (the count above says they joined).
+    await expect(page.locator(".person[data-state=joined]").first()).toBeVisible();
+    await expect(page.locator(".person[data-state=joined] .person__word, .person[data-state=joined] svg")).toHaveCount(0);
+    await expect(page.getByText("Се приклучи", { exact: true })).toHaveCount(0);
   });
 
-  test("the ones who are not here yet are first, and the register's order holds inside each group", async ({ page, context }) => {
+  test("the list is in the order students joined: a new one comes at the end and nobody moves", async ({ page, context }) => {
     await start(page, context);
-    await at(context, 40, page);
-    await expect(count(page)).toHaveText(`${joinedAt(40)} од 26 се приклучија`);
-    const states = await people(page).evaluateAll((els) => els.map((el) => (el as HTMLElement).dataset.state));
-    const firstHere = states.findIndex((s) => s !== "not_yet");
-    expect(firstHere).toBeGreaterThan(0);
-    expect(states.slice(0, firstHere).every((s) => s === "not_yet")).toBe(true);
-    expect(states.slice(firstHere).every((s) => s !== "not_yet")).toBe(true);
-    // A register is read by surname, and the groups keep it: the names of the first group are in order.
-    const names = await page.locator(".roster__group").first().locator(".person__name").allTextContents();
-    expect(names).toEqual([...names].sort((a, b) => a.split(" ").slice(-1)[0].localeCompare(b.split(" ").slice(-1)[0], "mk") || a.localeCompare(b, "mk")));
+    await at(context, 20, page);
+    const before = await people(page).locator(".person__name").allTextContents();
+    await at(context, 50, page);
+    const after = await people(page).locator(".person__name").allTextContents();
+    expect(after.length).toBeGreaterThan(before.length);
+    expect(after.slice(0, before.length)).toEqual(before);
   });
 
-  test("one student loses the connection for a while, is first among those who are here and says so in words, then comes back", async ({ page, context }) => {
+  test("one student loses the connection for a while, stays where they are, says so in words, then comes back", async ({ page, context }) => {
     await start(page, context);
     const away = PLANS.find((p) => p.off)!;
     await at(context, (away.off!.from_ms + 1000) / 1000, page);
     const offline = page.locator(".person[data-state=offline]");
     await expect(offline).toHaveCount(1);
     await expect(offline.locator(".person__word")).toHaveText("Без врска");
-    await expect(page.locator(".roster__group").nth(1).locator(".person").first()).toHaveAttribute("data-state", "offline");
+    await expect(offline.locator(".person__what svg")).toBeVisible();
     await at(context, away.off!.to_ms / 1000 + 1, page);
     await expect(offline).toHaveCount(0);
   });
 });
 
 test.describe("the projector", () => {
-  test("one click opens the class view in a window of its own: the QR, how to join and who has joined, and no code, with no sidebar and no names of those who are not here", async ({ page, context }) => {
+  test("one click opens the class view in a window of its own: the QR, how to join and who has joined, and no code, with no sidebar and no names of those who have not joined", async ({ page, context }) => {
     await start(page, context);
     await at(context, 30, page);
     const n = joinedAt(30);
@@ -179,12 +171,11 @@ test.describe("the projector", () => {
     await expect(projector.locator(".cv__names")).toBeVisible();
     const names = (await projector.locator(".cv__names li").allTextContents()).map((s) => s.trim());
     expect(names.length).toBeLessThanOrEqual(5);
-    const here = await page.locator(".person[data-state=joined], .person[data-state=offline], .person[data-state=late]").locator(".person__name").allTextContents();
+    const here = await people(page).locator(".person__name").allTextContents();
     expect(names.length).toBeGreaterThan(0);
     for (const name of names) expect(here).toContain(name);
-    const missing = await page.locator(".person[data-state=not_yet] .person__name").allTextContents();
-    const text = await projector.locator("main").innerText();
-    for (const name of missing) expect(text).not.toContain(name);
+    // Only the last few: the others who joined are not named on the projector.
+    expect(here.length).toBeGreaterThan(names.length);
   });
 
   test("a window that was never opened is not called closed: nothing is said of it and the button is the plain one", async ({ page, context }) => {
@@ -253,6 +244,40 @@ test.describe("the projector", () => {
     await expect(item.getByText(/mirroring/)).toBeVisible();
   });
 
+  test("while teaching, the projector notes wait behind „За проекторот“, which opens and closes them and says which", async ({ page, context }) => {
+    await start(page, context);
+    await at(context, 30, page);
+    await page.getByRole("button", { name: "Почни го часот" }).click();
+    await page.getByRole("button", { name: "Да, почни го часот" }).click();
+    await expect(page.locator(".qpanel")).toBeVisible();
+    const warning = page.getByText(/Проекторот мора да го прикажува само екранот за проектор/);
+    const hint = page.getByText(/Влечете го прозорецот/);
+    const help = page.getByRole("link", { name: /^Помош/ });
+    const show = page.getByRole("button", { name: "За проекторот", exact: true });
+    // Closed at first: the button is there, 44px tall, and none of the notes is.
+    await expect(show).toBeVisible();
+    await expect(show).toHaveAttribute("aria-expanded", "false");
+    expect(await tall(show)).toBe(44);
+    await expect(warning).toBeHidden();
+    await expect(hint).toBeHidden();
+    await expect(help).toHaveCount(0);
+    // The one main button of the screen is still the question's.
+    await expect(mainButton(page)).toHaveCount(1);
+    await show.click();
+    const hide = page.getByRole("button", { name: "Сокриј за проекторот", exact: true });
+    await expect(hide).toHaveAttribute("aria-expanded", "true");
+    await expect(warning).toBeVisible();
+    await expect(hint).toBeVisible();
+    await expect(help).toBeVisible();
+    expect(await tall(hide)).toBe(44);
+    await expect(mainButton(page)).toHaveCount(1);
+    await hide.click();
+    await expect(page.getByRole("button", { name: "За проекторот", exact: true })).toHaveAttribute("aria-expanded", "false");
+    await expect(warning).toBeHidden();
+    await expect(hint).toBeHidden();
+    await expect(help).toHaveCount(0);
+  });
+
   test("a fullscreen button hides itself in full screen and nothing else hides", async ({ page, context }) => {
     await start(page, context);
     const projector = await openProjector(page, context);
@@ -275,175 +300,29 @@ test.describe("the projector", () => {
   });
 });
 
-test.describe("present without a phone", () => {
-  test("a student who is not here has a button that asks the reason, in four plain choices, and one main button marks them", async ({ page, context }) => {
-    await start(page, context);
-    const missing = page.locator(".person[data-state=not_yet]").first();
-    const name = await missing.locator(".person__name").innerText();
-    await missing.getByRole("button", { name: `Без телефон: ${name}` }).click();
-    const dialog = page.getByRole("dialog", { name: `Зошто ${name} е без телефон?` });
-    await expect(dialog).toBeVisible();
-    await expect(dialog.locator(".choice")).toHaveText(["Нема телефон", "Празна батерија", "Нема интернет", "Заклучувањето на екранот не е дозволено"]);
-    for (const radio of await dialog.getByRole("radio").all()) await expect(radio).not.toBeChecked();
-    for (const choice of await dialog.locator(".choice").all()) expect(await tall(choice)).toBeGreaterThanOrEqual(56);
-    await expect(dialog.getByRole("button", { name: "Означи како присутен" })).toHaveClass(/btn--primary/);
-    await expect(dialog.getByRole("radio").first()).toBeFocused();
-  });
-
-  test("pressing the main button with nothing chosen says so and marks nothing", async ({ page, context }) => {
-    await start(page, context);
-    await page.locator(".person[data-state=not_yet]").first().getByRole("button", { name: /^Без телефон/ }).click();
-    const dialog = page.getByRole("dialog");
-    await dialog.getByRole("button", { name: "Означи како присутен" }).click();
-    await expect(dialog.getByRole("alert")).toHaveText("Прво изберете причина.");
-    await expect(dialog.getByRole("radio").first()).toBeFocused();
-    await expect(page.locator(".person[data-state=no_device]")).toHaveCount(0);
-  });
-
-  test("choosing a reason and confirming marks the student present with the reason, counts them apart from those who joined, and says so", async ({ page, context }) => {
-    await start(page, context);
-    await at(context, 20, page);
-    const n = joinedAt(20);
-    const missing = page.locator(".person[data-state=not_yet]").first();
-    const name = await missing.locator(".person__name").innerText();
-    await missing.getByRole("button", { name: /^Без телефон/ }).click();
-    await page.getByRole("dialog").getByRole("radio", { name: "Празна батерија" }).check();
-    await page.getByRole("dialog").getByRole("button", { name: "Означи како присутен" }).click();
-    await expect(page.getByRole("dialog")).toHaveCount(0);
-
-    const marked = page.locator(".person[data-state=no_device]");
-    await expect(marked).toHaveCount(1);
-    await expect(marked.locator(".person__name")).toHaveText(name);
-    await expect(marked.locator(".person__word")).toHaveText("Без телефон");
-    await expect(marked.locator(".person__detail")).toHaveText("Празна батерија");
-    // Not a join: the count of those who joined is as it was, and the mark is counted on its own line.
-    await expect(count(page)).toHaveText(`${n} од 26 се приклучија`);
-    await expect(page.locator(".roster__nophone")).toHaveText("1 без телефон, означени како присутни");
-    await expect(page.getByRole("status").filter({ hasText: `${name} е означен како присутен без телефон.` })).toBeVisible();
-    // The student has moved to the group of those who are accounted for, and the button that took the focus is the one that takes the mark back.
-    await expect(page.getByRole("heading", { name: `Уште не се тука (${26 - n - 1})` })).toBeVisible();
-    await expect(marked.getByRole("button", { name: `Отстрани ја ознаката: ${name}` })).toBeFocused();
-  });
-
-  test("the mark can be taken back, and the student is as before it; every reason is kept", async ({ page, context }) => {
-    await start(page, context);
-    const reasons = ["Нема телефон", "Празна батерија", "Нема интернет", "Заклучувањето на екранот не е дозволено"];
-    for (const [i, reason] of reasons.entries()) {
-      await page.locator(".person[data-state=not_yet]").nth(i).getByRole("button", { name: /^Без телефон/ }).click();
-      await page.getByRole("dialog").getByRole("radio", { name: reason }).check();
-      await page.getByRole("dialog").getByRole("button", { name: "Означи како присутен" }).click();
-    }
-    await expect(page.locator(".person[data-state=no_device] .person__detail")).toHaveText(reasons);
-    await page.reload();
-    await expect(page.locator(".person[data-state=no_device] .person__detail")).toHaveText(reasons);
-
-    const one = page.locator(".person[data-state=no_device]").first();
-    const name = await one.locator(".person__name").innerText();
-    await one.getByRole("button", { name: /^Отстрани ја ознаката/ }).click();
-    await expect(page.locator(".person[data-state=no_device]")).toHaveCount(3);
-    const back = page.locator(".person", { hasText: name });
-    await expect(back).toHaveAttribute("data-state", "not_yet");
-    await expect(back.getByRole("button", { name: `Без телефон: ${name}` })).toBeFocused();
-    await expect(page.getByRole("status").filter({ hasText: `Ознаката за ${name} е отстранета.` })).toBeVisible();
-  });
-
-  test("a student who has joined has no such button, and Cancel marks nobody", async ({ page, context }) => {
-    await start(page, context);
-    await at(context, 40, page);
-    await expect(page.locator(".person[data-state=joined]").first()).toBeVisible();
-    await expect(page.locator(".person[data-state=joined]").first().getByRole("button")).toHaveCount(0);
-    await page.locator(".person[data-state=not_yet]").first().getByRole("button", { name: /^Без телефон/ }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "Откажи" }).click();
-    await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(page.locator(".person[data-state=no_device]")).toHaveCount(0);
-  });
-
-  test("a student marked who then joins with a phone is simply here: the mark and its reason are gone, and nothing is asked", async ({ page, context }) => {
-    await start(page, context);
-    await at(context, 3, page);
-    const later = comesLater(3);
-    const target = row(page, later.id);
-    const name = await target.locator(".person__name").innerText();
-    await target.getByRole("button", { name: /^Без телефон/ }).click();
-    await page.getByRole("dialog").getByRole("radio", { name: "Нема интернет" }).check();
-    await page.getByRole("dialog").getByRole("button", { name: "Означи како присутен" }).click();
-    await expect(page.locator(".person", { hasText: name })).toHaveAttribute("data-state", "no_device");
-
-    await at(context, later.after_ms / 1000 + 1, page);
-    const joined = page.locator(".person", { hasText: name });
-    await expect(joined).toHaveAttribute("data-state", /^(joined|offline)$/);
-    await expect(joined.locator(".person__word")).toHaveText(/Се приклучи|Без врска/);
-    await expect(joined.getByRole("button")).toHaveCount(0);
-    await expect(joined).not.toContainText("Нема интернет");
-    await expect(page.locator(".roster__nophone")).toHaveCount(0);
-  });
-
-  test("a student who joined while the choice was open is told so, and nothing is marked", async ({ page, context }) => {
-    await start(page, context);
-    await at(context, 3, page);
-    const later = comesLater(3);
-    await row(page, later.id).getByRole("button", { name: /^Без телефон/ }).click();
-    const dialog = page.getByRole("dialog");
-    await dialog.getByRole("radio", { name: "Нема телефон" }).check();
-    await at(context, later.after_ms / 1000 + 1, page);
-    await dialog.getByRole("button", { name: "Означи како присутен" }).click();
-    await expect(dialog.getByRole("alert")).toContainText("штотуку се приклучи со телефон, па нема што да се означи.");
-    await dialog.getByRole("button", { name: "Откажи" }).click();
-    await expect(page.locator(".person[data-state=no_device]")).toHaveCount(0);
-  });
-
-  test("works with the keyboard alone: Enter opens the choice, an arrow chooses, Tab and Enter mark, and the focus is where the next thing to do is", async ({ page, context }) => {
-    await start(page, context);
-    const first = page.locator(".person[data-state=not_yet]").first();
-    const name = await first.locator(".person__name").innerText();
-    await first.getByRole("button", { name: /^Без телефон/ }).focus();
-    await page.keyboard.press("Enter");
-    const dialog = page.getByRole("dialog");
-    await expect(dialog.getByRole("radio").first()).toBeFocused();
-    await page.keyboard.press("ArrowDown");
-    await expect(dialog.getByRole("radio", { name: "Празна батерија" })).toBeChecked();
-    await page.keyboard.press("Tab");
-    await expect(dialog.getByRole("button", { name: "Означи како присутен" })).toBeFocused();
-    await page.keyboard.press("Enter");
-    const take = page.getByRole("button", { name: `Отстрани ја ознаката: ${name}` });
-    await expect(take).toBeFocused();
-    await page.keyboard.press("Enter");
-    await expect(page.getByRole("button", { name: `Без телефон: ${name}` })).toBeFocused();
-    // Escape closes the choice, marks nothing and gives the focus back to the button that opened it.
-    await page.keyboard.press("Enter");
-    await expect(page.getByRole("dialog")).toBeVisible();
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: `Без телефон: ${name}` })).toBeFocused();
-    await expect(page.locator(".person[data-state=no_device]")).toHaveCount(0);
-  });
-});
-
 test.describe("starting the lesson, and teaching", () => {
   test("asks first, because it cannot be taken back, with the safe answer as the default; saying no changes nothing", async ({ page, context }) => {
     await start(page, context);
     await at(context, 30, page);
-    const n = joinedAt(30);
     await page.getByRole("button", { name: "Почни го часот" }).click();
     const dialog = page.getByRole("alertdialog", { name: "Да го почнеме часот сега?" });
-    await expect(dialog).toContainText(`Уште ${26 - n} не се приклучиле.`);
+    // Nobody is counted as missing: students can still join, and nobody is marked late.
+    await expect(dialog).toContainText("Учениците можат да се приклучат и потоа.");
+    await expect(dialog).not.toContainText(/задоцнет|не се приклучиле/);
     await expect(dialog).toContainText("Часот не може да се врати на чекање.");
     await expect(dialog.getByRole("button", { name: "Не, уште чекам" })).toBeFocused();
     await expect(dialog.getByRole("button", { name: "Не, уште чекам" })).toHaveClass(/btn--primary/);
     await dialog.getByRole("button", { name: "Не, уште чекам" }).click();
     await expect(dialog).toHaveCount(0);
-    await expect(page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]")).toContainText("Чекаме ученици");
+    await expect(page.getByRole("button", { name: "Почни го часот" })).toBeVisible();
   });
 
-  test("moves to teaching: the state line says so, the panel for the question now has the one main button, the class, the questions and the anonymous questions are tabs, and the only way to end is the red one in the top bar", async ({ page, context }) => {
+  test("moves to teaching: the question panel is there, the panel for the question now has the one main button, the class, the questions and the anonymous questions are tabs, and the only way to end is the red one in the top bar", async ({ page, context }) => {
     await start(page, context);
     await at(context, 30, page);
     await page.getByRole("button", { name: "Почни го часот" }).click();
     await page.getByRole("button", { name: "Да, почни го часот" }).click();
-    const now = page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]");
-    await expect(now).toContainText("Предавање");
-    await expect(now).toContainText("Сега");
-    await expect(page.getByRole("listitem").filter({ hasText: "Чекаме ученици" })).toContainText("завршено");
+    await expect(page.locator(".qpanel")).toBeVisible();
     await expect(mainButton(page)).toHaveCount(1);
     await expect(mainButton(page)).toHaveText("Испрати го прашањето");
     await expect(page.getByRole("button", { name: "Почни го часот" })).toHaveCount(0);
@@ -468,7 +347,9 @@ test.describe("starting the lesson, and teaching", () => {
       questionsTab(page).evaluate((el) => {
         const glide = el.parentElement!.querySelector<HTMLElement>(".seg__glide")!;
         const face = getComputedStyle(glide, "::after");
-        const [top, right, bottom, left] = face.clipPath.match(/-?[\d.]+px/g)!.map(parseFloat);
+        // The browser writes the inset short when sides are equal ("inset(0px 175px round 999px)" for the middle tab between two tabs
+        // of one width), so read it as CSS does: one to four values before "round", the missing ones taken from their opposite side.
+        const [top, right = top, bottom = top, left = right] = face.clipPath.split("round")[0].match(/-?[\d.]+px/g)!.map(parseFloat);
         const g = glide.getBoundingClientRect();
         const t = el.getBoundingClientRect();
         const off = Math.max(Math.abs(g.top + top - t.top), Math.abs(g.right - right - t.right), Math.abs(g.bottom - bottom - t.bottom), Math.abs(g.left + left - t.left));
@@ -496,31 +377,20 @@ test.describe("starting the lesson, and teaching", () => {
     expect(endBox.x).toBeGreaterThan(projectorBox.x + projectorBox.width);
   });
 
-  test("a student who joins after the lesson has begun is late, with the time, and the ones who were in before are not", async ({ page, context }) => {
+  test("a student who joins after the lesson has begun simply appears in the list: no word of late, and no one is named before they join", async ({ page, context }) => {
     await start(page, context);
     await at(context, 20, page);
     await page.getByRole("button", { name: "Почни го часот" }).click();
     await page.getByRole("button", { name: "Да, почни го часот" }).click();
-    await expect(page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]")).toContainText("Предавање");
+    await expect(page.locator(".qpanel")).toBeVisible();
+    const before = joinedAt(20, 20);
+    await expect(people(page)).toHaveCount(before);
     await at(context, 100, page, 20);
-    const late = page.locator(".person", { has: page.locator(".person__word", { hasText: "Задоцни" }) });
-    const lateOnes = PLANS.filter((p) => simulate(p, { started_at: T0, teaching_at: T0 + 20_000, now: T0 + 100_000 }).late).length;
-    expect(lateOnes).toBeGreaterThanOrEqual(1);
-    await expect(late).toHaveCount(lateOnes);
-    await expect(late.first().locator(".person__detail")).toHaveText(/^во \d\d:\d\d$/);
-    await expect(count(page)).toHaveText(`${joinedAt(100, 20)} од 26 се приклучија`);
-    // The ones who joined in the lobby are marked as having been on time: no word of "late" on them.
-    expect(await page.locator(".person[data-state=joined]").count()).toBe(joinedAt(100, 20) - lateOnes - (await page.locator(".person[data-state=offline]").count()));
-  });
-
-  test("marking a student without a phone still works in teaching", async ({ page, context }) => {
-    await start(page, context);
-    await page.getByRole("button", { name: "Почни го часот" }).click();
-    await page.getByRole("button", { name: "Да, почни го часот" }).click();
-    await page.locator(".person[data-state=not_yet]").first().getByRole("button", { name: /^Без телефон/ }).click();
-    await page.getByRole("dialog").getByRole("radio", { name: "Нема телефон" }).check();
-    await page.getByRole("dialog").getByRole("button", { name: "Означи како присутен" }).click();
-    await expect(page.locator(".person[data-state=no_device]")).toHaveCount(1);
+    const after = joinedAt(100, 20);
+    expect(after).toBeGreaterThan(before);
+    await expect(people(page)).toHaveCount(after);
+    await expect(page.locator(".person", { hasText: "Задоцни" })).toHaveCount(0);
+    await expect(page.locator(".person[data-state=late]")).toHaveCount(0);
   });
 
   test("the class view says the lesson is going on, with a small corner for those who are late", async ({ page, context }) => {
@@ -543,25 +413,20 @@ test.describe("starting the lesson, and teaching", () => {
 });
 
 test.describe("coming back", () => {
-  test("a reload of the console brings everything back: who has joined, who is marked, where the lesson stands", async ({ page, context }) => {
+  test("a reload of the console brings everything back: who has joined and where the lesson stands", async ({ page, context }) => {
     await start(page, context);
     await at(context, 40, page);
-    await page.locator(".person[data-state=not_yet]").first().getByRole("button", { name: /^Без телефон/ }).click();
-    await page.getByRole("dialog").getByRole("radio", { name: "Нема интернет" }).check();
-    await page.getByRole("dialog").getByRole("button", { name: "Означи како присутен" }).click();
-    await expect(page.getByRole("dialog")).toHaveCount(0);
     const before = await people(page).allInnerTexts();
     await page.reload();
     await expect(count(page)).toBeVisible();
-    await expect(page.locator(".person[data-state=no_device]")).toHaveCount(1);
     expect(await people(page).allInnerTexts()).toEqual(before);
-    await expect(count(page)).toHaveText(`${joinedAt(40)} од 26 се приклучија`);
-    await expect(page.locator(".person[data-state=no_device] .person__detail")).toHaveText("Нема интернет");
+    await expect(count(page)).toHaveText(`${joinedAt(40)} се приклучија`);
     await page.getByRole("button", { name: "Почни го часот" }).click();
     await page.getByRole("button", { name: "Да, почни го часот" }).click();
     await page.reload();
-    await expect(page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]")).toContainText("Предавање");
+    await expect(page.locator(".qpanel")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Прашањето сега" })).toBeVisible();
+    await expect(people(page)).toHaveCount(joinedAt(40));
   });
 
   test("a reload of the class view brings it back, with the same count and the same QR", async ({ page, context }) => {
@@ -577,17 +442,13 @@ test.describe("coming back", () => {
     await expect(page.getByText("Екранот за проектор е отворен.")).toBeVisible();
   });
 
-  test("both windows agree: a move in the console reaches the projector, and a mark does not", async ({ page, context }) => {
+  test("both windows agree: who joins in the console's clock is counted on the projector too", async ({ page, context }) => {
     await start(page, context);
     const projector = await openProjector(page, context);
     await at(context, 25, page);
     await expect(projector.locator(".cv__count")).toHaveText(joinedAt(25) === 1 ? "1 се приклучи" : `${joinedAt(25)} се приклучија`);
-    await expect(count(page)).toHaveText(`${joinedAt(25)} од 26 се приклучија`);
-    await page.locator(".person[data-state=not_yet]").first().getByRole("button", { name: /^Без телефон/ }).click();
-    await page.getByRole("dialog").getByRole("radio", { name: "Нема телефон" }).check();
-    await page.getByRole("dialog").getByRole("button", { name: "Означи како присутен" }).click();
-    // The projector's count is of those who joined with a phone, and a mark is not one.
-    await expect(projector.locator(".cv__count")).toHaveText(joinedAt(25) === 1 ? "1 се приклучи" : `${joinedAt(25)} се приклучија`);
+    await expect(count(page)).toHaveText(`${joinedAt(25)} се приклучија`);
+    await expect(people(page)).toHaveCount(joinedAt(25));
   });
 
   test("a lost connection is said calmly, and mended by itself when it is back", async ({ page, context }) => {
@@ -601,7 +462,7 @@ test.describe("coming back", () => {
     await context.setOffline(false);
     await expect(line).toHaveCount(0);
     // What happened while it was gone is there: the snapshot was read again.
-    await expect(count(page)).toHaveText(`${joinedAt(35)} од 26 се приклучија`);
+    await expect(count(page)).toHaveText(`${joinedAt(35)} се приклучија`);
   });
 
   test("the projector says the same, quietly, and recovers", async ({ page, context }) => {
@@ -614,17 +475,16 @@ test.describe("coming back", () => {
     await expect(projector.getByText("Се поврзуваме повторно…")).toHaveCount(0);
   });
 
-  test("a failure to mark is said at the choice, with the reason, and the choice stays", async ({ page, context }) => {
+  test("a failure to start the lesson is said where the button is, with the reason, and pressing again works", async ({ page, context }) => {
     await start(page, context);
-    await page.locator(".person[data-state=not_yet]").first().getByRole("button", { name: /^Без телефон/ }).click();
-    await page.getByRole("dialog").getByRole("radio", { name: "Нема телефон" }).check();
+    await page.getByRole("button", { name: "Почни го часот" }).click();
     await context.setOffline(true);
-    await page.getByRole("dialog").getByRole("button", { name: "Означи како присутен" }).click();
-    await expect(page.getByRole("dialog").getByRole("alert")).toContainText("Нема врска со интернет");
+    await page.getByRole("button", { name: "Да, почни го часот" }).click();
+    await expect(page.locator(".live__code").getByRole("alert")).toContainText("Нема врска со интернет");
     await context.setOffline(false);
-    await page.getByRole("dialog").getByRole("button", { name: "Означи како присутен" }).click();
-    await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(page.locator(".person[data-state=no_device]")).toHaveCount(1);
+    await page.getByRole("button", { name: "Почни го часот" }).click();
+    await page.getByRole("button", { name: "Да, почни го часот" }).click();
+    await expect(page.getByRole("heading", { name: "Прашањето сега" })).toBeVisible();
   });
 });
 
@@ -648,34 +508,28 @@ test.describe("who may see it", () => {
     const html = await projector.content();
     const recent = (await projector.locator(".cv__names li").allTextContents()).map((s) => s.trim());
     for (const name of names.filter((n) => !recent.includes(n))) expect(html.includes(name), name).toBe(false);
-    for (const word of ["Без телефон", "Уште не се тука", "Предавање", "Отстрани ја ознаката"]) expect(html.includes(word), word).toBe(false);
+    for (const word of ["Без телефон", "Уште не се тука", "Предавање"]) expect(html.includes(word), word).toBe(false);
     // The console's pages are the sidebar's: the projected page has none of it.
     await expect(projector.locator(".sidebar, .nav, .topbar")).toHaveCount(0);
   });
 });
 
 test.describe("words", () => {
-  test("in English, a school: the console, the roster, the reasons and the projector speak English, and the names are in Latin letters", async ({ page, context }) => {
+  test("in English, a school: the console, the list of who joined and the projector speak English, and the names are in Latin letters", async ({ page, context }) => {
     await page.addInitScript((key) => localStorage.setItem(key, JSON.stringify({ locale: "en", schoolType: "school", schoolSeen: true })), SETTINGS_KEY);
     await context.clock.setFixedTime(T0);
     await page.goto("/teacher");
     await cards(page).filter({ hasText: "Проценти и пропорции" }).getByRole("button", { name: "Start lesson" }).click();
-    await page.getByRole("dialog", { name: "Which class?" }).getByRole("radio", { name: /II-4/ }).check();
-    await page.getByRole("dialog").getByRole("button", { name: "Start with II-4" }).click();
-    await expect(page.getByText("Математика, II-4: Проценти и пропорции")).toBeVisible();
-    await expect(page.getByRole("list", { name: "Where the lesson is" }).getByRole("listitem")).toHaveText([/Waiting for the students/, /Teaching/, /Review/, /The end/]);
+    await expect(page.locator(".head__sub")).toHaveText("Проценти и пропорции");
     await expect(page.getByRole("heading", { name: "When you are ready" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Projector screen" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Start the lesson" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Open the projector screen" })).toBeVisible();
-    await expect(count(page)).toHaveText("0 of 26 joined");
-    await expect(page.getByRole("heading", { name: "Not here yet (26)" })).toBeVisible();
+    await expect(count(page)).toHaveText("0 joined");
+    await expect(page.getByText("Students appear here when they scan the code.")).toBeVisible();
+    await at(context, 40, page);
     const name = await page.locator(".person__name").first().innerText();
     expect(name).toMatch(/^[A-Za-z' -]+$/);
-    await page.locator(".person").first().getByRole("button", { name: /^No phone/ }).click();
-    await expect(page.getByRole("dialog").locator(".choice")).toHaveText(["No phone", "Empty battery", "No internet", "Screen locking is not allowed"]);
-    await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
-    await at(context, 40, page);
     const projector = await openProjector(page, context, "Open the projector screen");
     await expect(projector.getByText("Scan the QR code with TeacherAid, or with your phone's camera")).toBeVisible();
     await expect(projector.getByText(/^\d+ joined$|^1 joined$/)).toBeVisible();
@@ -687,18 +541,17 @@ test.describe("words", () => {
     await expect(help.locator("details#projector").getByText("Press the Windows key and P together (Win+P).")).toBeVisible();
   });
 
-  test("at a faculty the console says students and group, and the line of states says it too", async ({ page, context }) => {
+  test("at a faculty the console says students", async ({ page, context }) => {
     await page.addInitScript((key) => localStorage.setItem(key, JSON.stringify({ locale: "mk", schoolType: "university", schoolSeen: true })), SETTINGS_KEY);
     await context.clock.setFixedTime(T0);
     await page.goto("/teacher");
     await cards(page).first().getByRole("button", { name: "Започни час" }).click();
-    await page.getByRole("dialog", { name: "Со која група?" }).getByRole("button", { name: /^Започни со Група 1А$/ }).click();
     await expect(page).toHaveURL(/\/teacher\/live\//);
-    await expect(page.getByRole("list", { name: "Каде е часот" }).getByRole("listitem").first()).toContainText("Чекаме студенти");
     await expect(page.getByText(/Проекторот мора.*Вашите студенти/)).toBeVisible();
-    await expect(count(page)).toHaveText("0 од 28 се приклучија");
+    await expect(count(page)).toHaveText("0 се приклучија");
+    await expect(page.getByText("Студентите се појавуваат овде кога ќе го скенираат кодот.")).toBeVisible();
     await page.getByRole("button", { name: "Почни го часот" }).click();
-    await expect(page.getByRole("alertdialog")).toContainText("Уште 28 не се приклучиле.");
+    await expect(page.getByRole("alertdialog")).toContainText("Студентите можат да се приклучат и потоа.");
   });
 });
 
@@ -715,10 +568,8 @@ test.describe("the screen", () => {
     await expect(people(page).first()).toBeAttached();
     const box = await people(page).first().boundingBox();
     expect(box!.width).toBeLessThanOrEqual(640);
-    // A student's row, and its button, fit.
-    const button = page.locator(".person[data-state=not_yet]").first().getByRole("button");
-    await button.scrollIntoViewIfNeeded();
-    expect(await tall(button)).toBeGreaterThanOrEqual(44);
+    // A student's row is a full line tall.
+    expect(await tall(people(page).first())).toBeGreaterThanOrEqual(44);
   });
 
   test("the console fits 1024 x 768 and 1280 x 720 with no sideways scroll, and every button is at least 44px tall", async ({ page, context }) => {
@@ -756,8 +607,8 @@ test.describe("the reminder", () => {
   test("is not shown on the console, which says it itself, and is shown on every other page", async ({ page, context }) => {
     await start(page, context);
     await expect(page.getByRole("group", { name: /Час во тек/ })).toHaveCount(0);
-    // The console has no menu: the way to another page is the Back to Today, and from there the menu.
-    await page.getByRole("link", { name: "Назад кон Денес" }).click();
+    // The console has no menu: the way to another page is the Back to Lessons, and from there the menu.
+    await page.getByRole("link", { name: "Назад кон Лекции" }).click();
     await page.getByRole("link", { name: "Библиотека" }).click();
     await expect(page.getByRole("group", { name: /Час во тек/ })).toBeVisible();
   });
@@ -781,51 +632,36 @@ test.describe("what the review of step 8 changed", () => {
     }
   });
 
-  test("the card of who has joined has no gap between the count and the list, and the line that says what was done takes room only while it has something to say", async ({ page, context }) => {
+  test("the card of who has joined has no gap between the count and the list", async ({ page, context }) => {
     await start(page, context);
     await at(context, 40, page);
-    const gap = async () => {
-      const a = (await count(page).boundingBox())!;
-      const b = (await page.locator(".roster__heading").first().boundingBox())!;
-      return b.y - (a.y + a.height);
-    };
-    expect(await gap()).toBeLessThanOrEqual(32);
-    await page.locator(".person[data-state=not_yet]").first().getByRole("button", { name: /^Без телефон/ }).click();
-    await page.getByRole("dialog").getByRole("radio", { name: "Нема телефон" }).check();
-    await page.getByRole("dialog").getByRole("button", { name: "Означи како присутен" }).click();
-    await expect(page.locator(".roster__said")).toContainText("е означен како присутен без телефон");
-    // It is read out by a region that was there before it was needed.
-    await expect(page.getByRole("status").filter({ hasText: "е означен како присутен без телефон" })).toHaveCount(1);
+    const a = (await count(page).boundingBox())!;
+    const b = (await page.locator(".roster__list").boundingBox())!;
+    expect(b.y - (a.y + a.height)).toBeLessThanOrEqual(32);
   });
 
-  test("the question before starting is calm, and does not count a student marked without a phone among those who have not joined", async ({ page, context }) => {
+  test("the question before starting is calm: it counts nobody as missing, the safe answer is the main button and has the focus, and Escape stays in the lobby", async ({ page, context }) => {
     await start(page, context);
     await at(context, 40, page);
-    const missing = 26 - joinedAt(40);
-    await page.locator(".person[data-state=not_yet]").first().getByRole("button", { name: /^Без телефон/ }).click();
-    await page.getByRole("dialog").getByRole("radio", { name: "Нема телефон" }).check();
-    await page.getByRole("dialog").getByRole("button", { name: "Означи како присутен" }).click();
-    await expect(page.getByRole("dialog")).toHaveCount(0);
     await page.getByRole("button", { name: "Почни го часот" }).click();
     const ask = page.getByRole("alertdialog", { name: "Да го почнеме часот сега?" });
-    await expect(ask).toContainText(`Уште ${missing - 1} не се приклучиле.`);
-    // The safe answer is the main button and has the focus; Escape stays, and the lesson is still in the lobby.
+    await expect(ask).not.toContainText(/не се приклучиле|задоцнет/);
     await expect(ask.getByRole("button", { name: "Не, уште чекам" })).toBeFocused();
     await expect(ask.getByRole("button", { name: "Не, уште чекам" })).toHaveClass(/btn--primary/);
     await page.keyboard.press("Escape");
     await expect(ask).toHaveCount(0);
-    await expect(page.getByRole("list", { name: "Каде е часот" }).locator("[aria-current=step]")).toContainText("Чекаме ученици");
+    await expect(page.getByRole("button", { name: "Почни го часот" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Почни го часот" })).toBeFocused();
   });
 
   test("a screen reader hears the count once the joins have slowed, not every join", async ({ page, context }) => {
     await start(page, context);
     const calm = page.getByTestId("calm-count");
-    await expect(calm).toHaveText("0 од 26 се приклучија");
+    await expect(calm).toHaveText("0 се приклучија");
     // Not a live region for the people: only the one that says the count.
     await expect(page.locator(".person[role], .roster__list[aria-live]")).toHaveCount(0);
     await at(context, 40, page);
-    await expect(calm).toHaveText(`${joinedAt(40)} од 26 се приклучија`, { timeout: 10_000 });
+    await expect(calm).toHaveText(`${joinedAt(40)} се приклучија`, { timeout: 10_000 });
     await expect(calm).toHaveAttribute("role", "status");
   });
 

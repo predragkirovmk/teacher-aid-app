@@ -13,6 +13,7 @@ import {
   NUDGE_AFTER_SECONDS,
   nextUnsent,
   nudgeIdle,
+  longNames,
   nudgeMinutes,
   numericSummary,
   optionLetter,
@@ -38,7 +39,6 @@ const q = (status: QuestionStatus, over: Partial<ConsoleQuestion> = {}): Console
   adhoc: false,
   fired_at: status === "ready" ? null : iso(n),
   closes_at: null,
-  closed_at: null,
   revealed_at: null,
   skipped_at: status === "skipped" ? iso(n) : null,
   answered: 0,
@@ -60,9 +60,7 @@ describe("the panel's next step", () => {
     expect(panelStep(list)).toMatchObject({ step: "open", question: list[1] });
   });
 
-  test("closed: show the answer; answer shown: send the next, and none left says so", () => {
-    const closed = [q("revealed"), q("closed"), q("ready")];
-    expect(panelStep(closed)).toMatchObject({ step: "closed", question: closed[1] });
+  test("answer shown (it shows by itself when the question ends): send the next, and none left says so", () => {
     const shown = [q("revealed"), q("revealed"), q("ready")];
     expect(panelStep(shown)).toMatchObject({ step: "revealed", question: shown[1], next: shown[2] });
     const last = [q("revealed"), q("revealed")];
@@ -89,16 +87,15 @@ describe("the panel's next step", () => {
   });
 
   test("a quick question is never the next one to send, and is the one the panel is about once it is sent", () => {
-    const list = [q("revealed"), q("ready"), q("closed", { adhoc: true, fired_at: iso(200) })];
+    const list = [q("revealed"), q("ready"), q("revealed", { adhoc: true, fired_at: iso(200) })];
     expect(nextUnsent(list)).toBe(list[1]);
     expect(currentQuestion(list)).toBe(list[2]);
   });
 
   test("the list's words, and whether another may be sent", () => {
-    expect(["ready", "open", "closed", "revealed", "skipped"].map((s) => listStatus(s as QuestionStatus))).toEqual(["not_sent", "sent", "sent", "shown", "skipped"]);
+    expect(["ready", "open", "revealed", "skipped"].map((s) => listStatus(s as QuestionStatus))).toEqual(["not_sent", "sent", "shown", "skipped"]);
     expect(canSendAnother([q("revealed"), q("ready")])).toBe(true);
     expect(canSendAnother([q("open"), q("ready")])).toBe(false);
-    expect(canSendAnother([q("closed"), q("ready")])).toBe(false);
   });
 });
 
@@ -178,6 +175,12 @@ describe("the leaderboard", () => {
     expect(topOfBoard(rows([50, 40, 30, 20, 10, 10, 10, 10, 10])).length).toBe(7);
   });
 
+  test("a name is long from 19 characters, and an empty ranking has none", () => {
+    expect(longNames(["a".repeat(18), "Ана"])).toBe(false);
+    expect(longNames(["Ана", "a".repeat(19)])).toBe(true);
+    expect(longNames([])).toBe(false);
+  });
+
   test("nobody with no points is shown", () => {
     expect(topOfBoard(rows([0, 0, 0]))).toEqual([]);
     expect(topOfBoard(rows([10, 0, 0])).length).toBe(1);
@@ -189,9 +192,7 @@ describe("what the projector shows", () => {
   test("by the question's state, a skip first", () => {
     expect(projectedScreen(null, false, false)).toBe("between");
     expect(projectedScreen(pq("open"), false, false)).toBe("open");
-    expect(projectedScreen(pq("closed"), false, false)).toBe("closed");
     expect(projectedScreen(pq("revealed"), false, true)).toBe("revealed");
-    expect(projectedScreen(pq("revealed"), false, false)).toBe("closed");
     expect(projectedScreen(pq("open"), true, false)).toBe("skipped");
   });
   test("a prompt gets smaller the longer it is, in three sizes", () => {

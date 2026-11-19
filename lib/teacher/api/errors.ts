@@ -23,7 +23,7 @@ export const SERVER_ERROR_CODES = [
   // PROPOSED, teacher side.
   /** The AI could not make a usable lesson, after the one retry (EC-LES-02). */
   "generation_failed",
-  /** A second session for a course that already has one open (EC-SES-02). */
+  /** A second session while the teacher already has one open (EC-SES-02). */
   "session_open",
   /** A move the session's state does not allow: backwards, or an action after End (4.1). */
   "invalid_state",

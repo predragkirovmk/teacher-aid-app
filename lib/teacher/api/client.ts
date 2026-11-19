@@ -5,13 +5,9 @@ import type {
   ChannelEvent,
   ClassViewSnapshot,
   ConsoleSnapshot,
-  CoursePatch,
-  CourseDashboard,
-  CourseSummary,
   CreateSessionRequest,
   DraftPatch,
   DraftSummary,
-  EndResult,
   GenerateRequest,
   Id,
   Lesson,
@@ -19,10 +15,7 @@ import type {
   LessonSummary,
   LibraryItem,
   Me,
-  NoDeviceRequest,
   OpenSession,
-  PracticeResults,
-  PracticeSetResult,
   QuestionMedia,
   Refinement,
   SaveLessonRequest,
@@ -76,14 +69,6 @@ export interface TeacherApi {
   /** PROPOSED, PATCH /me: the guided first lesson is done (FR-SUP-03). Answers with the teacher. */
   setFirstRunDone(): Promise<Me>;
 
-  // ---- Courses ----
-  /** GET /teacher/courses. */
-  listCourses(): Promise<CourseSummary[]>;
-  /** GET /courses/{id}/dashboard (FR-DASH-01). */
-  getDashboard(courseId: Id): Promise<CourseDashboard>;
-  /** PATCH /courses/{id}: the speed bonus on or off (BR-PTS-04). */
-  updateCourse(courseId: Id, patch: CoursePatch): Promise<CourseSummary>;
-
   // ---- Making a lesson (F-03, F-04) ----
   /**
    * POST /lessons/sources: a PDF or .docx, or typed sentences. Rejects `validation_failed` with a reason (BR-LES-05, EC-LES-06).
@@ -133,7 +118,7 @@ export interface TeacherApi {
   copyFromLibrary(lessonId: Id): Promise<Lesson>;
 
   // ---- Running a lesson (F-06 to F-11) ----
-  /** POST /sessions: starts in the lobby. Rejects `session_open` when the course already has one (EC-SES-02). */
+  /** POST /sessions: starts in the lobby. Rejects `session_open` when the teacher already has an open session (EC-SES-02). */
   createSession(request: CreateSessionRequest): Promise<ConsoleSnapshot>;
   /** GET /sessions/open: the teacher's open session, if any, so End works from anywhere (FR-END-04). */
   getOpenSession(): Promise<OpenSession>;
@@ -145,32 +130,16 @@ export interface TeacherApi {
   advance(sessionId: Id, request: AdvanceRequest): Promise<ConsoleSnapshot>;
   /** POST /sessions/{id}/questions/{sqid}/fire. */
   fireQuestion(sessionId: Id, sessionQuestionId: Id): Promise<ConsoleSnapshot>;
-  /** POST /sessions/{id}/questions/{sqid}/reveal. */
-  revealQuestion(sessionId: Id, sessionQuestionId: Id): Promise<ConsoleSnapshot>;
   /** POST /sessions/{id}/questions/{sqid}/skip (BR-SKIP-01). */
   skipQuestion(sessionId: Id, sessionQuestionId: Id): Promise<ConsoleSnapshot>;
   /** POST /sessions/{id}/adhoc (FR-POP-04, OPEN-14). */
   fireAdhoc(sessionId: Id, request: AdhocRequest): Promise<ConsoleSnapshot>;
-  /**
-   * POST /sessions/{id}/attendance/{student_id}/no-device (FR-ATT-04): present without a phone, with the reason. Refused `invalid_state`
-   * for a student who has joined with a phone; on a student already marked it changes the reason.
-   */
-  markNoDevice(sessionId: Id, studentId: Id, request: NoDeviceRequest): Promise<ConsoleSnapshot>;
-  /**
-   * PROPOSED, DELETE /sessions/{id}/attendance/{student_id}/no-device: takes the mark back, and the student is as before it was made (not
-   * here yet). Nothing to take back is not an error. Answers the fresh console snapshot.
-   */
-  clearNoDevice(sessionId: Id, studentId: Id): Promise<ConsoleSnapshot>;
   /** PATCH /sessions/{id}/anon-questions/{id} (FR-ANON-10): the teacher answered it aloud (`answered: true`), or takes that back (`false`, PROPOSED). */
   markAnonAnswered(sessionId: Id, anonQuestionId: Id, answered: boolean): Promise<AnonQuestionItem>;
-  /** POST /sessions/{id}/end: the full attendance list and the most-missed questions (F-10). */
-  endSession(sessionId: Id): Promise<EndResult>;
-  /** GET /sessions/{id}/review. */
+  /** POST /sessions/{id}/end: the students who joined, each with their score (F-10). */
+  endSession(sessionId: Id): Promise<SessionReview>;
+  /** GET /sessions/{id}/review: the same, once the session has ended (`invalid_state` before). */
   getReview(sessionId: Id): Promise<SessionReview>;
-  /** POST /sessions/{id}/practice-set: one per session, from what was missed (F-12). */
-  createPracticeSet(sessionId: Id): Promise<PracticeSetResult>;
-  /** PROPOSED, GET /sessions/{id}/practice-set: who did it and how many they got right (FR-PRA-04). */
-  getPracticeResults(sessionId: Id): Promise<PracticeResults>;
 
   // ---- Realtime (11.2, 11.4) ----
   /**
@@ -198,7 +167,7 @@ export type SettledPromise<T> = Promise<T> & { settled: { ok: true; value: T } |
 export type DemoControls = {
   /** Start the demo school over: the lessons the teacher made go, and the history is as of today. */
   reset(): void;
-  /** Open a lesson that began twelve minutes ago, so Today and the rest can be seen while one is running. */
+  /** Open a lesson that began twelve minutes ago, so the app can be seen while one is running. */
   simulateRunning(): void;
 };
 

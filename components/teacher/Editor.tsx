@@ -38,10 +38,9 @@ import { hasUnfinishedNumber, initialState, isEmptyPatch, patchOf, reduce } from
 import { leaveGuideUnsaved } from "@/lib/teacher/first-run";
 import { useT } from "@/lib/teacher/i18n";
 import { DRAFT_RETENTION_DAYS } from "@/lib/teacher/lessons";
-import { backFromDraft, draftUrl, FROM_TODAY, fromOf, savedLessonUrl } from "@/lib/teacher/routes";
+import { backFromDraft, draftUrl, FROM_LIBRARY, fromOf, savedLessonUrl } from "@/lib/teacher/routes";
 import { QUESTIONS_MAX } from "@/lib/teacher/scoring";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { kindLine } from "./LessonCard";
 import { QuestionCard } from "./LessonView";
 import { DiscardDraft } from "./DiscardDraft";
 import { LeaveGuard } from "./LeaveGuard";
@@ -81,9 +80,9 @@ function SaveState({ status }: { status: SaveStatus }) {
 
 /**
  * The page of a draft that is ready: the lesson to read and change. The title, each question (one open at a time), the four
- * refinements, the review summary and the one main button that makes it a lesson. Every change goes into the draft a moment after
+ * refinements and the one main button that makes it a lesson. Every change goes into the draft a moment after
  * the teacher stops (lib/teacher/autosave.ts), so there is nothing to remember to save, nothing is lost by leaving, and the page
- * says so calmly. Questions are first and the summary after them, as the draft was read before it could be edited.
+ * says so calmly.
  */
 export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string | null; fresh: boolean }) {
   const { t } = useT();
@@ -338,7 +337,7 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
           leaveGuideUnsaved();
         }
       }
-      router.replace(savedLessonUrl(saved.id, edit ? "changes" : "new", fromOf(from) === FROM_TODAY ? FROM_TODAY : undefined));
+      router.replace(savedLessonUrl(saved.id, edit ? "changes" : "new", fromOf(from) === FROM_LIBRARY ? FROM_LIBRARY : undefined));
     } catch (e) {
       setSaveError(e);
       setSaving(false);
@@ -351,7 +350,7 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
 
   return (
     <>
-      <PageHeader title={content.title.trim() || t("lesson.title")} subtitle={kindLine(t, draft)} back={back.href} backLabel={t(back.label)} />
+      <PageHeader title={content.title.trim() || t("lesson.title")} back={back.href} backLabel={t(back.label)} />
       <div className="content" ref={root}>
         {/* There before it has anything to say, so that what it says is read out. */}
         <p role="status" className="sr">
@@ -527,21 +526,6 @@ export function Editor({ draft, from, fresh }: { draft: ReadyDraft; from: string
           {refineError !== null && (
             <ProblemBox title={t("refine.fail.title")}>{refineError === "unsent" ? t("save.unsent") : <ErrorWords error={refineError} />}</ProblemBox>
           )}
-        </section>
-
-        <section className="card card--stack" aria-labelledby="editor-summary">
-          <h2 id="editor-summary">{t("draft.summary")}</h2>
-          <p id="editor-summary-hint" className="prepare__hint">
-            {t("summary.hint")}
-          </p>
-          <textarea
-            className="field field--area"
-            rows={5}
-            aria-labelledby="editor-summary"
-            aria-describedby="editor-summary-hint"
-            value={content.review_summary}
-            onChange={(e) => dispatch({ type: "summary", text: e.target.value })}
-          />
         </section>
 
         {problems.length > 0 && (

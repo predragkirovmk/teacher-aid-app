@@ -1,9 +1,9 @@
 "use client";
 
-import { PlayIcon, QuestionIcon } from "@phosphor-icons/react";
+import { CaretDownIcon, PlayIcon, QuestionIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useId, useLayoutEffect, useState } from "react";
 import {
   advanceSession,
   useConsole,
@@ -11,16 +11,9 @@ import {
 } from "@/lib/teacher/api/hooks";
 import { isApiError } from "@/lib/teacher/api/errors";
 import type { ConsoleSnapshot } from "@/lib/teacher/api/types";
-import { isOne } from "@/lib/teacher/format";
 import { useT } from "@/lib/teacher/i18n";
-import {
-  formatShortCode,
-  missingCount,
-  STUDENTS_CAN_TYPE_CODE,
-} from "@/lib/teacher/live";
-import { forgetReviewScreen } from "@/lib/teacher/review-screen";
-import { courseLabel } from "@/lib/teacher/start";
-import { TODAY } from "@/lib/teacher/signin";
+import { formatShortCode, STUDENTS_CAN_TYPE_CODE } from "@/lib/teacher/live";
+import { HOME } from "@/lib/teacher/signin";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { EndLesson } from "./EndLesson";
 import { EndPage } from "./EndPage";
@@ -30,18 +23,16 @@ import { PageHeader } from "./PageHeader";
 import { Problem } from "./Problem";
 import { MirrorWarning, ProjectorControl } from "./ProjectorControl";
 import { Bar, Loading } from "./Skeleton";
-import { StateLine } from "./StateLine";
 import { TabPanel, Tabs } from "./Tabs";
 import { AnonInbox } from "./AnonInbox";
 import { QuestionList } from "./QuestionList";
 import { QuestionPanel } from "./QuestionPanel";
-import { ReviewPanel } from "./ReviewPanel";
 
 type PanelTab = "class" | "questions" | "anon";
 
 /**
  * The teacher's own screen of a lesson that is running (F-06, FR-CON-*). It is the one page without the sidebar: in front of a class the
- * window belongs to the lesson, and Back leads to Today. The top bar says which lesson, class and subject this is and holds the button
+ * window belongs to the lesson, and Back leads to the lessons. The top bar says which lesson this is and holds the button
  * that opens the projected window, with where that window stands, and the red End. Under it, where the lesson stands; then, at the left,
  * the stage: the one thing to do now (start it in the lobby, the question while teaching). At the right, who has joined; while teaching it
  * shares its place with the list of questions and the anonymous questions, as tabs, so the whole lesson is one screen. Everything comes from `GET /sessions/{id}/console`, kept up to date by the stream, so a
@@ -56,13 +47,8 @@ export function LiveConsole() {
   useFreshCode(snapshot?.server_now, snapshot?.join?.valid_to, query.refetch);
   const [tab, setTab] = useState<PanelTab>("class");
   const teaching = snapshot?.session.state === "teaching";
-  const reviewing = snapshot?.session.state === "review";
   // A lesson that has ended (this window pressed End, another did, or the page was opened afterwards) is no longer a console: the answer is `ended` or
   // `not_found`, and the page becomes the end page, which reads the lesson from its review. A link to no lesson at all says so there.
-  const state = snapshot?.session.state;
-  useEffect(() => {
-    if (state && state !== "review") forgetReviewScreen(sessionId);
-  }, [state, sessionId]);
   const over =
     snapshot?.session.state === "ended" ||
     (isApiError(query.error) && query.error.code === "not_found");
@@ -81,13 +67,9 @@ export function LiveConsole() {
     <>
       <PageHeader
         title={t("live.title")}
-        subtitle={
-          snapshot
-            ? `${courseLabel(snapshot.session.subject_name, snapshot.session.class_name)}: ${snapshot.session.lesson.title}`
-            : undefined
-        }
-        back={TODAY}
-        backLabel={t("back.today")}
+        subtitle={snapshot?.session.lesson.title}
+        back={HOME}
+        backLabel={t("back.lessons")}
         compact
         action={
           snapshot ? (
@@ -139,83 +121,61 @@ export function LiveConsole() {
                 </p>
               </div>
             )}
-            <StateLine state={snapshot.session.state} compact />
-            {reviewing ? (
-              <ReviewPanel snapshot={snapshot} />
-            ) : (
-              <div className="live__frame">
-                {/* The stage: the one thing to do now. It keeps its place when the lesson moves on. */}
-                <div className="live__stage">
-                  {teaching && <QuestionPanel snapshot={snapshot} />}
-                  <JoinCard snapshot={snapshot} />
-                  <div className="live__notes">
-                    <MirrorWarning />
-                    <p className="projector__hint">
-                      {t("live.projector.hint")}
-                    </p>
-                    <Link
-                      href="/teacher/help"
-                      className="btn btn--quiet"
-                      target="_blank"
-                      rel="noopener"
-                    >
-                      <QuestionIcon size={24} aria-hidden="true" />
-                      {t("nav.help")}
-                      <span className="sr">{`, ${t("link.newtab")}`}</span>
-                    </Link>
-                  </div>
-                </div>
-                {/* Who is here keeps its place from the lobby on; while teaching the questions and what the class writes share it, one at a time. */}
-                <div className="live__panel">
-                  {teaching && (
-                    <Tabs
-                      name="live"
-                      label={t("live.tabs.label")}
-                      value={tab}
-                      onChange={setTab}
-                      tabs={[
-                        { id: "class", label: t("live.tab.class") },
-                        { id: "questions", label: t("live.tab.questions") },
-                        {
-                          id: "anon",
-                          label: t("live.tab.anon", {
-                            n: snapshot.anon_questions.length,
-                          }),
-                        },
-                      ]}
-                    />
-                  )}
+            <div className="live__frame">
+              {/* The stage: the one thing to do now. It keeps its place when the lesson moves on. */}
+              <div className="live__stage">
+                {teaching && <QuestionPanel snapshot={snapshot} />}
+                <JoinCard snapshot={snapshot} />
+                <ProjectorNotes folded={teaching} />
+              </div>
+              {/* Who is here keeps its place from the lobby on; while teaching the questions and what the class writes share it, one at a time. */}
+              <div className="live__panel">
+                {teaching && (
+                  <Tabs
+                    name="live"
+                    label={t("live.tabs.label")}
+                    value={tab}
+                    onChange={setTab}
+                    tabs={[
+                      { id: "class", label: t("live.tab.class") },
+                      { id: "questions", label: t("live.tab.questions") },
+                      {
+                        id: "anon",
+                        label: t("live.tab.anon", {
+                          n: snapshot.anon_questions.length,
+                        }),
+                      },
+                    ]}
+                  />
+                )}
+                <TabPanel
+                  name="live"
+                  id="class"
+                  active={!teaching || tab === "class"}
+                  tabbed={teaching}
+                  scrollLabel={t("live.joined.title")}
+                >
+                  <LiveRoster students={snapshot.students} />
+                </TabPanel>
+                {teaching && (
                   <TabPanel
                     name="live"
-                    id="class"
-                    active={!teaching || tab === "class"}
-                    tabbed={teaching}
+                    id="questions"
+                    active={tab === "questions"}
                   >
-                    <LiveRoster
+                    <QuestionList snapshot={snapshot} />
+                  </TabPanel>
+                )}
+                {teaching && (
+                  <TabPanel name="live" id="anon" active={tab === "anon"}>
+                    <AnonInbox
                       sessionId={snapshot.session.id}
-                      students={snapshot.students}
+                      items={snapshot.anon_questions}
                     />
                   </TabPanel>
-                  {teaching && (
-                    <TabPanel
-                      name="live"
-                      id="questions"
-                      active={tab === "questions"}
-                    >
-                      <QuestionList snapshot={snapshot} />
-                    </TabPanel>
-                  )}
-                  {teaching && (
-                    <TabPanel name="live" id="anon" active={tab === "anon"}>
-                      <AnonInbox
-                        sessionId={snapshot.session.id}
-                        items={snapshot.anon_questions}
-                      />
-                    </TabPanel>
-                  )}
-                </div>
+                )}
               </div>
-            )}
+            </div>
           </>
         )}
       </div>
@@ -224,18 +184,57 @@ export function LiveConsole() {
 }
 
 /**
+ * What a teacher reads once: the mirror warning, how to place the projected window, and where Help is. In the lobby, where there is time, it is
+ * shown. While teaching it waits behind one quiet button that says in words whether it is open, so the question has the stage to itself.
+ */
+function ProjectorNotes({ folded }: { folded: boolean }) {
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+  const notes = useId();
+  return (
+    <div className="live__notes">
+      {folded && (
+        <button
+          type="button"
+          className="btn btn--quiet live__how"
+          aria-expanded={open}
+          aria-controls={notes}
+          data-open={open}
+          onClick={() => setOpen((was) => !was)}
+        >
+          <CaretDownIcon size={20} aria-hidden="true" />
+          {t(open ? "live.notes.hide" : "live.notes.show")}
+        </button>
+      )}
+      <div id={notes} className="live__notes-body" hidden={folded && !open}>
+        <MirrorWarning />
+        <p className="projector__hint">{t("live.projector.hint")}</p>
+        <Link
+          href="/teacher/help"
+          className="btn btn--quiet"
+          target="_blank"
+          rel="noopener"
+        >
+          <QuestionIcon size={24} aria-hidden="true" />
+          {t("nav.help")}
+          <span className="sr">{`, ${t("link.newtab")}`}</span>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+/**
  * In the lobby, the page's one main button. The question before it is the app's own kind: the lesson cannot be taken back to the lobby
- * (4.1), and everyone who joins afterwards is late, so it asks first, with the safe answer as the default. The code to read out is shown only
+ * (4.1), so it asks first, with the safe answer as the default. The code to read out is shown only
  * while a student can type it (`STUDENTS_CAN_TYPE_CODE`, OPEN-03); until then the QR on the projector is the one way in, and a code here
  * would only invite the teacher to read out what nobody can use.
  */
 function JoinCard({ snapshot }: { snapshot: ConsoleSnapshot }) {
-  const { t, te, locale } = useT();
+  const { t, te } = useT();
   const [asking, setAsking] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const lobby = snapshot.session.state === "lobby";
-  // Those the teacher is still waiting for: a student marked present without a phone is not one of them.
-  const waiting = missingCount(snapshot.students);
   if (!lobby && !STUDENTS_CAN_TYPE_CODE) return null;
 
   const start = async () => {
@@ -282,16 +281,7 @@ function JoinCard({ snapshot }: { snapshot: ConsoleSnapshot }) {
           <ConfirmDialog
             open={asking}
             title={t("live.start.confirm.title")}
-            body={
-              waiting > 0
-                ? t(
-                    isOne(waiting, locale)
-                      ? "live.start.confirm.waiting.one"
-                      : "live.start.confirm.waiting",
-                    { n: waiting },
-                  )
-                : t("live.start.confirm.all")
-            }
+            body={t("live.start.confirm.body")}
             stay={t("live.start.confirm.stay")}
             confirm={t("live.start.confirm.yes")}
             onStay={() => setAsking(false)}

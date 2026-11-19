@@ -6,7 +6,7 @@ import { expect, MOCK_KEY, SETTINGS_KEY, tall, test } from "./fixtures";
  * teacher does: go to a page, press a button, see what changed.
  */
 
-// The two menus, whatever the language: the four places first, then settings, help and sign out.
+// The two menus, whatever the language: the two places first, then settings, help and sign out.
 const mainMenu = (page: Page) => page.getByRole("navigation").first();
 const moreMenu = (page: Page) => page.getByRole("navigation").nth(1);
 const title = (page: Page) => page.getByRole("heading", { level: 1 });
@@ -14,16 +14,14 @@ const title = (page: Page) => page.getByRole("heading", { level: 1 });
 test.describe("the sidebar", () => {
   test("every destination opens, says where you are and is marked as the current page", async ({ page }) => {
     await page.goto("/teacher");
-    await expect(title(page)).toHaveText("Денес");
-    await expect(mainMenu(page).getByRole("link", { name: "Денес" })).toHaveAttribute("aria-current", "page");
+    await expect(title(page)).toHaveText("Лекции");
+    await expect(mainMenu(page).getByRole("link", { name: "Лекции" })).toHaveAttribute("aria-current", "page");
 
     const destinations = [
-      { menu: mainMenu, link: "Лекции", path: "/teacher/lessons", heading: "Лекции" },
-      { menu: mainMenu, link: "Класови", path: "/teacher/classes", heading: "Класови" },
       { menu: mainMenu, link: "Библиотека", path: "/teacher/library", heading: "Библиотека" },
       { menu: moreMenu, link: "Поставки", path: "/teacher/settings", heading: "Поставки" },
       { menu: moreMenu, link: "Помош", path: "/teacher/help", heading: "Помош" },
-      { menu: mainMenu, link: "Денес", path: "/teacher", heading: "Денес" },
+      { menu: mainMenu, link: "Лекции", path: "/teacher", heading: "Лекции" },
     ];
     for (const d of destinations) {
       const link = d.menu(page).getByRole("link", { name: d.link });
@@ -35,15 +33,15 @@ test.describe("the sidebar", () => {
     }
   });
 
-  test("the sidebar stays on screen on a laptop, with four labelled destinations", async ({ page }) => {
+  test("the sidebar stays on screen on a laptop, with two labelled destinations", async ({ page }) => {
     await page.goto("/teacher/library");
-    await expect(mainMenu(page).getByRole("link")).toHaveText(["Денес", "Лекции", "Класови", "Библиотека"]);
+    await expect(mainMenu(page).getByRole("link")).toHaveText(["Лекции", "Библиотека"]);
     await expect(page.getByRole("button", { name: "Мени", exact: true })).toBeHidden();
   });
 });
 
 test.describe("the frame on a long page", () => {
-  // A long page is one that scrolls: the new lesson's form with its sentences open.
+  // A long page is one that scrolls: a lesson with its six questions, each with its answers.
   for (const [width, height] of [
     [1440, 900],
     [1280, 720],
@@ -52,11 +50,13 @@ test.describe("the frame on a long page", () => {
   ] as const) {
     test(`at ${width} x ${height}, scrolled to the bottom: the skip link is out of sight and the sidebar (or the top bar) still keeps its place`, async ({ page }) => {
       await page.setViewportSize({ width, height });
-      await page.goto("/teacher/lessons/new");
-      await page.getByRole("radio", { name: /^Неколку реченици/ }).check();
+      await page.goto("/teacher/lessons/l-procenti");
+      await expect(page.locator(".questions > li")).toHaveCount(6);
       await page.mouse.move(width / 2, height / 2);
       for (let i = 0; i < 12; i++) await page.mouse.wheel(0, 400);
       await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(200);
+      // The smooth scroll is still moving when scrollY first passes 200: wait until it has stopped, so the sticky sidebar is measured at rest.
+      await expect.poll(() => page.evaluate(() => new Promise<number>((done) => { const y = scrollY; requestAnimationFrame(() => requestAnimationFrame(() => done(scrollY - y))); }))).toBe(0);
 
       await expect(page.getByRole("link", { name: "Прескокни кон содржината" })).not.toBeInViewport();
       if (width >= 1024) {
@@ -86,7 +86,7 @@ test.describe("the frame on a long page", () => {
 });
 
 test.describe("the teacher", () => {
-  test("the name, the initials and the greeting come from the account", async ({ page }) => {
+  test("the name and the initials come from the account", async ({ page }) => {
     await page.goto("/teacher");
     // Who is signed in is said once, at the foot of the sidebar, and it leads to Settings; the page's own top has no name on it.
     const me = page.locator("#sidebar").getByRole("link", { name: "Марија Петровска, поставки" });
@@ -94,7 +94,6 @@ test.describe("the teacher", () => {
     await expect(me).toHaveText("Марија Петровска");
     await expect(me.locator(".me__badge")).toHaveAttribute("data-initials", "МП");
     await expect(page.locator("main").getByRole("link", { name: /поставки$/ })).toHaveCount(0);
-    await expect(page.getByText(/^(Добро утро|Добар ден|Добра вечер), Марија$/)).toBeVisible();
   });
 
   test("the English interface writes the name in Latin letters", async ({ page }) => {
@@ -104,8 +103,6 @@ test.describe("the teacher", () => {
     const me = page.getByRole("link", { name: "Marija Petrovska, settings" });
     await expect(me.locator(".me__badge")).toHaveAttribute("data-initials", "MP");
     await expect(page.getByText("Marija Petrovska, teacher")).toBeVisible();
-    await mainMenu(page).getByRole("link", { name: "Today" }).click();
-    await expect(page.getByText(/^Good (morning|afternoon|evening), Marija$/)).toBeVisible();
   });
 });
 
@@ -132,41 +129,28 @@ test.describe("settings", () => {
     await expect(page.locator("html")).toHaveAttribute("lang", "mk");
   });
 
-  test("the type of institution changes the words: classes and students, or groups and students", async ({ page }) => {
+  test("the type of institution changes the words: students of a school, or of a faculty", async ({ page }) => {
     await page.goto("/teacher/settings");
-    await expect(mainMenu(page).getByRole("link", { name: "Класови" })).toBeVisible();
     await expect(page.getByText("Марија Петровска, наставник")).toBeVisible();
 
     await page.getByRole("radio", { name: "Факултет" }).check();
-    await expect(mainMenu(page).getByRole("link", { name: "Групи" })).toBeVisible();
-    await expect(mainMenu(page).getByRole("link", { name: "Класови" })).toHaveCount(0);
     await expect(page.getByText("Марија Петровска, професор")).toBeVisible();
 
-    // It is kept, and Today asks for a group and speaks of the students of a faculty.
+    // It is kept.
     await page.reload();
-    await expect(mainMenu(page).getByRole("link", { name: "Групи" })).toBeVisible();
-    await mainMenu(page).getByRole("link", { name: "Денес" }).click();
-    await page.getByRole("button", { name: "Започни час" }).first().click();
-    await expect(page.getByRole("dialog", { name: "Со која група?" })).toContainText("28 студенти");
-    await page.getByRole("button", { name: "Откажи" }).click();
+    await expect(page.getByText("Марија Петровска, професор")).toBeVisible();
 
-    await moreMenu(page).getByRole("link", { name: "Поставки" }).click();
     await page.getByRole("radio", { name: "Средно училиште" }).check();
-    await expect(mainMenu(page).getByRole("link", { name: "Класови" })).toBeVisible();
-    await mainMenu(page).getByRole("link", { name: "Денес" }).click();
-    await page.getByRole("button", { name: "Започни час" }).first().click();
-    await expect(page.getByRole("dialog", { name: "Со кој клас?" })).toContainText("28 ученици");
-    await page.getByRole("button", { name: "Откажи" }).click();
+    await expect(page.getByText("Марија Петровска, наставник")).toBeVisible();
   });
 
-  test("in English a faculty has groups and a school has classes", async ({ page }) => {
+  test("in English a faculty has professors and a school has teachers", async ({ page }) => {
     await page.goto("/teacher/settings");
     await page.getByRole("radio", { name: "English" }).check();
     await page.getByRole("radio", { name: "University" }).check();
-    await expect(mainMenu(page).getByRole("link", { name: "Groups" })).toBeVisible();
     await expect(page.getByText("Marija Petrovska, professor")).toBeVisible();
     await page.getByRole("radio", { name: "Secondary school" }).check();
-    await expect(mainMenu(page).getByRole("link", { name: "Classes" })).toBeVisible();
+    await expect(page.getByText("Marija Petrovska, teacher")).toBeVisible();
   });
 
   test("Reset demo data asks first, keeps everything on No, and starts the demo over on Yes", async ({ page }) => {
@@ -177,7 +161,6 @@ test.describe("settings", () => {
     await page.evaluate((key) => {
       const state = JSON.parse(localStorage.getItem(key) ?? "null");
       state.school.counter = 7;
-      state.school.speed_bonus = { "course-ii-4": false };
       localStorage.setItem(key, JSON.stringify(state));
     }, MOCK_KEY);
     const saved = () => page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "null"), MOCK_KEY);
@@ -212,10 +195,9 @@ test.describe("settings", () => {
     await expect(page.getByRole("status")).toBeFocused();
     const after = await saved();
     expect(after.school.counter).toBe(0);
-    expect(after.school.speed_bonus).toEqual({});
-    expect(after.v).toBe(1);
+    expect(after.v).toBe(3);
     await expect(title(page)).toHaveText("Settings");
-    await expect(mainMenu(page).getByRole("link", { name: "Groups" })).toBeVisible();
+    await expect(page.getByRole("radio", { name: "University" })).toBeChecked();
   });
 
   test("is a few groups of rows, each with its words on the left and its control at the right", async ({ page }) => {
@@ -310,10 +292,10 @@ test.describe("help", () => {
     const first = list.locator("details").first();
     await expect(first.locator("summary")).toHaveText("Како да подготвам лекција?");
     expect(await tall(first.locator("summary"))).toBeGreaterThanOrEqual(56);
-    await expect(page.getByText("Изберете предмет и година", { exact: false })).toBeHidden();
+    await expect(page.getByText("притиснете „Подготви лекција“", { exact: false })).toBeHidden();
     await first.locator("summary").click();
     await expect(first).toHaveAttribute("open", "");
-    await expect(first.getByText("Изберете предмет и година", { exact: false })).toBeVisible();
+    await expect(first.getByText("притиснете „Подготви лекција“", { exact: false })).toBeVisible();
     // It opens with a move (the owner's note on step 6): the row grows to its answer and the plus turns into a minus.
     const motion = (el: Element) => {
       const content = getComputedStyle(el, "::details-content");
@@ -406,7 +388,7 @@ test.describe("a narrow window", () => {
     const drawer = page.getByRole("dialog", { name: "Мени" });
     await expect(drawer).toBeVisible();
     await expect(drawer.getByRole("button", { name: "Затвори" })).toBeFocused();
-    await expect(mainMenu(page).getByRole("link")).toHaveText(["Денес", "Лекции", "Класови", "Библиотека"]);
+    await expect(mainMenu(page).getByRole("link")).toHaveText(["Лекции", "Библиотека"]);
 
     // Escape closes it and the focus goes back to the button that opened it.
     await page.keyboard.press("Escape");
@@ -415,9 +397,9 @@ test.describe("a narrow window", () => {
 
     // Choosing a destination goes there and closes the drawer.
     await menu.click();
-    await mainMenu(page).getByRole("link", { name: "Лекции" }).click();
-    await expect(page).toHaveURL(/\/teacher\/lessons$/);
-    await expect(title(page)).toHaveText("Лекции");
+    await mainMenu(page).getByRole("link", { name: "Библиотека" }).click();
+    await expect(page).toHaveURL(/\/teacher\/library$/);
+    await expect(title(page)).toHaveText("Библиотека");
     await expect(mainMenu(page)).toBeHidden();
   });
 
@@ -439,12 +421,10 @@ test.describe("a narrow window", () => {
 test.describe("the pages load clean", () => {
   const paths = [
     "/teacher",
-    "/teacher/lessons",
     "/teacher/lessons/new",
     "/teacher/lessons/l-procenti",
-    "/teacher/lessons/l-procenti?from=today",
+    "/teacher/lessons/l-procenti?from=library",
     "/teacher/live/s-none",
-    "/teacher/classes",
     "/teacher/library",
     "/teacher/settings",
     "/teacher/help",
@@ -468,10 +448,17 @@ test.describe("the pages load clean", () => {
     });
   }
 
+  for (const path of ["/teacher/lessons", "/teacher/classes"]) {
+    test(`${path} is gone: it is a page that does not exist`, async ({ page }) => {
+      await page.goto(path);
+      await expect(title(page)).toHaveText("Оваа страница не постои");
+    });
+  }
+
   test("a page that does not exist says so, with a way back", async ({ page }) => {
     await page.goto("/teacher/nowhere");
     await expect(title(page)).toHaveText("Оваа страница не постои");
-    await page.getByRole("link", { name: "Оди на Денес", exact: true }).click();
+    await page.getByRole("link", { name: "Оди на Лекции", exact: true }).click();
     await expect(page).toHaveURL(/\/teacher$/);
   });
 });

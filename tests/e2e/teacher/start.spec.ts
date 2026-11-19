@@ -1,0 +1,529 @@
+import type { BrowserContext, Page } from "@playwright/test";
+import { expect, MOCK_KEY, SETTINGS_KEY, tall, test } from "./fixtures";
+
+/**
+ * Starting a lesson (one press, straight to the console's lobby), reading a lesson, and the guide of a first run and the guide shown again
+ * from Settings, in mock mode, in Macedonian unless a test changes the language. The lessons are listed on the Lessons page, the
+ * app's home at /teacher, so a few promises of that page that the start rests on are kept here too: its one main button, its sizes,
+ * and that a lesson already held is not offered again. The clock stands still at Thursday 29 October 2026, 09:30, so "yesterday" and
+ * "3 days ago" read the same whenever the tests run. The demo's teacher has two lessons prepared: "Основи на веројатноста" (changed the
+ * day before) and "Проценти и пропорции" (changed 3 days before).
+ */
+
+const NOW = new Date("2026-10-29T09:30:00+01:00");
+const title = (page: Page) => page.getByRole("heading", { level: 1 });
+const mainMenu = (page: Page) => page.getByRole("navigation").first();
+const mainButton = (page: Page) => page.locator(".btn--primary:visible");
+const cards = (page: Page) => page.locator(".lessons > li");
+const runningDialog = (page: Page) => page.getByRole("alertdialog", { name: "Веќе имате час во тек" });
+const demoButton = (page: Page, name: string) => page.getByRole("button", { name });
+
+test.beforeEach(async ({ page }) => {
+  await page.clock.setFixedTime(NOW);
+});
+
+// ---- Helpers that put things into the demo's saved state, as a teacher who had made them would have ----
+
+const question = (i: number, extra: Record<string, unknown> = {}) => ({
+  id: `x-q${i}`,
+  order: i,
+  prompt: `Прашање ${i + 1}?`,
+  media: null,
+  explanation: null,
+  timer_seconds: 20,
+  topic: "Тема",
+  kind: "true_false",
+  correct: "true",
+  ...extra,
+});
+
+/** A lesson of the demo teacher's own, as the mock keeps it: valid, prepared, not run. */
+const lessonOf = (n: number, extra: Record<string, unknown> = {}) => ({
+  id: `l-x${n}`,
+  title: `Додадена лекција ${n}`,
+  question_count: 5,
+  version: 1,
+  times_run: 0,
+  last_run_at: null,
+  copied_from: null,
+  created_at: `2026-10-28T1${n}:00:00.000Z`,
+  updated_at: `2026-10-28T1${n}:00:00.000Z`,
+  questions: [0, 1, 2, 3, 4].map((i) => question(i)),
+  source: null,
+  emphasis: null,
+  ...extra,
+});
+
+/** Add lessons to the demo school, then load the page again so the demo reads them. */
+async function addLessons(page: Page, lessons: unknown[], school: "school" | "university" = "school") {
+  await page.goto("/teacher");
+  await expect(title(page)).toHaveText("Лекции");
+  await page.evaluate(
+    ([key, kind, added]) => {
+      const state = JSON.parse(localStorage.getItem(key as string) ?? "null");
+      state[kind as string].lessons.push(...(added as unknown[]));
+      localStorage.setItem(key as string, JSON.stringify(state));
+    },
+    [MOCK_KEY, school, lessons] as const,
+  );
+  await page.reload();
+  await expect(title(page)).toHaveText("Лекции");
+}
+
+/** The demo's saved state, for a test that wants to see what was kept. */
+const savedSession = (page: Page) =>
+  page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "null")?.school?.session ?? null, MOCK_KEY);
+
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+test.describe("the Lessons page, where a lesson is started from", () => {
+  test("lists the lessons not run yet, the one changed last first, each with one button and a title that opens it", async ({ page }) => {
+    await page.goto("/teacher");
+    await expect(title(page)).toHaveText("Лекции");
+    await expect(page.getByRole("heading", { level: 2, name: /^Подготвени/ })).toBeVisible();
+    await expect(cards(page)).toHaveCount(2);
+    // Each: title, number of questions, and when it was last changed, in plain words. No subject and no year.
+    await expect(cards(page).nth(0).getByRole("heading", { level: 3 })).toHaveText("Основи на веројатноста");
+    await expect(cards(page).nth(0)).toContainText("7 прашања · Последна промена: вчера");
+    await expect(cards(page).nth(1).getByRole("heading", { level: 3 })).toHaveText("Проценти и пропорции");
+    await expect(cards(page).nth(1)).toContainText("6 прашања · Последна промена: пред 3 дена");
+    for (const card of await cards(page).all()) await expect(card).not.toContainText(/Математика|година/);
+    // One button on each, in words; the row itself opens the lesson: its title is the link, and it is the only one.
+    for (const card of await cards(page).all()) {
+      await expect(card.getByRole("button")).toHaveText("Започни час");
+      await expect(card.getByRole("link")).toHaveText(await card.getByRole("heading", { level: 3 }).innerText());
+      await expect(card.getByRole("link")).toHaveAttribute("href", /^\/teacher\/lessons\/l-[^?]*$/);
+    }
+    // Nothing is running, so no reminder.
+    await expect(page.getByRole("group", { name: /Час во тек/ })).toHaveCount(0);
+  });
+
+  test("has one main button, \"Подготви лекција\", in the header at the right of the title; the lessons' own buttons are quiet ones", async ({ page }) => {
+    await page.goto("/teacher");
+    await expect(cards(page)).toHaveCount(2);
+    await expect(mainButton(page)).toHaveCount(1);
+    const prepare = page.getByRole("link", { name: "Подготви лекција" });
+    await expect(prepare).toHaveClass(/btn--primary/);
+    await expect(prepare).toHaveAttribute("href", "/teacher/lessons/new");
+    const [button, list, heading] = [(await prepare.boundingBox())!, (await cards(page).first().boundingBox())!, (await title(page).boundingBox())!];
+    expect(button.y + button.height).toBeLessThan(list.y);
+    // Beside the title, not under it: to its right, and ending where the list ends.
+    expect(button.x).toBeGreaterThan(heading.x + heading.width);
+    expect(Math.abs(button.x + button.width - (list.x + list.width))).toBeLessThanOrEqual(1);
+    // Where the eye starts: inside the first screen of a 1280 x 720 window.
+    expect(button.y + button.height).toBeLessThan(720);
+    for (const card of await cards(page).all()) await expect(card.getByRole("button", { name: "Започни час" })).toHaveClass(/btn--secondary/);
+  });
+
+  test("the buttons are big enough: 48px for the main one, 44px for the others", async ({ page }) => {
+    await page.goto("/teacher");
+    const heights = async (locator: ReturnType<Page["locator"]>) => Promise.all((await locator.all()).map((b) => tall(b)));
+    for (const h of await heights(page.getByRole("button", { name: "Започни час" }))) expect(h).toBeGreaterThanOrEqual(44);
+    // A row is pressed to open its lesson: 56px or more of it.
+    for (const h of await heights(page.locator(".lesson"))) expect(h).toBeGreaterThanOrEqual(56);
+    expect(await tall(page.getByRole("link", { name: "Подготви лекција" }))).toBeGreaterThanOrEqual(48);
+    // And the type: 16px or more everywhere on the cards.
+    const small = await page.locator(".lesson").evaluateAll((els) =>
+      els.flatMap((el) => [el, ...el.querySelectorAll("*")]).filter((e) => e.childNodes.length && parseFloat(getComputedStyle(e).fontSize) < 16).length,
+    );
+    expect(small).toBe(0);
+  });
+
+  test("a lesson that was run is not listed: it is in the Library", async ({ page }) => {
+    await page.goto("/teacher");
+    // The seeded lessons that were run are not here: none of the history's titles is.
+    await expect(page.getByRole("heading", { level: 3, name: "Квадратни равенки" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 3, name: "Системи линеарни равенки" })).toHaveCount(0);
+    await expect(cards(page)).toHaveCount(2);
+  });
+
+  test("reads in English", async ({ page }) => {
+    await page.addInitScript((key) => localStorage.setItem(key, JSON.stringify({ locale: "en", schoolType: "school", schoolSeen: true })), SETTINGS_KEY);
+    await page.goto("/teacher");
+    await expect(title(page)).toHaveText("Lessons");
+    await expect(page.getByRole("heading", { level: 2, name: /^Prepared/ })).toBeVisible();
+    await expect(cards(page).nth(0)).toContainText("7 questions · Last changed: yesterday");
+    await expect(cards(page).nth(0)).not.toContainText("Year");
+    await expect(cards(page).nth(1)).toContainText("Last changed: 3 days ago");
+    await expect(page.getByRole("link", { name: "Prepare a lesson" })).toBeVisible();
+    await expect(cards(page).first().getByRole("button", { name: "Start lesson" })).toBeVisible();
+    await expect(cards(page).first().getByRole("link")).toHaveText(await cards(page).first().getByRole("heading", { level: 3 }).innerText());
+  });
+
+  test("at a faculty a row has no year either, and a lesson starts the same way", async ({ page }) => {
+    await page.addInitScript((key) => localStorage.setItem(key, JSON.stringify({ locale: "mk", schoolType: "university", schoolSeen: true })), SETTINGS_KEY);
+    await page.goto("/teacher");
+    await expect(cards(page)).toHaveCount(2);
+    await expect(cards(page).first()).toContainText(/\d+ прашања/);
+    await expect(cards(page).first()).not.toContainText("година");
+    await cards(page).first().getByRole("button", { name: "Започни час" }).click();
+    await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
+  });
+});
+
+test.describe("the Lessons page with nothing prepared", () => {
+  test.use({ account: "novice" });
+
+  test("keeps the empty state, with the one main button in it", async ({ page }) => {
+    await page.goto("/teacher");
+    await page.getByRole("button", { name: "Прескокни го водичот" }).click();
+    await expect(title(page)).toHaveText("Лекции");
+    await expect(page.getByRole("heading", { level: 2, name: "Немате подготвени лекции" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Подготвени/ })).toHaveCount(0);
+    await expect(cards(page)).toHaveCount(0);
+    await expect(mainButton(page)).toHaveCount(1);
+    await expect(page.getByRole("link", { name: "Подготви лекција" })).toHaveClass(/btn--primary/);
+  });
+
+  test("with a lesson running, the empty state stays and \"Подготви лекција\" is still the main button", async ({ page }) => {
+    // A new teacher is taken to the guide first; skipping it comes to the page that was asked for.
+    await page.goto("/teacher/settings");
+    await page.getByRole("button", { name: "Прескокни го водичот" }).click();
+    await expect(title(page)).toHaveText("Поставки");
+    await demoButton(page, "Симулирај час во тек").click();
+    await mainMenu(page).getByRole("link", { name: "Лекции" }).click();
+    await expect(page.getByRole("heading", { level: 2, name: "Немате подготвени лекции" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Подготви лекција" })).toHaveClass(/btn--primary/);
+    await expect(page.getByRole("link", { name: /^Врати се на часот/ })).toHaveClass(/btn--secondary/);
+    await expect(mainButton(page)).toHaveCount(1);
+  });
+});
+
+test.describe("the Lessons page with a lesson running", () => {
+  test("keeps \"Подготви лекција\" as its main button, and the running lesson stays in the list until it is ended", async ({ page }) => {
+    await page.goto("/teacher/settings");
+    await demoButton(page, "Симулирај час во тек").click();
+    await expect(page.getByRole("status")).toHaveText("Готово. Сега се гледа час во тек.");
+    await mainMenu(page).getByRole("link", { name: "Лекции" }).click();
+    await expect(title(page)).toHaveText("Лекции");
+    await expect(mainButton(page)).toHaveCount(1);
+    await expect(page.getByRole("link", { name: "Подготви лекција" })).toHaveClass(/btn--primary/);
+    // A lesson in a session that has not ended is still a prepared one.
+    await expect(cards(page)).toHaveCount(2);
+  });
+
+  test("a lesson that has been ended is a held one, so it is not offered again", async ({ page }) => {
+    await page.goto("/teacher/settings");
+    await demoButton(page, "Симулирај час во тек").click();
+    await page.getByRole("group", { name: /^Час во тек/ }).getByRole("button", { name: "Заврши го часот" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Да, заврши го часот" }).click();
+    await expect(title(page)).toHaveText("Часот заврши");
+    expect(await savedSession(page)).toBeNull();
+    await mainMenu(page).getByRole("link", { name: "Лекции" }).click();
+    await expect(page.getByRole("group", { name: /Час во тек/ })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Подготви лекција" })).toHaveClass(/btn--primary/);
+    await expect(cards(page)).toHaveCount(1);
+  });
+});
+
+test.describe("starting a lesson", () => {
+  const procenti = (page: Page) => cards(page).filter({ hasText: "Проценти и пропорции" });
+
+  test("one press opens the lesson in the lobby and goes to the console: no window asks anything", async ({ page }) => {
+    await page.goto("/teacher");
+    await procenti(page).getByRole("button", { name: "Започни час" }).click();
+    await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(title(page)).toHaveText("Час во тек");
+    // The header names the lesson, not a class and a subject.
+    await expect(page.locator(".head__sub")).toHaveText("Проценти и пропорции");
+    const kept = await savedSession(page);
+    expect(kept).toMatchObject({ state: "lobby", lesson: { id: "l-procenti", title: "Проценти и пропорции", version: 1 } });
+    expect(kept).not.toHaveProperty("course_id");
+    await expect(page.getByRole("heading", { name: "Екран за проектор" })).toBeVisible();
+
+    // Back on the Lessons page the reminder names the lesson, and the lesson that runs is still listed, as one not ended.
+    await page.getByRole("link", { name: "Назад кон Лекции" }).click();
+    await expect(title(page)).toHaveText("Лекции");
+    await expect(page.getByRole("group", { name: /^Час во тек\s*,\s*Проценти и пропорции$/ })).toBeVisible();
+    await expect(mainButton(page)).toHaveCount(1);
+    await expect(cards(page)).toHaveCount(2);
+  });
+
+  test("works with the keyboard alone: Enter on the button starts the lesson", async ({ page }) => {
+    await page.goto("/teacher");
+    await procenti(page).getByRole("button", { name: "Започни час" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
+    await expect(page.locator(".head__sub")).toHaveText("Проценти и пропорции");
+  });
+
+  test("starts from the Library's own lessons too", async ({ page }) => {
+    await page.goto("/teacher/library");
+    await expect(title(page)).toHaveText("Библиотека");
+    const held = page.locator(".lessons > li").first();
+    await expect(held).not.toContainText(/Математика|година/);
+    await held.getByRole("button", { name: "Започни час" }).click();
+    await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
+  });
+
+  test("while a lesson is running it says so instead of starting, and offers the way back; Close leaves everything as it was", async ({ page }) => {
+    await page.goto("/teacher/settings");
+    await demoButton(page, "Симулирај час во тек").click();
+    await mainMenu(page).getByRole("link", { name: "Лекции" }).click();
+    const opener = procenti(page).getByRole("button", { name: "Започни час" });
+    await opener.click();
+    const dialog = runningDialog(page);
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText("„Основи на веројатноста“. Нов час можете да започнете дури кога ќе го завршите овој.");
+    const back = dialog.getByRole("link", { name: "Врати се на часот" });
+    await expect(back).toHaveClass(/btn--primary/);
+    await expect(back).toBeFocused();
+    await expect(dialog.getByRole("button", { name: "Затвори" })).toBeVisible();
+    await dialog.getByRole("button", { name: "Затвори" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(opener).toBeFocused();
+    await expect(page).toHaveURL(/\/teacher$/);
+
+    await opener.click();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(opener).toBeFocused();
+
+    await opener.click();
+    await runningDialog(page).getByRole("link", { name: "Врати се на часот" }).click();
+    await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
+  });
+
+  test("a lesson started in another window turns the press into that message, and does not start a second one", async ({ page, context }: { page: Page; context: BrowserContext }) => {
+    await page.goto("/teacher");
+    await expect(cards(page)).toHaveCount(2);
+
+    // The same teacher, in a second window of the same browser, starts a lesson.
+    const other = await context.newPage();
+    await other.clock.setFixedTime(NOW);
+    await other.goto("/teacher");
+    await cards(other).filter({ hasText: "Основи на веројатноста" }).getByRole("button", { name: "Започни час" }).click();
+    await expect(other).toHaveURL(/\/teacher\/live\//);
+
+    // This window did not know: pressing Start on the very same lesson gets the API's refusal, said as the running message.
+    await cards(page).filter({ hasText: "Основи на веројатноста" }).getByRole("button", { name: "Започни час" }).click();
+    await expect(runningDialog(page)).toBeVisible();
+    await expect(runningDialog(page)).toContainText("„Основи на веројатноста“.");
+    await expect(runningDialog(page).getByRole("link", { name: "Врати се на часот" })).toBeFocused();
+    // And the page behind it has the reminder.
+    await runningDialog(page).getByRole("button", { name: "Затвори" }).click();
+    await expect(page.getByRole("group", { name: /^Час во тек\s*,\s*Основи на веројатноста$/ })).toBeVisible();
+    await expect(mainButton(page)).toHaveCount(1);
+  });
+
+  test("a start that goes through never shows a window on its way out", async ({ page }) => {
+    await page.addInitScript(() => {
+      const seen: string[] = [];
+      (window as unknown as { __titles: string[] }).__titles = seen;
+      new MutationObserver(() => {
+        const t = document.querySelector("dialog[open] h2")?.textContent;
+        if (t && seen[seen.length - 1] !== t) seen.push(t);
+      }).observe(document, { childList: true, subtree: true, characterData: true, attributes: true });
+    });
+    await page.goto("/teacher");
+    await procenti(page).getByRole("button", { name: "Започни час" }).click();
+    await expect(page).toHaveURL(/\/teacher\/live\//);
+    expect(await page.evaluate(() => (window as unknown as { __titles: string[] }).__titles)).toEqual([]);
+  });
+
+  test("is in English when the screen is", async ({ page }) => {
+    await page.addInitScript((key) => localStorage.setItem(key, JSON.stringify({ locale: "en", schoolType: "school", schoolSeen: true })), SETTINGS_KEY);
+    await page.goto("/teacher");
+    await cards(page).nth(1).getByRole("button", { name: "Start lesson" }).click();
+    await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
+    await expect(title(page)).toHaveText("Lesson running");
+    await expect(page.locator(".head__sub")).toHaveText("Проценти и пропорции");
+  });
+});
+
+test.describe("a lesson, to read", () => {
+  test("opened from the Lessons page: its title and the questions in order, each with its kind, answers, timer and why", async ({ page }) => {
+    await page.goto("/teacher");
+    await cards(page).filter({ hasText: "Проценти и пропорции" }).getByRole("link").click();
+    await expect(page).toHaveURL(/\/teacher\/lessons\/l-procenti$/);
+    await expect(title(page)).toHaveText("Проценти и пропорции");
+    await expect(page).toHaveTitle("Проценти и пропорции · TeacherAid");
+    await expect(page.locator(".head__sub")).toHaveCount(0);
+    // The one place it can go from here is named: the lessons.
+    const back = page.getByRole("link", { name: "Назад кон Лекции" });
+    await expect(back).toHaveAttribute("href", "/teacher");
+
+    const questions = page.locator(".questions > li");
+    await expect(questions).toHaveCount(6);
+    for (let i = 0; i < 6; i++) await expect(questions.nth(i).getByRole("heading", { level: 3 })).toHaveText(`Прашање ${i + 1} од 6`);
+    // The first is a number, the second has four answers, the third is true or false.
+    await expect(questions.nth(0)).toContainText("Одговор со број");
+    await expect(questions.nth(0)).toContainText("Колку е 15% од 240?");
+    await expect(questions.nth(0)).toContainText("Време: 30 секунди");
+    await expect(questions.nth(1)).toContainText("Понудени одговори");
+    await expect(questions.nth(1).locator(".options > li")).toHaveCount(4);
+    await expect(questions.nth(2)).toContainText("Точно или неточно");
+    await expect(questions.nth(2).locator(".options > li")).toHaveText([/^Точно/, /^Неточно/]);
+    // Every question says which answer is right with an icon and the words, and why.
+    for (const q of await questions.all()) {
+      const right = q.locator(".option[data-correct='true']");
+      await expect(right).toHaveCount(1);
+      await expect(right).toContainText("Точен одговор");
+      await expect(right.locator("svg[aria-hidden='true']")).toHaveCount(1);
+      await expect(q.locator(".option:not([data-correct='true'])").getByText("Точен одговор")).toHaveCount(0);
+      await expect(q.getByText("Објаснување", { exact: true })).toBeVisible();
+      await expect(q).toContainText(/Време: \d+ секунди/);
+    }
+    // The second question's right answer is the first answer.
+    await expect(questions.nth(1).locator(".option[data-correct='true']")).toContainText("600 денари");
+    await expect(page.locator(".card").filter({ hasText: "Што сакавте да се нагласи" })).toHaveCount(0);
+    await expect(page.getByText("Резиме за повторување")).toHaveCount(0);
+
+    await back.click();
+    await expect(page).toHaveURL(/\/teacher$/);
+    await expect(title(page)).toHaveText("Лекции");
+  });
+
+  test("opened from the Library, Back names the Library and goes there", async ({ page }) => {
+    await page.goto("/teacher/lessons/l-procenti?from=library");
+    await expect(title(page)).toHaveText("Проценти и пропорции");
+    const back = page.getByRole("link", { name: "Назад кон Библиотека" });
+    await expect(back).toHaveAttribute("href", "/teacher/library");
+    await expect(page.getByRole("link", { name: "Назад кон Лекции" })).toHaveCount(0);
+    await back.click();
+    await expect(page).toHaveURL(/\/teacher\/library$/);
+    await expect(title(page)).toHaveText("Библиотека");
+  });
+
+  test("opened by address alone, Back names the lessons and goes there", async ({ page }) => {
+    await page.goto("/teacher/lessons/l-procenti");
+    await expect(title(page)).toHaveText("Проценти и пропорции");
+    const back = page.getByRole("link", { name: "Назад кон Лекции" });
+    await expect(back).toHaveAttribute("href", "/teacher");
+    await expect(page.getByRole("link", { name: "Назад кон Библиотека" })).toHaveCount(0);
+    await back.click();
+    await expect(page).toHaveURL(/\/teacher$/);
+    await expect(title(page)).toHaveText("Лекции");
+
+    // Anything else in the address is not an origin, so Back goes to the lessons.
+    for (const from of ["somewhere", "today"]) {
+      await page.goto(`/teacher/lessons/l-procenti?from=${from}`);
+      await expect(page.getByRole("link", { name: "Назад кон Лекции" })).toBeVisible();
+    }
+  });
+
+  test("Back is a labelled link with an arrow, 44px tall, at the top of the page", async ({ page }) => {
+    await page.goto("/teacher/lessons/l-procenti");
+    const back = page.getByRole("link", { name: "Назад кон Лекции" });
+    expect(await tall(back)).toBeGreaterThanOrEqual(44);
+    await expect(back.locator("svg")).toHaveCount(1);
+  });
+
+  test("has the same \"Започни час\" as the Lessons page, and it is the screen's main button", async ({ page }) => {
+    await page.goto("/teacher/lessons/l-procenti");
+    const start = page.getByRole("button", { name: "Започни час" });
+    await expect(start).toHaveClass(/btn--primary/);
+    await expect(mainButton(page)).toHaveCount(1);
+    await start.click();
+    await expect(page).toHaveURL(/\/teacher\/live\/s-n\d+$/);
+    await expect(page.locator(".head__sub")).toHaveText("Проценти и пропорции");
+  });
+
+  test("with a lesson running its start button is not the main one, and says so when pressed", async ({ page }) => {
+    await page.goto("/teacher/settings");
+    await demoButton(page, "Симулирај час во тек").click();
+    await page.goto("/teacher/lessons/l-procenti");
+    const start = page.getByRole("button", { name: "Започни час" });
+    await expect(start).toHaveClass(/btn--secondary/);
+    await expect(mainButton(page)).toHaveCount(0);
+    await start.click();
+    await expect(runningDialog(page)).toBeVisible();
+  });
+
+  test("shows what the teacher asked to stress, and writes a number with a comma", async ({ page }) => {
+    await addLessons(page, [
+      lessonOf(1, {
+        emphasis: "Нагласете ги формулите за површина.",
+        questions: [
+          question(0, { kind: "numeric", correct: "3.5", tolerance: 0.5, unit: "m", allow_negative: false, prompt: "Колку е должината?" }),
+          ...[1, 2, 3, 4].map((i) => question(i)),
+        ],
+      }),
+    ]);
+    await page.goto("/teacher/lessons/l-x1");
+    const emphasis = page.locator(".card").filter({ hasText: "Што сакавте да се нагласи" });
+    await expect(emphasis).toContainText("„Нагласете ги формулите за површина.“");
+    const first = page.locator(".questions > li").first();
+    await expect(first.locator(".option[data-correct='true']")).toContainText("3,5 m");
+    await expect(first).toContainText("Се прифаќа отстапување до 0,5.");
+  });
+
+  test("a lesson that is not there says so, with no button to try again, and Back still works", async ({ page }) => {
+    await page.goto("/teacher/lessons/nope");
+    const problem = page.locator(".problem");
+    await expect(problem).toContainText("Не успеавме да ја вчитаме лекцијата");
+    await expect(problem).toContainText("Не го најдовме тоа што го барате.");
+    await expect(page.getByRole("button", { name: "Обиди се повторно" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Започни час" })).toHaveCount(0);
+    await page.getByRole("link", { name: "Назад кон Лекции" }).click();
+    await expect(page).toHaveURL(/\/teacher$/);
+  });
+
+  test("is in English, at a faculty", async ({ page }) => {
+    await page.addInitScript((key) => localStorage.setItem(key, JSON.stringify({ locale: "en", schoolType: "university", schoolSeen: true })), SETTINGS_KEY);
+    await page.goto("/teacher");
+    await cards(page).first().getByRole("link").click();
+    await expect(page.getByRole("link", { name: "Back to Lessons" })).toBeVisible();
+    await expect(page.locator(".head__sub")).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 2, name: "Questions" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 3, name: /^Question 1 of \d$/ })).toBeVisible();
+    await expect(page.getByText("Correct answer").first()).toBeVisible();
+    await expect(page.getByText(/^Time: \d+ seconds$/).first()).toBeVisible();
+    await expect(page.getByText("Explanation", { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Start lesson" })).toBeVisible();
+  });
+});
+
+test.describe("the guide of a first run", () => {
+  test.use({ account: "novice" });
+
+  test("still lands on the Lessons page when the first lesson is left for later: its last screen has \"Не сега, оди на Лекции\" for the way out", async ({ page }) => {
+    await page.goto("/teacher");
+    await expect(page).toHaveURL(/\/teacher\/welcome$/);
+    await expect(page.getByText("Водичот можете да го погледнете повторно во Поставки.")).toBeVisible();
+    await page.getByRole("button", { name: "Следно" }).click();
+    await page.getByRole("button", { name: "Следно" }).click();
+    await expect(page.getByRole("button", { name: "Назад во Поставки" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Подготви ја првата лекција" })).toHaveClass(/btn--primary/);
+    await page.getByRole("button", { name: "Не сега, оди на Лекции", exact: true }).click();
+    await expect(page).toHaveURL(/\/teacher$/);
+    await expect(title(page)).toHaveText("Лекции");
+  });
+});
+
+test.describe("the guide shown again from Settings", () => {
+  test("comes back to Settings when it is finished, and says so on its button", async ({ page }) => {
+    await page.goto("/teacher/settings");
+    await page.getByRole("link", { name: "Прикажи го водичот повторно" }).click();
+    await expect(page).toHaveURL(/\/teacher\/welcome\?next=%2Fteacher%2Fsettings$/);
+    await expect(page.getByText("Чекор 1 од 3")).toBeVisible();
+    // Told only to somebody who has not seen it before: this one is looking at it again from Settings.
+    await expect(page.getByText("Водичот можете да го погледнете повторно во Поставки.")).toHaveCount(0);
+    await page.getByRole("button", { name: "Следно" }).click();
+    await page.getByRole("button", { name: "Следно" }).click();
+    await expect(page.getByRole("button", { name: "Оди на Лекции" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Назад во Поставки" }).click();
+    await expect(page).toHaveURL(/\/teacher\/settings$/);
+    await expect(title(page)).toHaveText("Поставки");
+  });
+
+  test("comes back to Settings when it is skipped", async ({ page }) => {
+    await page.goto("/teacher/settings");
+    await page.getByRole("link", { name: "Прикажи го водичот повторно" }).click();
+    await page.getByRole("button", { name: "Прескокни го водичот" }).click();
+    await expect(page).toHaveURL(/\/teacher\/settings$/);
+    await expect(title(page)).toHaveText("Поставки");
+  });
+
+  test("on English, the button says Back to Settings", async ({ page }) => {
+    await page.addInitScript((key) => localStorage.setItem(key, JSON.stringify({ locale: "en", schoolType: "school", schoolSeen: true })), SETTINGS_KEY);
+    await page.goto("/teacher/settings");
+    await page.getByRole("link", { name: "Show the guide again" }).click();
+    await page.getByRole("button", { name: "Next" }).click();
+    await page.getByRole("button", { name: "Next" }).click();
+    await page.getByRole("button", { name: "Back to Settings" }).click();
+    await expect(page).toHaveURL(/\/teacher\/settings$/);
+  });
+});

@@ -6,35 +6,25 @@ import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useDrafts, useLessons } from "@/lib/teacher/api/hooks";
 import { useToday } from "@/lib/teacher/day";
 import { useT } from "@/lib/teacher/i18n";
-import { lessonSections, shownWords, unfinishedDrafts, UNFINISHED_ANCHOR, withCount } from "@/lib/teacher/lessons-list";
+import { lessonSections, unfinishedDrafts, UNFINISHED_ANCHOR, withCount } from "@/lib/teacher/lessons-list";
 import { newLessonUrl } from "@/lib/teacher/routes";
-import { ALL, choiceOf, effectiveChoice, needsSubjectRow, subjectsOf, type SubjectChoice } from "@/lib/teacher/subjects";
 import { DraftCard } from "./DraftCard";
 import { LessonCard } from "./LessonCard";
 import { LoadProblem } from "./LoadProblem";
 import { OnceLine } from "./OnceLine";
 import { PageHeader } from "./PageHeader";
 import { Bar, Loading } from "./Skeleton";
-import { StartDialog, type StartLesson } from "./StartDialog";
-import { SubjectRow } from "./SubjectRow";
 
 /**
- * All the teacher's lessons on one page, with nothing hidden behind a tab: the one main button, at the right of the title, prepares a
- * lesson, and under it, in this order (the order of Today), the lessons that are prepared, the ones that are not finished and the ones
- * that were held, which are the long list of a teacher with a year of lessons and so come last. Each is rows on one surface, and its
- * name says how many it holds. A section with nothing in it is not shown. A teacher with more than one subject chooses between them in a row at the top; with one there is no row. The
- * lessons are only read here: deleting one is on its own page.
+ * The app's home: the one main button, at the right of the title, prepares a lesson, and under it the lessons that are prepared, then the
+ * ones that are not finished. Lessons already held are in the Library. Each section is rows on one surface, and its name says how many it
+ * holds. A section with nothing in it is not shown. The lessons are only read here: deleting one is on its own page.
  */
 export function LessonsPage() {
-  const { t, locale } = useT();
+  const { t } = useT();
   const today = useToday();
   const lessons = useLessons();
   const drafts = useDrafts();
-  // The window that starts a lesson belongs to the page, as it does on Today: the list can change under the button that opened it.
-  const [starting, setStarting] = useState<StartLesson | null>(null);
-  const [chosen, setChosen] = useState<SubjectChoice | null>(null);
-  // What the list became when a subject was chosen, said to a screen reader (the list changes where it cannot see).
-  const [result, setResult] = useState("");
   const [deleted, setDeleted] = useState(false);
 
   // What the address said when the page opened: that a lesson has just been deleted. Told once, then taken off the address.
@@ -48,21 +38,9 @@ export function LessonsPage() {
   }, []);
 
   const loading = lessons.status === "loading" || drafts.status === "loading";
-  const all = useMemo(() => lessons.data ?? [], [lessons.data]);
-  const unfinished = useMemo(() => drafts.data ?? [], [drafts.data]);
-  const subjects = useMemo(() => subjectsOf(all, unfinished), [all, unfinished]);
-  const choice = effectiveChoice(chosen, subjects) ?? ALL;
-  const sections = useMemo(() => lessonSections(all, choice), [all, choice]);
-  const shownDrafts = useMemo(() => unfinishedDrafts(unfinished, choice), [unfinished, choice]);
-  const nothing = all.length === 0 && unfinished.length === 0;
-
-  const choose = (value: SubjectChoice) => {
-    setChosen(value);
-    const next = effectiveChoice(value, subjects) ?? ALL;
-    const inIt = lessonSections(all, next);
-    const n = inIt.prepared.length + inIt.held.length + unfinishedDrafts(unfinished, next).length;
-    setResult(shownWords(t, locale, n, next === ALL ? t("lessons.subject.all") : (subjects.find((s) => choiceOf(s.id) === next)?.name ?? "")));
-  };
+  const prepared = useMemo(() => lessonSections(lessons.data ?? []).prepared, [lessons.data]);
+  const shownDrafts = useMemo(() => unfinishedDrafts(drafts.data ?? []), [drafts.data]);
+  const nothing = prepared.length === 0 && shownDrafts.length === 0;
 
   // A link to "the lessons not finished" (`#nedovrseni`) lands on that section: the page is built after the address is read, so the
   // browser's own jump has nothing to jump to. The focus goes to the heading, so that it is also where a screen reader starts.
@@ -120,22 +98,14 @@ export function LessonsPage() {
           </div>
         ) : (
           <>
-            {needsSubjectRow(subjects) && (
-              <SubjectRow
-                choices={[{ value: ALL, label: t("lessons.subject.all") }, ...subjects.map((s) => ({ value: choiceOf(s.id), label: s.name }))]}
-                value={choice}
-                result={result}
-                onChange={choose}
-              />
-            )}
-            {sections.prepared.length > 0 && (
+            {prepared.length > 0 && (
               <section aria-labelledby="prepared">
                 <h2 className="section__title" id="prepared">
-                  {withCount(t, t("lessons.prepared"), sections.prepared.length)}
+                  {withCount(t, t("lessons.prepared"), prepared.length)}
                 </h2>
                 <ul className="lessons">
-                  {sections.prepared.map((lesson) => (
-                    <LessonCard key={lesson.id} lesson={lesson} today={today} onStart={setStarting} />
+                  {prepared.map((lesson) => (
+                    <LessonCard key={lesson.id} lesson={lesson} today={today} />
                   ))}
                 </ul>
               </section>
@@ -152,23 +122,10 @@ export function LessonsPage() {
                 </ul>
               </section>
             )}
-            {drafts.status === "error" && <LoadProblem title={t("today.drafts.error")} error={drafts.error} onRetry={drafts.refetch} />}
-            {sections.held.length > 0 && (
-              <section aria-labelledby="held">
-                <h2 className="section__title" id="held">
-                  {withCount(t, t("lessons.held"), sections.held.length)}
-                </h2>
-                <ul className="lessons">
-                  {sections.held.map((lesson) => (
-                    <LessonCard key={lesson.id} lesson={lesson} today={today} onStart={setStarting} />
-                  ))}
-                </ul>
-              </section>
-            )}
+            {drafts.status === "error" && <LoadProblem title={t("lessons.drafts.error")} error={drafts.error} onRetry={drafts.refetch} />}
           </>
         )}
       </div>
-      {starting && <StartDialog lesson={starting} onClose={() => setStarting(null)} />}
     </>
   );
 }

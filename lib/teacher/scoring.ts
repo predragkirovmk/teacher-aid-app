@@ -20,11 +20,6 @@ export const ANSWER_GRACE_MS = 2000;
 export const QUESTIONS_MIN = 5;
 export const QUESTIONS_MAX = 8;
 
-/** BR-PRA-01 (PROPOSED, OPEN-08): the share of joined students who must have missed a question for it to go in the practice set. */
-export const PRACTICE_MISS_SHARE = 0.4;
-export const PRACTICE_MIN = 2;
-export const PRACTICE_MAX = QUESTIONS_MAX;
-
 /** BR-TIME-01 (PROPOSED): recall and true/false 15 s, multiple choice 25 s, numeric 45 s. */
 export const DEFAULT_TIMER_SECONDS: Record<QuestionKind, number> = { true_false: 15, multiple_choice: 25, numeric: 45 };
 export const defaultTimerSeconds = (kind: QuestionKind) => DEFAULT_TIMER_SECONDS[kind];
@@ -39,13 +34,13 @@ export function speedBonus(remainingMs: number, durationMs: number): number {
 export type Score = { points: number; speed_bonus: number };
 
 /**
- * What one answer earns. Only a right answer scores, and the bonus only while the course has it on (BR-PTS-04).
+ * What one answer earns. Only a right answer scores, and the speed bonus is always on (BR-PTS-04).
  * `remainingMs` is how long was left on the question's clock when the answer was given; an answer inside the grace
  * window after the close has none left and earns no bonus.
  */
-export function scoreAnswer(input: { correct: boolean; remainingMs: number; durationMs: number; speedBonusOn: boolean }): Score {
+export function scoreAnswer(input: { correct: boolean; remainingMs: number; durationMs: number }): Score {
   if (!input.correct) return { points: 0, speed_bonus: 0 };
-  const bonus = input.speedBonusOn ? speedBonus(input.remainingMs, input.durationMs) : 0;
+  const bonus = speedBonus(input.remainingMs, input.durationMs);
   return { points: POINTS_RIGHT + bonus, speed_bonus: bonus };
 }
 
@@ -95,46 +90,4 @@ export function rankRows(rows: { student_id: Id; name: string; points: number }[
     ranked.push({ ...row, rank: i > 0 && sorted[i - 1].points === row.points ? ranked[i - 1].rank : i + 1 });
   });
   return ranked;
-}
-
-export type PracticeCandidate = {
-  id: Id;
-  /** Position in the lesson. */
-  order: number;
-  skipped: boolean;
-  /** Students who had joined. */
-  joined: number;
-  /** Wrong or unanswered, among those. */
-  missed: number;
-};
-
-/**
- * BR-PRA-01: the questions that go into a session's practice set, in lesson order. Those missed by at least
- * PRACTICE_MISS_SHARE of the students who joined; if that leaves fewer than PRACTICE_MIN, the next most missed are added,
- * but a question nobody missed never is, nor a skipped one; at most PRACTICE_MAX. Empty when nothing was missed.
- */
-export function selectPracticeQuestions(candidates: PracticeCandidate[]): Id[] {
-  const share = (c: PracticeCandidate) => (c.joined > 0 ? c.missed / c.joined : 0);
-  const missed = candidates.filter((c) => !c.skipped && c.missed > 0).sort((a, b) => share(b) - share(a) || a.order - b.order);
-  const chosen = missed.filter((c) => share(c) >= PRACTICE_MISS_SHARE);
-  for (const c of missed) {
-    if (chosen.length >= PRACTICE_MIN) break;
-    if (!chosen.includes(c)) chosen.push(c);
-  }
-  return chosen
-    .slice(0, PRACTICE_MAX)
-    .sort((a, b) => a.order - b.order)
-    .map((c) => c.id);
-}
-
-/** One student's result on one question: when they joined (null: never) and whether they answered it rightly. */
-export type StudentResult = { joined_at: number | null; right: boolean };
-
-/**
- * BR-PRA-07 (the OPEN-08 reading): how many missed a question, among how many it was put to. A student who had not joined when it was sent
- * (`fired_at` before `joined_at`, or never) is left out of both numbers, so a late joiner is neither "missed" nor in the share's denominator.
- */
-export function countMissed(firedAt: number, results: readonly StudentResult[]): { missed: number; joined: number } {
-  const put = results.filter((r) => r.joined_at !== null && r.joined_at <= firedAt);
-  return { missed: put.filter((r) => !r.right).length, joined: put.length };
 }

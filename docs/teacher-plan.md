@@ -10,6 +10,44 @@ Source of truth for behaviour and data: the backend spec
 (sections 1.9, 2, 3, 4, 5 F-01 to F-12, 7, 8, 11.1). The owner's decisions below override it
 where they differ.
 
+## The owner's simplification (2026-11-17, overrides what follows where they differ)
+
+The owner asked for the teacher app to be "absolutely simple", by removing features, in eleven items built
+in groups of four (branch `teacher-simple`), each group checked with the owner before the next:
+
+1. Today is removed. The app opens on Lessons (`/teacher`).
+2. Classes are removed from the sidebar, and the class concept with them.
+3. Lessons shows only the prepared lessons (and the unfinished ones) and the button to prepare one. Lessons
+   already held are in the Library.
+4. The subject (class-specific) filters are removed.
+5. Preparing a lesson asks only for the material and what to emphasise: no subject, class or year.
+6. The review summary ("Резиме за повторување") is removed.
+7. "Започни час" starts the lesson at once, with no class to choose; the waiting step with the QR code stays.
+8. The console's right side lists only the students who scanned the QR code: no names before that.
+9. When a question's time is up, the right answer shows by itself.
+10. After the last question the teacher is asked to end the lesson; they can stay, since students can still
+    ask questions, but there is no Review phase.
+11. The end page is one review of the students who were present (name and score), across the whole screen,
+    with Copy and Print; nothing on the right.
+
+The owner's answers: the Library has a segmented pill, "Мои лекции" (held lessons) on the left and "Шаблони"
+on the right; there are no colleagues anywhere, and their lessons become templates. Segmented controls still
+merge (`SegGlide`).
+
+The owner's answers for items 9 to 11 (2026-11-18): the score on the end page is the correct answers of the
+questions put to that student ("4 од 6": sent after they joined, not skipped, with a right answer); the
+practice set is removed from the teacher app; after the last question the question panel itself says so and
+offers the red End (nothing pops up), and the anonymous questions stay in their tab; on the waiting step a
+student's row is just the name. The projector's ranking between questions keeps a name on one line.
+
+- 2026-11-19: the line of the lesson's steps (Чекаме ученици, Предавање, Крај) is gone from the console and the end page; the
+  title and the card in front already say where the lesson is.
+
+- 2026-11-19: the teaching console breathes: the projector notes sit behind „За проекторот“ while teaching (shown in the lobby), the
+  question card groups its lines, the gutter between the columns is wider and the roster rows are further apart. The top bar is
+  two lines that line up: the way back above, then the title level with the projector button and End, and the course level with
+  the line that says where the projected window stands.
+
 ## Owner decisions (2026-10-27, do not re-ask)
 
 - Installable web app at `/teacher`, branch `teacher-v1` off `main`. The student app (`/app`)
@@ -20,7 +58,7 @@ where they differ.
   accent; see "Design tokens" below and `docs/teacher-redesign-plan.md`.)
 - v1 scope: lesson prep, live lesson (console plus projected class view, End), class results.
   School admin is out.
-- No timetable. "Today" lists prepared lessons, as the spec says.
+- No timetable. Lessons (the home page) lists prepared lessons.
 - Red only for warnings and End, never for wrong answers.
 - Students are "ученици" in a secondary school and "студенти" at a university; a class is
   "клас" or "група" in the same way. Set once per school.
@@ -75,7 +113,7 @@ The values live in `:root` of `app/(teacher)/teacher.css`; this table is the sum
 | `--teal` | `#124554` | The accent: the main button, links, what is selected (white on it 10.5:1) |
 | `--tint` | `#E1ECEE` | The fill of a quiet button and of the selected row (teal on it 8.7:1) |
 | `--yellow` | `#FFC83E` | A lesson is live, and nothing else (ink on it 9.7:1) |
-| `--red` | `#B42318` | End and what went wrong (6.6:1 on white), as words and an edge, not a block |
+| `--red` | `#B42318` | End, deleting a lesson and what went wrong (6.6:1 on white), as words and an edge, not a block |
 | `--hairline`, `--edge`, `--edge-strong` | ink at 9%, ink at 20%, `#77898F` | A line between rows; the edge of a quiet control; the edge of a box to write in (3.7:1) |
 
 Contrast: every pair of words and ground above is 4.5:1 or more, so there is no rule about which

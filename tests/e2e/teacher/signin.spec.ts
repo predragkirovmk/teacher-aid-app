@@ -32,7 +32,6 @@ async function signInWith(page: Page, who: Who = "veteran", provider: Provider =
   await sheet(page, provider).getByRole("button", { name: CHOICE[who] }).click();
 }
 
-const TODAY_GREETING = /^(Добро утро|Добар ден|Добра вечер), (Марија|Игор)$/;
 const mockState = (page: Page) => page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "null"), MOCK_KEY);
 
 test.describe("the sign-in screen", () => {
@@ -43,8 +42,8 @@ test.describe("the sign-in screen", () => {
     await expect(page).toHaveURL(/\/teacher\/sign-in$/);
     await expect(title(page)).toHaveText("Најава");
 
-    await page.goto("/teacher/lessons");
-    await expect(page).toHaveURL(/\/teacher\/sign-in\?next=%2Fteacher%2Flessons$/);
+    await page.goto("/teacher/library");
+    await expect(page).toHaveURL(/\/teacher\/sign-in\?next=%2Fteacher%2Flibrary$/);
     await expect(page).toHaveTitle("Најава · TeacherAid");
   });
 
@@ -184,7 +183,7 @@ test.describe("the demo's provider page", () => {
   test.use({ account: null });
 
   test("opens in place of the provider, says it is a demo, and leads back with nothing changed", async ({ page }) => {
-    await page.goto("/teacher/sign-in?next=%2Fteacher%2Fclasses");
+    await page.goto("/teacher/sign-in?next=%2Fteacher%2Flibrary");
     await providerButton(page, "Google").click();
     const dialog = sheet(page, "Google");
     await expect(dialog).toBeVisible();
@@ -201,7 +200,7 @@ test.describe("the demo's provider page", () => {
     await dialog.getByRole("button", { name: "Назад" }).click();
     await expect(dialog).toBeHidden();
     await expect(providerButton(page, "Google")).toBeFocused();
-    await expect(page).toHaveURL(/\/teacher\/sign-in\?next=%2Fteacher%2Fclasses$/);
+    await expect(page).toHaveURL(/\/teacher\/sign-in\?next=%2Fteacher%2Flibrary$/);
     expect(await sessionOf(page)).toBeNull();
     await expect(problem(page)).toHaveCount(0);
   });
@@ -246,12 +245,11 @@ test.describe("the demo's provider page", () => {
 test.describe("signing in", () => {
   test.use({ account: null });
 
-  test("as the teacher with history, with Google: lands on Today, with the season's lessons behind it and no guide", async ({ page }) => {
+  test("as the teacher with history, with Google: lands on Lessons, with the season's lessons behind it and no guide", async ({ page }) => {
     await page.goto("/teacher/sign-in");
     await signInWith(page, "veteran", "Google");
     await expect(page).toHaveURL(/\/teacher$/);
-    await expect(title(page)).toHaveText("Денес");
-    await expect(page.getByText(TODAY_GREETING)).toContainText("Марија");
+    await expect(title(page)).toHaveText("Лекции");
     await expect(page.getByRole("link", { name: "Марија Петровска, поставки" })).toBeVisible();
     expect(await sessionOf(page)).toBe("veteran");
     // Not a first run: the guide does not show, and the first run is done.
@@ -264,7 +262,7 @@ test.describe("signing in", () => {
     await page.goto("/teacher/sign-in");
     await signInWith(page, "veteran", "Microsoft");
     await expect(page).toHaveURL(/\/teacher$/);
-    await expect(title(page)).toHaveText("Денес");
+    await expect(title(page)).toHaveText("Лекции");
     expect(await sessionOf(page)).toBe("veteran");
   });
 
@@ -297,7 +295,7 @@ test.describe("signing in", () => {
     await page.getByRole("button", { name: "Следно" }).click();
     await page.getByRole("button", { name: "Следно" }).click();
     await expect(page.getByText("Чекор 3 од 3")).toBeVisible();
-    await expect(page.getByRole("heading", { level: 2 })).toHaveText("Видете кој бил присутен и што да се повтори");
+    await expect(page.getByRole("heading", { level: 2 })).toHaveText("Видете како поминал секој");
     // The last step leads into the first lesson (the one main button), and "Не сега" is the way out; there is nothing to skip.
     await expect(page.getByRole("button", { name: "Следно" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Прескокни го водичот" })).toHaveCount(0);
@@ -305,19 +303,19 @@ test.describe("signing in", () => {
     await expect(page.getByRole("button", { name: "Подготви ја првата лекција" })).toHaveClass(/btn--primary/);
     expect((await mockState(page)).novice.school.first_run_done).toBe(false);
 
-    await page.getByRole("button", { name: "Не сега, оди на Денес", exact: true }).click();
+    await page.getByRole("button", { name: "Не сега, оди на Лекции", exact: true }).click();
     await expect(page).toHaveURL(/\/teacher$/);
-    await expect(title(page)).toHaveText("Денес");
-    await expect(page.getByText(TODAY_GREETING)).toContainText("Игор");
+    await expect(title(page)).toHaveText("Лекции");
+    await expect(page.getByRole("link", { name: "Игор Арсовски, поставки" })).toBeVisible();
     // Nothing prepared yet, and the one main button says what to do.
     await expect(page.getByRole("heading", { name: "Немате подготвени лекции" })).toBeVisible();
     await expect(page.locator(".btn--primary:visible")).toHaveCount(1);
     await expect(page.getByRole("link", { name: "Подготви лекција" })).toBeVisible();
     expect((await mockState(page)).novice.school.first_run_done).toBe(true);
 
-    // Done for good: a reload, and signing in again, go straight to Today.
+    // Done for good: a reload, and signing in again, go straight to Lessons.
     await page.reload();
-    await expect(title(page)).toHaveText("Денес");
+    await expect(title(page)).toHaveText("Лекции");
     await expect(page).toHaveURL(/\/teacher$/);
   });
 
@@ -327,7 +325,7 @@ test.describe("signing in", () => {
     await expect(page).toHaveURL(/\/teacher\/welcome$/);
     await page.getByRole("button", { name: "Прескокни го водичот" }).click();
     await expect(page).toHaveURL(/\/teacher$/);
-    await expect(title(page)).toHaveText("Денес");
+    await expect(title(page)).toHaveText("Лекции");
     await expect(page.getByRole("link", { name: "Подготви лекција" })).toBeVisible();
     expect((await mockState(page)).novice.school.first_run_done).toBe(true);
     await page.reload();
@@ -363,26 +361,26 @@ test.describe("signing in", () => {
     await expect(page.getByRole("heading", { level: 2 })).toHaveText("Prepare a lesson");
     await page.getByRole("button", { name: "Next" }).click();
     await page.getByRole("button", { name: "Next" }).click();
-    await page.getByRole("button", { name: "Not now, go to Today", exact: true }).click();
-    await expect(title(page)).toHaveText("Today");
-    await expect(page.getByText(/^Good (morning|afternoon|evening), Igor$/)).toBeVisible();
+    await page.getByRole("button", { name: "Not now, go to Lessons", exact: true }).click();
+    await expect(title(page)).toHaveText("Lessons");
+    await expect(page.getByRole("link", { name: "Igor Arsovski, settings" })).toBeVisible();
   });
 
   test("a first run that is told to go somewhere else goes there once the guide is done", async ({ page }) => {
-    await page.goto("/teacher/classes");
-    await expect(page).toHaveURL(/\/teacher\/sign-in\?next=%2Fteacher%2Fclasses$/);
+    await page.goto("/teacher/library");
+    await expect(page).toHaveURL(/\/teacher\/sign-in\?next=%2Fteacher%2Flibrary$/);
     await signInWith(page, "novice");
-    await expect(page).toHaveURL(/\/teacher\/welcome\?next=%2Fteacher%2Fclasses$/);
+    await expect(page).toHaveURL(/\/teacher\/welcome\?next=%2Fteacher%2Flibrary$/);
     await page.getByRole("button", { name: "Прескокни го водичот" }).click();
-    await expect(page).toHaveURL(/\/teacher\/classes$/);
-    await expect(title(page)).toHaveText("Класови");
+    await expect(page).toHaveURL(/\/teacher\/library$/);
+    await expect(title(page)).toHaveText("Библиотека");
   });
 
-  test("a teacher who is already signed in is taken from the sign-in screen to Today, without it being drawn", async ({ page }) => {
+  test("a teacher who is already signed in is taken from the sign-in screen to Lessons, without it being drawn", async ({ page }) => {
     await page.addInitScript((key) => localStorage.setItem(key, JSON.stringify({ persona: "veteran" })), SESSION_KEY);
     await page.goto("/teacher/sign-in");
     await expect(page).toHaveURL(/\/teacher$/);
-    await expect(title(page)).toHaveText("Денес");
+    await expect(title(page)).toHaveText("Лекции");
   });
 });
 
@@ -440,7 +438,7 @@ test.describe("when signing in does not work", () => {
     await expect(problem(page)).toHaveCount(0);
     await sheet(page, "Microsoft").getByRole("button", { name: CHOICE.veteran }).click();
     await expect(page).toHaveURL(/\/teacher$/);
-    await expect(title(page)).toHaveText("Денес");
+    await expect(title(page)).toHaveText("Лекции");
   });
 
   test("a refusal keeps where the teacher was heading, so the second try still gets there", async ({ page }) => {
@@ -463,7 +461,7 @@ test.describe("when signing in does not work", () => {
     await context.setOffline(false);
     await expect(problem(page)).toHaveCount(0);
     await signInWith(page, "veteran");
-    await expect(title(page)).toHaveText("Денес");
+    await expect(title(page)).toHaveText("Лекции");
   });
 
   test("the message is in English when the screen is", async ({ page }) => {
@@ -490,12 +488,12 @@ test.describe("going back to the page that was asked for", () => {
   test.use({ account: null });
 
   test("a link to a page opened while signed out comes back to it after signing in", async ({ page }) => {
-    await page.goto("/teacher/classes");
-    await expect(page).toHaveURL(/\/teacher\/sign-in\?next=%2Fteacher%2Fclasses$/);
+    await page.goto("/teacher/library");
+    await expect(page).toHaveURL(/\/teacher\/sign-in\?next=%2Fteacher%2Flibrary$/);
     await signInWith(page);
-    await expect(page).toHaveURL(/\/teacher\/classes$/);
-    await expect(title(page)).toHaveText("Класови");
-    await expect(page.getByRole("navigation").first().getByRole("link", { name: "Класови" })).toHaveAttribute("aria-current", "page");
+    await expect(page).toHaveURL(/\/teacher\/library$/);
+    await expect(title(page)).toHaveText("Библиотека");
+    await expect(page.getByRole("navigation").first().getByRole("link", { name: "Библиотека" })).toHaveAttribute("aria-current", "page");
   });
 
   test("a page that does not exist is remembered too, and says so after signing in", async ({ page }) => {
@@ -510,7 +508,7 @@ test.describe("going back to the page that was asked for", () => {
       await page.goto(`/teacher/sign-in?next=${encodeURIComponent(next)}`);
       await signInWith(page);
       await expect(page).toHaveURL(/\/teacher$/);
-      await expect(title(page)).toHaveText("Денес");
+      await expect(title(page)).toHaveText("Лекции");
       expect(new URL(page.url()).origin).toBe(new URL(test.info().project.use.baseURL ?? "http://localhost:3100").origin);
     });
   }
@@ -518,8 +516,8 @@ test.describe("going back to the page that was asked for", () => {
 
 test.describe("when the session ends while the teacher is working", () => {
   test("another window signing out ends this one calmly, and signing in again returns to the page", async ({ page }) => {
-    await page.goto("/teacher/classes");
-    await expect(title(page)).toHaveText("Класови");
+    await page.goto("/teacher/library");
+    await expect(title(page)).toHaveText("Библиотека");
 
     // The session cookie is gone, and this window is told so, as a browser tells every window of a change to its storage.
     await page.evaluate((key) => {
@@ -527,14 +525,14 @@ test.describe("when the session ends while the teacher is working", () => {
       window.dispatchEvent(new StorageEvent("storage", { key }));
     }, SESSION_KEY);
 
-    await expect(page).toHaveURL(/\/teacher\/sign-in\?next=%2Fteacher%2Fclasses$/);
+    await expect(page).toHaveURL(/\/teacher\/sign-in\?next=%2Fteacher%2Flibrary$/);
     await expect(note(page)).toHaveText("Ве одјавивме поради безбедност. Најавете се повторно.");
     // Calm: no red box, no alert.
     await expect(problem(page)).toHaveCount(0);
 
     await signInWith(page);
-    await expect(page).toHaveURL(/\/teacher\/classes$/);
-    await expect(title(page)).toHaveText("Класови");
+    await expect(page).toHaveURL(/\/teacher\/library$/);
+    await expect(title(page)).toHaveText("Библиотека");
   });
 
   test("a button pressed after the session ended is refused, and sends the teacher to sign in without losing the page", async ({ page }) => {
@@ -553,7 +551,7 @@ test.describe("when the session ends while the teacher is working", () => {
   });
 
   test("nothing of the teacher's page stays on screen once the session has ended", async ({ page }) => {
-    await page.goto("/teacher/classes");
+    await page.goto("/teacher/library");
     await expect(page.getByRole("link", { name: "Марија Петровска, поставки" })).toBeVisible();
     await page.evaluate((key) => {
       localStorage.removeItem(key);
@@ -568,8 +566,8 @@ test.describe("when the session ends while the teacher is working", () => {
 test.describe("signing out", () => {
   test("goes to the sign-in screen with a note, forgets the page it was on, and the pages are closed again", async ({ page }) => {
     await page.goto("/teacher");
-    await page.getByRole("navigation").first().getByRole("link", { name: "Класови" }).click();
-    await expect(title(page)).toHaveText("Класови");
+    await page.getByRole("navigation").first().getByRole("link", { name: "Библиотека" }).click();
+    await expect(title(page)).toHaveText("Библиотека");
     await page.getByRole("button", { name: "Одјави се" }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Да, одјави ме" }).click();
 
@@ -597,14 +595,14 @@ test.describe("signing out", () => {
 
   test("the next person to sign in on the computer finds nothing of the last one", async ({ page }) => {
     await page.goto("/teacher");
-    await expect(page.getByText(TODAY_GREETING)).toContainText("Марија");
+    await expect(page.getByRole("link", { name: "Марија Петровска, поставки" })).toBeVisible();
     await page.getByRole("button", { name: "Одјави се" }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Да, одјави ме" }).click();
     await expect(title(page)).toHaveText("Најава");
 
     await signInWith(page, "novice");
     await page.getByRole("button", { name: "Прескокни го водичот" }).click();
-    await expect(page.getByText(TODAY_GREETING)).toContainText("Игор");
+    await expect(title(page)).toHaveText("Лекции");
     await expect(page.getByText("Марија")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Игор Арсовски, поставки" })).toBeVisible();
   });
@@ -615,7 +613,7 @@ test.describe("what is shown before the answer is known", () => {
   test.use({ account: null });
 
   test("the server sends nothing of a protected page: only the logo", async ({ request }) => {
-    for (const path of ["/teacher", "/teacher/lessons", "/teacher/classes", "/teacher/settings", "/teacher/welcome"]) {
+    for (const path of ["/teacher", "/teacher/library", "/teacher/settings", "/teacher/welcome"]) {
       const html = await (await request.get(path)).text();
       for (const secret of ["Марија", "Петровска", "Игор", "Одјави се", "Библиотека", "Подготви лекција", "Немате подготвени лекции", "Чекор 1"]) {
         expect(html, `${path}: ${secret}`).not.toContain(secret);
@@ -632,7 +630,7 @@ test.describe("what is shown before the answer is known", () => {
       const look = () => document.querySelectorAll("h1, h2, nav, [role='navigation']").forEach((el) => seen.add(el.tagName === "NAV" ? "nav" : (el.textContent ?? "")));
       new MutationObserver(look).observe(document, { childList: true, subtree: true });
     });
-    await page.goto("/teacher/lessons");
+    await page.goto("/teacher/library");
     await expect(title(page)).toHaveText("Најава");
     const seen = await page.evaluate(() => [...(window as unknown as { __seen: Set<string> }).__seen]);
     expect(seen).not.toContain("Лекции");
@@ -640,7 +638,7 @@ test.describe("what is shown before the answer is known", () => {
   });
 
   test("the sign-in screen and the pages it leads to load without a console error, a hydration mismatch or a failed request", async ({ page }) => {
-    for (const path of ["/teacher/sign-in", "/teacher/lessons", "/teacher/help", "/teacher/sign-in?error=unknown_email", "/teacher/sign-in?reason=expired"]) {
+    for (const path of ["/teacher/sign-in", "/teacher/library", "/teacher/help", "/teacher/sign-in?error=unknown_email", "/teacher/sign-in?reason=expired"]) {
       const problems: string[] = [];
       page.on("console", (m) => {
         if (m.type() === "error" || /hydrat/i.test(m.text())) problems.push(`${m.type()}: ${m.text()}`);
@@ -666,8 +664,8 @@ test.describe("what is shown before the answer is known", () => {
     await expect(page.getByText("Чекор 1 од 3")).toBeVisible();
     await page.getByRole("button", { name: "Следно" }).click();
     await page.getByRole("button", { name: "Следно" }).click();
-    await page.getByRole("button", { name: "Не сега, оди на Денес", exact: true }).click();
-    await expect(title(page)).toHaveText("Денес");
+    await page.getByRole("button", { name: "Не сега, оди на Лекции", exact: true }).click();
+    await expect(title(page)).toHaveText("Лекции");
     await page.waitForLoadState("networkidle");
     expect(problems).toEqual([]);
   });
@@ -726,10 +724,10 @@ test.describe("the guide again", () => {
     expect(await mockState(page)).toEqual(before);
   });
 
-  test("and skipping it, when it was opened by its address alone, goes to Today", async ({ page }) => {
+  test("and skipping it, when it was opened by its address alone, goes to Lessons", async ({ page }) => {
     await page.goto("/teacher/welcome");
     await page.getByRole("button", { name: "Прескокни го водичот" }).click();
-    await expect(title(page)).toHaveText("Денес");
+    await expect(title(page)).toHaveText("Лекции");
   });
 });
 
@@ -749,7 +747,7 @@ test.describe("when the first run cannot be saved", () => {
     await context.setOffline(false);
     await page.getByRole("button", { name: "Прескокни го водичот" }).click();
     await expect(page).toHaveURL(/\/teacher$/);
-    await expect(title(page)).toHaveText("Денес");
+    await expect(title(page)).toHaveText("Лекции");
     expect((await mockState(page)).novice.school.first_run_done).toBe(true);
   });
 
@@ -766,7 +764,7 @@ test.describe("when the first run cannot be saved", () => {
     await expect(page.getByRole("button", { name: "Прескокни го водичот" })).toBeVisible();
     await page.getByRole("button", { name: "Продолжи сепак" }).click();
     await expect(page).toHaveURL(/\/teacher$/);
-    await expect(title(page)).toHaveText("Денес");
+    await expect(title(page)).toHaveText("Лекции");
     // Moving about is not sent back to the guide.
     await page.getByRole("navigation").first().getByRole("link", { name: "Библиотека" }).click();
     await expect(title(page)).toHaveText("Библиотека");
@@ -782,7 +780,7 @@ test.describe("when the first run cannot be saved", () => {
     await page.getByRole("button", { name: "Следно" }).click();
     await page.getByRole("button", { name: "Следно" }).click();
     await context.setOffline(true);
-    await page.getByRole("button", { name: "Не сега, оди на Денес", exact: true }).click();
+    await page.getByRole("button", { name: "Не сега, оди на Лекции", exact: true }).click();
     await expect(problem(page)).toContainText("Не успеавме да продолжиме");
     await expect(page.getByRole("button", { name: "Продолжи сепак" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Прескокни го водичот" })).toHaveCount(0);

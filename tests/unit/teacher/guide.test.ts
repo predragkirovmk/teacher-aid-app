@@ -3,9 +3,9 @@ import { GUIDE_STEPS, isLastStep, stepAfter } from "@/lib/teacher/guide";
 import { dictionaries, translate } from "@/lib/teacher/i18n";
 
 describe("the guide", () => {
-  test("is three short steps: prepare a lesson, hold it, see who was there", () => {
+  test("is three short steps: prepare a lesson, hold it, see how each one did", () => {
     expect(GUIDE_STEPS).toHaveLength(3);
-    expect(GUIDE_STEPS.map((s) => s.icon)).toEqual(["prepare", "hold", "review"]);
+    expect(GUIDE_STEPS.map((s) => s.icon)).toEqual(["prepare", "hold", "results"]);
   });
 
   test("every step has a title and a sentence in both languages", () => {

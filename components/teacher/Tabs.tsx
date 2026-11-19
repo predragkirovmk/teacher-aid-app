@@ -79,12 +79,15 @@ export function TabPanel({
   id,
   active,
   tabbed = true,
+  scrollLabel,
   children,
 }: {
   name: string;
   id: string;
   active: boolean;
   tabbed?: boolean;
+  /** Set when the panel scrolls and holds nothing to focus: it is then a stop for the keyboard, and this is its name when it is not a tab panel. */
+  scrollLabel?: string;
   children: ReactNode;
 }) {
   const shown = active && tabbed;
@@ -92,8 +95,10 @@ export function TabPanel({
     <div
       id={`${name}-panel-${id}`}
       className="tabs__panel"
-      role={shown ? "tabpanel" : undefined}
+      role={shown ? "tabpanel" : scrollLabel && active ? "region" : undefined}
       aria-labelledby={shown ? `${name}-tab-${id}` : undefined}
+      aria-label={!shown && active ? scrollLabel : undefined}
+      tabIndex={scrollLabel && active ? 0 : undefined}
       data-active={active}
     >
       {children}

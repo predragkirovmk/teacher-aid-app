@@ -1,10 +1,10 @@
 import { isApiError } from "./api/errors";
-import type { CourseSummary, Id, Subject } from "./api/types";
+import type { Id } from "./api/types";
 import { EMPHASIS_MAX_CHARS, LESSON_UPLOAD_EXTENSIONS, LESSON_UPLOAD_MAX_BYTES, TYPED_TEXT_MAX_CHARS, TYPED_TEXT_MIN_CHARS } from "./lessons";
 import type { Locale } from "./store";
 
 /**
- * The rules of "Подготви лекција" (F-03): which subjects and years a teacher is offered, what is wrong with what they gave
+ * The rules of "Подготви лекција" (F-03): what is wrong with what they gave
  * before anything is sent, what a refusal from the API means on the form, what a failure while the document is read means, and
  * how the form is filled in again when the teacher cancels the wait for the questions. Nothing here touches the browser, so all
  * of it is unit tested.
@@ -19,44 +19,7 @@ export const STILL_WORKING_MS = 20_000;
 /** The count of the sentence of emphasis shows from here on, so it never nags and is there when the end is near. */
 export const EMPHASIS_COUNT_FROM = 160;
 
-// ---- Part 1: the subject and the year -------------------------------------------------------------------------
-
-/** The subjects of the teacher's courses, each once, in the order the API gave them. */
-export function subjectsOf(courses: readonly CourseSummary[]): Subject[] {
-  const seen = new Set<Id>();
-  const out: Subject[] = [];
-  for (const course of courses) {
-    if (seen.has(course.subject.id)) continue;
-    seen.add(course.subject.id);
-    out.push(course.subject);
-  }
-  return out;
-}
-
-/** The years of the teacher's own classes in this subject, each once, the first year first. None until a subject is chosen. */
-export function yearsOf(courses: readonly CourseSummary[], subjectId: Id | null): number[] {
-  if (subjectId === null) return [];
-  return [...new Set(courses.filter((c) => c.subject.id === subjectId).map((c) => c.class.year))].sort((a, b) => a - b);
-}
-
-/** The classes of the teacher in this subject and year, so a year can be told by its class ("II-4"). */
-export function classesOf(courses: readonly CourseSummary[], subjectId: Id | null, year: number): string[] {
-  return courses.filter((c) => c.subject.id === subjectId && c.class.year === year).map((c) => c.class.name);
-}
-
-/** The subject that is chosen: the teacher's pick if it is offered, else the only one there is, else none. */
-export function chosenSubject(subjects: readonly Subject[], picked: Id | null): Id | null {
-  if (picked !== null && subjects.some((s) => s.id === picked)) return picked;
-  return subjects.length === 1 ? subjects[0].id : null;
-}
-
-/** The year that is chosen: the teacher's pick if it is offered, else the only one there is, else none. */
-export function chosenYear(years: readonly number[], picked: number | null): number | null {
-  if (picked !== null && years.includes(picked)) return picked;
-  return years.length === 1 ? years[0] : null;
-}
-
-// ---- Part 2: the material -------------------------------------------------------------------------------------
+// ---- The material -------------------------------------------------------------------------------------
 
 export type MaterialKind = "file" | "typed";
 
@@ -89,18 +52,9 @@ export function checkText(text: string): TextProblem | null {
  */
 export type MaterialProblem = "pick" | "no_file" | FileProblem | "no_text" | "gone" | TextProblem | "other";
 
-export type Part = "subject" | "year" | "material";
-/** The order the parts are on the page, and so the order the first problem is found in. */
-export const PARTS: readonly Part[] = ["subject", "year", "material"];
-
-export type Problems = { subject?: true; year?: true; material?: MaterialProblem };
+export type Problems = { material?: MaterialProblem };
 
 export type FormInput = {
-  subject: Id | null;
-  /** Null while the subject, which decides the years, is not chosen either. */
-  year: number | null;
-  /** Whether there is a year to choose at all: a subject is chosen. */
-  needsYear: boolean;
   kind: MaterialKind | null;
   file: { name: string; size: number } | null;
   text: string;
@@ -109,8 +63,6 @@ export type FormInput = {
 /** What is missing or wrong before anything is sent. Empty means the questions can be asked for. */
 export function checkForm(input: FormInput): Problems {
   const problems: Problems = {};
-  if (input.subject === null) problems.subject = true;
-  else if (input.needsYear && input.year === null) problems.year = true;
   if (input.kind === null) problems.material = "pick";
   else if (input.kind === "file") problems.material = input.file ? (checkFile(input.file) ?? undefined) : "no_file";
   else problems.material = checkText(input.text) ?? undefined;
@@ -120,26 +72,23 @@ export function checkForm(input: FormInput): Problems {
 
 /**
  * Whether the form holds something the teacher put there by hand and would have to do again: sentences, a document (one chosen
- * now, or one kept from before), or the sentence of emphasis. Choosing a year or a way to add the material is not work. Leaving
+ * now, or one kept from before), or the sentence of emphasis. Choosing a way to add the material is not work. Leaving
  * a form that has some asks first.
  */
 export const hasWork = (form: { file: unknown; text: string; emphasis: string }): boolean =>
   form.file !== null || form.text.trim() !== "" || form.emphasis.trim() !== "";
 
-/** The first part with a problem, top to bottom: where the focus goes. */
-export const firstProblem = (problems: Problems): Part | null => PARTS.find((part) => problems[part] !== undefined) ?? null;
 
 /** The things on the page the focus is sent to, by the `data-focus` they carry. */
-export type FocusKey = "subject" | "year" | "kind" | "file" | "text" | "submit" | "wait" | "failed";
+export type FocusKey = "kind" | "file" | "text" | "submit" | "wait" | "failed";
 
-/** Where the focus goes for a problem at this part: the control that fixes it. */
-export function focusKeyOf(part: Part, problems: Problems, kind: MaterialKind | null): FocusKey {
-  if (part !== "material") return part;
+/** Where the focus goes for a problem with the material: the control that fixes it. */
+export function focusKeyOf(problems: Problems, kind: MaterialKind | null): FocusKey {
   if (problems.material === "pick" || kind === null) return "kind";
   return kind === "file" ? "file" : "text";
 }
 
-export const hasProblems = (problems: Problems): boolean => firstProblem(problems) !== null;
+export const hasProblems = (problems: Problems): boolean => problems.material !== undefined;
 
 /**
  * Why `POST /lessons/sources` refused the material, as the form says it at part 2: each `reason` of EC-LES-06 and EC-LES-07
@@ -210,15 +159,13 @@ export function sourceToKeep(sourceId: Id | null, error: unknown): Id | null {
 
 /**
  * What the form held when the questions were asked for, kept for as long as the tab is open, under the id of the draft that came of
- * it. The draft itself knows the subject, the year, the emphasis and the document's name; only what was typed (and a document's
+ * it. The draft itself knows the emphasis and the document's name; only what was typed (and a document's
  * size) is not on the server, so that is what this keeps.
  */
 export type FormMemory = { draft_id: Id; text: string; file_size: number | null };
 
 /** What the form is filled in with when the teacher cancels: everything they gave, so none of it has to be done again. */
 export type Refill = {
-  subject_id: Id;
-  year: number;
   emphasis: string;
   kind: MaterialKind | null;
   text: string;
@@ -230,8 +177,6 @@ export type Refill = {
 
 type Cancelled = {
   id: Id;
-  subject: Subject;
-  year: number;
   emphasis: string | null;
   source_id: Id | null;
   source: { kind: "upload" | "typed"; file_name: string | null } | null;
@@ -239,14 +184,12 @@ type Cancelled = {
 
 /**
  * The form to come back to when a wait for questions is cancelled (F-03): from the draft, and from what the form kept if it kept it
- * for this draft (a draft opened in another tab or from Today has no typed text to give back, and the box is left empty).
+ * for this draft (a draft opened in another tab or from the list has no typed text to give back, and the box is left empty).
  */
 export function refillOf(draft: Cancelled, memory: FormMemory | null, note: Refill["note"] = "cancelled"): Refill {
   const mine = memory !== null && memory.draft_id === draft.id ? memory : null;
   const upload = draft.source?.kind === "upload" && draft.source_id !== null;
   return {
-    subject_id: draft.subject.id,
-    year: draft.year,
     emphasis: draft.emphasis ?? "",
     kind: draft.source === null ? null : draft.source.kind === "upload" ? "file" : "typed",
     text: draft.source?.kind === "typed" ? (mine?.text ?? "") : "",
@@ -261,8 +204,6 @@ export function isRefill(v: unknown): v is Refill {
   const r = v as Record<string, unknown>;
   const d = r.document as Record<string, unknown> | null;
   return (
-    typeof r.subject_id === "string" &&
-    Number.isInteger(r.year) &&
     typeof r.emphasis === "string" &&
     (r.kind === null || r.kind === "file" || r.kind === "typed") &&
     typeof r.text === "string" &&

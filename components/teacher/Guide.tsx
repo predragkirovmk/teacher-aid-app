@@ -9,18 +9,18 @@ import { leaveGuideUnsaved } from "@/lib/teacher/first-run";
 import { GUIDE_STEPS, isLastStep, stepAfter, type GuideIcon } from "@/lib/teacher/guide";
 import { useT } from "@/lib/teacher/i18n";
 import { FROM_GUIDE, newLessonUrl, SETTINGS } from "@/lib/teacher/routes";
-import { safeNext, TODAY } from "@/lib/teacher/signin";
+import { safeNext, HOME } from "@/lib/teacher/signin";
 import { PageTitle } from "./PageTitle";
 import { Problem } from "./Problem";
 
-const ICONS: Record<GuideIcon, Icon> = { prepare: FileTextIcon, hold: QrCodeIcon, review: ListChecksIcon };
+const ICONS: Record<GuideIcon, Icon> = { prepare: FileTextIcon, hold: QrCodeIcon, results: ListChecksIcon };
 
 /**
  * The welcome guide of a first run: three short steps, one thing each, with Next, a labelled Back and "Skip the guide" always
- * in view. Skipping marks the first run done (FR-SUP-03) and lands on Today, where the one main button is "Prepare a lesson",
+ * in view. Skipping marks the first run done (FR-SUP-03) and lands on the lessons, where the one main button is "Prepare a lesson",
  * or on the screen the first sign-in was heading for. The last step of a first run leads into the first lesson (F-01 step 3): the
  * main button opens the form that prepares one, and the first run is done when that lesson is saved; "Not now" is the way
- * out to Today. It is also reached again from Settings, where finishing or skipping changes nothing on the server and goes back
+ * out to the lessons. It is also reached again from Settings, where finishing or skipping changes nothing on the server and goes back
  * to Settings, and says so.
  */
 export function Guide() {
@@ -28,7 +28,7 @@ export function Guide() {
   const router = useRouter();
   const done = useMe().data?.first_run_done;
   // Where the guide goes on to: the screen the first sign-in was heading for, or Settings when it is shown again from there.
-  const next = safeNext(useSearchParams().get("next")) ?? TODAY;
+  const next = safeNext(useSearchParams().get("next")) ?? HOME;
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);

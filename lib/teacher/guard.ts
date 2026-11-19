@@ -1,4 +1,4 @@
-import { GUIDE, guideUrl, HELP, safeNext, SIGN_IN, signInUrl, TODAY, type Notice } from "./signin";
+import { GUIDE, guideUrl, HELP, safeNext, SIGN_IN, signInUrl, HOME, type Notice } from "./signin";
 
 /**
  * Who may see which page, decided in one place (the gate in components/teacher/Gate.tsx asks). Every page under `/teacher`
@@ -72,7 +72,7 @@ export function viewOf({ pathname, status, firstRunDone }: Input): View {
  *
  * - Signed out on a protected page: to sign-in, remembering the page. After the teacher's own sign-out nothing is
  *   remembered, and after a session that ended mid-use the screen says so.
- * - Signed in on the sign-in screen: on to `next` or Today, by way of the guide when the first run is not done.
+ * - Signed in on the sign-in screen: on to `next` or the lessons, by way of the guide when the first run is not done.
  * - Signed in, first run not done, anywhere else protected: to the guide, remembering the page.
  */
 export function destinationOf(input: Input, here: string | null, next: string | null): string | null {
@@ -80,7 +80,7 @@ export function destinationOf(input: Input, here: string | null, next: string | 
   const access = accessOf(pathname);
   if (access === "sign-in") {
     if (status !== "signedIn") return null;
-    return firstRunDone === false ? guideUrl(next) : (safeNext(next) ?? TODAY);
+    return firstRunDone === false ? guideUrl(next) : (safeNext(next) ?? HOME);
   }
   if (access === "either") return null;
   if (status === "signedOut") {

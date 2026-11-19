@@ -38,7 +38,7 @@ const rejection = async (promise: Promise<unknown>): Promise<ApiError> => {
 
 const ask = async (text = typed, emphasis?: string): Promise<LessonDraft> => {
   const { source_id } = await api.createSource({ kind: "typed", text });
-  return api.generateLesson({ source_id, subject_id: "math", year: 2, emphasis });
+  return api.generateLesson({ source_id, emphasis });
 };
 const ready = async (draft: LessonDraft, ms = GENERATE_MS): Promise<ReadyDraft> => {
   now += ms + 1;
@@ -61,10 +61,7 @@ describe("asking for a lesson", () => {
       status: "pending",
       failure: null,
       title: null,
-      review_summary: null,
       questions: null,
-      subject: { id: "math", name: "Математика" },
-      year: 2,
       emphasis: "Повеќе примери.",
       refinements: [],
       previous_draft_id: null,
@@ -79,7 +76,7 @@ describe("asking for a lesson", () => {
 
   test("a document draft knows it came from a document, by name", async () => {
     const { source_id } = await api.createSource({ kind: "upload", file: { name: "Логаритми.docx", size: 900, type: "" } as File });
-    const draft = await api.generateLesson({ source_id, subject_id: "math", year: 3 });
+    const draft = await api.generateLesson({ source_id });
     expect(draft.source).toEqual({ kind: "upload", file_name: "Логаритми.docx" });
     expect(draft.source_id).toBe(source_id);
   });
@@ -118,7 +115,7 @@ describe("asking for a lesson", () => {
 
   test("a second request for a source that is being written answers that draft and starts nothing (BR-LES-10)", async () => {
     const { source_id } = await api.createSource({ kind: "typed", text: typed });
-    const request = { source_id, subject_id: "math", year: 2 };
+    const request = { source_id };
     const first = await api.generateLesson(request);
     secondsLater(1);
     const second = await api.generateLesson(request);
@@ -136,7 +133,7 @@ describe("a job that does not work", () => {
     secondsLater(FAIL_MS / 1000 - 1);
     expect((await api.getDraft(draft.id)).status).toBe("pending");
     secondsLater(2);
-    expect(await api.getDraft(draft.id)).toMatchObject({ status: "failed", failure: "generation_failed", title: null, review_summary: null, questions: null });
+    expect(await api.getDraft(draft.id)).toMatchObject({ status: "failed", failure: "generation_failed", title: null, questions: null });
   });
 
   test("it fails in the emphasis too", async () => {
@@ -147,7 +144,7 @@ describe("a job that does not work", () => {
 
   test("[fail-once] fails the first time for a source and works after a retry, and works for the next draft of it", async () => {
     const { source_id } = await api.createSource({ kind: "typed", text: `${typed} [fail-once]` });
-    const request = { source_id, subject_id: "math", year: 2 };
+    const request = { source_id };
     const draft = await api.generateLesson(request);
     secondsLater(FAIL_MS / 1000 + 1);
     expect((await api.getDraft(draft.id)).status).toBe("failed");
@@ -230,7 +227,7 @@ describe("cancelling and throwing away", () => {
 
   test("a saved draft cannot be thrown away", async () => {
     const draft = await ready(await ask());
-    await api.saveLesson({ draft_id: draft.id, title: draft.title, review_summary: draft.review_summary, questions: draft.questions as Lesson["questions"] });
+    await api.saveLesson({ draft_id: draft.id, title: draft.title, questions: draft.questions as Lesson["questions"] });
     expect((await rejection(api.deleteDraft(draft.id))).code).toBe("invalid_state");
   });
 });
@@ -246,7 +243,7 @@ describe("the list of drafts (FR-LES-20)", () => {
     const list = await api.listDrafts();
     expect(list.map((d) => d.id)).toEqual([third.id, failing.id, first.id]);
     expect(list.map((d) => d.status)).toEqual(["ready", "failed", "ready"]);
-    expect(list[0]).toMatchObject({ title: "Логаритми", question_count: expect.any(Number), subject: { id: "math" }, year: 2, lesson_id: null, previous_draft_id: null });
+    expect(list[0]).toMatchObject({ title: "Логаритми", question_count: expect.any(Number), lesson_id: null, previous_draft_id: null });
     expect(list[1]).toMatchObject({ status: "failed", failure: "generation_failed", title: null, question_count: null });
   });
 
@@ -269,7 +266,7 @@ describe("the list of drafts (FR-LES-20)", () => {
   test("a draft that was saved is no longer listed, nor the ones before it in its chain", async () => {
     const a = await ready(await ask());
     const b = await ready(await api.refineDraft(a.id, "harder"), REFINE_MS);
-    await api.saveLesson({ draft_id: b.id, title: b.title, review_summary: b.review_summary, questions: b.questions as Lesson["questions"] });
+    await api.saveLesson({ draft_id: b.id, title: b.title, questions: b.questions as Lesson["questions"] });
     expect(await api.listDrafts()).toEqual([]);
     // The saved one stays readable and leads to its lesson (BR-LES-08).
     expect(await api.getDraft(b.id)).toMatchObject({ consumed_at: expect.any(String), lesson_id: expect.stringMatching(/^l-n/) });
@@ -311,7 +308,7 @@ describe("editing a draft", () => {
     const draft = await ready(await ask());
     secondsLater(30);
     const edited = await api.updateDraft(draft.id, { title: "Мој наслов" });
-    expect(edited).toMatchObject({ status: "ready", title: "Мој наслов", review_summary: draft.review_summary, questions: draft.questions });
+    expect(edited).toMatchObject({ status: "ready", title: "Мој наслов", questions: draft.questions });
     expect(edited.updated_at).toBe(new Date(now).toISOString());
     expect(edited.created_at).toBe(draft.created_at);
     expect(await createMockApi(source).getDraft(draft.id)).toEqual(edited);
@@ -325,13 +322,13 @@ describe("editing a draft", () => {
     expect(edited).toMatchObject({ title: "", status: "ready" });
     expect(edited.questions![0]).toMatchObject({ prompt: "", timer_seconds: 3 });
     // It is refused as a lesson, not as a draft.
-    expect((await rejection(api.saveLesson({ draft_id: draft.id, title: "Х", review_summary: "", questions: unfinished as Lesson["questions"] }))).code).toBe("validation_failed");
+    expect((await rejection(api.saveLesson({ draft_id: draft.id, title: "Х", questions: unfinished as Lesson["questions"] }))).code).toBe("validation_failed");
   });
 
   test("refuses what is not the shape of a draft: unknown fields, more than eight questions, a repeated id, a question of a kind that is not", async () => {
     const draft = await ready(await ask());
     const q = draft.questions[0];
-    expect((await rejection(api.updateDraft(draft.id, { year: 3 } as never))).code).toBe("validation_failed");
+    expect((await rejection(api.updateDraft(draft.id, { review_summary: "Резиме." } as never))).code).toBe("validation_failed");
     expect((await rejection(api.updateDraft(draft.id, { title: 3 } as never))).code).toBe("validation_failed");
     const nine = Array.from({ length: 9 }, (_, i) => ({ ...q, id: `x${i}` }));
     expect((await rejection(api.updateDraft(draft.id, { questions: nine }))).code).toBe("validation_failed");
@@ -342,7 +339,7 @@ describe("editing a draft", () => {
 
   test("a saved draft is the lesson's now and cannot be edited", async () => {
     const draft = await ready(await ask());
-    await api.saveLesson({ draft_id: draft.id, title: draft.title, review_summary: draft.review_summary, questions: draft.questions as Lesson["questions"] });
+    await api.saveLesson({ draft_id: draft.id, title: draft.title, questions: draft.questions as Lesson["questions"] });
     expect((await rejection(api.updateDraft(draft.id, { title: "Х" }))).code).toBe("invalid_state");
   });
 });
@@ -351,7 +348,7 @@ describe("refining is a job too (FR-LES-15)", () => {
   test("answers a new draft at once, pending, made from this one, and the earlier one is left as it was", async () => {
     const draft = await ready(await ask());
     const refined = await api.refineDraft(draft.id, "easier");
-    expect(refined).toMatchObject({ status: "pending", previous_draft_id: draft.id, refinements: ["easier"], questions: null, source_id: draft.source_id, year: draft.year });
+    expect(refined).toMatchObject({ status: "pending", previous_draft_id: draft.id, refinements: ["easier"], questions: null, source_id: draft.source_id });
     expect(refined.id).not.toBe(draft.id);
     expect(await api.getDraft(draft.id)).toEqual(draft);
     secondsLater(REFINE_MS / 1000 - 1);
@@ -363,10 +360,9 @@ describe("refining is a job too (FR-LES-15)", () => {
   test("refines what the teacher has made of the draft, not what was written first", async () => {
     const draft = await ready(await ask());
     const edited = draft.questions.map((q, i) => (i === 0 ? { ...q, prompt: "Моето прашање?" } : q));
-    await api.updateDraft(draft.id, { title: "Мој наслов", review_summary: "Мое резиме.", questions: edited });
+    await api.updateDraft(draft.id, { title: "Мој наслов", questions: edited });
     const refined = await ready(await api.refineDraft(draft.id, "shorter_timers"), REFINE_MS);
     expect(refined.title).toBe("Мој наслов");
-    expect(refined.review_summary).toBe("Мое резиме.");
     expect(refined.questions[0].prompt).toBe("Моето прашање?");
     expect(refined.questions[0].timer_seconds).toBeLessThan(edited[0].timer_seconds);
   });
@@ -409,7 +405,7 @@ describe("refining is a job too (FR-LES-15)", () => {
 describe("editing a lesson that is saved", () => {
   const save = async () => {
     const draft = await ready(await ask());
-    return api.saveLesson({ draft_id: draft.id, title: draft.title, review_summary: draft.review_summary, questions: draft.questions as Lesson["questions"] });
+    return api.saveLesson({ draft_id: draft.id, title: draft.title, questions: draft.questions as Lesson["questions"] });
   };
 
   test("makes a draft of the lesson, ready at once, that carries the lesson and its content", async () => {
@@ -421,9 +417,6 @@ describe("editing a lesson that is saved", () => {
       consumed_at: null,
       previous_draft_id: null,
       title: lesson.title,
-      review_summary: lesson.review_summary,
-      subject: lesson.subject,
-      year: lesson.year,
     });
     expect(draft.questions).toEqual(lesson.questions);
     expect((await api.listDrafts()).map((d) => [d.id, d.lesson_id])).toEqual([[draft.id, lesson.id]]);
@@ -449,7 +442,7 @@ describe("editing a lesson that is saved", () => {
     const lesson = await save();
     const draft = readyOf(await api.startEditing(lesson.id));
     const edited = draft.questions.map((q, i) => (i === 0 ? { ...q, prompt: "Ново прашање?" } : q));
-    const saved = await api.updateLesson(lesson.id, { title: "Нов наслов", review_summary: draft.review_summary, questions: edited as Lesson["questions"], draft_id: draft.id });
+    const saved = await api.updateLesson(lesson.id, { title: "Нов наслов", questions: edited as Lesson["questions"], draft_id: draft.id });
     expect(saved).toMatchObject({ id: lesson.id, version: 2, title: "Нов наслов" });
     expect(saved.questions[0].prompt).toBe("Ново прашање?");
     expect(await api.getDraft(draft.id)).toMatchObject({ consumed_at: expect.any(String), lesson_id: lesson.id });
@@ -463,11 +456,11 @@ describe("editing a lesson that is saved", () => {
   test("an edit draft is not saved as a new lesson, and a draft of another lesson is not this lesson's", async () => {
     const lesson = await save();
     const draft = readyOf(await api.startEditing(lesson.id));
-    expect((await rejection(api.saveLesson({ draft_id: draft.id, title: draft.title, review_summary: draft.review_summary, questions: draft.questions as Lesson["questions"] }))).code).toBe("invalid_state");
+    expect((await rejection(api.saveLesson({ draft_id: draft.id, title: draft.title, questions: draft.questions as Lesson["questions"] }))).code).toBe("invalid_state");
     const other = (await api.listLessons()).find((l) => l.id !== lesson.id)!;
     const content = await api.getLesson(other.id);
     expect((await rejection(api.updateLesson(other.id, { ...content, draft_id: draft.id }))).code).toBe("invalid_state");
-    expect((await rejection(api.updateLesson(lesson.id, { title: draft.title, review_summary: "", questions: draft.questions as Lesson["questions"], draft_id: "d-none" }))).code).toBe("not_found");
+    expect((await rejection(api.updateLesson(lesson.id, { title: draft.title, questions: draft.questions as Lesson["questions"], draft_id: "d-none" }))).code).toBe("not_found");
   });
 
   test("an edit draft can be refined, and the refinement is of the same lesson", async () => {
@@ -475,7 +468,7 @@ describe("editing a lesson that is saved", () => {
     const draft = readyOf(await api.startEditing(lesson.id));
     const refined = await ready(await api.refineDraft(draft.id, "easier"), REFINE_MS);
     expect(refined).toMatchObject({ lesson_id: lesson.id, previous_draft_id: draft.id });
-    const saved = await api.updateLesson(lesson.id, { title: refined.title, review_summary: refined.review_summary, questions: refined.questions as Lesson["questions"], draft_id: refined.id });
+    const saved = await api.updateLesson(lesson.id, { title: refined.title, questions: refined.questions as Lesson["questions"], draft_id: refined.id });
     expect(saved.version).toBe(2);
   });
 });
@@ -483,14 +476,14 @@ describe("editing a lesson that is saved", () => {
 describe("saving a draft as a lesson", () => {
   test("only when it is ready and not saved before", async () => {
     const pending = await ask();
-    expect((await rejection(api.saveLesson({ draft_id: pending.id, title: "Х", review_summary: "", questions: [] }))).code).toBe("invalid_state");
-    expect((await rejection(api.saveLesson({ draft_id: "d-none", title: "Х", review_summary: "", questions: [] }))).code).toBe("not_found");
+    expect((await rejection(api.saveLesson({ draft_id: pending.id, title: "Х", questions: [] }))).code).toBe("invalid_state");
+    expect((await rejection(api.saveLesson({ draft_id: "d-none", title: "Х", questions: [] }))).code).toBe("not_found");
   });
 
-  test("wire shape of a draft carries nothing that is not in the spec's list but the proposed fields", async () => {
+  test("wire shape of a draft carries nothing that is not in the spec's list but the proposed fields, and no subject, year or review summary", async () => {
     const draft = await ready(await ask());
     expect(Object.keys(draft).sort()).toEqual(
-      ["consumed_at", "created_at", "emphasis", "failure", "id", "lesson_id", "previous_draft_id", "questions", "refinements", "review_summary", "source", "source_id", "status", "subject", "title", "updated_at", "year"].sort(),
+      ["consumed_at", "created_at", "emphasis", "failure", "id", "lesson_id", "previous_draft_id", "questions", "refinements", "source", "source_id", "status", "title", "updated_at"].sort(),
     );
     const demo = stored()[0];
     expect(toWire(demo, now)).toEqual(draft);

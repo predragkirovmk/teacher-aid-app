@@ -5,12 +5,11 @@ import { DRAFT_POLL_MS } from "../lessons";
 import { firstName, initials, personName, schoolTypeOf } from "../format";
 import { authStatusOf, type AuthStatus, type EndReason } from "../guard";
 import { applyClassEvent, applyConsoleEvent, consoleNeedsRead, serverOffset, tokenIsStale } from "../live";
-import { preparedLessons } from "../today";
 import { actions, useTeacher } from "../store";
 import { apiMode } from "./config";
 import { api, type CallOptions, type ChannelStatus, type TeacherApi } from "./client";
 import { toApiError } from "./errors";
-import { change, forget, invalidate, mapQuery, resetQueries, seed, slotFor, useQuery, type Query } from "./query";
+import { change, forget, invalidate, resetQueries, seed, slotFor, useQuery, type Query } from "./query";
 import { endSession, useSessionEnd } from "./session";
 import {
   classChannel,
@@ -18,18 +17,11 @@ import {
   type ChannelEvent,
   type ClassViewSnapshot,
   type ConsoleSnapshot,
-  type NoDeviceReason,
   type TeacherChannel,
 } from "./types";
 import type {
   AdhocRequest,
-  EndResult,
-  PracticeResults,
-  PracticeSetResult,
   SessionReview,
-  CourseDashboard,
-  CoursePatch,
-  CourseSummary,
   CreateSessionRequest,
   DraftPatch,
   DraftSummary,
@@ -58,7 +50,7 @@ export type { Query } from "./query";
  * while a refresh runs, and renders the same on the server and on the first client render. Each change goes
  * through the adapter and then loads again what it touched, so a list is right the moment a change has been made.
  *
- * Query keys: `me`, `courses`, `dashboard:<course>`, `lessons`, `lessons:<id>`, `draft-list`, `drafts:<id>`, `library`,
+ * Query keys: `me`, `lessons`, `lessons:<id>`, `draft-list`, `drafts:<id>`, `library`,
  * `open-session`, `console:<session>`, `class-view:<session>`. A change names the first part of the keys it touches.
  */
 
@@ -67,17 +59,10 @@ export type { Query } from "./query";
 /** The teacher who is signed in, and their school. */
 export const useMe = (): Query<Me> => useQuery("me", (a) => a.getMe());
 
-/** The teacher's courses: each a class and a subject. */
-export const useCourses = (): Query<CourseSummary[]> => useQuery("courses", (a) => a.listCourses());
-
-/** One course's results page (FR-DASH-01). `enabled: false` waits for an id. */
-export const useDashboard = (courseId: Id | undefined): Query<CourseDashboard> =>
-  useQuery(`dashboard:${courseId}`, (a) => a.getDashboard(courseId as Id), courseId !== undefined);
-
 /** All the teacher's lessons, newest change first. */
 export const useLessons = (): Query<LessonSummary[]> => useQuery("lessons", (a) => a.listLessons());
 
-/** One lesson, whole: its questions and review summary. Also reads a lesson of the school library, to preview it. */
+/** One lesson, whole: its questions. Also reads a lesson of the school library, to preview it. */
 export function useLesson(lessonId: Id | undefined): Query<Lesson> {
   const q = useQuery(`lessons:${lessonId}`, (a) => a.getLesson(lessonId as Id), lessonId !== undefined);
   // A lesson that has just been deleted by the page that is showing it: the teacher is on the way to the list, so the page waits for
@@ -256,35 +241,15 @@ export function useFreshCode(serverNow: string | undefined, validTo: string | un
 }
 
 /** The lesson, moved on from the lobby to teaching (forward only, 4.1). The answer is the fresh console, put into the cache. */
-export async function advanceSession(sessionId: Id, to: "teaching" | "review"): Promise<ConsoleSnapshot> {
+export async function advanceSession(sessionId: Id, to: "teaching"): Promise<ConsoleSnapshot> {
   const snapshot = await change((a) => a.advance(sessionId, { to }));
   seed(`console:${sessionId}`, snapshot);
   seed("open-session", { server_now: snapshot.server_now, session: snapshot.session });
   return snapshot;
 }
 
-/** A student marked present without a phone, with the reason (FR-ATT-04). The answer is the fresh console. */
-export async function markNoDevice(sessionId: Id, studentId: Id, reason: NoDeviceReason): Promise<ConsoleSnapshot> {
-  try {
-    const snapshot = await change((a) => a.markNoDevice(sessionId, studentId, { reason }));
-    seed(`console:${sessionId}`, snapshot);
-    return snapshot;
-  } catch (e) {
-    // The student joined with a phone while the teacher was choosing: the console is told how things stand now.
-    if (toApiError(e).code === "invalid_state") invalidate(`console:${sessionId}`);
-    throw e;
-  }
-}
-
-/** The mark taken back: the student is as they were before it. The answer is the fresh console. */
-export async function clearNoDevice(sessionId: Id, studentId: Id): Promise<ConsoleSnapshot> {
-  const snapshot = await change((a) => a.clearNoDevice(sessionId, studentId));
-  seed(`console:${sessionId}`, snapshot);
-  return snapshot;
-}
-
 /**
- * A question sent, its answer shown or skipped, or a quick one made: each answers the fresh console, which is put into the cache, so the panel
+ * A question sent or skipped, or a quick one made: each answers the fresh console, which is put into the cache, so the panel
  * moves at once and the next event finds it already there (FR-CON-06).
  */
 async function control(sessionId: Id, call: (a: TeacherApi) => Promise<ConsoleSnapshot>): Promise<ConsoleSnapshot> {
@@ -302,41 +267,28 @@ async function control(sessionId: Id, call: (a: TeacherApi) => Promise<ConsoleSn
 
 /** Send a question to the students (one tap, FR-POP-01). */
 export const fireQuestion = (sessionId: Id, sqId: Id): Promise<ConsoleSnapshot> => control(sessionId, (a) => a.fireQuestion(sessionId, sqId));
-/** Show the right answer and the counts, once the question has closed. */
-export const revealQuestion = (sessionId: Id, sqId: Id): Promise<ConsoleSnapshot> => control(sessionId, (a) => a.revealQuestion(sessionId, sqId));
 /** Take a question out of the lesson: it does not count (BR-SKIP-01). */
 export const skipQuestion = (sessionId: Id, sqId: Id): Promise<ConsoleSnapshot> => control(sessionId, (a) => a.skipQuestion(sessionId, sqId));
 /** A quick question made on the spot, sent at once (FR-POP-04). */
 export const fireAdhoc = (sessionId: Id, request: AdhocRequest): Promise<ConsoleSnapshot> => control(sessionId, (a) => a.fireAdhoc(sessionId, request));
 
-/** Mark a student's question answered aloud, or take that back (FR-ANON-10). The console and the review are read again for it. */
+/** Mark a student's question answered aloud, or take that back (FR-ANON-10). The console is read again for it. */
 export async function setAnonAnswered(sessionId: Id, anonId: Id, answered: boolean): Promise<void> {
-  await change((a) => a.markAnonAnswered(sessionId, anonId, answered), [`console:${sessionId}`, `review:${sessionId}`]);
+  await change((a) => a.markAnonAnswered(sessionId, anonId, answered), [`console:${sessionId}`]);
 }
 
-/** The review of a lesson (FR-REV-03), and, once it has ended, its whole register. `enabled` waits until the lesson has reached the review. */
+/** The students who joined a lesson that has ended, each with their score (the end page). `enabled` waits until the lesson has ended. */
 export const useReview = (sessionId: Id, enabled = true): Query<SessionReview> => useQuery(`review:${sessionId}`, (a) => a.getReview(sessionId), enabled);
-
-/** The practice set of a lesson and who has done it (FR-PRA-10); `not_found` while none has been sent. It looks again every 30 seconds while the page is open. */
-export function usePracticeResults(sessionId: Id): Query<PracticeResults> {
-  const query = useQuery(`practice:${sessionId}`, (a) => a.getPracticeResults(sessionId));
-  const { refetch } = query;
-  useEffect(() => {
-    const timer = setInterval(refetch, 30_000);
-    return () => clearInterval(timer);
-  }, [refetch]);
-  return query;
-}
 
 /**
  * End the lesson (F-10). On success the lesson is no longer the open one: the band and the reminder go, a console still showing it is told it ended, and the
  * review is read afresh. A lesson another window already ended is `invalid_state`: it is as good as ended, the screens look again, and the answer is null.
  */
-export async function endLesson(sessionId: Id): Promise<EndResult | null> {
+export async function endLesson(sessionId: Id): Promise<SessionReview | null> {
   try {
     const result = await change((a) => a.endSession(sessionId));
     seed("open-session", { server_now: result.server_now, session: null });
-    invalidate("console", "review", "class-view", "lessons", "courses");
+    invalidate("console", "review", "class-view", "lessons");
     return result;
   } catch (e) {
     if (toApiError(e).code === "invalid_state") {
@@ -345,13 +297,6 @@ export async function endLesson(sessionId: Id): Promise<EndResult | null> {
     }
     throw e;
   }
-}
-
-/** Make the practice set (F-12). `practice_set` is null when nothing was missed (EC-PRA-07). */
-export async function sendPracticeSet(sessionId: Id): Promise<PracticeSetResult> {
-  const result = await change((a) => a.createPracticeSet(sessionId));
-  invalidate(`practice:${sessionId}`);
-  return result;
 }
 
 // ---- Who is signed in -----------------------------------------------------------------------------
@@ -385,19 +330,6 @@ export async function signOut(): Promise<void> {
 
 // ---- Derived --------------------------------------------------------------------------------------
 
-/** One course, from the list. Null when the teacher has no such course. */
-export function useCourse(courseId: Id | undefined): Query<CourseSummary | null> {
-  const q = useCourses();
-  return useMemo(() => mapQuery(q, (all) => all.find((c) => c.id === courseId) ?? null), [q, courseId]);
-}
-
-/** The lessons that are prepared and have not been run, the one running now left out: what Today lists. */
-export function usePreparedLessons(): Query<LessonSummary[]> {
-  const lessons = useLessons();
-  const running = useOpenSession().data?.session?.lesson.id ?? null;
-  return useMemo(() => mapQuery(lessons, (all) => preparedLessons(all, running)), [lessons, running]);
-}
-
 /**
  * The teacher's name as the interface language writes it (the English interface uses Latin letters), with the first name
  * for greetings and the initials for the badge. Null until the API has answered.
@@ -415,7 +347,7 @@ export function useTeacherName(): { full: string; first: string; initials: strin
 // ---- Keeping the words in step with the school -----------------------------------------------------
 
 /**
- * The school decides whether the app says "ученици" and "клас" or "студенти" and "група". The store keeps the last type
+ * The school decides whether the app says "ученици" or "студенти". The store keeps the last type
  * seen, so the words are right from the first paint; this updates it from the school once the API has answered. The demo
  * has no such step: there the switch in Settings is what chooses the school, and the store already holds the choice.
  */
@@ -440,10 +372,6 @@ export async function setFirstRunDone(): Promise<Me> {
   seed("me", me);
   return me;
 }
-
-/** The speed bonus on or off for a course (BR-PTS-04). */
-export const updateCourse = (courseId: Id, patch: CoursePatch): Promise<CourseSummary> =>
-  change((a) => a.updateCourse(courseId, patch), ["courses", "dashboard"]);
 
 /**
  * Add the material a lesson is made from: a document or typed sentences. Nothing is listed yet, so nothing is loaded again.

@@ -2,20 +2,18 @@ import type { DraftSummary, Id, LessonSummary } from "./api/types";
 import { isOne } from "./format";
 import type { Key } from "./i18n";
 import type { Locale } from "./store";
-import { matchesChoice, type SubjectChoice } from "./subjects";
 import { relativeDay, sayWhen, type When } from "./when";
 
 /**
- * What the Lessons page lists and in what order. Nothing here touches the browser, so all of it is unit tested.
+ * What the lists of lessons hold and in what order. Nothing here touches the browser, so all of it is unit tested.
  *
- * Three sections, each shown only when it has something: the lessons that are prepared (never run, `times_run == 0`), the lessons that
- * are not finished (drafts) and the lessons that were held (`times_run > 0`), in that order, as on Today (a few forgotten drafts must not
- * push the lesson for the day off the first screen, and the held lessons, which are the long ones, come last). In the first two the
- * lesson changed last comes first; in the held ones the lesson held last, since that is the date the card says. The API fixes no order
- * for `GET /lessons` (OPEN-37), so every list is sorted here.
+ * The Lessons page lists the lessons that are prepared (never run, `times_run == 0`), then the ones that are not finished (drafts); the
+ * lessons that were held (`times_run > 0`) are in the Library, under "Мои". In the first two the lesson changed last comes first; in the
+ * held ones the lesson held last, since that is the date the row says. The API fixes no order for `GET /lessons` (OPEN-37), so every list
+ * is sorted here.
  */
 
-/** The id Today's link leads to: the section of the lessons that are not finished. */
+/** The id of the section of the lessons that are not finished, so a link can lead to it. */
 export const UNFINISHED_ANCHOR = "nedovrseni";
 
 const changedAt = (x: { updated_at: string }): number => {
@@ -46,15 +44,14 @@ export type LessonSections = {
   held: LessonSummary[];
 };
 
-/** The lessons of the choice of subject, in their two sections. */
-export function lessonSections(lessons: readonly LessonSummary[], choice: SubjectChoice): LessonSections {
-  const shown = newestChangeFirst(lessons.filter((l) => matchesChoice(choice, l.subject)));
+/** The lessons in their two sections: prepared ones for the Lessons page, held ones for the Library. */
+export function lessonSections(lessons: readonly LessonSummary[]): LessonSections {
+  const shown = newestChangeFirst(lessons);
   return { prepared: shown.filter((l) => l.times_run === 0), held: lastHeldFirst(shown.filter((l) => l.times_run > 0)) };
 }
 
-/** The unfinished lessons of the choice of subject. */
-export const unfinishedDrafts = (drafts: readonly DraftSummary[], choice: SubjectChoice): DraftSummary[] =>
-  newestChangeFirst(drafts.filter((d) => matchesChoice(choice, d.subject)));
+/** The unfinished lessons, the one changed last first. */
+export const unfinishedDrafts = (drafts: readonly DraftSummary[]): DraftSummary[] => newestChangeFirst(drafts);
 
 // ---- The words of the lists ----------------------------------------------------------------------------------------------
 
@@ -62,9 +59,6 @@ type Say = (key: Key, vars?: Record<string, string | number>) => string;
 
 /** "Одржани (12)": a section's name and how many lessons are in it, so that a long one is known to be long before it is scrolled. */
 export const withCount = (t: Say, label: string, n: number): string => t("list.count", { label, n });
-
-/** "Прикажани се 5 лекции: Математика.": what a choice of subject has done to the list, said to a screen reader and not shown. */
-export const shownWords = (t: Say, locale: Locale, n: number, what: string): string => t(isOne(n, locale) ? "list.shown.one" : "list.shown.many", { n, what });
 
 // ---- When a lesson was held, and how often -------------------------------------------------------------------------
 

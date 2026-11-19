@@ -138,6 +138,7 @@ body {
   font-size: var(--fs-body);
   line-height: var(--lh-body);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a,
@@ -370,7 +371,9 @@ button {
     position: sticky;
     top: var(--frame);
     height: calc(100dvh - 2 * var(--frame));
-    margin: var(--frame) 0 var(--frame) var(--frame);
+    /* No margin below: its height already leaves the frame there. With one, the sidebar ends flush with the page, and at the very
+       bottom of a page whose height falls on a fraction of a pixel the end of the page pushes it up by that fraction. */
+    margin: var(--frame) 0 0 var(--frame);
     border-radius: var(--r-xl);
     box-shadow: var(--shadow-panel);
   }
@@ -455,7 +458,7 @@ button {
   }
 }
 /*
- * A lesson is running: said on every page but Today, in the sidebar on a laptop and in the top bar where the sidebar is a
+ * A lesson is running: said on every page but its own, in the sidebar on a laptop and in the top bar where the sidebar is a
  * drawer. It is a quiet block with the one yellow mark of the frame, the sign that something is live; the words say what, and
  * it does not move. The top bar then has room for a second row, so tabbing back up keeps clear of it, and in a window too short
  * or too narrow to spare it (a zoomed one) it scrolls away with the page instead of covering a third of it.
@@ -530,7 +533,7 @@ button {
   .running--top .running__tag {
     align-items: center;
     padding: 0;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
   .running--top .running__tag svg {
     margin-top: 0;
@@ -549,6 +552,9 @@ button {
 /* A phone's width (or a laptop's, zoomed to 400%): the words, then the button under them. */
 @media (max-width: 29.9375rem) {
   .running--top {
+    /* The lesson's title may be long: the tile is never wider than the bar, and the title wraps inside it. */
+    flex: 1 1 100%;
+    min-width: 0;
     grid-auto-flow: row;
     justify-content: stretch;
     padding: 0.75rem;
@@ -816,13 +822,13 @@ button {
   }
 }
 /* What a quiet button sits on. A white surface: the tint, no edge. A well inside one: white again, with the edge. */
-:is(.card, .dialog, .lesson, .question, .band, .savebar, .states, .qpanel, .qitem, .rpanel, .inbox) {
+:is(.card, .dialog, .lesson, .question, .savebar, .qpanel, .qitem, .inbox) {
   --quiet: var(--tint);
   --quiet-edge: 0 0 transparent;
   --box: var(--well);
   --box-ring: 0 0 transparent;
 }
-:is(.note-box, .problem, .callout, .question__why, .person, .inbox__item, .rlist__item, .drop, .load-problem) {
+:is(.note-box, .problem, .callout, .question__why, .person, .inbox__item, .drop, .load-problem) {
   --quiet: var(--surface);
   --quiet-edge: inset 0 0 0 1px var(--edge);
 }
@@ -1594,77 +1600,6 @@ button {
   margin: 0 0 var(--sp-3);
 }
 
-/* ---- Today ---- */
-/* The date is a small line above the title: it places the page before the title names it. In the markup it comes after the
-   title, which is the order a screen reader wants. */
-.head__date {
-  order: -1;
-  margin: 0 0 0.375rem;
-  font-size: var(--fs-small);
-  font-weight: 500;
-  line-height: 1.3;
-}
-
-/* A lesson is running: the band at the top of Today. Yellow is the colour of what is live, here the edge of the band and the
-   ground of its tag; the tag says it in words. */
-.band {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-3) var(--sp-4);
-  padding: var(--sp-3) var(--sp-4);
-  border: 2px solid var(--yellow);
-  border-radius: var(--r-l);
-  background: var(--surface);
-}
-.band__text {
-  flex: 1 1 22rem;
-  min-width: 0;
-  display: grid;
-  gap: 0.25rem;
-}
-.band__tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  justify-self: start;
-  margin: 0 0 0.25rem;
-  padding: 0.1875rem 0.75rem 0.1875rem 0.5rem;
-  border-radius: var(--r-pill);
-  background: var(--yellow);
-  color: var(--on-yellow);
-  font-size: var(--fs-small);
-  font-weight: 600;
-  line-height: 1.375;
-}
-.band__course {
-  margin: 0;
-  font-size: var(--fs-large);
-  font-weight: 650;
-  line-height: 1.2;
-  letter-spacing: -0.012em;
-  overflow-wrap: anywhere;
-}
-.band__line {
-  margin: 0;
-  color: var(--ink-2);
-  text-wrap: pretty;
-}
-/* The way back, which is the main button here, and beside it the one red control. */
-.band__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-2);
-  max-width: 100%;
-}
-/* The button keeps its size while it can and gives way when the line is narrower than it (a zoomed window), so it stays inside the band. */
-.band .btn {
-  flex: 0 1 auto;
-  max-width: 100%;
-}
-
 /* The draft's note and the sentence the teacher asked to stress: a line or two each, above the questions and not in front of them. */
 .draft__note {
   display: flex;
@@ -1807,9 +1742,6 @@ button {
   margin-top: var(--sp-2);
 }
 @media (max-width: 40rem) {
-  .band {
-    padding: 1.25rem;
-  }
   /* The words take the width and the button goes under them; the arrow stays at the end of the first line. */
   .lesson {
     flex-wrap: wrap;
@@ -2025,6 +1957,12 @@ button {
   object-fit: contain;
   justify-self: start;
 }
+/* The outline is neutral black, not the ink, so it never tints a picture (no token is neutral, which is why it is a raw colour). */
+.question__image,
+.imagefield__preview {
+  outline: 1px solid rgba(0, 0, 0, 0.1);
+  outline-offset: -1px;
+}
 .question__prompt {
   margin: 0;
   font-size: var(--fs-row);
@@ -2193,31 +2131,6 @@ button {
   flex: 1 0 100%;
   margin-left: calc(28px + 0.75rem);
 }
-/* Subjects have long names and there may be many: one under the other, so they read as a list and not as a ragged grid. */
-.prepare__tiles--rows .choices {
-  grid-template-columns: minmax(0, 1fr);
-}
-/* What there is no choice about, because there is only one: a plain line to read, not a row that looks chosen (and so pressable). */
-.card .prepare__stated {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem 0.75rem;
-  max-width: none;
-  color: var(--ink);
-  font-size: var(--fs-row);
-}
-.prepare__stated-label {
-  color: var(--ink-2);
-}
-.prepare__stated-value {
-  font-size: var(--fs-row);
-  font-weight: 600;
-}
-.prepare__stated-detail {
-  color: var(--ink-2);
-}
-
 /* The two kinds of box the teacher writes in: 17px words on white, an edge strong enough to find the box by, and the same
    ring as everything when it has the focus. */
 .field {
@@ -2707,23 +2620,11 @@ button {
   }
 }
 
-/* ---- Lessons and the Library ---- */
-/* The row of subjects is a segmented control: the choices side by side in one track, the chosen one a white piece with a tick
-   and heavier words (never colour alone). They are still radio buttons, so the arrow keys move between them. With many
-   subjects, or long names, the track takes a second line. Its name is read out and not shown: the choices say what they are. */
-.subjects {
-  display: grid;
-  justify-items: start;
-}
-.subjects__label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-:is(.subjects, .seg) .choices {
+/* ---- Segmented controls ---- */
+/* A segmented control: the choices side by side in one track, the chosen one a white piece with a tick and heavier words (never
+   colour alone). They are still radio buttons, so the arrow keys move between them. With many choices, or long names, the track
+   takes a second line. */
+.seg .choices {
   position: relative;
   display: flex;
   flex-wrap: wrap;
@@ -2733,7 +2634,7 @@ button {
   border-radius: 1.625rem;
   background: var(--well-2);
 }
-:is(.subjects, .seg) .choice {
+.seg .choice {
   flex: 0 1 auto;
   gap: 0.375rem;
   min-height: var(--tap-small);
@@ -2745,22 +2646,22 @@ button {
   font-size: var(--fs-body);
   font-weight: 500;
 }
-:is(.subjects, .seg) .choice svg {
+.seg .choice svg {
   width: 1.25rem;
   height: 1.25rem;
 }
 /* What is not chosen has no mark at all; the chosen one has the tick. */
-:is(.subjects, .seg) .choice[data-checked="false"] svg {
+.seg .choice[data-checked="false"] svg {
   display: none;
 }
-:is(.subjects, .seg) .choice[data-checked="true"] {
+.seg .choice[data-checked="true"] {
   border-color: transparent;
   background: var(--surface);
   box-shadow: 0 0 0 1px rgba(13, 42, 50, 0.06), 0 1px 3px rgba(13, 42, 50, 0.14);
   color: var(--teal);
   font-weight: 600;
 }
-:is(.subjects, .seg) .choice__text {
+.seg .choice__text {
   flex: none;
 }
 /* What differs between a lesson that was held and one that was not: when, and how many times. */
@@ -2883,68 +2784,6 @@ button {
 }
 
 /* ---- The live lesson: the console (names, the teacher's own screen) ---- */
-/* Where the lesson stands: four words in order. The current one has a filled mark, a line under its word and the word "Сега"; never colour alone. */
-.states {
-  list-style: none;
-  margin: 0;
-  padding: 0.25rem 1.25rem;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0 var(--sp-1);
-  border-radius: var(--r-l);
-  background: var(--surface);
-  box-shadow: var(--ring);
-}
-.states__item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: var(--tap);
-  color: var(--ink-2);
-  font-size: var(--fs-small);
-  font-weight: 400;
-}
-.states__item + .states__item::before {
-  content: "";
-  width: 1rem;
-  height: 2px;
-  margin-right: var(--sp-1);
-  border-radius: 1px;
-  background: var(--edge);
-}
-.states__item svg {
-  flex: none;
-}
-.states__item[data-position="current"] {
-  color: var(--ink);
-  font-weight: 600;
-}
-/* Where the window is not wide enough for the four on one line, the short lines between them go: the filled mark, the word and "Сега" say it. */
-@media (max-width: 69.99rem) {
-  .states__item + .states__item::before {
-    display: none;
-  }
-  .states {
-    gap: 0 var(--sp-2);
-  }
-}
-.states__word {
-  line-height: 1.2;
-}
-.states__item[data-position="current"] .states__word {
-  padding-block: 0.25rem;
-  border-bottom: 2px solid var(--teal);
-}
-.states__now {
-  padding: 0.125rem 0.625rem;
-  border-radius: var(--r-pill);
-  background: var(--teal);
-  color: var(--on-teal);
-  font-size: var(--fs-small);
-  font-weight: 600;
-}
-
 .live__side {
   display: grid;
   gap: var(--sp-3);
@@ -2979,9 +2818,20 @@ button {
 /* The projector, in the console's top bar: the button, under it one line that says where its window stands, and the one warning that
    matters. The line keeps its room while it has nothing to say, so the bar is the same height before and after the window is opened. */
 .projector {
+  position: relative;
   display: grid;
   justify-items: start;
   gap: 0.25rem;
+}
+/* From a laptop's width the status line leaves the button's box and sits on the bar's second line, level with the course, so the buttons stay
+   level with the title. With the blocked-popup callout the line stays in flow. */
+@media (min-width: 64rem) {
+  .projector:not(:has(.callout)) .projector__status {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    white-space: nowrap;
+  }
 }
 .projector__status {
   display: flex;
@@ -3044,7 +2894,7 @@ button {
   color: var(--ink);
 }
 
-/* Who has joined: every student by name, in two groups, each with an icon and a word. */
+/* Who has joined: the students who scanned the code, by name, each with an icon and a word. */
 .roster {
   container: roster / inline-size;
   display: grid;
@@ -3054,44 +2904,28 @@ button {
   color: var(--ink);
   font-size: var(--fs-row);
   font-weight: 600;
-}
-.card .roster__nophone {
-  color: var(--ink-2);
-}
-/* What was done, said once and read out. It has no room of its own until it has something to say, so the list sits close under the count. */
-.card .roster__said {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-}
-.card .roster__said:empty {
-  display: none;
-}
-.roster__group {
-  display: grid;
-  gap: var(--sp-1);
-}
-.roster__heading {
-  margin: var(--sp-1) 0 0;
-  font-size: var(--fs-body);
-  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 .card .roster__none {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem;
   color: var(--ink);
   font-weight: 500;
+}
+/* An icon beside words that may wrap keeps its size and sits on the first line, not at the middle of two. */
+.card .roster__none svg {
+  flex: none;
+  margin-top: -0.0625rem;
 }
 .roster__list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.25rem;
+  gap: 0.5rem;
 }
-/* A student is one line: the name, then what is worth saying (an icon and a word), and a button when there is one. It wraps below the name only when it must. */
+/* A student is one line: the name, then what is worth saying (an icon and a word). It wraps below the name only when it must. */
 .person {
   display: flex;
   flex-wrap: wrap;
@@ -3108,7 +2942,7 @@ button {
   font-weight: 600;
   overflow-wrap: anywhere;
 }
-/* The parts of what is said about a student are items of the row itself, so the answer stays beside the name and what is longer (when a student came late, that they left the app) goes on a line of its own below. */
+/* The parts of what is said about a student are items of the row itself, so the answer stays beside the name and what is longer (that they left the app) goes on a line of its own below. */
 .person__state {
   display: contents;
 }
@@ -3133,11 +2967,6 @@ button {
   flex-basis: 100%;
   margin-left: 0;
 }
-.person[data-state="late"] .person__what {
-  order: 3;
-  flex-basis: 100%;
-  margin-left: 0;
-}
 .person__what svg {
   flex: none;
 }
@@ -3151,12 +2980,6 @@ button {
 .person__answer {
   font-weight: 500;
   color: var(--ink);
-}
-.person__action {
-  align-self: center;
-}
-.person__problem {
-  grid-column: 1 / -1;
 }
 /* A student whose connection is lost is worth a look: a teal edge besides the icon and the words. */
 .person[data-state="offline"] {
@@ -3255,8 +3078,7 @@ body:has(.cv) {
 .cvq__barrow,
 .cvq__tile,
 .cvq__why,
-.cvb,
-.cvr__anon li {
+.cvb {
   box-shadow: var(--cv-ring);
 }
 .cv__top {
@@ -3497,58 +3319,50 @@ body:has(.cv) {
   }
 }
 
-
 /* ---- Live lesson 2: the compact header, the panel "Прашањето сега", the list, the inbox ---- */
 
-/* While teaching the Back, the title and the course share a row, so the panel is in the first screen of a laptop. */
+/* The console's top bar. The way back is a quiet line above the title, as on every other page; then the title and the course. */
 .head--compact {
-  margin-bottom: var(--sp-2);
-  align-items: center;
-}
-/* The Back on the left, the title and the course in one column beside it, so the course sits under the title it belongs to. */
-.head--compact .head__text {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 0 var(--sp-3);
+  margin-bottom: var(--sp-4);
 }
 .head--compact .back {
-  grid-row: 1 / span 2;
-  margin: 0 0 0 -0.625rem;
-}
-.head--compact .head__title {
-  grid-column: 2;
-  align-self: end;
-}
-.head--compact .head__title:last-child {
-  align-self: center;
+  margin: -0.375rem 0 0 -0.625rem;
 }
 .head--compact .head__title {
   font-size: var(--fs-xl);
 }
 .head--compact .head__sub {
-  grid-column: 2;
-  align-self: start;
   margin: 0;
   font-size: var(--fs-body);
 }
-.states--compact {
-  padding: 0 var(--sp-2);
-}
-.states--compact .states__item {
-  min-height: var(--tap-small);
-}
-/* At 1024 wide the four steps and "Сега" must still be one line, so the panel is in the first screen. */
-@media (max-width: 69.99rem) {
-  .states--compact {
-    padding-inline: var(--sp-1);
-    gap: 0 var(--sp-1);
+/* From a laptop's width the bar is two lines that line up: the title level with the projector button and End, and under them the course
+   level with the line that says where the projected window stands. The way back sits above both, on its own. */
+@media (min-width: 64rem) {
+  .head--compact {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0 var(--sp-4);
   }
-  .states--compact .states__item {
-    gap: 0.375rem;
+  /* The words' own box steps aside, so the way back, the title and the course are rows of the bar itself. */
+  .head--compact .head__text {
+    display: contents;
+  }
+  .head--compact .back {
+    grid-area: 1 / 1;
+    justify-self: start;
+  }
+  .head--compact .head__title {
+    grid-area: 2 / 1;
+  }
+  .head--compact .head__sub {
+    grid-area: 3 / 1;
+    align-self: start;
+  }
+  .head--compact .head__action {
+    grid-area: 2 / 2;
   }
 }
-
 .live__teach {
   display: grid;
   gap: var(--sp-3);
@@ -3567,7 +3381,7 @@ body:has(.cv) {
 
 .qpanel {
   display: grid;
-  gap: var(--sp-2);
+  gap: var(--sp-1);
   justify-items: start;
   /* The question that is open is what is live on this page: the yellow edge. */
   border: 2px solid var(--yellow);
@@ -3660,8 +3474,34 @@ body:has(.cv) {
   color: var(--ink);
   font-weight: 500;
 }
-.qpanel__more {
-  justify-self: start;
+/* The icon kept its size and its line: a long skipped line used to squeeze it and centre it between two lines. */
+.qpanel .qpanel__said {
+  align-items: flex-start;
+}
+.qpanel .qpanel__said svg,
+.qpanel .qpanel__nudge svg {
+  flex: none;
+}
+.qpanel .qpanel__said svg {
+  margin-top: 0.0625rem;
+}
+/* The card groups by nearness: 8px inside a group, 24px between groups (the 8px gap plus a 16px margin on the first line of a group).
+   Heading: the title with the label, the state or the skipped line that follows it, 4px under the title.
+   The question: the prompt, and in the revealed step the answer. The live numbers: the timer with the progress, or the counts.
+   The doing: the buttons, with their footnote close under them. The nudge and a problem are each a group of their own. */
+.qpanel .qpanel__title + * {
+  margin-top: calc(var(--sp-1) / -2);
+}
+.qpanel .qpanel__prompt,
+.qpanel .qpanel__timer,
+.qpanel .qpanel__counts,
+.qpanel .qpanel__actions,
+.qpanel .qpanel__nudge,
+.qpanel > .problem {
+  margin-top: var(--sp-2);
+}
+.qpanel .qpanel__actions + .qpanel__hint {
+  margin-top: var(--sp-1);
 }
 
 .qlist {
@@ -3759,7 +3599,6 @@ body:has(.cv) {
   }
 }
 
-
 .inbox {
   display: grid;
   gap: var(--sp-2);
@@ -3768,6 +3607,7 @@ body:has(.cv) {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  font-variant-numeric: tabular-nums;
 }
 .card .inbox__hint,
 .card .inbox__none {
@@ -4156,7 +3996,7 @@ body:has(.cv) {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-/* Time is up, or the question does not count: the question stays where it was, and the one thing to say fills the rest. */
+/* The question does not count: the question stays where it was, and the one thing to say fills the rest. */
 .cvq__done {
   margin: 0;
   display: flex;
@@ -4169,11 +4009,9 @@ body:has(.cv) {
   line-height: 1.1;
   text-align: center;
 }
-.cvq--closed,
 .cvq--skipped {
   align-items: stretch;
 }
-.cvq--closed .cvq__done,
 .cvq--skipped .cvq__done {
   flex: 1;
   align-items: flex-end;
@@ -4181,13 +4019,9 @@ body:has(.cv) {
 .cvq--skipped .cvq__done {
   font-size: max(3rem, calc(12 * var(--u)));
 }
-.cvq--closed .cvq__progress--big,
 .cvq--skipped .cvq__prompt {
   flex: 1;
   text-align: center;
-}
-.cvq__progress--big {
-  font-size: max(2rem, calc(8 * var(--u)));
 }
 
 /* The answer shown: the question across the top, the bars on the left and the ranking beside them, both as high as the window lets them be. */
@@ -4209,6 +4043,12 @@ body:has(.cv) {
 }
 .cvq--revealed[data-fit="c"] .cvb__title {
   font-size: max(1.5rem, calc(4 * var(--u)));
+}
+/* A long name in a wide window: the ranking steps down to the size it has beside long answers, so the name keeps one line beside its points; a squarish window puts the points under the name instead, below. */
+@media (aspect-ratio > 4/3) {
+  .cvq--revealed .cvb--side[data-names="long"] .cvb__row {
+    font-size: max(1.25rem, calc(3.4 * var(--u)));
+  }
 }
 .cvq__bars {
   list-style: none;
@@ -4397,9 +4237,23 @@ body:has(.cv) {
 }
 .cvb--between {
   flex: 1;
+  /* A flex item does not shrink below its content by default: without this a long name keeps the column wide and the rows spill out of the window. */
+  min-width: 0;
 }
 .cvb--between .cvb__row {
   font-size: max(2rem, calc(6.4 * var(--u)));
+}
+/* A long name steps the rows down so that it keeps one line beside its points. */
+.cvb--between[data-names="long"] .cvb__row {
+  font-size: max(1.75rem, calc(5.4 * var(--u)));
+}
+/* Beside the ranking the corner is a column: its words go under the QR and are no wider than it, so the ranking keeps the width. */
+.cv__rest:has(.cv__between) .cv__corner {
+  flex-direction: column;
+  text-align: center;
+}
+.cv__rest:has(.cv__between) .cv__corner .cv__label {
+  max-width: min(16ch, 38vh, 24vw);
 }
 .cvb--between .cvb__title {
   font-size: max(2rem, calc(6 * var(--u)));
@@ -4416,8 +4270,21 @@ body:has(.cv) {
   .cvq--revealed[data-fit="c"] .cvb--side .cvb__row {
     font-size: max(1.5rem, calc(4.4 * var(--u)));
   }
+  /* The column is narrow here, so the points go under the name: the name has the whole width and stays on one line, whoever it is. */
+  .cvq--revealed .cvb--side .cvb__row {
+    grid-template-columns: 1.1em minmax(0, 1fr);
+    row-gap: 0;
+  }
+  .cvq--revealed .cvb--side .cvb__rank {
+    grid-row: 1 / span 2;
+  }
+  .cvq--revealed .cvb--side .cvb__name {
+    line-height: 1.2;
+  }
   .cvq--revealed .cvb--side .cvb__points {
+    grid-column: 2;
     font-size: max(1.25rem, 0.78em);
+    line-height: 1.2;
   }
   .cvq--revealed .cvb--side .cvb__title {
     font-size: max(2rem, calc(5.6 * var(--u)));
@@ -4494,8 +4361,7 @@ body:has(.cv) {
 .nav__item,
 .choice,
 .pill,
-.me,
-.cres__switch {
+.me {
   transition:
     background-color var(--dur) var(--ease),
     border-color var(--dur) var(--ease),
@@ -4513,8 +4379,7 @@ body:has(.cv) {
 }
 .provider:active:not(:disabled),
 .nav__item:active,
-.choice:active,
-.cres__switch:active {
+.choice:active {
   transform: scale(0.985);
   transition-duration: var(--dur), var(--dur), var(--dur), var(--dur), 90ms;
   transition-timing-function: var(--ease), var(--ease), var(--ease), var(--ease), var(--ease-out);
@@ -4690,11 +4555,11 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   background: transparent;
   box-shadow: none;
 }
-:is(.subjects, .seg) .choice__text,
+.seg .choice__text,
 .tabs__tab {
   transition: transform var(--spring-snappy-dur) var(--spring-snappy);
 }
-:is(.subjects, .seg) .choice[data-checked="true"] svg {
+.seg .choice[data-checked="true"] svg {
   animation: mark-land var(--spring-snappy-dur) var(--spring-snappy) backwards;
 }
 
@@ -4718,11 +4583,13 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   }
 }
 
-/* Something just done lands: the tick of a save, a sent set, a saved setting. A lesson already copied is a state, so its tick
+/* Something just done lands: the tick of a save, a saved setting. A lesson already copied is a state, so its tick
    is simply there. */
-.savestate[data-status="saved"] svg,
-.practice__sent svg,
-.cres__saved svg {
+.savestate[data-status="saved"] svg {
+  animation: mark-land var(--spring-snappy-dur) var(--spring-snappy) backwards;
+}
+/* When a student answers, the hourglass gives way to the check, which lands like a saved tick; only the icon moves, the row stays still. */
+.person__answer[data-answer="answered"] svg {
   animation: mark-land var(--spring-snappy-dur) var(--spring-snappy) backwards;
 }
 /* A wait that is going on turns, so it never looks stuck. */
@@ -4733,7 +4600,6 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
 }
 
 /* Data comes in by growing to its size: the share of a topic, a missed question. */
-.cres__bar span,
 .cvq__barfill {
   animation: bar-grow 700ms var(--spring-smooth) backwards;
 }
@@ -4863,10 +4729,8 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
     animation: pop-fade var(--dur) var(--ease-out) backwards;
   }
   .savestate svg,
-  .practice__sent svg,
-  .cres__saved svg,
+  .person__answer svg,
   .imagefield__busy svg,
-  .cres__bar span,
   .cvq__barfill,
   .cvq__rightmark,
   .cvq__bignumber,
@@ -4881,8 +4745,7 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   .nav__item,
   .choice,
   .pill,
-  .me,
-  .cres__switch {
+  .me {
     transition:
       background-color var(--dur) var(--ease),
       border-color var(--dur) var(--ease),
@@ -4895,8 +4758,7 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   .me:active,
   .provider:active:not(:disabled),
   .nav__item:active,
-  .choice:active,
-  .cres__switch:active {
+  .choice:active {
     transform: none;
   }
   .guide__bars span {
@@ -4909,11 +4771,11 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   .seg__glide[data-dir] {
     transition: opacity var(--dur) var(--ease);
   }
-  :is(.subjects, .seg) .choice__text,
+  .seg .choice__text,
   .tabs__tab {
     transition: none;
   }
-  :is(.subjects, .seg) .choice[data-checked="true"] svg {
+  .seg .choice[data-checked="true"] svg {
     animation: none;
   }
   .dialog[open],
@@ -4979,7 +4841,6 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   .running,
   .option[data-correct="true"],
   .field,
-  .states,
   .person,
   .callout,
   .cv__qr,
@@ -4991,9 +4852,6 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   .qitem,
   .qlist__wait {
     border: 2px solid CanvasText;
-  }
-  .band {
-    border-color: Highlight;
   }
   /* Each answer of an open question keeps the room for an edge that only the right one has; the tick and the words tell it apart too. */
   .opt {
@@ -5026,224 +4884,6 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   }
 }
 
-/* ---- The review on the projector: one most-missed question, or the questions the class wrote, filling the window ---- */
-.cvr {
-  justify-content: flex-start;
-}
-.cvr__facts {
-  display: grid;
-  gap: calc(1.4 * var(--u));
-}
-.cvr .cvq__why {
-  font-size: max(1.375rem, calc(4.2 * var(--u)));
-}
-.cvr .cvq__options[data-kind="true_false"] {
-  max-height: 48vh;
-}
-.cvr__count {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: max(1.75rem, calc(6 * var(--u)));
-  font-weight: 800;
-  line-height: 1.1;
-}
-.cvr__number {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  align-content: center;
-}
-.cvr__number .cvq__bignumber {
-  font-size: max(2.5rem, calc(12 * var(--u)));
-}
-.cvq__option .cvq__rightmark {
-  margin-left: auto;
-}
-/* Two wide tiles: the word is centred and the mark that says it is the right one sits under it, the same in both tiles' axis. */
-.cvq__options[data-kind="true_false"] .cvq__option {
-  flex-direction: column;
-}
-.cvq__options[data-kind="true_false"] .cvq__rightmark {
-  margin-left: 0;
-}
-.cvq__option[data-right="true"] {
-  background: var(--shadow);
-  box-shadow: inset 0 0 0 calc(0.5 * var(--u)) var(--text);
-}
-.cvr--none {
-  flex: 1;
-  display: grid;
-  place-items: center;
-}
-.cvr__none {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: calc(2.4 * var(--u));
-  max-width: 90%;
-  font-family: var(--font-display);
-  font-size: max(2.5rem, calc(10 * var(--u)));
-  font-weight: 800;
-  line-height: 1.12;
-  text-wrap: balance;
-}
-.cvr__none svg {
-  flex: none;
-}
-.cvr__anon {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-auto-rows: minmax(min-content, 1fr);
-  gap: calc(2 * var(--u));
-}
-.cvr__anon li {
-  display: grid;
-  align-content: center;
-  padding: calc(1.6 * var(--u)) calc(3 * var(--u));
-  border-radius: calc(2 * var(--u));
-  background: var(--deep);
-  font-size: max(1.75rem, calc(7 * var(--u)));
-  font-weight: 700;
-  line-height: 1.2;
-  overflow-wrap: anywhere;
-}
-.cvr__anon[data-count="3"] li {
-  font-size: max(1.625rem, calc(5.6 * var(--u)));
-}
-
-/* ---- The review and the end page on the console ---- */
-.rpanel__list {
-  display: grid;
-  gap: var(--sp-2);
-  justify-items: start;
-}
-.card .rpanel__title {
-  font-size: var(--fs-section);
-}
-.rpanel__none {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: var(--fs-large);
-  font-weight: 600;
-}
-.rpanel__done {
-  display: grid;
-  gap: var(--sp-1);
-  justify-items: start;
-  padding-top: var(--sp-2);
-  border-top: 1px solid var(--hairline);
-  width: 100%;
-}
-.card .rpanel__done p {
-  margin: 0;
-}
-.rpanel__anonnow {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: var(--sp-1);
-  width: 100%;
-}
-.rpanel__anonnow li {
-  display: grid;
-  gap: 0.25rem;
-  padding: var(--sp-1) var(--sp-2);
-  border-radius: var(--r-m);
-  background: var(--well);
-  font-size: var(--fs-row);
-  line-height: 1.3;
-  overflow-wrap: anywhere;
-}
-.rpanel__anonnow strong {
-  font-size: var(--fs-body);
-}
-.rlist {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: var(--sp-1);
-  width: 100%;
-}
-.rlist__item {
-  display: grid;
-  grid-template-columns: 2.5rem minmax(0, 1fr);
-  gap: 0.25rem var(--sp-2);
-  padding: var(--sp-2);
-  border: 2px solid transparent;
-  border-radius: var(--r-m);
-  background: var(--well);
-}
-/* The one on the projector: a teal edge on the tint and its words, never the colour alone. */
-.rlist__item[data-now="true"] {
-  border-color: var(--teal);
-  background: var(--tint);
-}
-.card .rlist__item p {
-  margin: 0;
-}
-.rlist__n {
-  grid-row: 1 / span 3;
-  font-size: var(--fs-large);
-  font-weight: 650;
-  color: var(--ink-2);
-}
-.rlist__prompt {
-  font-size: var(--fs-row);
-  font-weight: 600;
-  line-height: 1.25;
-  overflow-wrap: anywhere;
-}
-.rlist__answer,
-.rlist__count {
-  color: var(--ink);
-  font-size: var(--fs-body);
-}
-.rlist__count {
-  font-weight: 600;
-}
-.card .rlist__item .rlist__on,
-.inbox__on {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: var(--fs-body);
-  font-weight: 650;
-  color: var(--ink);
-}
-.card .rlist__item .rlist__on {
-  grid-column: 2;
-}
-.rpanel__now {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.rproj__closed {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
-}
-.inbox__item[data-now="true"] {
-  outline: 3px solid var(--focus);
-  outline-offset: -3px;
-}
-.qpanel__early {
-  margin-top: var(--sp-1);
-}
-/* A quiet link has padding for its tap area; the words, not the padding, line up with the panel's text above. */
-.qpanel__early .btn--quiet {
-  margin-left: calc(var(--sp-2) * -1);
-}
 .live__end {
   display: flex;
 }
@@ -5263,24 +4903,10 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   padding-block: var(--sp-3);
 }
 
-/* A window that is not wide (a school laptop at 1024): less margin, and the way back goes above the title, so the title and the course keep
-   one line each beside the two buttons. */
+/* A window that is not wide (a school laptop at 1024): less margin. */
 @media (max-width: 74.99rem) {
   :is(:root[data-focus="live"], :root:has(.content.live:not(.endpage))) .main {
     padding-inline: var(--sp-3);
-  }
-  .head--compact:has(.live__tools) .head__text,
-  :root[data-focus="live"] .head--compact .head__text {
-    display: flex;
-    align-items: flex-start;
-  }
-  .head--compact:has(.live__tools) .head__text > *,
-  :root[data-focus="live"] .head--compact .head__text > * {
-    align-self: auto;
-  }
-  .head--compact:has(.live__tools) .back,
-  :root[data-focus="live"] .head--compact .back {
-    margin: -0.375rem 0 0 -0.625rem;
   }
 }
 @media (max-width: 63.9375rem) {
@@ -5298,7 +4924,7 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
 .live__tools {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--sp-1) var(--sp-3);
 }
 
@@ -5317,14 +4943,34 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   margin-top: 0;
 }
 /* What a teacher reads once: how to place the projected window, and where help is. Quiet, at the foot of the stage. */
-.live__notes {
+.live__notes,
+.live__notes-body {
   display: grid;
   justify-items: start;
   gap: var(--sp-1);
+}
+.live__notes-body[hidden] {
+  display: none;
+}
+/* One left edge for the whole block: the warning's own text starts a padding in from its box, so the hint starts there too and the quiet buttons
+   (whose words sit a button padding in) are pulled back by the difference. */
+.live__notes .projector__hint {
   padding-inline: var(--sp-2);
 }
 .live__notes .btn--quiet {
-  margin-left: calc(var(--sp-2) * -1);
+  margin-left: calc(var(--sp-2) - 0.75rem);
+}
+/* While teaching the notes wait behind "За проекторот": the caret turns when they are shown, and the words say so too. */
+.live__how svg {
+  transition: transform var(--dur) var(--ease);
+}
+.live__how[data-open="true"] svg {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .live__how svg {
+    transition: none;
+  }
 }
 .live__panel {
   display: flex;
@@ -5333,8 +4979,15 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   min-width: 0;
 }
 @media (min-width: 64rem) {
+  /* The stage is the one job, so it gets the wider column: with the card's larger padding, "Испрати го следното прашање" and "Прескокни"
+     still share a line from 1280 wide. */
   .live__frame {
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    column-gap: var(--sp-4);
+  }
+  /* The question sits in air: one step more padding than other cards. */
+  .live__stage .qpanel {
+    padding: var(--sp-4);
   }
 }
 /* On a laptop the lesson is one screen: the panel is as tall as the window allows and a long class or a long list scrolls inside it. */
@@ -5342,7 +4995,7 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   .live__panel {
     position: sticky;
     top: var(--sp-3);
-    max-height: calc(100dvh - 12.5rem);
+    max-height: calc(100dvh - 13rem);
   }
   .live__panel .tabs__panel[data-active="true"] {
     /* Positioned, so the lines only a screen reader meets scroll with the list and do not make the page longer. */
@@ -5366,6 +5019,8 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   background: var(--well);
 }
 .tabs__tab {
+  /* Above the glide piece, which is positioned: a tab that is not would be painted under it, its words hidden. */
+  position: relative;
   flex: 1 1 0;
   min-width: 0;
   min-height: var(--tap-small);
@@ -5378,6 +5033,7 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   font-size: var(--fs-small);
   font-weight: 500;
   line-height: 1.2;
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
 /* The chosen tab is a raised white pill with heavier words: told apart by shape and weight, not by colour. */
@@ -5392,6 +5048,14 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
     background: var(--hover);
     color: var(--ink);
   }
+}
+/* A row of tabs that heads a page (the Library's two shelves) is as wide as its words need, as a segmented control on a Mac is, not the
+   width of the page. */
+.content > .tabs {
+  justify-self: start;
+  width: min(100%, 26rem);
+  /* On the page's ground a well is the ground's own colour: the track is the darker one, so it can be seen. */
+  background: var(--well-2);
 }
 /* A panel that is not shown keeps only the line it reads out. */
 .tabs__panel[data-active="false"] {
@@ -5420,26 +5084,6 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   margin: calc(-1 * var(--sp-2)) 0 0;
   color: var(--ink-2);
 }
-/* The list at the left; what was missed and the practice at the right, where they stay in view beside a long list. */
-.endpage__frame {
-  display: grid;
-  gap: var(--sp-3);
-  align-items: start;
-}
-.endpage__side {
-  display: grid;
-  gap: var(--sp-3);
-  min-width: 0;
-}
-@media (min-width: 64rem) {
-  .endpage__frame {
-    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-  }
-  .endpage__side {
-    position: sticky;
-    top: var(--sp-3);
-  }
-}
 .att {
   display: grid;
   gap: var(--sp-2);
@@ -5462,39 +5106,16 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
 .card .att__name h2 {
   margin: 0;
 }
-.att__hint {
+.att__count {
   margin: 0;
   color: var(--ink-2);
-  max-width: var(--measure);
+}
+.att__table tbody td {
+  text-align: right;
+  white-space: nowrap;
 }
 .att-print__title {
   display: none;
-}
-/* The counts as one row of figures, each with its word under it. */
-.att__counts {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
-  gap: var(--sp-1) var(--sp-2);
-}
-.att__counts li {
-  display: grid;
-  align-content: start;
-}
-.att__counts strong {
-  font-size: var(--fs-figure);
-  font-weight: 650;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-.att__counts span {
-  color: var(--ink-2);
-  font-size: var(--fs-small);
-  line-height: 1.25;
 }
 .att__actions {
   display: flex;
@@ -5519,49 +5140,11 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   border-top: 1px solid var(--hairline);
   text-align: left;
 }
-.att__table thead th {
-  font-size: var(--fs-small);
-  font-weight: 500;
-  color: var(--ink-2);
-}
 .att__table tbody th {
   font-weight: 500;
 }
-.att__table tr[data-status="absent"] td {
-  font-weight: 600;
-}
-.practice {
-  display: grid;
-  gap: var(--sp-2);
-  justify-items: start;
-}
-.practice__sent {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
-}
-.card .practice__sub {
-  margin: var(--sp-1) 0 0;
-  font-size: var(--fs-body);
-}
-.practice__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  display: grid;
-}
-.practice__list li {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--sp-2);
-  padding: 0.5rem 0;
-  border-top: 1px solid var(--hairline);
-}
 
-/* The attendance list on paper: only the list, black on white. */
+/* The list of students and their scores on paper: only the list, black on white. */
 @media print {
   body * {
     visibility: hidden;
@@ -5580,9 +5163,7 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
     color: #000;
   }
   .att-print .att__actions,
-  .att-print .att__note,
-  .att-print .att__hint,
-  .att-print .att__counts {
+  .att-print .att__note {
     display: none;
   }
   .att-print h2,
@@ -5601,379 +5182,4 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
     font-size: 1rem;
     padding: 0.25rem 0.5rem;
   }
-}
-
-/* ---- Class results ---- */
-.cres {
-  gap: var(--sp-3);
-}
-.cres .card {
-  display: grid;
-  gap: var(--sp-2);
-  justify-items: start;
-}
-.cres .card > p {
-  max-width: 46rem;
-}
-.cres__sec {
-  scroll-margin-top: var(--sp-3);
-}
-.cres__sec:focus {
-  outline: none;
-}
-/* The three figures of the summary: each a number and what it counts, in words. */
-.cres__tiles {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  gap: var(--sp-1);
-}
-.cres__tiles li {
-  display: grid;
-  align-content: start;
-  gap: 0.25rem;
-  padding: var(--sp-2);
-  border-radius: var(--r-m);
-  background: var(--well);
-}
-.cres__tiles strong {
-  font-size: var(--fs-figure);
-  font-weight: 650;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-.cres__tiles span {
-  color: var(--ink-2);
-  font-size: var(--fs-small);
-  line-height: 1.3;
-}
-/* Six tabs: one row where there is room, two where there is not; nothing scrolls sideways. */
-.cres .tabs {
-  flex-wrap: wrap;
-  border-radius: var(--r-l);
-}
-.cres .tabs__tab {
-  flex: 1 0 auto;
-  padding: 0 var(--sp-2);
-}
-.cres .tabs__panel[data-active="true"] {
-  display: grid;
-  gap: var(--sp-3);
-}
-/* The class's settings, in a dialog over the results. */
-.cres__settings {
-  display: grid;
-  gap: var(--sp-2);
-}
-.cres__settings:not([open]) {
-  display: none;
-}
-.cres__settings .dialog__title,
-.cres__settings .dialog__body {
-  margin: 0;
-}
-.cres__settings .dialog__actions {
-  margin-top: var(--sp-1);
-}
-.cres__link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  min-height: var(--tap-small);
-  color: var(--teal);
-  font-weight: 600;
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-decoration-color: color-mix(in srgb, currentColor 36%, transparent);
-  text-underline-offset: 0.25em;
-}
-/* A table sizes to its container, so it can turn into short stacked rows when the room is narrow (a small window, or the page at 200%). */
-.cres__scroll {
-  width: 100%;
-  container-type: inline-size;
-}
-.cres__table td,
-.cres__table th {
-  vertical-align: top;
-}
-.cres__table thead th {
-  font-size: var(--fs-small);
-  font-weight: 500;
-}
-.cres__table tbody th {
-  font-weight: 500;
-}
-.cres__table tbody td,
-.cres__table tbody th {
-  padding-block: 0.75rem;
-}
-/* The name takes the room it needs; the numbers have plenty. */
-.cres__name {
-  display: block;
-  white-space: nowrap;
-}
-.cres__table .cres__note {
-  max-width: 18rem;
-}
-.cres__table td:not(:first-child) {
-  font-variant-numeric: tabular-nums;
-}
-.cres__open {
-  text-align: right;
-  white-space: nowrap;
-}
-/* In a row the link sits on the line of the text beside it; its padding keeps the target tall. */
-.cres__open .cres__link {
-  min-height: 0;
-  padding-block: 0.5rem;
-  margin-block: -0.5rem;
-}
-@container (max-width: 42rem) {
-  .cres__table thead {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-  }
-  .cres__table,
-  .cres__table tbody {
-    display: block;
-  }
-  .cres__table tr {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.25rem var(--sp-3);
-    padding: 0.75rem 0;
-    border-top: 1px solid var(--hairline);
-  }
-  .cres__table th,
-  .cres__table td {
-    display: block;
-    padding: 0 !important;
-    border: 0 !important;
-    text-align: left;
-  }
-  .cres__table tbody th {
-    flex: 1 0 100%;
-  }
-  .cres__table .cres__title {
-    flex: 1 0 100%;
-    order: 1;
-  }
-  .cres__table td[data-label]::before {
-    content: attr(data-label) ": ";
-    font-weight: 400;
-    color: var(--ink-2);
-  }
-  .cres__table td[data-label] {
-    order: 2;
-  }
-  .cres__table .cres__open {
-    margin-left: auto;
-    order: 3;
-  }
-  .cres__table .cres__note {
-    display: inline;
-    margin-left: 0.5rem;
-  }
-}
-.cres__note {
-  display: block;
-  margin-top: 0.125rem;
-  font-size: var(--fs-small);
-  font-weight: 400;
-  color: var(--ink-2);
-}
-.cres__meta,
-.cres__list .cres__note {
-  font-size: var(--fs-body);
-  color: var(--ink-2);
-}
-.cres__topics,
-.cres__asked,
-.cres__sets {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  display: grid;
-}
-.cres__topics li,
-.cres__asked li,
-.cres__sets li {
-  display: grid;
-  gap: 0.25rem;
-  padding: var(--sp-2) 0;
-  border-top: 1px solid var(--hairline);
-}
-.cres__topics li p,
-.cres__asked li p,
-.cres__sets li p {
-  margin: 0;
-}
-.cres__topic-name {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.25rem 1rem;
-  font-size: var(--fs-row);
-}
-.cres__tag {
-  padding: 0.125rem 0.625rem;
-  border-radius: var(--r-pill);
-  background: var(--well-2);
-  color: var(--ink-2);
-  font-size: var(--fs-small);
-  font-weight: 500;
-}
-.cres__topic-share {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.25rem var(--sp-2);
-}
-/* The length is the share right; the colour is the same for every topic. */
-.cres__bar {
-  display: block;
-  flex: 0 1 16rem;
-  min-width: 8rem;
-  height: 0.5rem;
-  border-radius: var(--r-pill);
-  background: var(--well-2);
-  overflow: hidden;
-}
-.cres__bar span {
-  display: block;
-  height: 100%;
-  background: var(--teal);
-}
-.cres__asked-text {
-  color: var(--ink) !important;
-}
-.cres__sets h3 {
-  margin: 0;
-  font-size: var(--fs-row);
-  line-height: var(--lh-tight);
-}
-.cres__who {
-  width: 100%;
-}
-.cres__who summary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: var(--tap-small);
-  color: var(--teal);
-  font-weight: 600;
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-decoration-color: color-mix(in srgb, currentColor 36%, transparent);
-  text-underline-offset: 0.25em;
-  cursor: pointer;
-  list-style: none;
-}
-.cres__who summary::-webkit-details-marker {
-  display: none;
-}
-.cres__who summary svg {
-  transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-.cres__who[open] summary svg {
-  transform: rotate(180deg);
-}
-.cres__list li {
-  align-items: flex-start;
-}
-/* One control for one choice: the setting's name and its state in words on one row, the switch at the end. */
-.cres__switch {
-  width: 100%;
-  max-width: 46rem;
-  min-height: 4rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-2);
-  padding: var(--sp-1) var(--sp-2);
-  border-radius: var(--r-m);
-  background: var(--well);
-  color: var(--ink);
-  text-align: left;
-  cursor: pointer;
-}
-.cres__switch-name {
-  font-weight: 600;
-}
-.cres__switch-state {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-1);
-  color: var(--ink-2);
-}
-/* Off: an empty track with a grey edge and a grey knob. On: the track fills with the accent and the knob turns white and
-   moves over. The state is also said in words beside it, so the colour is never alone. */
-.cres__track {
-  display: inline-flex;
-  align-items: center;
-  width: 3.5rem;
-  height: 2rem;
-  padding: 0.1875rem;
-  border: 2px solid var(--edge-strong);
-  border-radius: var(--r-pill);
-  background: var(--surface);
-  transition:
-    background-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-.cres__track[data-on="true"] {
-  border-color: var(--teal);
-  background: var(--teal);
-}
-.cres__thumb {
-  display: grid;
-  place-items: center;
-  width: 1.375rem;
-  height: 1.375rem;
-  border-radius: 50%;
-  background: var(--ink-2);
-  color: var(--on-teal);
-  /* The knob slides over on the snappy spring (see "Motion"), its colours turning with the track. */
-  transition:
-    transform var(--spring-snappy-dur) var(--spring-snappy),
-    background-color var(--dur) var(--ease-out),
-    color var(--dur) var(--ease-out);
-}
-.cres__track[data-on="true"] .cres__thumb {
-  background: var(--surface);
-  color: var(--teal);
-  transform: translateX(1.5rem);
-}
-.cres__saved {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: 1.75rem;
-  margin: 0;
-  font-weight: 600;
-}
-.cres__saved:empty {
-  min-height: 0;
-  margin-top: calc(var(--sp-2) * -1);
-}
-@media (prefers-reduced-motion: reduce) {
-  .cres__who summary svg,
-  .cres__track,
-  .cres__thumb {
-    transition: none;
-  }
-}
-
-/* The button of a student's row is as wide as its word needs, so a long surname keeps its line in the narrow card. */
-.person__action {
-  padding-inline: var(--sp-2);
 }

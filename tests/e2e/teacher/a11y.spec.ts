@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { expect, SETTINGS_KEY, test } from "./fixtures";
-import { go, openProjector, panel, reveal, send, start, teach, TEACHING_AT, T0 } from "./live-helpers";
+import { go, next, openProjector, panel, send, start, teach, TEACHING_AT, T0 } from "./live-helpers";
 
 /**
  * Accessibility, step 12: axe over the screens, in both languages and both kinds of institution, failing on a serious or critical issue
@@ -9,18 +9,14 @@ import { go, openProjector, panel, reveal, send, start, teach, TEACHING_AT, T0 }
  */
 
 const SCREENS: [string, string][] = [
-  ["today", "/teacher"],
-  ["lessons", "/teacher/lessons"],
+  ["lessons", "/teacher"],
   ["new lesson", "/teacher/lessons/new"],
   ["a lesson", "/teacher/lessons/l-procenti"],
   ["library", "/teacher/library"],
+  ["library, templates", "/teacher/library#sabloni"],
   ["a library lesson", "/teacher/library/lib-statistika"],
   ["settings", "/teacher/settings"],
   ["help", "/teacher/help"],
-  ["classes", "/teacher/classes"],
-  ["a course", "/teacher/classes/course-ii-4"],
-  ["a course, who comes", "/teacher/classes/course-ii-4#attendance"],
-  ["a course, its settings", "/teacher/classes/course-ii-4#settings"],
   ["not found", "/teacher/nothing-here"],
 ];
 
@@ -66,7 +62,7 @@ test.describe("signed out", () => {
 });
 
 test.describe("the live lesson", () => {
-  test("axe: console and class view in the lobby, a question open, closed and shown", async ({ page, context }) => {
+  test("axe: console and class view in the lobby, a question open and shown", async ({ page, context }) => {
     await start(page, context);
     const projector = await openProjector(page, context);
     await check(page, "console, lobby");
@@ -80,11 +76,28 @@ test.describe("the live lesson", () => {
     await check(page, "console, a question open");
     await check(projector, "class view, a question open");
     await go(context, TEACHING_AT + 31);
-    await check(page, "console, closed");
-    await check(projector, "class view, closed");
-    await reveal(page).click();
+    await expect(panel(page).getByTestId("right-answer")).toBeVisible();
     await check(page, "console, shown");
     await check(projector, "class view, shown");
+  });
+
+  test("axe: the console after the last question, with two End buttons and the anonymous tab", async ({ page, context }) => {
+    await teach(page, context);
+    let t = TEACHING_AT;
+    for (const [i, timer] of [30, 25, 15, 45, 25, 45].entries()) {
+      await go(context, t);
+      if (i === 0) await send(page).click();
+      else await next(page).click();
+      t += timer + 1;
+      await go(context, t);
+      await expect(panel(page).getByTestId("right-answer")).toBeVisible();
+    }
+    await expect(panel(page).getByTestId("none-left")).toBeVisible();
+    await check(page, "console, after the last question");
+    await panel(page).getByRole("button", { name: "Заврши го часот" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Да, заврши го часот" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Часот заврши");
+    await check(page, "the end page");
   });
 });
 
@@ -92,10 +105,11 @@ void panel; void teach; void T0;
 
 test.describe("reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
-  test("nothing moves: the drawer, the dialogs, the waiting dots and the switches slide, scale and turn no more, and only short colour and opacity fades are left", async ({ page }) => {
-    // The class's settings, open: its dialog and its switch are on the page.
-    await page.goto("/teacher/classes/course-ii-4#settings");
-    await expect(page.getByRole("switch")).toBeVisible();
+  test("nothing moves: the drawer, the dialogs and the waiting dots slide, scale and turn no more, and only short colour and opacity fades are left", async ({ page }) => {
+    // A lesson with its question to delete it open: a dialog is on the page.
+    await page.goto("/teacher/lessons/l-procenti");
+    await page.getByRole("button", { name: "Избриши лекција" }).click();
+    await expect(page.getByRole("alertdialog")).toBeVisible();
     await page.waitForLoadState("load");
     const moving = await page.evaluate(() =>
       [...document.querySelectorAll("*")]
