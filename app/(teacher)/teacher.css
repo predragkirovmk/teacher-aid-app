@@ -2823,14 +2823,13 @@ button {
   justify-items: start;
   gap: 0.25rem;
 }
-/* From a laptop's width the status line hangs under its button instead of making the tools block taller than the title block, so the buttons
-   centre on the title. The room under the bar (.head--compact) is made for it. With the blocked-popup callout the line stays in flow. */
+/* From a laptop's width the status line leaves the button's box and sits on the bar's second line, level with the course, so the buttons stay
+   level with the title. With the blocked-popup callout the line stays in flow. */
 @media (min-width: 64rem) {
   .projector:not(:has(.callout)) .projector__status {
     position: absolute;
     top: 100%;
     left: 0;
-    margin-top: 0.25rem;
     white-space: nowrap;
   }
 }
@@ -3322,37 +3321,47 @@ body:has(.cv) {
 
 /* ---- Live lesson 2: the compact header, the panel "Прашањето сега", the list, the inbox ---- */
 
-/* While teaching the Back, the title and the course share a row, so the panel is in the first screen of a laptop. */
+/* The console's top bar. The way back is a quiet line above the title, as on every other page; then the title and the course. */
 .head--compact {
   margin-bottom: var(--sp-4);
-  align-items: center;
-}
-/* The Back on the left, the title and the course in one column beside it, so the course sits under the title it belongs to. */
-.head--compact .head__text {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 0 var(--sp-3);
 }
 .head--compact .back {
-  grid-row: 1 / span 2;
-  margin: 0 0 0 -0.625rem;
-}
-.head--compact .head__title {
-  grid-column: 2;
-  align-self: end;
-}
-.head--compact .head__title:last-child {
-  align-self: center;
+  margin: -0.375rem 0 0 -0.625rem;
 }
 .head--compact .head__title {
   font-size: var(--fs-xl);
 }
 .head--compact .head__sub {
-  grid-column: 2;
-  align-self: start;
   margin: 0;
   font-size: var(--fs-body);
+}
+/* From a laptop's width the bar is two lines that line up: the title level with the projector button and End, and under them the course
+   level with the line that says where the projected window stands. The way back sits above both, on its own. */
+@media (min-width: 64rem) {
+  .head--compact {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0 var(--sp-4);
+  }
+  /* The words' own box steps aside, so the way back, the title and the course are rows of the bar itself. */
+  .head--compact .head__text {
+    display: contents;
+  }
+  .head--compact .back {
+    grid-area: 1 / 1;
+    justify-self: start;
+  }
+  .head--compact .head__title {
+    grid-area: 2 / 1;
+  }
+  .head--compact .head__sub {
+    grid-area: 3 / 1;
+    align-self: start;
+  }
+  .head--compact .head__action {
+    grid-area: 2 / 2;
+  }
 }
 .live__teach {
   display: grid;
@@ -4894,24 +4903,10 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   padding-block: var(--sp-3);
 }
 
-/* A window that is not wide (a school laptop at 1024): less margin, and the way back goes above the title, so the title and the course keep
-   one line each beside the two buttons. */
+/* A window that is not wide (a school laptop at 1024): less margin. */
 @media (max-width: 74.99rem) {
   :is(:root[data-focus="live"], :root:has(.content.live:not(.endpage))) .main {
     padding-inline: var(--sp-3);
-  }
-  .head--compact:has(.live__tools) .head__text,
-  :root[data-focus="live"] .head--compact .head__text {
-    display: flex;
-    align-items: flex-start;
-  }
-  .head--compact:has(.live__tools) .head__text > *,
-  :root[data-focus="live"] .head--compact .head__text > * {
-    align-self: auto;
-  }
-  .head--compact:has(.live__tools) .back,
-  :root[data-focus="live"] .head--compact .back {
-    margin: -0.375rem 0 0 -0.625rem;
   }
 }
 @media (max-width: 63.9375rem) {
@@ -4993,13 +4988,6 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   /* The question sits in air: one step more padding than other cards. */
   .live__stage .qpanel {
     padding: var(--sp-4);
-  }
-}
-/* Where Back sits beside the title the head is short, and the status line hanging under the projector button reaches below it: more room
-   under the bar, so that line never sits on the stage. */
-@media (min-width: 75rem) {
-  .head--compact:has(.live__tools) {
-    margin-bottom: var(--sp-5);
   }
 }
 /* On a laptop the lesson is one screen: the panel is as tall as the window allows and a long class or a long list scrolls inside it. */

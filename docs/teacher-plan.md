@@ -44,8 +44,9 @@ student's row is just the name. The projector's ranking between questions keeps 
   title and the card in front already say where the lesson is.
 
 - 2026-11-19: the teaching console breathes: the projector notes sit behind „За проекторот“ while teaching (shown in the lobby), the
-  top bar's buttons line up with the title, the question card groups its lines, the gutter between the columns is wider and the
-  roster rows are further apart.
+  question card groups its lines, the gutter between the columns is wider and the roster rows are further apart. The top bar is
+  two lines that line up: the way back above, then the title level with the projector button and End, and the course level with
+  the line that says where the projected window stands.
 
 ## Owner decisions (2026-10-27, do not re-ask)
 
