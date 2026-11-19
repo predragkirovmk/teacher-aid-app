@@ -82,8 +82,8 @@ export function alertCopy(t: TFn, locale: Locale, n: AlertItem): AlertCopy {
       return {
         title: t("notif.marked_late.title"),
         body: t("notif.marked_late.body", { subject, date: formatLongDate(n.payload.date ?? n.when, locale) }),
-        link: "/app/attendance",
-        action: t("notif.open.attendance"),
+        link: toSelf,
+        action: openSelf,
       };
     case "practice_set_sent":
       return {

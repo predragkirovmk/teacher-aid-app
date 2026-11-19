@@ -102,7 +102,7 @@ describe("the screen a notification opens", () => {
     ["practice_set_sent", { practice_set_id: "ps-9", course_id: "c-math" }, "/app/practice/ps-9"],
     ["practice_set_sent", { course_id: "c-math" }, "/app/practice"],
     ["practice_set_sent", {}, "/app/practice"],
-    ["marked_late", { course_id: "c-math" }, "/app/attendance"],
+    ["marked_late", { course_id: "c-math" }, "/app/notifications/n-7"],
     ["badge_earned", { badge_code: "answer" }, "/app/achievements"],
     ["generic", { course_id: "c-phys" }, "/app/notifications/n-7"],
     ["generic", {}, "/app/notifications/n-7"],

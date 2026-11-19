@@ -3,16 +3,10 @@ import {
   CLOCKS,
   PERIODS,
   WEEK,
-  checkinFor,
   currentLesson,
   dayOf,
-  dayToShow,
-  daysFrom,
   demoTime,
   lessonsOn,
-  markFor,
-  nextAssessment,
-  nextLesson,
   shiftOf,
   weekStart,
 } from "@/lib/app/demo/schedule";
@@ -38,13 +32,6 @@ describe("calendar helpers", () => {
     expect(weekStart(at(19, 0))).toBe(at(19));
     expect(weekStart(at(24, 10))).toBe(at(26));
     expect(weekStart(at(25, 23))).toBe(at(26));
-  });
-
-  it("counts calendar days, across the daylight-saving change of 25 Oct", () => {
-    expect(daysFrom(at(20, 15), at(20, 8))).toBe(0);
-    expect(daysFrom(at(20, 15), at(21, 8))).toBe(1);
-    expect(daysFrom(at(24, 12), at(26, 8))).toBe(2);
-    expect(daysFrom(at(21, 9), at(20, 9))).toBe(-1);
   });
 });
 
@@ -100,33 +87,6 @@ describe("the timetable", () => {
     expect(currentLesson(at(20, 18))).toBeUndefined();
     expect(currentLesson(at(24, 13, 10))).toBeUndefined();
   });
-
-  it("finds the next lesson, over a night and a weekend", () => {
-    expect(nextLesson(at(20, 13, 10))?.subject).toBe("english");
-    const fri = nextLesson(at(23, 18));
-    expect(fri).toMatchObject({ day: "mon", subject: "math", from: "08:00" });
-    expect(hhmm(fri!.start)).toBe("08:00");
-  });
-
-  it("finds a subject's lesson under way or next", () => {
-    expect(nextLesson(at(20, 14), "english")?.from).toBe("13:45");
-    expect(nextLesson(at(20, 15), "english")?.day).toBe("thu");
-    expect(nextLesson(at(20, 15), "art")).toMatchObject({ day: "mon", from: "12:00" });
-    expect(nextLesson(at(20, 15), "chemistry")).toBeUndefined();
-  });
-
-  it("shows today's lessons while school is on, then the next school day's", () => {
-    expect(dayToShow(at(20, 14))[0].day).toBe("tue");
-    expect(dayToShow(at(20, 18))[0].day).toBe("wed");
-    expect(dayToShow(at(24, 10))[0].day).toBe("mon");
-  });
-
-  it("finds the next test or quiz this week, other than the one skipped", () => {
-    const first = nextAssessment(at(19, 12));
-    expect(first).toMatchObject({ day: "tue", subject: "physics", kind: "test" });
-    expect(nextAssessment(at(20, 14), first)).toMatchObject({ day: "wed", subject: "math", kind: "pop" });
-    expect(nextAssessment(at(23, 18))).toBeUndefined();
-  });
 });
 
 describe("the demo clock", () => {
@@ -160,39 +120,12 @@ describe("the demo clock", () => {
   it("puts 'during' inside the first lesson and 'before' ahead of it", () => {
     expect(currentLesson(demoTime("during", real))?.period).toBe(1);
     expect(currentLesson(demoTime("before", real))).toBeUndefined();
-    expect(nextLesson(demoTime("before", real))?.period).toBe(1);
+    expect(lessonsOn(demoTime("before", real))[0].start).toBeGreaterThan(demoTime("before", real));
     expect(currentLesson(demoTime("midday", real))?.period).toBe(4);
     expect(currentLesson(demoTime("after", real))).toBeUndefined();
   });
 
   it("knows every preset", () => {
     expect([...CLOCKS]).toEqual(["real", "before", "during", "midday", "after", "weekend"]);
-  });
-});
-
-describe("check-ins and marks", () => {
-  const physics = lessonsOn(at(20, 12))[0]; // Tuesday 13:00 to 13:40
-
-  it("counts a scan from 15 minutes before the lesson until it ends", () => {
-    expect(checkinFor(physics, [{ subjectId: "physics", at: physics.start - 15 * 60_000 }])).toBeDefined();
-    expect(checkinFor(physics, [{ subjectId: "physics", at: physics.start + 5 * 60_000 }])).toBeDefined();
-    expect(checkinFor(physics, [{ subjectId: "physics", at: physics.end - 1 }])).toBeDefined();
-  });
-
-  it("does not count a scan too early, at the end, or for another subject", () => {
-    expect(checkinFor(physics, [{ subjectId: "physics", at: physics.start - 15 * 60_000 - 1 }])).toBeUndefined();
-    expect(checkinFor(physics, [{ subjectId: "physics", at: physics.end }])).toBeUndefined();
-    expect(checkinFor(physics, [{ subjectId: "math", at: physics.start + 1 }])).toBeUndefined();
-    expect(checkinFor(physics, [])).toBeUndefined();
-  });
-
-  it("marks a scanned lesson present, and reads the register otherwise", () => {
-    const monday = lessonsOn(at(19, 12));
-    const thursday = lessonsOn(at(22, 12));
-    expect(markFor(monday[2], true)).toBe("present");
-    expect(markFor(monday[2], false)).toBe("late"); // mon-3 in the register
-    expect(markFor(thursday[1], false)).toBe("absent"); // thu-2
-    expect(markFor(thursday[1], true)).toBe("present");
-    expect(markFor(monday[0], false)).toBe("present");
   });
 });

@@ -62,8 +62,6 @@
         return text(p.session_id, 80) ? "/app/summary/" + encode(text(p.session_id, 80)) : "/app/summary";
       case "practice_set_sent":
         return text(p.practice_set_id, 80) ? "/app/practice/" + encode(text(p.practice_set_id, 80)) : "/app/practice";
-      case "marked_late":
-        return "/app/attendance";
       case "badge_earned":
         return "/app/achievements";
       default:

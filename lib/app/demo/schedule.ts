@@ -1,5 +1,5 @@
 /**
- * The demo's timetable and clock. The spec has no API for any of it (owner decision 2026-10-18), so
+ * The demo's timetable, which the demo clock's presets are built on. The spec has no API for any of it (owner decision 2026-10-18), so
  * it is shown only when `demoOnly` is set; nothing here is read in live mode.
  */
 
@@ -87,30 +87,6 @@ export const WEEK: { day: DayId; slots: { subject: string; kind: SlotKind }[] }[
   },
 ];
 
-/** Where each subject is taught, for the timetable's room labels. */
-export const ROOMS: Record<string, number | "gym"> = {
-  mkd: 8,
-  math: 12,
-  english: 15,
-  german: 16,
-  physics: 21,
-  biology: 22,
-  history: 9,
-  geography: 10,
-  informatics: 31,
-  art: 4,
-  music: 5,
-  pe: "gym",
-};
-
-export type Mark = "present" | "late" | "absent";
-
-/** The teacher's register for lessons with no scan, by day and period; any other lesson is present. */
-export const SAMPLE_MARKS: Partial<Record<`${DayId}-${number}`, Mark>> = {
-  "mon-3": "late",
-  "thu-2": "absent",
-};
-
 /**
  * What the demo takes as now: the phone's own clock, or a fixed moment picked in Settings or on
  * Home, so a walkthrough can show the school day at any stage, on any day of the week.
@@ -191,43 +167,3 @@ export function lessonsOn(ms: number): Lesson[] {
 }
 
 export const currentLesson = (now: number) => lessonsOn(now).find((l) => l.start <= now && now < l.end);
-
-/** The next lesson to start after now, a week ahead at most; with `subject`, that subject's lesson
-    under way or next. */
-export function nextLesson(now: number, subject?: string) {
-  for (let i = 0; i <= 7; i++) {
-    const found = lessonsOn(dayAt(now, i)).find((l) => (subject ? l.subject === subject && l.end > now : l.start > now));
-    if (found) return found;
-  }
-}
-
-/** The lessons Home lists: today's while school is on, else the next school day's. */
-export function dayToShow(now: number) {
-  const today = lessonsOn(now);
-  if (today.length && now < today[today.length - 1].end) return today;
-  const next = nextLesson(now);
-  return next ? lessonsOn(next.start) : [];
-}
-
-/** The first test or quiz not yet over in the current school week, other than `skip`. */
-export function nextAssessment(now: number, skip?: Lesson) {
-  const monday = weekStart(now);
-  for (let i = 0; i < DAYS.length; i++) {
-    const found = lessonsOn(dayAt(monday, i)).find((l) => l.kind !== "lesson" && l.end > now && l.start !== skip?.start);
-    if (found) return found;
-  }
-}
-
-/** Calendar days from now to a moment: 0 today, 1 tomorrow. */
-export const daysFrom = (now: number, ms: number) => Math.round((dayAt(ms) - dayAt(now)) / 86_400_000);
-
-/** A check-in by QR: which subject and when. */
-export type Scan = { subjectId: string; at: number };
-
-/** The scan that counts for a lesson: from a quarter of an hour before it starts until it ends. */
-export const checkinFor = (lesson: Lesson, scans: Scan[]) =>
-  scans.find((c) => c.subjectId === lesson.subject && c.at >= lesson.start - 15 * 60_000 && c.at < lesson.end);
-
-/** The teacher's mark for a lesson that is over: present with a scan, else from the register. */
-export const markFor = (lesson: Lesson, scanned: boolean): Mark =>
-  scanned ? "present" : (SAMPLE_MARKS[`${lesson.day}-${lesson.period}`] ?? "present");

@@ -170,10 +170,7 @@ add("08-home-clock-sheet", "/app", "demo clock set to midday so the pill shows; 
   await page.locator("button.pill").click();
   await page.getByRole("dialog").waitFor();
 }, { state: { clock: "midday" } });
-add("11-schedule", "/app/schedule", "signed in", `${APP}/schedule/page.tsx`, go("/app/schedule"));
-add("12-attendance", "/app/attendance", "signed in", `${APP}/attendance/page.tsx`, go("/app/attendance"));
 add("13-achievements", "/app/achievements", "signed in", `${APP}/achievements/page.tsx`, go("/app/achievements"));
-add("14-leaderboard", "/app/leaderboard", "signed in", `${APP}/leaderboard/page.tsx`, go("/app/leaderboard"));
 add("15-summary-list", "/app/summary", "signed in", `${APP}/summary/page.tsx`, go("/app/summary"));
 add("16-summary-detail", "/app/summary/mock-session-math", "signed in; the maths lesson the demo starts with", `${APP}/summary/[id]/page.tsx, ${C}/Summary.tsx`, go("/app/summary/mock-session-math"));
 add("17-scan", "/app/scan", "camera intro, shown before the camera is asked for", `${APP}/scan/page.tsx`, go("/app/scan"));
@@ -316,7 +313,7 @@ add("51-documents", "/app/documents", "signed in", `${APP}/documents/page.tsx`, 
 add("52-faq", "/app/faq", "signed in", `${APP}/faq/page.tsx`, go("/app/faq"));
 add("53-privacy", "/app/privacy", "signed in", `${APP}/privacy/page.tsx`, go("/app/privacy"));
 add("54-terms", "/app/terms", "signed in", `${APP}/terms/page.tsx`, go("/app/terms"));
-add("55-signed-elsewhere", "/app/attendance", "state endedElsewhere with signedIn false (the demo's stand-in for another phone)", `${C}/SessionScreens.tsx (SignedElsewhere)`, go("/app/attendance"), { state: { signedIn: false, endedElsewhere: true } });
+add("55-signed-elsewhere", "/app/profile", "state endedElsewhere with signedIn false (the demo's stand-in for another phone)", `${C}/SessionScreens.tsx (SignedElsewhere)`, go("/app/profile"), { state: { signedIn: false, endedElsewhere: true } });
 skip("56-unreachable", "/app", `${C}/SessionScreens.tsx (Unreachable)`, "the mock's getMe only fails with unauthenticated or signed_in_elsewhere; no setting, code or offline switch makes it throw a network or server error");
 add("57-offline-pill", "/app", "Home loaded, then the browser goes offline", `${C}/ConnectionPill.tsx`, async (page, { context }) => {
   await page.goto(`${base}/app`);

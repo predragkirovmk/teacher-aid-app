@@ -122,7 +122,7 @@ const scenarios = [
     await page.locator("main.screen:not([data-pending])").waitFor();
     await page.waitForTimeout(1500);
     await m();
-    for (const sel of [".card.tile >> nth=0", ".card.tile >> nth=1", ".item >> nth=0", "button.btn >> nth=0"]) {
+    for (const sel of [".card.tile >> nth=0", ".item >> nth=0", "button.btn >> nth=0"]) {
       const target = page.locator(sel.split(" >> ")[0]).nth(Number(sel.split("nth=")[1] ?? 0));
       if (await target.count()) await press(page, target);
     }

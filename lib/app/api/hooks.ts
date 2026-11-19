@@ -19,9 +19,6 @@ import type {
   Id,
   JoinedSession,
   JoinResult,
-  Leaderboard,
-  LeaderboardRow,
-  LeaderboardScope,
   Locale,
   Notification,
   PhotoUpload,
@@ -30,7 +27,6 @@ import type {
   Student,
   SignInRedirect,
   StudentSignIn,
-  TopicProgress,
 } from "./types";
 
 export type { Query } from "./query";
@@ -50,9 +46,6 @@ export const useAttendance = (enabled = true): Query<AttendanceSummary> =>
 export const useResults = (courseId?: Id): Query<SessionResult[]> =>
   useQuery(courseId ? `results:${courseId}` : "results", (c) => c.listResults(courseId));
 
-/** The results of finished lessons, newest first; the topics the student has been tested on; the practice sets the teacher sent. */
-export const useTopics = (): Query<TopicProgress[]> => useQuery("topics", (c) => c.listTopics());
-
 /** The mock answers at once; the live API's sets are kept on the phone, so a set can still be opened with no signal. */
 export const usePracticeSets = (): Query<PracticeSet[]> =>
   useQuery("practice", (c) => (demoOnly ? c.listPracticeSets() : loadSets(c)));
@@ -64,9 +57,6 @@ export const useBadges = (): Query<Badge[]> => useQuery("badges", (c) => c.listB
 
 /** The Alerts feed, newest first: the newest page, and the older ones the student has asked for (feed.ts). */
 export const useNotifications = (): Query<Notification[]> => useQuery("notifications", (c) => loadFeed(c));
-
-export const useLeaderboard = (scope: LeaderboardScope = "class"): Query<Leaderboard> =>
-  useQuery(`leaderboard:${scope}`, (c) => c.getLeaderboard(scope));
 
 // ---- Derived ----------------------------------------------------------------------------------------
 
@@ -86,38 +76,6 @@ export function useLatestResult(): Query<SessionResult | null> {
 export function useResult(sessionId: Id): Query<SessionResult | null> {
   const q = useResults();
   return useMemo(() => mapQuery(q, (all) => all.find((r) => r.sessionId === sessionId) ?? null), [q, sessionId]);
-}
-
-export type Standings = {
-  rows: LeaderboardRow[];
-  me: LeaderboardRow;
-  rank: number;
-  /** The student just above, or null at the top. */
-  above: LeaderboardRow | null;
-};
-
-/** The class leaderboard with the student's own place picked out. */
-export function useStandings(): Query<Standings | null> {
-  const q = useLeaderboard("class");
-  return useMemo(
-    () =>
-      mapQuery(q, (board): Standings | null => {
-        const index = board.rows.findIndex((r) => r.isMe);
-        if (index < 0) return null;
-        const me = board.rows[index];
-        return { rows: board.rows, me, rank: me.rank, above: index > 0 ? board.rows[index - 1] : null };
-      }),
-    [q],
-  );
-}
-
-/** Attendance with the change since a week ago, from the rounded figures a student would see. */
-export function useAttendanceView(enabled = true): Query<AttendanceSummary & { change: number | null }> {
-  const q = useAttendance(enabled);
-  return useMemo(
-    () => mapQuery(q, (a) => ({ ...a, change: a.percentWeekAgo === null ? null : a.percent - a.percentWeekAgo })),
-    [q],
-  );
 }
 
 // ---- Who is signed in -------------------------------------------------------------------------------------
