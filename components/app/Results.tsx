@@ -14,7 +14,7 @@ export function ResultRow({ result, withSubject = true, isNew = false }: { resul
   const subject = subjectLabel(t, result.subjectId, result.subjectName);
   const date = formatDate(result.endedAt, locale);
   return (
-    <Link href={`/app/summary/${encodeURIComponent(result.sessionId)}`} className="item" transitionTypes={["nav-forward"]}>
+    <Link href={`/app/summary/${encodeURIComponent(result.sessionId)}`} className="item item--result" transitionTypes={["nav-forward"]}>
       <span className="mark" aria-hidden="true">
         <SubjectMark subject={result} />
       </span>
@@ -23,13 +23,16 @@ export function ResultRow({ result, withSubject = true, isNew = false }: { resul
           <span className="item__title" style={{ display: "block" }}>
             {result.lessonTitle}
           </span>
-          <span className="t-cap">
+          {/* One line: the "New" mark and the date stay whole, and only the subject's name gives way when there is no room. */}
+          <span className="t-cap res-cap">
             {isNew && (
-              <>
-                <b className="tile__new">{t("home.new")}</b> ·{" "}
-              </>
+              <span className="res-cap__fixed">
+                <b className="tile__new">{t("home.new")}</b>
+                {" · "}
+              </span>
             )}
-            {withSubject ? `${subject} · ${date}` : date}
+            {withSubject && <span className="res-cap__subject">{subject}</span>}
+            <span className="res-cap__fixed">{withSubject ? ` · ${date}` : date}</span>
           </span>
         </span>
         <span className="status">{t("res.score", { right: result.right, total: result.total })}</span>

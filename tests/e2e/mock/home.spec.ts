@@ -28,6 +28,25 @@ test("with nothing waiting the card says so and opens the list", async ({ page }
   await expect(page).toHaveURL(/\/app\/practice$/);
 });
 
+test("with more than one set waiting the card counts them and opens the list, not one set", async ({ page }) => {
+  // A second set sent after a lesson, beside the demo's fractions set: two are new.
+  const second = {
+    id: "ps-session-phys-9",
+    sessionId: "session-phys-9",
+    courseId: "physics",
+    lessonTitle: "Physics",
+    createdAt: new Date("2026-10-13T10:00").getTime(),
+    questionIds: ["p3", "p1", "p5"],
+  };
+  await start(page, { state: { signedIn: true, practiceSets: [second] } });
+  await page.goto("/app");
+  const card = page.locator("main.screen a.next");
+  await expect(card).toContainText(mk.t("pr.home.newN", { n: 2 }));
+  await expect(card).toHaveAttribute("href", "/app/practice");
+  await card.click();
+  await expect(page).toHaveURL(/\/app\/practice$/);
+});
+
 test("Home lists the three newest quizzes, each opening its summary, and a link to all results", async ({ page }) => {
   await page.goto("/app");
   await expect(page.getByRole("heading", { name: mk.t("home.recent") })).toBeVisible();
@@ -78,3 +97,20 @@ test("Home has no subjects row, and the bell takes the place of the avatar", asy
     await expect(page.locator(`a[href="/app/${gone}"]`)).toHaveCount(0);
   }
 });
+
+for (const width of [390, 360]) {
+  test(`a quiz row's caption stays on one line at ${width}, on Home and on the results list`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    for (const url of ["/app", "/app/summary"]) {
+      await page.goto(url);
+      const captions = page.locator("a.item .res-cap");
+      await expect(captions.first()).toBeVisible();
+      const lines = await captions.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight))));
+      expect(lines.length).toBeGreaterThan(0);
+      expect(lines.every((n) => n === 1)).toBe(true);
+      // The "New" mark and the date are never the part that gives way.
+      const clipped = await page.locator("a.item .res-cap__fixed").evaluateAll((els) => els.filter((el) => el.scrollWidth > el.clientWidth + 1).length);
+      expect(clipped).toBe(0);
+    }
+  });
+}

@@ -686,6 +686,28 @@ button.item:active {
   flex: 1 1 8rem;
   min-width: 0;
 }
+/* A result row gives its text a little more room (gaps of 12 and 8 px), so a lesson title like "Математика, дропки" fits one line at 390. */
+.item--result {
+  gap: 12px;
+}
+.item--result .item__main {
+  column-gap: 8px;
+}
+/* The caption is one line: the mark and the date keep their width, the subject's name ends in an ellipsis. */
+/* Two classes, because the shared caption rule (text-wrap: pretty, set through :is) outweighs one. */
+.t-cap.res-cap {
+  display: flex;
+  white-space: pre;
+  text-wrap: nowrap;
+}
+.res-cap__fixed {
+  flex: none;
+}
+.res-cap__subject {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .dot-unread {
   display: inline-flex;
   align-items: center;
