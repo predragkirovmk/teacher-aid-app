@@ -13,6 +13,9 @@ const API = `http://127.0.0.1:${process.env.E2E_API_PORT ?? 3101}`;
 
 // One fake server holds the state, so the live project runs one worker and each test starts from the
 // starting data (see playwright.config.ts).
+/** The bell's accessible name carries the unread count; match a piece of it literally. */
+const named = (s: string) => new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+
 test.beforeEach(async ({ request }) => {
   expect((await request.post(`${API}/__control/reset`)).ok()).toBe(true);
 });
@@ -45,7 +48,7 @@ test("Home hides the demo clock", async ({ page }) => {
 test("Alerts lists the API's notifications and marks them all read", async ({ page, request }) => {
   await page.goto("/app");
   const bell = page.locator(".home-bar").getByRole("link", { name: mk.t("notif.title") });
-  await expect(bell).toContainText(mk.t("notif.unreadCount", { n: 2 }));
+  await expect(bell).toHaveAccessibleName(named(mk.t("notif.unreadCount", { n: 2 })));
   await bell.click();
 
   await expect(page.getByRole("link", { name: new RegExp(mk.t("notif.result_ready.title", { subject: mk.t("subj.math") })) })).toBeVisible();
@@ -57,7 +60,7 @@ test("Alerts lists the API's notifications and marks them all read", async ({ pa
   await page.getByRole("button", { name: mk.t("notif.markAll") }).click();
   await expect(page.locator(".item--unread")).toHaveCount(0);
   await page.getByRole("button", { name: mk.t("back") }).click();
-  await expect(bell).not.toContainText(mk.t("notif.unreadCount", { n: 2 }));
+  await expect(bell).not.toHaveAccessibleName(named(mk.t("notif.unreadCount", { n: 2 })));
 
   const { bodies } = await serverState(request);
   expect(bodies["POST /me/notifications/read"]).toEqual({ all: true });
@@ -1228,9 +1231,9 @@ test.describe("alerts and push", () => {
 
     test("a new alert ticks the badge on a screen that is not Alerts", async ({ page, request }) => {
       await page.goto("/app");
-      await expect(bell(page)).toContainText(unread(2));
+      await expect(bell(page)).toHaveAccessibleName(named(unread(2)));
       await control(request, "notify", { title: "Quiz moved", body: "To Friday." });
-      await expect(bell(page)).toContainText(unread(3));
+      await expect(bell(page)).toHaveAccessibleName(named(unread(3)));
       // Said to a screen reader from the bell, which is always in the page.
       await expect(page.getByRole("status").filter({ hasText: mk.t("notif.arrived", { n: 3 }) })).toBeAttached();
       await bell(page).click();
@@ -1255,12 +1258,12 @@ test.describe("alerts and push", () => {
       test.use({ allowConsoleErrors: [/https:\/\/vercel\.live\/|ERR_INCOMPLETE_CHUNKED_ENCODING/] });
     test("after the link drops and comes back, what was missed is read", async ({ page, request }) => {
       await page.goto("/app");
-      await expect(bell(page)).toContainText(unread(2));
+      await expect(bell(page)).toHaveAccessibleName(named(unread(2)));
       await control(request, "block-streams", { on: true });
       await control(request, "drop-streams");
       await control(request, "notify", { title: "While away" });
       await control(request, "block-streams", { on: false });
-      await expect(bell(page)).toContainText(unread(3), { timeout: 20_000 });
+      await expect(bell(page)).toHaveAccessibleName(named(unread(3)), { timeout: 20_000 });
     });
     });
 
@@ -1305,12 +1308,12 @@ test.describe("alerts and push", () => {
     test("a full feed of unread alerts says 30+ on the badge, and marking all read tells the API once", async ({ page, request }) => {
       for (let i = 0; i < 30; i++) await control(request, "notify", { title: `Burst ${i}` });
       await page.goto("/app");
-      await expect(bell(page)).toContainText(unread("30+"));
+      await expect(bell(page)).toHaveAccessibleName(named(unread("30+")));
       await bell(page).click();
       await page.getByRole("button", { name: mk.t("notif.markAll") }).click();
       await expect(page.locator(".item--unread")).toHaveCount(0);
       await page.getByRole("button", { name: mk.t("back") }).click();
-      await expect(bell(page)).not.toContainText(unread("30+"));
+      await expect(bell(page)).not.toHaveAccessibleName(named(unread("30+")));
       expect(((await calls(request)).filter((c) => c === "POST /me/notifications/read"))).toHaveLength(1);
     });
 

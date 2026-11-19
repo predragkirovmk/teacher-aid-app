@@ -335,12 +335,12 @@ test.describe("a tap on a notification while the app was closed", () => {
   test("opens its screen, marks the alert read and cleans the address", async ({ page }) => {
     await page.goto("/app");
     const bell = page.locator(".home-bar").getByRole("link", { name: mk.t("notif.title") });
-    await expect(bell).toContainText(mk.t("notif.unreadCount", { n: 3 }));
+    await expect(bell).toHaveAccessibleName(new RegExp(mk.t("notif.unreadCount", { n: 3 })));
 
     await page.goto("/app/practice/ps-session-math-1?from_push=n-practice-ps-session-math-1");
     await expect(page).toHaveURL(/\/app\/practice\/ps-session-math-1$/);
     await page.goto("/app");
-    await expect(bell).toContainText(mk.t("notif.unreadCount", { n: 2 }));
+    await expect(bell).toHaveAccessibleName(new RegExp(mk.t("notif.unreadCount", { n: 2 })));
   });
 
   test("a push that arrives while the app is open is read into the feed", async ({ page }) => {
@@ -386,7 +386,7 @@ test.describe("when a lesson ends", () => {
 
     // The result and the practice set the teacher sent after it: two more than the three the demo starts with.
     const bell = page.locator(".home-bar").getByRole("link", { name: mk.t("notif.title") });
-    await expect(bell).toContainText(mk.t("notif.unreadCount", { n: 5 }));
+    await expect(bell).toHaveAccessibleName(new RegExp(mk.t("notif.unreadCount", { n: 5 })));
 
     // The ask waits a beat after the student lands, so the Home screen is seen first.
     await expect(dialog(page)).toHaveCount(0);

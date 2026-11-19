@@ -215,4 +215,4 @@ Builders: two runs in turn. The first does item 1, the second items 2 and 3. The
   rewritten; the schedule, attendance and leaderboard checks went with their screens. Checks: lint, types, 1570 unit,
   `pnpm build`, mock and teacher e2e (753 passed, two failures of my own fixed and re-run green), live e2e 89 of 89. JS
   (gzip, from `js-size.json`): all screens 431,536 and Home's first load 302,964, from 483,581 and 338,255 at the end of
-  the motion work.
+  the motion work. Review of batch 1: the bell's accessible name now carries the unread count (its aria-label had hidden it), the tab bar's stretch check says the piece reaches a quarter tab into both Home and Profile at once (measured: it spans 1.6 tabs, not 1.4), the mark-all alert test waits for the slide to finish, and the dead `res.*` keys went; perf at 4x CPU shows no long task and no gap over 43 ms.

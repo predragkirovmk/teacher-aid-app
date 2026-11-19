@@ -6,9 +6,11 @@ test("mark all alerts read clears the unread count", async ({ page }) => {
   const unreadLabel = mk.t("notif.unreadCount", { n: 3 });
   const unreadRows = page.locator(".item--unread");
 
-  await expect(bell).toContainText(unreadLabel);
+  await expect(bell).toHaveAccessibleName(new RegExp(unreadLabel));
   await bell.click();
   await expect(unreadRows).toHaveCount(3);
+  // Let the slide in finish: a second view transition started while it runs skips it, which the browser reports as an error.
+  await page.waitForFunction(() => document.getAnimations().length === 0);
 
   await page.getByRole("button", { name: mk.t("notif.markAll") }).click();
 
@@ -20,7 +22,7 @@ test("mark all alerts read clears the unread count", async ({ page }) => {
   await expect(page.getByRole("button", { name: mk.t("notif.markAll") })).toHaveCount(0);
   await page.getByRole("button", { name: mk.t("back") }).click();
   await expect(page).toHaveURL(/\/app$/);
-  await expect(bell).not.toContainText(unreadLabel);
+  await expect(bell).not.toHaveAccessibleName(new RegExp(unreadLabel));
 });
 
 test("opening an alert marks it read and lands on what it is about", async ({ page }) => {

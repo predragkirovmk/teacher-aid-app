@@ -31,14 +31,13 @@ export function Bell() {
       <span className="sr" role="status">
         {arrived}
       </span>
-      <Link href="/app/notifications" transitionTypes={["nav-forward"]} className="bell press" aria-label={t("notif.title")}>
+      <Link href="/app/notifications" transitionTypes={["nav-forward"]} className="bell press" aria-label={count > 0 ? `${t("notif.title")}, ${t("notif.unreadCount", { n: shownCount })}` : t("notif.title")}>
         <BellSimpleIcon size={26} aria-hidden="true" />
         <span className="tab__badge" data-on={count > 0} aria-hidden="true">
           <span key={lastCount} className="tab__count">
             {lastCount}
           </span>
         </span>
-        {count > 0 && <span className="sr">{t("notif.unreadCount", { n: shownCount })}</span>}
       </Link>
     </>
   );

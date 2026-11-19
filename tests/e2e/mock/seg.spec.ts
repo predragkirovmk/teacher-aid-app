@@ -162,9 +162,12 @@ test.describe("the tab bar", () => {
     const goal = await page
       .locator(`.tab[href="/app/profile"]`)
       .evaluate((el: HTMLElement) => ({ l: el.offsetLeft, r: el.offsetLeft + el.offsetWidth }));
-    // One piece stretched over the way from Home to Profile for a moment (clearly wider than a tab: the tabs share the bar
-    // with the scan in the middle, so the way is two tabs and the scan long), then it settles on Profile.
-    expect(Math.max(...samples.map((s) => s.r - s.l))).toBeGreaterThan(1.4 * (goal.r - goal.l));
+    const home = await page.locator(`.tab[href="/app"]`).evaluate((el: HTMLElement) => ({ l: el.offsetLeft, r: el.offsetLeft + el.offsetWidth }));
+    // One piece bridges both tabs for a moment: while it is still a quarter tab inside Home, it already reaches a quarter tab
+    // into Profile, so it spans the scan between them (a rest at either tab, or a piece that jumps, never does).
+    const quarter = (goal.r - goal.l) / 4;
+    expect(samples.some((s) => s.l < home.r - quarter && s.r > goal.l + quarter)).toBe(true);
+    // Then it settles on Profile.
     const last = samples.at(-1)!;
     expect(near(last.l, goal.l) && near(last.r, goal.r)).toBe(true);
     // Just past Profile, a little, on the way in, and back.
