@@ -1,12 +1,11 @@
 "use client";
 
-import { BellSimpleIcon, BooksIcon, CheckIcon, HouseSimpleIcon, ScanIcon, UserIcon, type Icon } from "@phosphor-icons/react";
+import { CheckIcon, HouseSimpleIcon, ScanIcon, UserIcon, type Icon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition, type ReactNode } from "react";
-import { NOTIFICATIONS_PAGE } from "@/lib/app/api/config";
 import { invalidate } from "@/lib/app/api/query";
-import { useAuth, useNotifications, useSettings } from "@/lib/app/api/hooks";
+import { useAuth, useSettings } from "@/lib/app/api/hooks";
 import { useT } from "@/lib/app/i18n";
 import { useAsk, usePush } from "@/lib/app/push";
 import { SPRINGS, throwTo } from "@/lib/app/motion";
@@ -24,7 +23,7 @@ import { IosInstallSteps, PushAskSheet, PushHelpSheet } from "./PushSheets";
 import { PushRunner } from "./PushRunner";
 import { StudentStream } from "./StudentStream";
 import { SignedElsewhere, Splash, Unreachable } from "./SessionScreens";
-import { TabTapContext, UIContext, type ConfirmOptions } from "./ui";
+import { UIContext, type ConfirmOptions } from "./ui";
 
 const NO_TABS = ["/app/scan", "/app/welcome"];
 /** How long after landing on a calm screen the ask about notifications appears: the result is read first. */
@@ -175,7 +174,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <Pager pathname={pathname}>
             {/* Keyed by the route so the screen enters and exits (the layout itself never remounts). Only typed navigations animate; the pager's swipe and redirects carry no type. */}
             <ViewTransition key={pathname} enter={tabTap ? ENTER_TAB : ENTER} exit={tabTap ? EXIT_TAB : EXIT} default="none">
-              <TabTapContext.Provider value={tabTap}>{content}</TabTapContext.Provider>
+              {content}
             </ViewTransition>
           </Pager>
           {!inQuiz && <ConnectionPill variant="float" />}
@@ -272,30 +271,16 @@ const EXIT_TAB = { ...EXIT, default: "tab" };
 
 function Dock({ pathname, onTabTap }: { pathname: string; onTabTap: (href: string) => void }) {
   const { t } = useT();
-  const feed = useNotifications().data;
-  const count = (feed ?? []).filter((n) => n.readAt === null).length;
-  // A feed of a full page that is all unread may have more behind it: say "30+" rather than a number that is too low.
-  const shownCount = count >= NOTIFICATIONS_PAGE ? `${NOTIFICATIONS_PAGE}+` : count;
-  // Keep the last non-zero count so the badge can shrink away showing it, instead of vanishing.
-  const [lastCount, setLastCount] = useState(shownCount);
-  if (count > 0 && shownCount !== lastCount) setLastCount(shownCount);
-  // A new alert while the app is open is said out loud once, politely. The first load is not news.
-  const [seen, setSeen] = useState<number | null>(feed === undefined ? null : count);
-  const [arrived, setArrived] = useState("");
-  if (feed !== undefined && seen !== count) {
-    setSeen(count);
-    if (seen !== null && count > seen) setArrived(t("notif.arrived", { n: shownCount }));
-  }
 
   // The tab tapped moves the piece and fills its glyph at once, before its screen has loaded; aria-current stays with the
   // screen actually shown. A tap is forgotten as soon as the screen changes: kept, it would win again on a later return to
   // the screen it was made on (a swipe back), and send the piece to the old tab.
   const [tapped, setTapped] = useState<{ href: string; from: string } | null>(null);
   if (tapped && tapped.from !== pathname) setTapped(null);
-  const shown = pathname === "/app" ? "/app" : pathname === "/app/subjects" ? "/app/subjects" : pathname.startsWith("/app/notifications") ? "/app/notifications" : pathname === "/app/profile" ? "/app/profile" : "";
+  const shown = pathname === "/app" ? "/app" : pathname === "/app/profile" ? "/app/profile" : "";
   const chosen = tapped?.from === pathname ? tapped.href : shown;
 
-  const tab = (href: string, label: string, Icon: Icon, badge?: number) => (
+  const tab = (href: string, label: string, Icon: Icon) => (
     // Switching tabs replaces the history entry, so Back leaves the section instead of replaying tabs.
     <Link
       href={href}
@@ -312,35 +297,19 @@ function Dock({ pathname, onTabTap }: { pathname: string; onTabTap: (href: strin
       {/* The selected tab shows the filled glyph, as a tab bar does on iOS. */}
       <Icon size={24} weight={chosen === href ? "fill" : "regular"} aria-hidden="true" />
       {label}
-      {badge !== undefined && (
-        <>
-          <span className="tab__badge" data-on={badge > 0} aria-hidden="true">
-            <span key={lastCount} className="tab__count">
-              {lastCount}
-            </span>
-          </span>
-          {badge > 0 && <span className="sr">{t("notif.unreadCount", { n: shownCount })}</span>}
-        </>
-      )}
     </Link>
   );
 
-
   return (
     <nav className="dock" aria-label={t("nav.main")}>
-      <span className="sr" role="status">
-        {arrived}
-      </span>
-      {/* The classic five: two sections on each side of the scan, which sits raised in the middle because it is an action,
-          not a section. The one piece under the current tab is SegGlide's, and it skips over the scan. */}
+      {/* Two sections with the scan between them, raised because it is an action, not a section. The one piece under the
+          current tab is SegGlide's, and it slides over the scan from one section to the other. */}
       <div className="tabbar glass">
         <SegGlide at={chosen} />
         {tab("/app", t("nav.home"), HouseSimpleIcon)}
-        {tab("/app/subjects", t("subjects.title"), BooksIcon)}
         <Link href="/app/scan" className="scan-fab" transitionTypes={["nav-forward"]} aria-label={t("nav.scan")}>
           <ScanIcon size={30} aria-hidden="true" />
         </Link>
-        {tab("/app/notifications", t("nav.alerts"), BellSimpleIcon, count)}
         {tab("/app/profile", t("nav.profile"), UserIcon)}
       </div>
     </nav>

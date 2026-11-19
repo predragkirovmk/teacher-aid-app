@@ -345,7 +345,7 @@ test.describe("signing out", () => {
 });
 
 test.describe("the route guard", () => {
-  const ROUTES = ["/app", "/app/profile", "/app/notifications", "/app/settings", "/app/attendance", "/app/leaderboard", "/app/scan", "/app/subjects"];
+  const ROUTES = ["/app", "/app/profile", "/app/notifications", "/app/settings", "/app/attendance", "/app/leaderboard", "/app/scan"];
 
   for (const route of ROUTES) {
     test(`${route} sends a signed-out student to sign in without drawing a screen of the app first`, async ({ page }) => {
@@ -365,7 +365,7 @@ test.describe("the route guard", () => {
       expect(seen.length, "the observer saw the page being drawn").toBeGreaterThan(0);
       for (const text of seen) {
         expect(text, "a signed-in screen was drawn").not.toContain("Марко");
-        expect(text).not.toContain(mk.t("nav.alerts"));
+        expect(text).not.toContain(mk.t("nav.home"));
       }
       await expect(page.getByRole("navigation", { name: mk.t("nav.main") })).toHaveCount(0);
     });

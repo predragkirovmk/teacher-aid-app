@@ -29,7 +29,7 @@ const TARGETS: Target[] = [
     name: "a tab in the tab bar",
     open: async (page) => {
       await page.goto("/app");
-      return page.locator('.tab[href="/app/notifications"]');
+      return page.locator('.tab[href="/app/profile"]');
     },
   },
   {
@@ -40,7 +40,7 @@ const TARGETS: Target[] = [
     },
   },
   {
-    name: "the avatar link on Home",
+    name: "the bell on Home",
     open: async (page) => {
       await page.goto("/app");
       return page.locator(".home-bar a");
@@ -77,15 +77,6 @@ const TARGETS: Target[] = [
     open: async (page) => {
       await page.goto("/app/practice/ps-session-math-1");
       return page.locator(".q-opt").first();
-    },
-  },
-  {
-    // The visible dot is 10 px inside a 44 px target, so it shrinks much further than a button, or a press could not be seen.
-    name: "a dot in a topic chart",
-    min: 0.5,
-    open: async (page) => {
-      await page.goto("/app/subject/math");
-      return page.locator(".tc__dot").nth(1);
     },
   },
   {
@@ -322,9 +313,9 @@ test.describe("screen transitions", () => {
 
   test("a tab-bar tap never asks for a slide and lands on the tab", async ({ page }) => {
     await home(page);
-    await page.locator('.tab[href="/app/notifications"]').click();
-    await expect(page).toHaveURL(/\/app\/notifications$/);
-    await expect(page.locator('.tab[href="/app/notifications"]')).toHaveAttribute("aria-current", "page");
+    await page.locator('.tab[href="/app/profile"]').click();
+    await expect(page).toHaveURL(/\/app\/profile$/);
+    await expect(page.locator('.tab[href="/app/profile"]')).toHaveAttribute("aria-current", "page");
     // Normally the call carries `tab`; React can lose a type under load, and Shell then crossfades by its own flag
     // (tab-crossfade.spec.ts proves the crossfade). What a tap must never do is ask for a slide or a swipe.
     await expect.poll(async () => (await transitions(page)).length).toBeGreaterThan(0);
@@ -333,8 +324,8 @@ test.describe("screen transitions", () => {
 
   test("a tab swap is a simultaneous opacity-only crossfade: old and new start together, last the same time, no scale, no delay, dock still", async ({ page }) => {
     await home(page);
-    await page.locator('.tab[href="/app/notifications"]').click();
-    await expect(page).toHaveURL(/\/app\/notifications$/);
+    await page.locator('.tab[href="/app/profile"]').click();
+    await expect(page).toHaveURL(/\/app\/profile$/);
     // The animations start a frame or two after the URL changes; under load, wait until both were seen.
     await expect.poll(async () => (await animations(page)).filter((a) => a.name === "vt-fade-out" || a.name === "vt-fade-in").length).toBe(2);
     const anims = await animations(page);
@@ -361,10 +352,10 @@ test.describe("screen transitions", () => {
     await home(page);
     await page.waitForTimeout(600);
     await swipe(page, 330, 60);
-    await expect(page).toHaveURL(/\/app\/subjects$/);
+    await expect(page).toHaveURL(/\/app\/profile$/);
     await page.waitForTimeout(500);
     // The swipe type has no class in Shell, so nothing in the transition animates: the pager's own slide is the only
-    // motion, with no crossfade after it. (It is a type of its own, not none, so the subject morph can be off for it.)
+    // motion, with no crossfade after it. (It is a type of its own, not none, so other transitions can be off for it.)
     expect((await transitions(page)).flat()).toEqual(["swipe"]);
     expect(await animations(page)).toEqual([]);
   });
@@ -391,15 +382,15 @@ test.describe("screen transitions", () => {
 
   test("a tab tapped during a tab swap lands on the last tab", async ({ page }) => {
     await home(page);
-    await page.locator('.tab[href="/app/notifications"]').click();
     await page.locator('.tab[href="/app/profile"]').click();
-    await expect(page).toHaveURL(/\/app\/profile$/);
-    await expect(page.locator('.tab[href="/app/profile"]')).toHaveAttribute("aria-current", "page");
+    await page.locator('.tab[href="/app"]').click();
+    await expect(page).toHaveURL(/\/app$/);
+    await expect(page.locator('.tab[href="/app"]')).toHaveAttribute("aria-current", "page");
   });
 
   test("the overlay lets taps through", async ({ page }) => {
     await home(page);
-    await page.locator('.tab[href="/app/notifications"]').click();
+    await page.locator('.tab[href="/app/profile"]').click();
     const none = await page.evaluate(() => getComputedStyle(document.documentElement, "::view-transition").pointerEvents);
     // Outside a transition the pseudo-element does not exist and reads as the default; while one runs it must be none.
     expect(["none", "auto"]).toContain(none);
@@ -532,8 +523,8 @@ test.describe("entrances", () => {
     const keyframe = await cards.first().evaluate((n) => (n.getAnimations().find((a) => (a as CSSAnimation).animationName === "arrive")!.effect as KeyframeEffect).getKeyframes()[0].transform);
     expect(keyframe).toBe("translateY(8px)");
     await expect(page.locator("html")).toHaveAttribute("data-rise-seen", "");
-    await page.locator('.tab[href="/app/notifications"]').click();
-    await expect(page).toHaveURL(/\/app\/notifications$/);
+    await page.locator('.tab[href="/app/profile"]').click();
+    await expect(page).toHaveURL(/\/app\/profile$/);
     await page.locator('.tab[href="/app"]').click();
     await expect(page).toHaveURL(/\/app$/);
     await expect(cards.first()).toBeVisible();
@@ -546,8 +537,8 @@ test.describe("entrances", () => {
     await page.goto("/app");
     await expect(page.locator(".rise").first()).toBeVisible();
     await page.waitForTimeout(400);
-    await page.locator('.tab[href="/app/notifications"]').click();
-    await expect(page).toHaveURL(/\/app\/notifications$/);
+    await page.locator('.tab[href="/app/profile"]').click();
+    await expect(page).toHaveURL(/\/app\/profile$/);
     await page.locator('.tab[href="/app"]').click();
     await expect(page).toHaveURL(/\/app$/);
     await expect(page.locator("html")).toHaveAttribute("data-rise-seen", "");
@@ -557,7 +548,7 @@ test.describe("entrances", () => {
   test("a tab switch shows no entrance on the new tab, by tap", async ({ page }) => {
     await page.goto("/app");
     await expect(page.locator("html")).toHaveAttribute("data-rise-seen", "");
-    for (const tab of ["/app/subjects", "/app/notifications", "/app/profile"]) {
+    for (const tab of ["/app/profile", "/app"]) {
       await page.locator(`.tab[href="${tab}"]`).click();
       await expect(page).toHaveURL(new RegExp(`${tab}$`));
       // Across the whole crossfade and after it, nothing rises.
@@ -572,7 +563,7 @@ test.describe("entrances", () => {
     await home(page);
     await expect(page.locator("html")).toHaveAttribute("data-rise-seen", "");
     await swipe(page, 330, 60);
-    await expect(page).toHaveURL(/\/app\/subjects$/);
+    await expect(page).toHaveURL(/\/app\/profile$/);
     for (let i = 0; i < 8; i++) {
       expect(await running(page)).toEqual([]);
       await page.waitForTimeout(60);
@@ -591,7 +582,7 @@ test.describe("entrances", () => {
   });
 
   test("a list that fills after loading staggers 35 ms apart and nobody waits more than 240 ms", async ({ page }) => {
-    await page.goto("/app/subjects");
+    await page.goto("/app/summary");
     const rows = page.locator("main.screen ul.list > li");
     expect(await rows.count()).toBeGreaterThan(7);
     // The Gate sets this on <html> when a screen's data lands late (unit-tested); the mock answers at once, so set it by hand.
@@ -606,29 +597,6 @@ test.describe("entrances", () => {
     const e = await entrance(rows.first());
     expect(e.names).toEqual(["arrive", "arrive-fade"]);
     expect(ms(e.duration)[1]).toBe(180);
-  });
-
-  test("search results rise only when a row is new, not the whole list on every keystroke", async ({ page }) => {
-    await page.goto("/app/subjects");
-    const rows = page.locator("main.screen ul.list > li");
-    const before = await rows.count();
-    expect(before).toBeGreaterThan(3);
-    // Opening the tab animated nothing.
-    expect(await page.locator("main.screen .arrive").count()).toBe(0);
-    const search = page.getByRole("searchbox");
-    await search.fill("ма");
-    // Rows that were already listed stay as they were.
-    await expect.poll(async () => (await rows.count()) < before).toBe(true);
-    expect(await page.locator("main.screen ul.list > li.arrive").count()).toBe(0);
-    // Clearing brings rows back: those are new, and they rise, one after the other.
-    await search.fill("");
-    await expect.poll(async () => rows.count()).toBe(before);
-    const risen = await page.locator("main.screen ul.list > li.arrive").count();
-    expect(risen).toBeGreaterThan(0);
-    expect(risen).toBeLessThan(before);
-    const delays = await delaysOf(page, "main.screen ul.list > li.arrive");
-    expect(delays[0]).toBe(0);
-    if (delays.length > 1) expect(delays[1] - delays[0]).toBe(35);
   });
 
   test("a bottom sheet rises on the snappy spring and leaves faster than it came", async ({ page }) => {
@@ -686,7 +654,7 @@ test.describe("entrances with reduced motion", () => {
     expect(ms(e.delay)).toEqual([0]);
     expect(await card.evaluate((n) => n.getAnimations().flatMap((a) => (a.effect as KeyframeEffect).getKeyframes().flatMap((k) => Object.keys(k))).filter((k) => ["transform", "scale", "translate"].includes(k)))).toEqual([]);
 
-    await page.goto("/app/subjects");
+    await page.goto("/app/summary");
     await page.evaluate(() => document.documentElement.setAttribute("data-arrive", ""));
     const delays = await delaysOf(page, "main.screen ul.list > li");
     expect(delays.every((d) => d === 0)).toBe(true);

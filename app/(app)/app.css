@@ -347,7 +347,7 @@ button.card:active {
    the background. Every other element on the list has no transition of its own, so it needs nothing. */
 :is(
   .press, .btn, a.card, button.card, .round, .next, .scan-fab, .provider, .q-opt, .q-tf__btn, .n-minus, .pe-photo-btn,
-  a.item, button.item, .tab, .opt, .result, .switch, button.pill, .section-link, .pe-bar__text, .tc__dot
+  a.item, button.item, .tab, .opt, .switch, button.pill, .section-link, .pe-bar__text
 ) {
   transition:
     scale var(--spring-pop-dur) var(--spring-pop),
@@ -356,7 +356,7 @@ button.card:active {
 }
 :is(
   .press, .btn, a.card, button.card, .round, .next, .scan-fab, .provider, .q-opt, .q-tf__btn, .n-minus, .pe-photo-btn,
-  a.item, button.item, .tab, .opt, .result, .switch, button.pill, .section-link, .pe-bar__text, .tc__dot
+  a.item, button.item, .tab, .opt, .switch, button.pill, .section-link, .pe-bar__text
 ):not(:disabled, [aria-disabled="true"]):active {
   scale: var(--press-reduce, var(--press-scale, 0.94));
   opacity: var(--press-dim, 1);
@@ -448,60 +448,6 @@ button.card:active {
   }
 }
 
-/* ---- search ---- */
-.search {
-  position: relative;
-  margin-bottom: 16px;
-}
-.search input {
-  width: 100%;
-  height: 56px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--card);
-  padding: 0 56px 0 24px;
-  font-size: var(--fs-callout);
-  outline: none;
-}
-.search input::placeholder {
-  color: var(--text-2);
-}
-.search input:focus-visible {
-  outline: 3px solid var(--yellow);
-  outline-offset: 2px;
-}
-.search svg {
-  position: absolute;
-  right: 20px;
-  top: 16px;
-  pointer-events: none;
-}
-.results {
-  list-style: none;
-  margin: 0;
-  position: absolute;
-  z-index: 5;
-  left: 0;
-  right: 0;
-  top: 64px;
-  border-radius: 24px;
-  padding: 8px;
-}
-.result {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 52px;
-  padding: 0 16px;
-  border-radius: 16px;
-  text-align: left;
-  --press-scale: 0.96;
-}
-.result:active {
-  background: rgba(255, 255, 255, 0.12);
-}
-
 /* ---- subject cards ---- */
 .subject {
   position: relative;
@@ -559,17 +505,6 @@ button.card:active {
   font-size: 15px;
   flex: none;
 }
-.tone-yellow {
-  background: var(--yellow);
-  color: var(--ink);
-}
-.tone-yellow .subject__glyphs {
-  color: rgba(7, 22, 47, 0.1);
-}
-.tone-yellow .monogram {
-  background: var(--ink);
-  color: var(--yellow);
-}
 .tone-ice {
   background: var(--ice);
   color: var(--ink);
@@ -581,19 +516,6 @@ button.card:active {
   background: #2468be;
   color: #fff;
 }
-.tone-deep {
-  background: var(--sheet);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-}
-.tone-deep .subject__glyphs {
-  color: rgba(255, 200, 61, 0.14);
-}
-.tone-deep .monogram {
-  background: var(--yellow);
-  color: var(--ink);
-}
-
 /* ---- overlays ---- */
 .scrim {
   position: absolute;
@@ -717,14 +639,6 @@ button.card:active {
 }
 .list > * + * {
   border-top: 1px solid rgba(255, 255, 255, 0.14);
-}
-/* A list whose rows leave and move (MotionList): a leaving row is held out of the flow at its old place, so the list is the
-   box it fades out of, and the card around it does not clip it while the rest close up. */
-.list--motion {
-  position: relative;
-}
-.list--motion[data-leaving] {
-  overflow: visible;
 }
 .item {
   display: flex;
@@ -1589,6 +1503,21 @@ button.pill {
   margin-bottom: 16px;
 }
 
+/* Home's bell: a 44 px target with the unread count on its corner. */
+.bell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+}
+.bell .tab__badge {
+  top: 0;
+  left: auto;
+  right: -2px;
+}
+
 /* ---- home ---- */
 .next {
   display: block;
@@ -2223,17 +2152,6 @@ html[data-rise-seen] .rise {
   display: none;
 }
 
-/* Search results and toast: short in, short out. */
-.results {
-  animation: pop-in var(--spring-press-dur) var(--spring-press);
-  transform-origin: top center;
-}
-@keyframes pop-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px) scale(0.98);
-  }
-}
 /* The connection, said quietly: offline, reconnecting, back, and answers saved for later. Floats like a
    toast but takes no taps, so nothing under it is ever blocked. */
 .net-pill {
@@ -2389,11 +2307,6 @@ html[data-rise-seen] .rise {
     }
   }
   @keyframes pop {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes pop-in {
     from {
       opacity: 0;
     }

@@ -2,12 +2,12 @@
 
 import { CaretRightIcon, CheckIcon, ClockIcon, ScanIcon, XIcon, type Icon } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useEffect, ViewTransition, type CSSProperties } from "react";
-import { Avatar } from "@/components/app/Avatar";
+import { useEffect, type CSSProperties } from "react";
+import { Bell } from "@/components/app/Bell";
 import { Mark } from "@/components/app/Mark";
 import { PracticeHomeRow } from "@/components/app/practice/PracticeRows";
 import { QueryState } from "@/components/app/QueryState";
-import { SubjectMark, SubjectRow, useSubjectMorph } from "@/components/app/SubjectCard";
+import { SubjectMark } from "@/components/app/SubjectCard";
 import { useUI } from "@/components/app/ui";
 import { demoOnly } from "@/lib/app/api";
 import {
@@ -108,9 +108,7 @@ export default function Home() {
     <main className="screen" data-pending={live === null || !me.loaded ? "" : undefined}>
       <div className="home-bar">
         <Mark size={32} />
-        <Link href="/app/profile" replace transitionTypes={["tab"]} className="press" aria-label={t("nav.profile")} style={{ display: "block", borderRadius: "50%" }}>
-          <Avatar photo={me.photo} initials={me.initials} size={48} className="avatar--quiet" />
-        </Link>
+        <Bell />
       </div>
 
       <div className="home-head">
@@ -246,7 +244,6 @@ function ResultTile({ wide = false }: { wide?: boolean }) {
 /** The demo's school day: the lesson under way or next, the next test, today's timetable. */
 function DemoCards({ now, live }: { now: number; live: boolean }) {
   const { t, locale } = useT();
-  const subjectMorph = useSubjectMorph();
   const scans = useScans();
   const courses = useCourses().data ?? [];
 
@@ -306,58 +303,61 @@ function DemoCards({ now, live }: { now: number; live: boolean }) {
   const lessonName = course ? subjectLabel(t, course.subjectId, course.subjectName) : "";
   const teacher = course ? personName(course.teacherName, locale) : "";
 
+  const cardBody = (
+    <>
+      <span className="next__sign" aria-hidden="true">
+        {live && course && <SubjectMark subject={course} />}
+      </span>
+      <div className="next__eyebrow">
+        <span className="grow timed">{eyebrow}</span>
+        <CaretRightIcon size={22} aria-hidden="true" />
+      </div>
+      <div className="next__name">
+        <span className="timed">{lessonName}</span>
+      </div>
+      <div className="next__when">
+        <span className="timed">
+          {scan ? (
+            <>
+              <CheckIcon size={20} weight="bold" aria-hidden="true" />
+              {t("home.checkedIn", { t: formatTime(scan.at) })}
+            </>
+          ) : current ? (
+            roomLabel(t, lesson.subject)
+          ) : (
+            `${dayName(lesson)}, ${lesson.from} · ${roomLabel(t, lesson.subject)}`
+          )}
+        </span>
+      </div>
+      {needsScan ? (
+        <div className="next__action">
+          <ScanIcon size={22} aria-hidden="true" />
+          {t("home.scanNow")}
+        </div>
+      ) : (
+        <div className="next__foot">
+          <span className="monogram" aria-hidden="true">
+            {live && initials(teacher)}
+          </span>
+          <span className="grow">
+            <span className="timed">{teacher}</span>
+          </span>
+        </div>
+      )}
+    </>
+  );
   return (
     <>
       {/* What matters first: the lesson under way or next, which is also where you check in. */}
       <div {...rise(0)}>
-        <ViewTransition name={`subject-${course?.id}`} share={subjectMorph} default="none">
-          <Link
-            href={needsScan ? "/app/scan" : `/app/subject/${course?.id}`}
-            className="next"
-            transitionTypes={["nav-forward"]}
-            data-morph={`subject-${course?.id}`}
-          >
-            <span className="next__sign" aria-hidden="true">
-              {live && course && <SubjectMark subject={course} />}
-            </span>
-            <div className="next__eyebrow">
-              <span className="grow timed">{eyebrow}</span>
-              <CaretRightIcon size={22} aria-hidden="true" />
-            </div>
-            <div className="next__name">
-              <span className="timed">{lessonName}</span>
-            </div>
-            <div className="next__when">
-              <span className="timed">
-                {scan ? (
-                  <>
-                    <CheckIcon size={20} weight="bold" aria-hidden="true" />
-                    {t("home.checkedIn", { t: formatTime(scan.at) })}
-                  </>
-                ) : current ? (
-                  roomLabel(t, lesson.subject)
-                ) : (
-                  `${dayName(lesson)}, ${lesson.from} · ${roomLabel(t, lesson.subject)}`
-                )}
-              </span>
-            </div>
-            {needsScan ? (
-              <div className="next__action">
-                <ScanIcon size={22} aria-hidden="true" />
-                {t("home.scanNow")}
-              </div>
-            ) : (
-              <div className="next__foot">
-                <span className="monogram" aria-hidden="true">
-                  {live && initials(teacher)}
-                </span>
-                <span className="grow">
-                  <span className="timed">{teacher}</span>
-                </span>
-              </div>
-            )}
+        {/* Subjects have no screens of their own now: the card opens the scan when there is something to check in to, and is plain otherwise. */}
+        {needsScan ? (
+          <Link href="/app/scan" className="next" transitionTypes={["nav-forward"]}>
+            {cardBody}
           </Link>
-        </ViewTransition>
+        ) : (
+          <div className="next">{cardBody}</div>
+        )}
       </div>
 
       <div {...rise(1)}>
@@ -405,18 +405,22 @@ function DemoCards({ now, live }: { now: number; live: boolean }) {
             return (
               row && (
                 <li key={l.start}>
-                  <SubjectRow
-                    course={row}
-                    shared={row.id !== course?.id}
-                    caption={caption(l)}
-                    status={
-                      isNow ? (
-                        <span className="pill pill--now">{t("home.nowShort")}</span>
-                      ) : l.kind !== "lesson" && l.end > now ? (
-                        <span className="pill">{t(`kind.${l.kind}`)}</span>
-                      ) : null
-                    }
-                  />
+                  <div className="item">
+                    <span className="mark" aria-hidden="true">
+                      <SubjectMark subject={row} />
+                    </span>
+                    <span className="grow">
+                      <span className="item__title" style={{ display: "block" }}>
+                        {subjectLabel(t, row.subjectId, row.subjectName)}
+                      </span>
+                      <span className="t-cap">{caption(l)}</span>
+                    </span>
+                    {isNow ? (
+                      <span className="pill pill--now">{t("home.nowShort")}</span>
+                    ) : l.kind !== "lesson" && l.end > now ? (
+                      <span className="pill">{t(`kind.${l.kind}`)}</span>
+                    ) : null}
+                  </div>
                 </li>
               )
             );

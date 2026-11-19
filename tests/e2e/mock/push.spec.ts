@@ -333,14 +333,14 @@ test.describe("the demo's test notification", () => {
 
 test.describe("a tap on a notification while the app was closed", () => {
   test("opens its screen, marks the alert read and cleans the address", async ({ page }) => {
-    await page.goto("/app/notifications");
-    const tabs = page.getByRole("navigation", { name: mk.t("nav.main") });
-    await expect(tabs).toContainText(mk.t("notif.unreadCount", { n: 3 }));
+    await page.goto("/app");
+    const bell = page.locator(".home-bar").getByRole("link", { name: mk.t("notif.title") });
+    await expect(bell).toContainText(mk.t("notif.unreadCount", { n: 3 }));
 
     await page.goto("/app/practice/ps-session-math-1?from_push=n-practice-ps-session-math-1");
     await expect(page).toHaveURL(/\/app\/practice\/ps-session-math-1$/);
-    await page.goto("/app/notifications");
-    await expect(tabs).toContainText(mk.t("notif.unreadCount", { n: 2 }));
+    await page.goto("/app");
+    await expect(bell).toContainText(mk.t("notif.unreadCount", { n: 2 }));
   });
 
   test("a push that arrives while the app is open is read into the feed", async ({ page }) => {
@@ -385,8 +385,8 @@ test.describe("when a lesson ends", () => {
     await expect(page).toHaveURL(/\/app$/);
 
     // The result and the practice set the teacher sent after it: two more than the three the demo starts with.
-    const tabs = page.getByRole("navigation", { name: mk.t("nav.main") });
-    await expect(tabs).toContainText(mk.t("notif.unreadCount", { n: 5 }));
+    const bell = page.locator(".home-bar").getByRole("link", { name: mk.t("notif.title") });
+    await expect(bell).toContainText(mk.t("notif.unreadCount", { n: 5 }));
 
     // The ask waits a beat after the student lands, so the Home screen is seen first.
     await expect(dialog(page)).toHaveCount(0);
@@ -394,7 +394,7 @@ test.describe("when a lesson ends", () => {
     await expect(dialog(page)).toContainText(mk.t("push.ask.title"));
     await page.getByRole("button", { name: mk.t("push.ask.later") }).click();
 
-    await page.getByRole("link", { name: mk.t("nav.alerts") }).click();
+    await bell.click();
     await expect(page.getByRole("link", { name: new RegExp(mk.t("notif.result_ready.title", { subject: mk.t("subj.math") })) }).first()).toBeVisible();
     await expect(page.locator(".item--unread")).toHaveCount(5);
     expect(await asked(page)).toBe(0);

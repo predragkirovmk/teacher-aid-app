@@ -18,10 +18,9 @@ test("Home shows the name, rank, attendance and the latest result", async ({ pag
   await expect(latest).toContainText(mk.t("subj.math"));
 });
 
-test("the subjects are a tab of their own, not a row on Home", async ({ page }) => {
+test("Home has no subjects row, and the bell takes the place of the avatar", async ({ page }) => {
   await page.goto("/app");
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.allSubjects")) })).toHaveCount(0);
-  await page.getByRole("navigation", { name: mk.t("nav.main") }).getByRole("link", { name: mk.t("subjects.title") }).click();
-  await expect(page).toHaveURL(/\/app\/subjects$/);
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("subj.math")) }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: mk.t("nav.profile") })).toHaveCount(1);
+  await expect(page.locator(".home-bar").getByRole("link", { name: mk.t("notif.title") })).toBeVisible();
+  await expect(page.locator(".home-bar .avatar")).toHaveCount(0);
 });

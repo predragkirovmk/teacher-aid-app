@@ -1,23 +1,26 @@
 import { expect, mk, test } from "../fixtures";
 
 test("mark all alerts read clears the unread count", async ({ page }) => {
-  await page.goto("/app/notifications");
-  const tabs = page.getByRole("navigation", { name: mk.t("nav.main") });
+  await page.goto("/app");
+  const bell = page.locator(".home-bar").getByRole("link", { name: mk.t("notif.title") });
   const unreadLabel = mk.t("notif.unreadCount", { n: 3 });
   const unreadRows = page.locator(".item--unread");
 
-  await expect(tabs).toContainText(unreadLabel);
+  await expect(bell).toContainText(unreadLabel);
+  await bell.click();
   await expect(unreadRows).toHaveCount(3);
 
   await page.getByRole("button", { name: mk.t("notif.markAll") }).click();
 
   await expect(page.getByRole("button", { name: mk.t("notif.markAll") })).toHaveCount(0);
   await expect(unreadRows).toHaveCount(0);
-  await expect(tabs).not.toContainText(unreadLabel);
 
-  // The saved data keeps it read.
+  // The saved data keeps it read, and the bell on Home has no count.
   await page.reload();
   await expect(page.getByRole("button", { name: mk.t("notif.markAll") })).toHaveCount(0);
+  await page.getByRole("button", { name: mk.t("back") }).click();
+  await expect(page).toHaveURL(/\/app$/);
+  await expect(bell).not.toContainText(unreadLabel);
 });
 
 test("opening an alert marks it read and lands on what it is about", async ({ page }) => {

@@ -170,8 +170,6 @@ add("08-home-clock-sheet", "/app", "demo clock set to midday so the pill shows; 
   await page.locator("button.pill").click();
   await page.getByRole("dialog").waitFor();
 }, { state: { clock: "midday" } });
-add("09-subjects", "/app/subjects", "signed in", `${APP}/subjects/page.tsx`, go("/app/subjects"));
-add("10-subject-detail", "/app/subject/math", "signed in", `${APP}/subject/[id]/page.tsx`, go("/app/subject/math"));
 add("11-schedule", "/app/schedule", "signed in", `${APP}/schedule/page.tsx`, go("/app/schedule"));
 add("12-attendance", "/app/attendance", "signed in", `${APP}/attendance/page.tsx`, go("/app/attendance"));
 add("13-achievements", "/app/achievements", "signed in", `${APP}/achievements/page.tsx`, go("/app/achievements"));
@@ -291,7 +289,12 @@ add("42-practice-done", SET, "three answers seeded, the last one typed, then See
   await page.getByRole("region", { name: /./ }).first().waitFor();
 }, { state: { practiceAnswers: { "ps-session-math-1": { pf1: "1", pf2: "0", pf3: "true" } } } });
 add("43-practice-missing", "/app/practice/ps-nothing", "a set that does not exist", `${C}/practice/Player.tsx`, go("/app/practice/ps-nothing"));
-add("44-notifications", "/app/notifications", "signed in", `${APP}/notifications/page.tsx`, go("/app/notifications"));
+add("44-notifications", "/app/notifications", "signed in; opened from the bell on Home, as a pushed screen with Back", `${APP}/notifications/page.tsx`, async (page) => {
+  await page.goto(`${base}/app`);
+  await page.locator(".home-bar a.bell").click();
+  await page.waitForURL(/\/app\/notifications$/);
+  await page.getByRole("button", { name: "Назад" }).waitFor();
+});
 add("45-notification-detail", "/app/notifications/n-math", "signed in", `${APP}/notifications/[id]/page.tsx`, go("/app/notifications/n-math"));
 add("46-profile", "/app/profile", "signed in", `${APP}/profile/page.tsx`, go("/app/profile"));
 add("47-profile-editor", "/app/profile", "press Edit", `${C}/ProfileEditor.tsx`, async (page) => {

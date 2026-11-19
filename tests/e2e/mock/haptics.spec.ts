@@ -33,13 +33,13 @@ async function playTo(page: Page, until: (s: string | null) => boolean, pick = 0
   throw new Error("the quiz never reached the stage");
 }
 
-test("tab taps, presses and navigation do not vibrate", async ({ page }) => {
+test("tab taps, the bell, presses and navigation do not vibrate", async ({ page }) => {
   await page.goto("/app");
   const tabs = page.getByRole("navigation", { name: mk.t("nav.main") });
-  await tabs.getByRole("link", { name: mk.t("subjects.title") }).click();
-  await tabs.getByRole("link", { name: new RegExp(mk.t("nav.alerts")) }).click();
   await tabs.getByRole("link", { name: mk.t("nav.profile") }).click();
   await tabs.getByRole("link", { name: mk.t("nav.home") }).click();
+  await page.locator(".home-bar").getByRole("link", { name: mk.t("notif.title") }).click();
+  await expect(page).toHaveURL(/\/app\/notifications$/);
   expect(await calls(page)).toEqual([]);
 });
 

@@ -44,7 +44,7 @@ async function record(page: Page) {
   });
 }
 
-const TABS = ["/app", "/app/subjects", "/app/notifications", "/app/profile"];
+const TABS = ["/app", "/app/profile"];
 
 for (const rate of [1, 4]) {
   test.describe(`a tab tap crossfades (CPU ${rate}x)`, () => {
@@ -66,7 +66,7 @@ for (const rate of [1, 4]) {
         const all = await calls();
         expect(all.length).toBeGreaterThan(0);
         for (const c of all) {
-          // React can lose the `tab` type under load; the screens crossfade either way (Shell, TabTapContext), but never slide.
+          // React can lose the `tab` type under load; the screens crossfade either way (Shell), but never slide.
           expect(c.types.filter((t) => t !== "tab"), c.stack).toEqual([]);
           expect(c.ready, c.stack).toBe("ready");
           expect(c.finished, c.stack).toBe("finished");
@@ -74,8 +74,6 @@ for (const rate of [1, 4]) {
         const fades = await page.evaluate(() => (window as unknown as { __fades: string[] }).__fades);
         // React names the screen's group itself (_t_0_), so the group is any but the dock's.
         expect(fades.some((f) => /^::view-transition-old\((?!dock)[^)]+\) vt-fade-out$/.test(f))).toBe(true);
-        // No subject morph between the Home card and its row on Subjects.
-        expect(fades.filter((f) => /^::view-transition-group\(subject-/.test(f) && f.includes("group-anim"))).toEqual([]);
         expect(fades.some((f) => /^::view-transition-new\((?!dock)[^)]+\) vt-fade-in$/.test(f))).toBe(true);
       });
     }

@@ -83,31 +83,6 @@ function expectOvershootBeforeStop(samples: Sample[], goal: { l: number; r: numb
   for (let i = peak + 1; i < samples.length; i++) expect(samples[i].r).toBeLessThanOrEqual(samples[i - 1].r + 0.3);
 }
 
-/**
- * How many frames, from `act` until 1.3 s after it, show a subject's view-transition morph running (the screens' and the dock's
- * own groups are not morphs). The watch starts before `act` and ends only after the wait, not on a clock set beforehand: on a
- * slow runner the click itself can take long enough to use up a fixed window before the morph begins.
- */
-async function morphsDuring(page: Page, act: () => Promise<unknown>) {
-  await page.evaluate(() => {
-    const w = window as unknown as { morphs: number; morphsDone: boolean };
-    w.morphs = 0;
-    w.morphsDone = false;
-    const look = () => {
-      if (document.getAnimations().some((a) => String((a.effect as KeyframeEffect).pseudoElement ?? "").startsWith("::view-transition-group(subject-"))) w.morphs++;
-      if (!w.morphsDone) requestAnimationFrame(look);
-    };
-    requestAnimationFrame(look);
-  });
-  await act();
-  await page.waitForTimeout(1300);
-  return page.evaluate(() => {
-    const w = window as unknown as { morphs: number; morphsDone: boolean };
-    w.morphsDone = true;
-    return w.morphs;
-  });
-}
-
 test.describe("the welcome screen's language switch", () => {
   test.beforeEach(async ({ page }) => {
     await start(page, { state: { signedIn: false } });
@@ -201,7 +176,7 @@ test.describe("the tab bar", () => {
     await page.goto("/app");
     await expect(page.locator(".tabbar > .seg__glide")).toHaveAttribute("data-on", "true");
     const props = await page.evaluate(async () => {
-      document.querySelector<HTMLElement>(`.tab[href="/app/subjects"]`)!.click();
+      document.querySelector<HTMLElement>(`.tab[href="/app/profile"]`)!.click();
       // The piece moves on the tap itself, before the screen has loaded: by the next frame the slide is under way.
       await new Promise(requestAnimationFrame);
       return document
@@ -215,27 +190,12 @@ test.describe("the tab bar", () => {
     expect(props.every((k) => k === "transform" || k === "opacity")).toBe(true);
   });
 
-  test("a tap between Home and Subjects swaps the screens with no morph between them; a subject still morphs into its screen", async ({ page }) => {
-    await start(page, {});
-    await page.goto("/app");
-    const tabs = page.getByRole("navigation", { name: mk.t("nav.main") });
-    expect(await morphsDuring(page, () => tabs.getByRole("link", { name: mk.t("subjects.title") }).click())).toBe(0);
-    await expect(page).toHaveURL(/\/app\/subjects$/);
-    expect(await morphsDuring(page, () => tabs.getByRole("link", { name: mk.t("nav.home") }).click())).toBe(0);
-    await expect(page).toHaveURL(/\/app$/);
-    await tabs.getByRole("link", { name: mk.t("subjects.title") }).click();
-    await expect(page).toHaveURL(/\/app\/subjects$/);
-    // The control: the same morph, from a row into the subject's own screen, still runs.
-    expect(await morphsDuring(page, () => page.locator("[data-morph]").first().click())).toBeGreaterThan(0);
-    await expect(page).toHaveURL(/\/app\/subject\//);
-  });
-
   test("after a tap, a swipe back to the screen it was made on puts the piece on that screen's tab", async ({ page }) => {
     await start(page, {});
     await page.goto("/app");
     const tabs = page.getByRole("navigation", { name: mk.t("nav.main") });
-    await tabs.getByRole("link", { name: mk.t("subjects.title") }).click();
-    await expect(page).toHaveURL(/\/app\/subjects$/);
+    await tabs.getByRole("link", { name: mk.t("nav.profile") }).click();
+    await expect(page).toHaveURL(/\/app\/profile$/);
     // A finger drags the screen to the right: back to Home.
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 100, y: 400 }] });
@@ -257,7 +217,7 @@ test.describe("the tab bar", () => {
     await page.goto("/app/settings");
     const glide = page.locator(".tabbar > .seg__glide");
     await expect(glide).toHaveAttribute("data-on", "false");
-    await page.goto("/app/subjects");
+    await page.goto("/app/profile");
     await expect(glide).toHaveAttribute("data-on", "true");
   });
 });

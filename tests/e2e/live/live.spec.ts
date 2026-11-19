@@ -30,8 +30,6 @@ test("Home draws the API's student, rank, attendance and latest result", async (
   const latest = page.getByRole("link", { name: new RegExp(mk.t("home.summary")) });
   await expect(latest).toContainText("4/5");
   await expect(latest).toContainText(mk.t("subj.math"));
-  // The subjects are a tab of their own now, not a row on Home.
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.allSubjects")) })).toHaveCount(0);
 
   const { calls } = await serverState(request);
   expect(calls).toEqual(expect.arrayContaining(["GET /me", "GET /me/leaderboard", "GET /me/attendance", "GET /me/results"]));
@@ -49,19 +47,21 @@ test("Home hides the demo-only cards", async ({ page }) => {
 });
 
 test("Alerts lists the API's notifications and marks them all read", async ({ page, request }) => {
-  await page.goto("/app/notifications");
-  const tabs = page.getByRole("navigation", { name: mk.t("nav.main") });
+  await page.goto("/app");
+  const bell = page.locator(".home-bar").getByRole("link", { name: mk.t("notif.title") });
+  await expect(bell).toContainText(mk.t("notif.unreadCount", { n: 2 }));
+  await bell.click();
 
   await expect(page.getByRole("link", { name: new RegExp(mk.t("notif.result_ready.title", { subject: mk.t("subj.math") })) })).toBeVisible();
   await expect(page.getByRole("link", { name: /Parents evening/ })).toBeVisible();
   await expect(page.locator(".item--unread")).toHaveCount(2);
-  await expect(tabs).toContainText(mk.t("notif.unreadCount", { n: 2 }));
   // A check-in record is the demo's own; the API sends none.
   await expect(page.getByText(new RegExp(mk.t("notif.checkin.title", { subject: "" })))).toHaveCount(0);
 
   await page.getByRole("button", { name: mk.t("notif.markAll") }).click();
   await expect(page.locator(".item--unread")).toHaveCount(0);
-  await expect(tabs).not.toContainText(mk.t("notif.unreadCount", { n: 2 }));
+  await page.getByRole("button", { name: mk.t("back") }).click();
+  await expect(bell).not.toContainText(mk.t("notif.unreadCount", { n: 2 }));
 
   const { bodies } = await serverState(request);
   expect(bodies["POST /me/notifications/read"]).toEqual({ all: true });
@@ -264,12 +264,12 @@ test.describe("signing in", () => {
     await page.goto("/app");
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Live");
 
-    // Home is already drawn, and so are the alerts the tab bar counts. What the student does next
+    // Home is already drawn, and so are the alerts the bell counts. What the student does next
     // asks the API something it has not been asked before, and is told.
-    // (The alerts the tab bar counts must have been read already, or that read is the call that hears of it and the bar is gone.)
+    // (The alerts the bell counts must have been read already, or that read is the call that hears of it and the bar is gone.)
     await expect.poll(async () => (await serverState(request)).calls).toContain("GET /me/notifications");
     await control(request, "elsewhere");
-    await page.getByRole("navigation", { name: mk.t("nav.main") }).getByRole("link", { name: mk.t("nav.alerts") }).click();
+    await page.locator(".home-bar").getByRole("link", { name: mk.t("notif.title") }).click();
     await expect(page).toHaveURL(/\/app\/notifications$/);
     await page.getByRole("button", { name: mk.t("notif.markAll") }).click();
 
@@ -1104,32 +1104,9 @@ test.describe("practice and the history of results", () => {
   const bodies = async (request: Req) => (await serverState(request)) as unknown as { practiceBodies: { id: string; body: { answers: { question_id: string; response: string }[] } }[]; queries: Record<string, string> };
   const check = (page: Page) => page.getByRole("button", { name: mk.t("pr.check") });
 
-  test("Home offers the set the API lists, and a subject draws its lessons and topics from the API", async ({ page, request }) => {
+  test("Home offers the set the API lists", async ({ page }) => {
     await page.goto("/app");
     await expect(page.getByRole("link", { name: new RegExp(`^${mk.t("pr.title")}`) })).toContainText(mk.t("pr.home.new1", { subject: mk.t("subj.math") }));
-
-    await page.goto("/app/subject/c-math");
-    // The lessons of this course only, asked of the API with the course; the other course's lesson is not here.
-    const lessons = page.getByRole("heading", { name: mk.t("res.recent") }).locator("xpath=ancestor::section[1]");
-    await expect(lessons.getByRole("listitem")).toHaveCount(2);
-    await expect(lessons).toContainText("Linear equations");
-    await expect(lessons).toContainText("Fractions");
-    await expect(lessons).not.toContainText("Motion");
-    expect((await bodies(request)).queries["GET /me/results"]).toBe("?course=c-math");
-
-    // A topic with three lessons is a line, with its numbers behind it.
-    const equations = page.getByRole("figure").filter({ hasText: "Linear equations" });
-    await expect(equations.getByText(mk.t("topic.range", { from: 40, to: 80, n: 3 }))).toBeVisible();
-    await expect(equations.getByRole("table").getByRole("row")).toHaveCount(4);
-    await expect(page.getByRole("figure").filter({ hasText: "Motion" })).toHaveCount(0);
-    // The set is in its subject, new.
-    await expect(page.getByRole("link", { name: new RegExp(mk.t("pr.state.new")) })).toBeVisible();
-
-    await page.goto("/app/subject/c-phys");
-    const motion = page.getByRole("figure").filter({ hasText: "Motion" });
-    await expect(motion.getByText(mk.t("topic.one", { right: 3, total: 4 }))).toBeVisible();
-    await expect(motion.locator(".tc__chart")).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: mk.t("pr.title") })).toHaveCount(0);
   });
 
   test("a set is answered one question at a time, each verdict from the server, and the progress is the server's", async ({ page, request }) => {
@@ -1243,7 +1220,7 @@ test.describe("alerts and push", () => {
   const control = (request: import("@playwright/test").APIRequestContext, what: string, data: object = {}) =>
     request.post(`${API}/__control/${what}`, { data });
   const calls = async (request: import("@playwright/test").APIRequestContext) => (await serverState(request)).calls;
-  const tabs = (page: Page) => page.getByRole("navigation", { name: mk.t("nav.main") });
+  const bell = (page: Page) => page.locator(".home-bar").getByRole("link", { name: mk.t("notif.title") });
   const unread = (n: number | string) => mk.t("notif.unreadCount", { n });
 
   test.describe("the feed", () => {
@@ -1255,14 +1232,16 @@ test.describe("alerts and push", () => {
 
     test("a new alert ticks the badge on a screen that is not Alerts", async ({ page, request }) => {
       await page.goto("/app");
-      await expect(tabs(page)).toContainText(unread(2));
+      await expect(bell(page)).toContainText(unread(2));
       await control(request, "notify", { title: "Quiz moved", body: "To Friday." });
-      await expect(tabs(page)).toContainText(unread(3));
-      await page.getByRole("link", { name: mk.t("nav.alerts"), exact: false }).first().click();
+      await expect(bell(page)).toContainText(unread(3));
+      // Said to a screen reader from the bell, which is always in the page.
+      await expect(page.getByRole("status").filter({ hasText: mk.t("notif.arrived", { n: 3 }) })).toBeAttached();
+      await bell(page).click();
       await expect(page.getByRole("link", { name: /Quiz moved/ })).toBeVisible();
     });
 
-    test("a new alert slides into the open list, on top, and is said to a screen reader", async ({ page, request }) => {
+    test("a new alert slides into the open list, on top", async ({ page, request }) => {
       await page.goto("/app/notifications");
       await expect(page.locator(".item--unread")).toHaveCount(2);
       await expect(page.locator(".item--fresh")).toHaveCount(0);
@@ -1271,7 +1250,6 @@ test.describe("alerts and push", () => {
       await expect(first).toContainText("Quiz moved");
       await expect(first.locator("a")).toHaveClass(/item--fresh/);
       await expect(page.locator(".item--unread")).toHaveCount(3);
-      await expect(page.getByRole("status").filter({ hasText: mk.t("notif.arrived", { n: 3 }) })).toBeAttached();
       // Older ones do not slide in again: the second alert is one more at the top.
       await control(request, "notify", { title: "Another" });
       await expect(page.locator(".item--fresh")).toHaveCount(2);
@@ -1281,12 +1259,12 @@ test.describe("alerts and push", () => {
       test.use({ allowConsoleErrors: [/https:\/\/vercel\.live\/|ERR_INCOMPLETE_CHUNKED_ENCODING/] });
     test("after the link drops and comes back, what was missed is read", async ({ page, request }) => {
       await page.goto("/app");
-      await expect(tabs(page)).toContainText(unread(2));
+      await expect(bell(page)).toContainText(unread(2));
       await control(request, "block-streams", { on: true });
       await control(request, "drop-streams");
       await control(request, "notify", { title: "While away" });
       await control(request, "block-streams", { on: false });
-      await expect(tabs(page)).toContainText(unread(3), { timeout: 20_000 });
+      await expect(bell(page)).toContainText(unread(3), { timeout: 20_000 });
     });
     });
 
@@ -1302,7 +1280,7 @@ test.describe("alerts and push", () => {
       await expect(page.locator(".item--unread")).toHaveCount(2);
       await page.getByRole("link", { name: new RegExp(mk.t("notif.result_ready.title", { subject: mk.t("subj.math") })) }).click();
       await expect(page).toHaveURL(/\/app\/notifications\/n-1$/);
-      await page.getByRole("link", { name: mk.t("nav.alerts") }).click();
+      await page.getByRole("button", { name: mk.t("back") }).click();
       await expect(page.locator(".item--unread")).toHaveCount(1);
       expect((await serverState(request)).bodies["POST /me/notifications/read"]).toEqual({ ids: ["n-1"] });
     });
@@ -1330,11 +1308,13 @@ test.describe("alerts and push", () => {
 
     test("a full feed of unread alerts says 30+ on the badge, and marking all read tells the API once", async ({ page, request }) => {
       for (let i = 0; i < 30; i++) await control(request, "notify", { title: `Burst ${i}` });
-      await page.goto("/app/notifications");
-      await expect(tabs(page)).toContainText(unread("30+"));
+      await page.goto("/app");
+      await expect(bell(page)).toContainText(unread("30+"));
+      await bell(page).click();
       await page.getByRole("button", { name: mk.t("notif.markAll") }).click();
       await expect(page.locator(".item--unread")).toHaveCount(0);
-      await expect(tabs(page)).not.toContainText(unread("30+"));
+      await page.getByRole("button", { name: mk.t("back") }).click();
+      await expect(bell(page)).not.toContainText(unread("30+"));
       expect(((await calls(request)).filter((c) => c === "POST /me/notifications/read"))).toHaveLength(1);
     });
 

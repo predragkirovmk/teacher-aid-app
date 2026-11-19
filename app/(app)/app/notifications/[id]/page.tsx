@@ -60,9 +60,11 @@ function Detail({ n }: { n: AlertItem | undefined }) {
           {body}
         </p>
       </div>
-      <Link href={link} className="btn btn--ghost btn--block" transitionTypes={["nav-forward"]} style={{ marginTop: 16 }}>
-        {action}
-      </Link>
+      {link !== `/app/notifications/${n.id}` && (
+        <Link href={link} className="btn btn--ghost btn--block" transitionTypes={["nav-forward"]} style={{ marginTop: 16 }}>
+          {action}
+        </Link>
+      )}
     </main>
   );
 }
