@@ -10,6 +10,7 @@ import { toApiError, type ApiErrorCode } from "@/lib/app/api/errors";
 import { HAPTICS, buzz } from "@/lib/app/haptics";
 import { useT } from "@/lib/app/i18n";
 import { FORWARD } from "@/lib/app/nav";
+import { interpretCode } from "@/lib/app/scan";
 
 /** The Scan tab: the way into a lesson. A big call to action opens the camera; a typed code does the same without one. */
 export default function Join() {
@@ -18,10 +19,15 @@ export default function Join() {
   const [typing, setTyping] = useState(false);
   const [miss, setMiss] = useState<{ code?: ApiErrorCode } | null>(null);
   const joining = useRef(false);
+  const form = useRef<HTMLDivElement>(null);
 
   // The same path a scan takes: the API says whether the code opens a session, then the quiz carries on.
-  const join = (code: string) => {
+  const join = (typed: string) => {
     if (joining.current) return;
+    // The field accepts what a scan gives too (a TA: tag), so the code is read out of it as the scanner does; the tag is not a code.
+    const scan = interpretCode(typed);
+    if (scan.kind !== "code") return;
+    const code = scan.code;
     joining.current = true;
     startJoin(code, true).then(
       () => {
@@ -33,6 +39,12 @@ export default function Join() {
         setMiss({ code: toApiError(e).code });
       },
     );
+  };
+
+  // The sheet held the focus; give it back to the field so the next try is typed at once.
+  const tryAgain = () => {
+    setMiss(null);
+    form.current?.querySelector("input")?.focus();
   };
 
   return (
@@ -51,12 +63,12 @@ export default function Join() {
           <span className="join-cta__halo" aria-hidden="true" />
           <span className="join-cta__face">
             <QrCodeIcon className="join-cta__glyph" size={44} weight="bold" aria-hidden="true" />
-            {t("nav.scanJoin")}
+            <span className="join-cta__label">{t("nav.scanJoin")}</span>
           </span>
         </Link>
       </div>
 
-      <div className="rise" style={{ "--i": 2 } as CSSProperties}>
+      <div ref={form} className="rise" style={{ "--i": 2 } as CSSProperties}>
         {typing ? (
           <CodeForm onCode={join} />
         ) : (
@@ -67,7 +79,7 @@ export default function Join() {
         )}
       </div>
 
-      {miss && <Miss clearOfTabs code={miss.code} again={t("join.again")} onAgain={() => setMiss(null)} />}
+      {miss && <Miss clearOfTabs code={miss.code} again={t("join.again")} onAgain={tryAgain} />}
     </main>
   );
 }

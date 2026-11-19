@@ -19,6 +19,18 @@ test("the join button is big, fits a 360 px phone, and opens the scanner with a 
   await expect(page).toHaveURL(/\/app\/scan$/);
 });
 
+test("the button's focus ring is a visible white pill, drawn over the halo", async ({ page }) => {
+  await page.goto("/app/join");
+  const cta = page.locator(".join-cta");
+  await page.keyboard.press("Tab");
+  await cta.focus();
+  const style = await cta.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { outline: s.outlineColor, width: s.outlineWidth, style: s.outlineStyle, radius: s.borderRadius, halo: getComputedStyle(el.querySelector(".join-cta__halo")!).zIndex };
+  });
+  expect(style).toEqual({ outline: "rgb(255, 255, 255)", width: "3px", style: "solid", radius: "36px", halo: "-1" });
+});
+
 test("the button idles with transform and opacity only", async ({ page }) => {
   await page.goto("/app/join");
   const props = await page.evaluate(() =>
@@ -60,6 +72,10 @@ test.describe("with reduced motion", () => {
   });
 });
 
+/** Wait for the arrival animations (the rise, the field's) to end: a fade in progress shows a half-faded button to axe and moves things a few pixels. The button's idle never ends, so it is left out. */
+const settled = (page: import("@playwright/test").Page) =>
+  page.waitForFunction(() => document.getAnimations().every((a) => a.effect?.getComputedTiming().iterations === Infinity || a.playState === "finished"));
+
 async function openCode(page: import("@playwright/test").Page) {
   await start(page, {});
   await page.goto("/app/join");
@@ -77,14 +93,39 @@ test("a typed class code joins the quiz", async ({ page }) => {
   await expect(page.getByText(mk.q("q.live"))).toBeVisible();
 });
 
-test("a code nobody issued shows the Miss sheet, and it can be dismissed", async ({ page }) => {
+test("a typed TA: tag joins the code in it, not the tag", async ({ page }) => {
+  const field = await openCode(page);
+  await field.fill("ta:math-7b");
+  await field.press("Enter");
+  await expect(page).toHaveURL(/\/app\/play\/MATH-7B$/);
+});
+
+test("a code nobody issued shows the Miss sheet above the tab bar, and dismissing it returns the focus to the field", async ({ page }) => {
   const field = await openCode(page);
   await field.fill("NOPE-9");
   await field.press("Enter");
-  await expect(page.locator(".scan-miss")).toContainText(mk.q("q.fail.unknown.title"));
+  const sheet = page.locator(".scan-miss");
+  await expect(sheet).toContainText(mk.q("q.fail.unknown.title"));
   await expect(page).toHaveURL(/\/app\/join$/);
+  const [s, dock] = await Promise.all([sheet.boundingBox(), page.locator(".dock").boundingBox()]);
+  expect(s!.y + s!.height).toBeLessThanOrEqual(dock!.y);
   await page.getByRole("button", { name: mk.t("join.again") }).click();
-  await expect(page.locator(".scan-miss")).toHaveCount(0);
+  await expect(sheet).toHaveCount(0);
+  await expect(field).toBeFocused();
+});
+
+test("the button does not move when the code field opens, with or without its message", async ({ page }) => {
+  await start(page, {});
+  await page.goto("/app/join");
+  await settled(page);
+  const cta = page.locator(".join-cta");
+  const y = (await cta.boundingBox())!.y;
+  await page.getByRole("button", { name: mk.t("scan.code") }).click();
+  const field = page.getByRole("textbox", { name: mk.t("scan.codeLabel") });
+  await field.press("Enter");
+  await expect(page.locator(".scan-code__err")).toBeVisible();
+  await settled(page);
+  expect(Math.abs((await cta.boundingBox())!.y - y)).toBeLessThan(0.5);
 });
 
 test("an empty code says so in place, tied to the field", async ({ page }) => {
@@ -101,9 +142,11 @@ test("an empty code says so in place, tied to the field", async ({ page }) => {
 test("axe finds nothing serious on the join screen, with the code field closed and open", async ({ page }) => {
   const field = await openCode(page);
   await expect(field).toBeVisible();
+  await settled(page);
   const open = await new AxeBuilder({ page }).analyze();
   await page.goto("/app/join");
   await expect(page.locator(".join-cta")).toBeVisible();
+  await settled(page);
   const closed = await new AxeBuilder({ page }).analyze();
   for (const r of [open, closed]) expect(r.violations.filter((v) => v.impact === "serious" || v.impact === "critical")).toEqual([]);
 });
