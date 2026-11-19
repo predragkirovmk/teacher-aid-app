@@ -1160,7 +1160,7 @@ test.describe("practice and the history of results", () => {
     // Done is done: Home no longer offers it, and the list says how it went.
     await page.getByRole("button", { name: mk.t("close"), exact: true }).click();
     await page.goto("/app");
-    await expect(page.getByRole("link", { name: new RegExp(`^${mk.t("pr.title")}`) })).toHaveCount(0);
+    await expect(page.locator("main.screen a.next")).toContainText(mk.t("pr.home.none"));
     await page.goto("/app/practice");
     await expect(page.getByRole("link", { name: new RegExp(mk.t("pr.state.done", { score: 2, n: 3 })) })).toBeVisible();
   });

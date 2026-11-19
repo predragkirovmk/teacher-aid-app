@@ -179,7 +179,7 @@ test.describe("a press is a transition and stops for a disabled control", () => 
 
   for (const [name, selector, url] of [
     // A row squashes only 0.02, too little to tell a restart from a continuation; a card (0.04) and a tab (0.06) can.
-    ["a card", "a.card", "/app"],
+    ["a card", "a.next", "/app"],
     ["a tab", ".tab", "/app"],
   ] as const) {
     test(`a second press on ${name} carries on from where the release had got to`, async ({ page }) => {

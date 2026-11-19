@@ -252,7 +252,8 @@ export function Shell({ children }: { children: ReactNode }) {
           <p className="sr" role="status">
             {toastMsg ?? ""}
           </p>
-          {status === "signedIn" && <AlertAnnouncer />}
+          {/* Not behind the privacy notice: nothing of the student's is read before it has been answered. */}
+          {status === "signedIn" && view === "screen" && <AlertAnnouncer />}
           {toastMsg && (
             <div className={`toast glass${toastOut ? " toast--out" : ""}`} aria-hidden="true" onClick={dismissToast}>
               {toastMsg}
