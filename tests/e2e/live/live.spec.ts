@@ -20,29 +20,25 @@ test.beforeEach(async ({ request }) => {
 const serverState = async (request: import("@playwright/test").APIRequestContext) =>
   (await (await request.get(`${API}/__control/state`)).json()) as { calls: string[]; bodies: Record<string, unknown> };
 
-test("Home draws the API's student, rank, attendance and latest result", async ({ page, request }) => {
+test("Home draws the API's student and latest result, and asks for no ranking or attendance", async ({ page, request }) => {
   await page.goto("/app");
 
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Live");
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.leaderboard")) })).toContainText("#3");
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.attendance")) })).toContainText("90%");
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.attendance")) })).toContainText("+2%");
   const latest = page.getByRole("link", { name: new RegExp(mk.t("home.summary")) });
   await expect(latest).toContainText("4/5");
   await expect(latest).toContainText(mk.t("subj.math"));
 
   const { calls } = await serverState(request);
-  expect(calls).toEqual(expect.arrayContaining(["GET /me", "GET /me/leaderboard", "GET /me/attendance", "GET /me/results"]));
+  expect(calls).toEqual(expect.arrayContaining(["GET /me", "GET /me/results"]));
+  // Home no longer shows the student's place or attendance, so it does not ask the API for them.
+  expect(calls).not.toContain("GET /me/leaderboard");
+  expect(calls).not.toContain("GET /me/attendance");
 });
 
-test("Home hides the demo-only cards", async ({ page }) => {
+test("Home hides the demo clock", async ({ page }) => {
   await page.goto("/app");
   await expect(page.getByRole("link", { name: new RegExp(mk.t("home.summary")) })).toContainText("4/5");
 
-  await expect(page.getByText(mk.t("home.nextLesson"), { exact: true })).toHaveCount(0);
-  await expect(page.getByText(mk.t("home.nextTest"), { exact: true })).toHaveCount(0);
-  await expect(page.getByText(mk.t("home.nextPop"), { exact: true })).toHaveCount(0);
-  await expect(page.getByText(mk.t("home.scanNow"), { exact: true })).toHaveCount(0);
   await expect(page.getByText(mk.t("home.demoTime"), { exact: true })).toHaveCount(0);
 });
 
@@ -71,10 +67,10 @@ test("Profile draws the API's student and saves a new display name through it", 
   await page.goto("/app/profile");
   await expect(page.locator(".profile__name")).toContainText("Live Student");
   await expect(page.getByText(/Test School/)).toBeVisible();
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.attendance")) })).toContainText("90%");
 
-  // The documents list is the demo's own.
-  await expect(page.getByRole("link", { name: mk.t("drawer.documents") })).toHaveCount(0);
+  // Profile has no attendance, last quiz or documents row.
+  await expect(page.locator("main.screen .card.tile")).toHaveCount(0);
+  await expect(page.locator('a[href="/app/documents"]')).toHaveCount(0);
 
   await page.getByRole("button", { name: mk.q("p.edit") }).click();
   await page.getByRole("textbox", { name: mk.q("p.name") }).fill("Liv");
@@ -91,7 +87,7 @@ test.describe("what the live build leaves out or refuses", () => {
   test.use({ allowConsoleErrors: [/Failed to load resource: the server responded with a status of (401|404|410)/] });
 
   test("the demo-only screens and settings are not there", async ({ page }) => {
-    for (const path of ["/app/schedule", "/app/qr-kit", "/app/documents"]) {
+    for (const path of ["/app/qr-kit", "/app/documents"]) {
       await page.goto(path);
       await expect(page.getByText(mk.t("notfound.title")).first(), path).toBeVisible();
     }

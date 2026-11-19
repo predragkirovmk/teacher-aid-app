@@ -12,10 +12,10 @@ type Target = { name: string; open: (page: Page) => Promise<Locator>; min?: numb
 
 const TARGETS: Target[] = [
   {
-    name: "a card on Home",
+    name: "the last quiz tile on Home",
     open: async (page) => {
       await page.goto("/app");
-      return page.locator("a.card").first();
+      return page.locator("a.card.tile");
     },
   },
   {

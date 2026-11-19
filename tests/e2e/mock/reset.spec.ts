@@ -1,4 +1,4 @@
-import { expect, mk, test } from "../fixtures";
+import { expect, mk, STORE_KEY, test } from "../fixtures";
 
 test("reset demo clears check-ins and read alerts", async ({ page }) => {
   // A check-in and a read alert to clear.
@@ -15,7 +15,7 @@ test("reset demo clears check-ins and read alerts", async ({ page }) => {
   await expect(page.getByText(mk.t("settings.resetDone")).first()).toBeVisible();
 
   await page.goto("/app");
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.attendance")) })).toContainText("87%");
+  expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "{}").checkins ?? [], STORE_KEY)).toEqual([]);
   await page.goto("/app/notifications");
   // Two alerts and the practice set the teacher sent.
   await expect(page.locator(".item--unread")).toHaveCount(3);

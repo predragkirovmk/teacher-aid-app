@@ -74,7 +74,7 @@ export function PracticeRow({ set, withSubject = true }: { set: PracticeSet; wit
  * Home's quiet row, there only while a set is waiting (new, or started and not finished). With one it opens that set, with more it
  * opens the list. It is a plain row, never the yellow object of the screen: practice is optional.
  */
-export function PracticeHomeRow({ space }: { space: "above" | "below" }) {
+export function PracticeHomeRow() {
   const { t } = useT();
   const sets = usePracticeSets();
   const courses = useCourses();
@@ -91,7 +91,7 @@ export function PracticeHomeRow({ space }: { space: "above" | "below" }) {
         ? t("pr.home.new1", { subject })
         : t("pr.home.resume", { subject });
   return (
-    <div className="list" style={space === "above" ? { marginTop: 16 } : { marginBottom: 16 }}>
+    <div className="list" style={{ marginBottom: 16 }}>
       <Row
         icon={NotePencilIcon}
         label={t("pr.title")}
