@@ -193,3 +193,26 @@ Builders: two runs in turn. The first does item 1, the second items 2 and 3. The
 ## Record
 
 (each batch adds its line here)
+
+- **Batch 1, 2026-11-19.** Two builders. Done: three tabs (Home, the scan, Profile; `TAB_ORDER` is the two roots, the
+  bell with its badge and live message on Home, Alerts a pushed screen with Back); the dock grid is now `1fr auto 1fr`,
+  so the scan sits in the exact middle and the piece never sits under it; Subjects, its screens, chart, history, morph and
+  `topics.ts` are gone. Cut: Home keeps the header (Mark, bell, date, greeting), the Practice row and the last quiz tile;
+  Profile loses the attendance tile, the last quiz tile and the Documents row; the attendance, leaderboard and schedule
+  screens are deleted, with `tween.ts`, the hooks `useStandings`, `useAttendanceView`, `useLeaderboard`, `useTopics`,
+  `useScans` and `roomLabel`, 54 copy keys (en and mk), and the CSS of the cut cards (`.t-num`, `.ring`, `.item--me`,
+  `.tile-word`, `.section-row`, `.section-link`, `.mark-line`, `.pill--now`, `.tile-big.counting`, the timed list).
+  Kept on purpose: `.next` and its children (batch 2's Practice card), the API client methods and the mock's attendance
+  and leaderboard (the teacher app and mocks read them), `/app/documents`, and the demo clock pill, since Home's date and
+  greeting still follow the demo time and the pill is the only sign of it. `lib/app/demo/schedule.ts` stays for
+  `demoTime`, `CLOCKS` and `currentLesson` (the mock's check-in time and Settings' `ClockOptions`); its room, register,
+  next-lesson and next-test helpers went with their tests. Retargeted: the `marked_late` alert and its push link in
+  `public/app-push.js` open the alert's own detail (`notif.open.attendance` removed); the cut routes left
+  `offline-cache.ts` (`demoRoutes` and `calmScreen` named none). Privacy copy untouched: it names no screen that is gone
+  (the server still records attendance when a student joins). Tests: specs that read attendance or points off the cut
+  screens now read the mock store's check-ins and points; Home and Profile specs, the live spec (Home no longer asks the
+  API for the leaderboard or attendance) and the tab bar's stretch check (1.4 tabs, since a tab is now wider) were
+  rewritten; the schedule, attendance and leaderboard checks went with their screens. Checks: lint, types, 1570 unit,
+  `pnpm build`, mock and teacher e2e (753 passed, two failures of my own fixed and re-run green), live e2e 89 of 89. JS
+  (gzip, from `js-size.json`): all screens 431,536 and Home's first load 302,964, from 483,581 and 338,255 at the end of
+  the motion work.
