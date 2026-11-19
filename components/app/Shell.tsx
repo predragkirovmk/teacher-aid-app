@@ -304,15 +304,13 @@ function Dock({ pathname, onTabTap }: { pathname: string; onTabTap: (href: strin
   const shown = TAB_ORDER.includes(pathname) ? pathname : "";
   const chosen = tapped?.from === pathname ? tapped.href : shown;
 
-  // An icon-only tab (the scan) has no visible label; its name is `name`.
-  const tab = (href: string, label: string, Icon: Icon, name?: string) => (
+  const tab = (href: string, label: string, Icon: Icon) => (
     // Switching tabs replaces the history entry, so Back leaves the section instead of replaying tabs.
     <Link
       href={href}
       replace
       transitionTypes={["tab"]}
       className="tab"
-      aria-label={name}
       aria-current={shown === href ? "page" : undefined}
       data-checked={chosen === href}
       onClick={() => {
@@ -331,7 +329,7 @@ function Dock({ pathname, onTabTap }: { pathname: string; onTabTap: (href: strin
       <div className="tabbar glass">
         <SegGlide at={chosen} />
         {tab("/app", t("nav.home"), HouseSimpleIcon)}
-        {tab("/app/join", "", QrCodeIcon, t("nav.scanJoin"))}
+        {tab("/app/join", t("nav.scan"), QrCodeIcon)}
         {tab("/app/profile", t("nav.profile"), UserIcon)}
       </div>
     </nav>

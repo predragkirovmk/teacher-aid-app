@@ -45,10 +45,10 @@ appears"). The yellow "Scan to join" pill in the dock of batch 2 is gone.*
 
 - **Grid.** Three equal columns. All three are tabs, and the `SegGlide` piece rests under whichever is current, and
   merges Home to Scan, Scan to Profile and Home to Profile across the tab between.
-- **The middle tab.** Exactly like the other two: the same size, colours, active state, press and focus ring. It is
-  icon only: the QR glyph (`QrCodeIcon`, 24 px, filled when current) centred in the tab, no visible label. Its
-  accessible name is "Скенирај за влез" (EN "Scan to join"), set with `aria-label` from `nav.scanJoin`. It has no yellow,
-  no idle motion and no halo.
+- **The middle tab.** Exactly like the other two: the same size, colours, active state, press and focus ring. The QR
+  glyph (`QrCodeIcon`, 24 px, filled when current) sits above a visible label, "Скенирај" (EN "Scan", `nav.scan`), as
+  Home and Profile do. The visible label is its accessible name (no `aria-label`; WCAG 2.5.3). It has no yellow, no idle
+  motion and no halo.
 - **Where it goes.** `/app/join`, a tab screen (below). `TAB_ORDER = ["/app", "/app/join", "/app/profile"]`, so a swipe
   moves through all three, and a tap on any of them crossfades.
 - **The fun moved.** The call to action lives on the Scan tab's screen (Part 3, "Scan to join").
@@ -246,8 +246,8 @@ Builders: two runs in turn. The first does item 1, the second items 2 and 3. The
   `pnpm build`, mock and teacher e2e 772 passed and 4 skipped (the teacher's live-code specs, not mine), live e2e 91 of 91.
   JS (gzip): all screens 440,750 and Home's first load 313,373. Perf at 4x CPU, pill idling: no long task, worst gap 41 ms.
 - **Scan is a tab, 2026-11-19.** The owner asked for the dock's middle to be the same size as the others, with only a QR
-  icon, and for the fun "Scan to join" button to live on the Scan tab's screen. Done: three equal tabs (the middle is icon
-  only, named "Скенирај за влез" by `aria-label`, with no new label key); `/app/join` with the big yellow button, its idle
+  icon, and for the fun "Scan to join" button to live on the Scan tab's screen. Done: three equal tabs (the middle was icon
+  only at that point; see the next entry); `/app/join` with the big yellow button, its idle
   and the inline code form; the form is extracted into `components/app/JoinCode.tsx` (`CodeForm`, `Miss`) and shared with
   the scanner; `TAB_ORDER` has three entries; the piece merges across the tab between. The scanner's first-visit camera
   intro still covers its field: its "Not now" leaves for the join screen, where the field needs no camera.
@@ -261,3 +261,7 @@ Builders: two runs in turn. The first does item 1, the second items 2 and 3. The
   dock, focus, the button not moving when the field opens, and the focus ring; the join specs wait for the arrival fade to end
   (axe measured a half-faded button). Perf at 4x CPU, join idle: no long task, worst gap 29 ms. JS (gzip): all screens
   448,239 and Home's first load 309,642.
+- **The Scan tab has a name, 2026-11-19.** The owner asked for a name on the QR tab ("add a name to the qr code as well"). The
+  middle tab now shows "Скенирај" (EN "Scan", new key `nav.scan`) under the glyph like Home and Profile, and that text is its
+  accessible name; the `aria-label` is gone. `nav.scanJoin` stays for the big button on `/app/join`. `tabs.spec` checks the
+  label, the box and the glyph and label alignment against the other two; the other specs find the tab by `nav.scan`.

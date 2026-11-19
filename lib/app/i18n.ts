@@ -7,6 +7,7 @@ import { useLocale } from "./locale";
 
 const en = {
   "nav.home": "Home",
+  "nav.scan": "Scan",
   "nav.scanJoin": "Scan to join",
   "nav.profile": "Profile",
   "nav.more": "More",
@@ -420,6 +421,7 @@ export type Key = keyof typeof en;
 
 const mk: Record<Key, string> = {
   "nav.home": "Почетна",
+  "nav.scan": "Скенирај",
   "nav.scanJoin": "Скенирај за влез",
   "nav.profile": "Профил",
   "nav.more": "Повеќе",

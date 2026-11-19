@@ -224,7 +224,7 @@ test.describe("the tab bar", () => {
     await start(page, {});
     await page.goto("/app");
     const tabs = page.getByRole("navigation", { name: mk.t("nav.main") });
-    await tabs.getByRole("link", { name: mk.t("nav.scanJoin") }).click();
+    await tabs.getByRole("link", { name: mk.t("nav.scan") }).click();
     await expect(page).toHaveURL(/\/app\/join$/);
     // A finger drags the screen to the right: back to Home.
     const cdp = await page.context().newCDPSession(page);
