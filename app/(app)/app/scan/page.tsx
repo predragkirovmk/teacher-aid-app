@@ -2,14 +2,13 @@
 
 import { CameraIcon, ImageIcon, KeyboardIcon, WarningIcon, XIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
-import { FAILURE_ICON } from "@/components/app/quiz/JoinFailure";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { CodeForm, Miss } from "@/components/app/JoinCode";
 import { startJoin } from "@/lib/app/api/hooks";
 import { toApiError, type ApiErrorCode } from "@/lib/app/api/errors";
 import { HAPTICS, buzz } from "@/lib/app/haptics";
 import { useT } from "@/lib/app/i18n";
 import { FORWARD, leave } from "@/lib/app/nav";
-import { useJoinFailureCopy, useQT } from "@/lib/app/quiz-copy";
 import { decodeCanvas, decodeImageFile, interpretCode, type ScanResult } from "@/lib/app/scan";
 
 type Phase = "starting" | "scanning" | "denied" | "unavailable" | "error" | "stopped";
@@ -55,12 +54,6 @@ export default function Scan() {
   const lockTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   // Typing the code is the way in for a student with no camera, or one who prefers it.
   const [typing, setTyping] = useState(false);
-  const [typed, setTyped] = useState("");
-  const [codeProblem, setCodeProblem] = useState<"codeEmpty" | "codeBad" | null>(null);
-  const codeId = useId();
-  const codeErrorId = `${codeId}-err`;
-  const codeHintId = `${codeId}-hint`;
-  const codeRef = useRef<HTMLInputElement>(null);
 
   const handle = useCallback((raw: string, typed = false) => {
     if (handled.current) return;
@@ -90,21 +83,6 @@ export default function Scan() {
   }, [router]);
 
   useEffect(() => () => clearTimeout(lockTimer.current), []);
-
-  const submitCode = (e: FormEvent) => {
-    e.preventDefault();
-    // The field shows capitals whatever is typed, so what is sent is what is shown; stray spaces (a keyboard adds one after a word) go.
-    const text = typed.replace(/\s+/g, "").toUpperCase();
-    // Nothing, or something that is not shaped like a class code, never reaches the API: say so in place.
-    const problem = !text ? "codeEmpty" : interpretCode(text).kind === "other" ? "codeBad" : null;
-    setCodeProblem(problem);
-    if (problem) {
-      // Focus stays in the field, so the student can fix it and press Enter again, also after tapping the button.
-      codeRef.current?.focus();
-      return buzz(HAPTICS.problem);
-    }
-    handle(text, true);
-  };
 
   useEffect(() => {
     if (result || needIntro || !visible) return;
@@ -260,45 +238,7 @@ export default function Scan() {
           {t("scan.upload")}
         </button>
         {typing ? (
-          <form className="scan-code span2" onSubmit={submitCode} noValidate>
-            <label htmlFor={codeId} className="scan-code__label">
-              {t("scan.codeLabel")}
-            </label>
-            <p id={codeHintId} className="scan-code__hint">
-              {t("scan.codeHint")}
-            </p>
-            <div className="scan-code__row">
-              <input
-                id={codeId}
-                ref={codeRef}
-                className="scan-code__input"
-                type="text"
-                inputMode="text"
-                autoCapitalize="characters"
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck={false}
-                enterKeyHint="go"
-                maxLength={24}
-                autoFocus
-                value={typed}
-                aria-invalid={codeProblem !== null}
-                aria-describedby={codeProblem ? `${codeHintId} ${codeErrorId}` : codeHintId}
-                onChange={(e) => {
-                  setTyped(e.target.value);
-                  setCodeProblem(null);
-                }}
-              />
-              <button className="btn btn--primary" type="submit">
-                {t("scan.codeGo")}
-              </button>
-            </div>
-            {codeProblem && (
-              <p id={codeErrorId} className="scan-code__err" role="alert">
-                {t(`scan.${codeProblem}`)}
-              </p>
-            )}
-          </form>
+          <CodeForm className="span2" onCode={(code) => handle(code, true)} />
         ) : (
           <button className="btn btn--ghost span2" onClick={() => setTyping(true)}>
             <KeyboardIcon size={20} aria-hidden="true" />
@@ -342,24 +282,5 @@ export default function Scan() {
         setResult(null);
       }} />}
     </main>
-  );
-}
-
-/** A code that did not open a quiz, said where the camera was: the reason, and a way to scan again. */
-function Miss({ code, onAgain }: { code?: ApiErrorCode; onAgain: () => void }) {
-  const failure = useJoinFailureCopy()(code);
-  const { t } = useQT();
-  const Icon = FAILURE_ICON[failure.kind];
-  return (
-    <section className="scan-miss glass" role="alert">
-      <span className="scan-miss__badge" aria-hidden="true">
-        <Icon size={32} color="var(--yellow)" />
-      </span>
-      <h2 className="scan-miss__title">{failure.title}</h2>
-      <p className="scan-miss__body">{failure.body}</p>
-      <button className="btn btn--primary btn--block" autoFocus onClick={onAgain}>
-        {t("q.fail.scan")}
-      </button>
-    </section>
   );
 }
