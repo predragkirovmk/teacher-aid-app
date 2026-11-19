@@ -242,8 +242,9 @@ export type JoinState =
 /** Joins started by the scanner, so the screen it opens carries on from the answer instead of asking again. */
 const started = new Map<string, Promise<JoinResult>>();
 
-const joinNow = (code: string): Promise<JoinResult> => {
-  const p = client.joinSession({ token: code });
+const joinNow = (code: string, typed = false): Promise<JoinResult> => {
+  // What a student typed is the short code; what a QR carried is the token. The API tells them apart by the field.
+  const p = client.joinSession(typed ? { shortCode: code } : { token: code });
   // Joining is the attendance, so the lists that show it are stale from here, as the mock's store already knows.
   void p.then(
     (join) => {
@@ -255,9 +256,9 @@ const joinNow = (code: string): Promise<JoinResult> => {
   return p;
 };
 
-/** Join by the code a QR carried. Used by the scanner so it can show a failure where it stands. */
-export function startJoin(code: string): Promise<JoinResult> {
-  const p = joinNow(code);
+/** Join by the code a QR carried, or (`typed`) the short code a student typed. Used by the scanner so it can show a failure where it stands. */
+export function startJoin(code: string, typed = false): Promise<JoinResult> {
+  const p = joinNow(code, typed);
   started.set(code, p);
   // A join that failed is not worth handing on: the next screen asks again.
   p.catch(() => started.delete(code));

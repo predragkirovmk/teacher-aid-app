@@ -16,10 +16,14 @@ async function openCode(page: Page) {
 test("a typed class code joins the quiz", async ({ page }) => {
   const field = await openCode(page);
   await expect(field).toBeFocused();
-  await expect(field).toHaveAttribute("placeholder", "MATH-7B");
-  await field.fill("math-7b");
+  // The sample code is a hint line, never a placeholder that could be mistaken for a typed value.
+  await expect(field).not.toHaveAttribute("placeholder", /.+/);
+  await expect(field).toHaveValue("");
+  await expect(page.getByText(mk.t("scan.codeHint"))).toBeVisible();
+  // Lowercase and stray spaces are fixed before the code is sent: it joins as shown, in capitals.
+  await field.fill(" math-7b ");
   await page.getByRole("button", { name: mk.t("scan.codeGo") }).click();
-  await expect(page).toHaveURL(/\/app\/play\/math-7b$/);
+  await expect(page).toHaveURL(/\/app\/play\/MATH-7B$/);
   await expect(page.getByText(mk.q("q.live"))).toBeVisible();
 });
 
@@ -38,8 +42,10 @@ test("an empty or malformed code says so in place, tied to the field", async ({ 
   await expect(note).toHaveText(mk.t("scan.codeEmpty"));
   await expect(field).toHaveAttribute("aria-describedby", (await note.getAttribute("id"))!);
   await field.fill("hello there");
-  await field.press("Enter");
+  await page.getByRole("button", { name: mk.t("scan.codeGo") }).click();
   await expect(note).toHaveText(mk.t("scan.codeBad"));
+  // Focus stays in the field after an error, also when the button was tapped.
+  await expect(field).toBeFocused();
   await expect(page.locator(".scan-miss")).toHaveCount(0);
   // Typing again clears the note.
   await field.fill("M");

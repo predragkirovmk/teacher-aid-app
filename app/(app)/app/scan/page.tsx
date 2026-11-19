@@ -59,8 +59,10 @@ export default function Scan() {
   const [codeProblem, setCodeProblem] = useState<"codeEmpty" | "codeBad" | null>(null);
   const codeId = useId();
   const codeErrorId = `${codeId}-err`;
+  const codeHintId = `${codeId}-hint`;
+  const codeRef = useRef<HTMLInputElement>(null);
 
-  const handle = useCallback((raw: string) => {
+  const handle = useCallback((raw: string, typed = false) => {
     if (handled.current) return;
     handled.current = true;
     const scan = interpretCode(raw);
@@ -78,7 +80,7 @@ export default function Scan() {
       });
     if (scan.kind === "other") return void miss();
     // The API says whether the code opens a session; the quiz screen carries on from the answer.
-    startJoin(scan.code).then(
+    startJoin(scan.code, typed).then(
       () => {
         buzz(HAPTICS.send);
         return beat.then(() => router.replace(`/app/play/${scan.code}`, FORWARD));
@@ -91,12 +93,17 @@ export default function Scan() {
 
   const submitCode = (e: FormEvent) => {
     e.preventDefault();
-    const text = typed.trim();
+    // The field shows capitals whatever is typed, so what is sent is what is shown; stray spaces (a keyboard adds one after a word) go.
+    const text = typed.replace(/\s+/g, "").toUpperCase();
     // Nothing, or something that is not shaped like a class code, never reaches the API: say so in place.
     const problem = !text ? "codeEmpty" : interpretCode(text).kind === "other" ? "codeBad" : null;
     setCodeProblem(problem);
-    if (problem) return buzz(HAPTICS.problem);
-    handle(text);
+    if (problem) {
+      // Focus stays in the field, so the student can fix it and press Enter again, also after tapping the button.
+      codeRef.current?.focus();
+      return buzz(HAPTICS.problem);
+    }
+    handle(text, true);
   };
 
   useEffect(() => {
@@ -257,9 +264,13 @@ export default function Scan() {
             <label htmlFor={codeId} className="scan-code__label">
               {t("scan.codeLabel")}
             </label>
+            <p id={codeHintId} className="scan-code__hint">
+              {t("scan.codeHint")}
+            </p>
             <div className="scan-code__row">
               <input
                 id={codeId}
+                ref={codeRef}
                 className="scan-code__input"
                 type="text"
                 inputMode="text"
@@ -269,11 +280,10 @@ export default function Scan() {
                 spellCheck={false}
                 enterKeyHint="go"
                 maxLength={24}
-                placeholder="MATH-7B"
                 autoFocus
                 value={typed}
                 aria-invalid={codeProblem !== null}
-                aria-describedby={codeProblem ? codeErrorId : undefined}
+                aria-describedby={codeProblem ? `${codeHintId} ${codeErrorId}` : codeHintId}
                 onChange={(e) => {
                   setTyped(e.target.value);
                   setCodeProblem(null);

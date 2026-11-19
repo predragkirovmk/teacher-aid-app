@@ -269,6 +269,19 @@ test.describe("signing in", () => {
     expect(bodies["POST /auth/student/start"]).toEqual({ provider: "google", return_to: "/app/welcome?next=%2Fapp%2Fcheckin%2FMATH-7B" });
   });
 
+  test("a code typed in the scanner joins with the short code, not the token", async ({ page, request }) => {
+    await page.addInitScript(() => localStorage.setItem("teacheraid-camera-intro", "1"));
+    await page.goto("/app/scan");
+    await page.getByRole("button", { name: mk.t("scan.code") }).click();
+    await page.getByRole("textbox", { name: mk.t("scan.codeLabel") }).fill("math-7b");
+    await page.keyboard.press("Enter");
+    // The API refuses this fake code, which is not the point: it was asked, once, with the field a typed code belongs in.
+    await expect(page.getByRole("alert").filter({ hasText: mk.q("q.fail.unknown.title") })).toBeVisible();
+    const { calls, bodies } = await serverState(request);
+    expect(bodies["POST /sessions/join"]).toEqual({ short_code: "MATH-7B" });
+    expect(calls.filter((c) => c === "POST /sessions/join")).toHaveLength(1);
+  });
+
   test("signing in on another device ends this session: any call that hears of it shows the full screen", async ({ page, request }) => {
     await page.goto("/app");
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Live");

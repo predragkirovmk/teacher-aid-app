@@ -956,8 +956,10 @@ button.item:active {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.scan-code__input::placeholder {
-  text-transform: none;
+/* A hint line instead of a placeholder: a grey sample inside the field reads as a value somebody typed. */
+.scan-code__hint {
+  margin: -4px 0 0;
+  font-size: var(--fs-label);
   color: var(--text-2);
 }
 .scan-code__input[aria-invalid="true"] {
