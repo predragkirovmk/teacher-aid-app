@@ -44,12 +44,12 @@ async function record(page: Page) {
   });
 }
 
+/** The tabs; every ordered pair of them is tried below, so each is tapped from each of the others. */
 const TABS = ["/app", "/app/join", "/app/profile"];
 
 for (const rate of [1, 4]) {
   test.describe(`a tab tap crossfades (CPU ${rate}x)`, () => {
-    for (const [i, to] of TABS.entries()) {
-      const from = TABS[(i + 1) % TABS.length];
+    for (const [from, to] of TABS.flatMap((a) => TABS.filter((b) => b !== a).map((b) => [a, b] as const))) {
       test(`${from} to ${to}`, async ({ page }) => {
         await record(page);
         if (rate > 1) await (await page.context().newCDPSession(page)).send("Emulation.setCPUThrottlingRate", { rate });

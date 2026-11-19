@@ -251,3 +251,13 @@ Builders: two runs in turn. The first does item 1, the second items 2 and 3. The
   and the inline code form; the form is extracted into `components/app/JoinCode.tsx` (`CodeForm`, `Miss`) and shared with
   the scanner; `TAB_ORDER` has three entries; the piece merges across the tab between. The scanner's first-visit camera
   intro still covers its field: its "Not now" leaves for the join screen, where the field needs no camera.
+- **Review of the Scan tab, 2026-11-19.** The halo was khaki because yellow at part strength over the blue ground mixes to
+  olive (any translucent yellow does, and an additive blend turned it icy instead). It is now a deeper amber layer, blurred
+  once by a static filter into a short rim, with the animation still transform and opacity only; the shine now passes under
+  the label and glyph, so the ink is not greyed. The link has the pill's radius and a white focus ring, and the halo sits
+  under it (the ring had been a square box, and then hidden by the halo). A typed `TA:` tag on the join screen joined the tag
+  and not the code; it now reads the code out as the scanner does. After the Miss sheet is dismissed the focus returns to the
+  field. Tests: the crossfade is tried from every tab to every other, and new specs cover the tag, the Miss sheet above the
+  dock, focus, the button not moving when the field opens, and the focus ring; the join specs wait for the arrival fade to end
+  (axe measured a half-faded button). Perf at 4x CPU, join idle: no long task, worst gap 29 ms. JS (gzip): all screens
+  448,239 and Home's first load 309,642.
