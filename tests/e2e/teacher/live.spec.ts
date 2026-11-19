@@ -313,7 +313,9 @@ test.describe("starting the lesson, and teaching", () => {
       questionsTab(page).evaluate((el) => {
         const glide = el.parentElement!.querySelector<HTMLElement>(".seg__glide")!;
         const face = getComputedStyle(glide, "::after");
-        const [top, right, bottom, left] = face.clipPath.match(/-?[\d.]+px/g)!.map(parseFloat);
+        // The browser writes the inset short when sides are equal ("inset(0px 175px round 999px)" for the middle tab between two tabs
+        // of one width), so read it as CSS does: one to four values before "round", the missing ones taken from their opposite side.
+        const [top, right = top, bottom = top, left = right] = face.clipPath.split("round")[0].match(/-?[\d.]+px/g)!.map(parseFloat);
         const g = glide.getBoundingClientRect();
         const t = el.getBoundingClientRect();
         const off = Math.max(Math.abs(g.top + top - t.top), Math.abs(g.right - right - t.right), Math.abs(g.bottom - bottom - t.bottom), Math.abs(g.left + left - t.left));
