@@ -36,27 +36,22 @@ The plan was approved by the planner on 2026-11-19, as the owner asked ("write y
 
 ## Part 1: how it looks
 
-### The tab bar: three slots
+### The tab bar: three equal tabs
 
-`[ Home ]  [ Scan to join ]  [ Profile ]`
+`[ Home ]  [ Scan ]  [ Profile ]`
 
-- **Grid.** The grid becomes `1fr auto 1fr`.
-- **Tabs.** Home and Profile are tabs. The white `SegGlide` piece slides between them over the middle, and it never sits
-  under the middle. The tab crossfade works as it does now.
-- **The middle.** It is a yellow pill, wider than today's round scan button: a QR glyph plus "Скенирај за влез" (EN "Scan
-  to join"). It is the call to action of the whole app.
-- **Idle motion** (batch 2), all of it transform and opacity on the compositor:
-  - a shine that sweeps across the pill;
-  - the QR glyph's corners breathing in and out;
-  - a soft halo ring that pulses out behind the pill.
+*Changed 2026-11-19 by the owner ("make it exactly the same as the other buttons"; "on the tab only a QR code icon
+appears"). The yellow "Scan to join" pill in the dock of batch 2 is gone.*
 
-  They play together for about 1.2 s, then rest about 3.3 s, then repeat, so the pill keeps calling without buzzing all
-  the time.
-- **Press.** A press squashes the pill to 0.92, and the release pops it back on `--spring-big`. It is bigger than an
-  ordinary press, because this is the app's main action.
-- **Reduced motion:** no idle motion at all; the press is the 0.8 dim.
-- **Where the pill shows.** The dock is hidden in the quiz, practice, scan and welcome, so the pill never moves during a
-  lesson.
+- **Grid.** Three equal columns. All three are tabs, and the `SegGlide` piece rests under whichever is current, and
+  merges Home to Scan, Scan to Profile and Home to Profile across the tab between.
+- **The middle tab.** Exactly like the other two: the same size, colours, active state, press and focus ring. It is
+  icon only: the QR glyph (`QrCodeIcon`, 24 px, filled when current) centred in the tab, no visible label. Its
+  accessible name is "Скенирај за влез" (EN "Scan to join"), set with `aria-label` from `nav.scanJoin`. It has no yellow,
+  no idle motion and no halo.
+- **Where it goes.** `/app/join`, a tab screen (below). `TAB_ORDER = ["/app", "/app/join", "/app/profile"]`, so a swipe
+  moves through all three, and a tap on any of them crossfades.
+- **The fun moved.** The call to action lives on the Scan tab's screen (Part 3, "Scan to join").
 
 ### Home
 
@@ -103,13 +98,24 @@ Achievements, Install, Settings, Language, FAQ, Data, Privacy, Terms and Log out
 - **Content:** the list, "Mark all as read" and the paging stay. The detail screen stays.
 - **Getting there:** it opens from the bell with the forward slide, and Back returns to where the bell was tapped.
 
+### Scan tab: `/app/join` (changed 2026-11-19)
+
+A tab screen with the dock showing. It rises in calmly (8 px, once per session, as Home does). From the top:
+- the title "Приклучи се" (EN "Join") and one line, "Скенирај го QR кодот од таблата" (EN "Scan the QR code on the board");
+- **the call to action:** a big yellow button, "Скенирај за влез" (EN "Scan to join"), with the QR glyph, 96 px tall. It is the
+  app's main action, and where the idle motion lives: a shine sweeping across, the glyph breathing, and a halo of warm
+  yellow light. A press squashes it to 0.92. It opens `/app/scan` with the forward slide;
+- "Внеси код" (EN "Enter the code"), a quiet button that opens the same code form the scanner has, inline, with a Miss
+  sheet above the dock for a code nobody issued.
+
 ### Scan (batch 2)
 
 `/app/scan` stays a full screen with no tab bar.
-- **The way in:** it opens from the pill with the forward slide. The corners of its frame snap in on `--spring-pop`.
-- **Added:** a "Внеси код" button (EN "Enter the code") under the camera. It opens a small field (placeholder
-  "MATH-7B") that sends the code through the same `startJoin`, so a student with no camera, or who prefers to type, can
-  still join.
+- **The way in:** it opens from the call to action with the forward slide. The corners of its frame snap in on
+  `--spring-pop`.
+- **Added:** a "Внеси код" button under the camera. It opens a small field with a hint line ("На пример MATH-7B") that
+  sends the code through the same `startJoin`, so a student with no camera, or who prefers to type, can still join. The
+  field is the shared `CodeForm` in `components/app/JoinCode.tsx`, used here and on `/app/join`.
 - **Access:** the camera region is labelled; focus order runs title, camera, upload, enter code; everything works with
   the keyboard.
 
@@ -154,12 +160,14 @@ They are reached from Home, the Practice card, Profile and Settings.
     `CLAUDE.md`. That is a list of documents a teacher sent to the student's class: id, title, subject, teacher, sent
     at, type, size and a download URL. The same edit also records that the student app no longer reads the leaderboard,
     topics or attendance view.
-- **Scan to join.**
-  - **Joining:** the pill is a `Link` to `/app/scan` with `nav-forward`.
-  - **Typing a code:** the "Enter the code" field runs `interpretCode` on what was typed, then `startJoin`, the same path
-    a camera scan takes. A bad code shows the same `Miss` sheet.
-  - **The idle loop:** one CSS animation with steps in its keyframes, so there is no timer. It respects
-    `prefers-reduced-motion`. The browser pauses it in a hidden tab.
+- **Scan to join** (the owner's change, 2026-11-19).
+  - **Joining:** the call to action on `/app/join` is a `Link` to `/app/scan` with `nav-forward`. Nothing on the screen is
+    demo only; it works in live mode.
+  - **Typing a code:** `CodeForm` checks the shape (capitals, no spaces) and hands the code on: the scanner runs it through
+    `handle`, the join screen through `startJoin` and then `/app/play/<code>`. A bad code shows the same `Miss` sheet.
+  - **The idle loop:** one CSS cycle of 4.5 s on the button's children (transform and opacity only; the halo is painted
+    once and only fades and grows): about 1.2 s of motion, 3.3 s of rest, the first cycle 600 ms after arrival. The press
+    is `scale` on the link (0.92 on `--spring-press`, back on `--spring-big`). Reduced motion has no idle and the press dims.
 
 ## The batches
 
@@ -237,3 +245,9 @@ Builders: two runs in turn. The first does item 1, the second items 2 and 3. The
   the pill; new `scan.spec.ts` for the code field; the capture tool has states 67 and 68. Checks: lint, types, 1570 unit,
   `pnpm build`, mock and teacher e2e 772 passed and 4 skipped (the teacher's live-code specs, not mine), live e2e 91 of 91.
   JS (gzip): all screens 440,750 and Home's first load 313,373. Perf at 4x CPU, pill idling: no long task, worst gap 41 ms.
+- **Scan is a tab, 2026-11-19.** The owner asked for the dock's middle to be the same size as the others, with only a QR
+  icon, and for the fun "Scan to join" button to live on the Scan tab's screen. Done: three equal tabs (the middle is icon
+  only, named "Скенирај за влез" by `aria-label`, with no new label key); `/app/join` with the big yellow button, its idle
+  and the inline code form; the form is extracted into `components/app/JoinCode.tsx` (`CodeForm`, `Miss`) and shared with
+  the scanner; `TAB_ORDER` has three entries; the piece merges across the tab between. The scanner's first-visit camera
+  intro still covers its field: its "Not now" leaves for the join screen, where the field needs no camera.
