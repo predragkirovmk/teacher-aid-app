@@ -12,7 +12,7 @@ import { Choices, choiceOf, responseOf, type ChoiceQuestion } from "@/components
 import { NumberField } from "@/components/app/quiz/Numeric";
 import { Confetti } from "@/components/app/Confetti";
 import { Burst, CheckDraw, QuizTop, useCountUp } from "@/components/app/quiz/parts";
-import { markNotificationsRead, useCourses, useNotifications } from "@/lib/app/api/hooks";
+import { markNotificationsRead, useNotifications } from "@/lib/app/api/hooks";
 import type { PracticeQuestion, PracticeSet } from "@/lib/app/api/types";
 import { useT } from "@/lib/app/i18n";
 import { leave } from "@/lib/app/nav";
@@ -22,7 +22,6 @@ import { usePracticeRun } from "@/lib/app/practice-run";
 import { noteMoment } from "@/lib/app/push";
 import { useQT } from "@/lib/app/quiz-copy";
 import { useNet } from "@/lib/app/session/net";
-import { subjectLabel } from "@/lib/app/subjects";
 
 /**
  * A practice set, answered at the student's own pace (F-12): the quiz's questions with no clock and no class. Each answer is saved on the
@@ -256,9 +255,7 @@ function Step({
 /** After the last question: the result when every verdict is in, else a word that they are still on their way. */
 function End({ set, view, onLeave }: { set: PracticeSet; view: PracticeView; onLeave: () => void }) {
   const { t } = useT();
-  const courses = useCourses();
-  const course = courses.data?.find((c) => c.id === set.courseId);
-  const label = course ? subjectLabel(t, course.subjectId, course.subjectName) : (set.lessonTitle ?? "");
+  const label = set.lessonTitle ?? "";
   const total = set.questions.length;
   const score = useCountUp(view.right, 0, 700);
   const text = useAnswerText();

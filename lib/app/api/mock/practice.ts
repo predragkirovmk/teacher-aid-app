@@ -99,7 +99,7 @@ const SEED_SETS: SeedSet[] = [
     id: "ps-session-math-1",
     sessionId: "session-math-1",
     courseId: "math",
-    lessonTitle: t("Математика, дропки", "Mathematics, fractions"),
+    lessonTitle: t("Дропки", "Fractions"),
     createdAt: new Date("2026-10-12T10:30").getTime(),
     questionIds: ["pf1", "pf2", "pf3", "pf4"],
   },

@@ -51,8 +51,8 @@ export { finishMockSignIn as finishDemoSignIn, type DemoAccount } from "../api/m
 /** Take back the acknowledgement of the privacy notice, as for a student who has not signed in before: the notice shows again. */
 export const showNoticeAgain = () => actions.acknowledgeNotice(null);
 
-/** The class QR codes the test kit prints, one for each subject that has a live quiz. */
-export const CLASS_CODES = CLASS_SUBJECTS.map((s) => ({ subjectId: s.id, code: s.code }));
+/** The class QR codes the test kit prints, one for each class that has a live quiz. */
+export const CLASS_CODES = CLASS_SUBJECTS.map((s) => ({ code: s.code }));
 
 export const DEMO_DOCS = DOCS;
 

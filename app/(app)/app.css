@@ -176,7 +176,7 @@ a {
   color: var(--text-2);
 }
 /* Headings even out their lines; running text avoids a lone last word. */
-:is(.t-display, .t-title, .large, .subject__name, .next__name, .profile__name) {
+:is(.t-display, .t-title, .large, .qcard__name, .next__name, .profile__name) {
   text-wrap: balance;
 }
 :is(.t-body, .t-cap, .item__title, details.faq summary, details.faq p) {
@@ -440,8 +440,8 @@ button.card:active {
   }
 }
 
-/* ---- subject cards ---- */
-.subject {
+/* ---- the quiz card ---- */
+.qcard {
   position: relative;
   container-type: inline-size;
   flex: none;
@@ -454,19 +454,7 @@ button.card:active {
   flex-direction: column;
   justify-content: space-between;
 }
-.subject__glyphs {
-  position: absolute;
-  right: -8px;
-  top: 8px;
-  font-size: 88px;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.04em;
-  white-space: nowrap;
-  opacity: 1;
-  pointer-events: none;
-}
-.subject__name {
+.qcard__name {
   font-family: var(--font-display);
   position: relative;
   /* One word cannot wrap, so at large text the name stops growing at the card's width
@@ -479,7 +467,7 @@ button.card:active {
   overflow-wrap: break-word;
   hyphens: auto;
 }
-.subject__foot {
+.qcard__foot {
   position: relative;
   display: flex;
   align-items: center;
@@ -500,9 +488,6 @@ button.card:active {
 .tone-ice {
   background: var(--ice);
   color: var(--ink);
-}
-.tone-ice .subject__glyphs {
-  color: rgba(36, 104, 190, 0.14);
 }
 .tone-ice .monogram {
   background: #2468be;
@@ -693,7 +678,7 @@ button.item:active {
 .item--result .item__main {
   column-gap: 8px;
 }
-/* The caption is one line: the mark and the date keep their width, the subject's name ends in an ellipsis. */
+/* The caption is one line: the mark and the date keep their width. */
 /* Two classes, because the shared caption rule (text-wrap: pretty, set through :is) outweighs one. */
 .t-cap.res-cap {
   display: flex;
@@ -702,11 +687,6 @@ button.item:active {
 }
 .res-cap__fixed {
   flex: none;
-}
-.res-cap__subject {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .dot-unread {
   display: inline-flex;
@@ -1713,7 +1693,7 @@ a.join-cta {
   min-height: 176px;
   --press-scale: 0.96;
 }
-/* The subject's sign, large and cropped in the corner, clear of the text. */
+/* The Practice card's sign, large and cropped in the corner, clear of the text. */
 .next__sign {
   position: absolute;
   right: 4px;
@@ -1902,7 +1882,7 @@ a.join-cta {
 [data-pending] .timed svg {
   visibility: hidden;
 }
-/* A subject's sign in Home's list: square, where people (teachers, classmates) are round. */
+/* The quiz tile in Home's list: square, where people (teachers, classmates) are round. */
 .mark {
   width: 44px;
   height: 44px;
@@ -1974,7 +1954,7 @@ a.join-cta {
   .list,
   .tile,
   .next,
-  .subject,
+  .qcard,
   .avatar,
   .monogram,
   .glass,
@@ -1985,10 +1965,7 @@ a.join-cta {
     border: 1px solid CanvasText;
   }
   /* Decoration only, and its text backplate would cover the card's title. */
-  .subject__glyphs {
-    display: none;
-  }
-  .seg__glide {
+    .seg__glide {
     display: none;
   }
   .tabbar > .tab[data-checked="true"],
@@ -2234,7 +2211,7 @@ html[data-rise-seen] .rise {
   }
 }
 
-/* Shared-element morph between a subject card and its screen. */
+/* Shared-element morph between a card and its screen. */
 ::view-transition-group(.morph) {
   animation-duration: var(--spring-smooth-dur);
   animation-timing-function: var(--spring-smooth);

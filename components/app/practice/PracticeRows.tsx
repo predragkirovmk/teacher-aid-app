@@ -2,13 +2,11 @@
 
 import { CaretRightIcon, CheckCircleIcon, CircleHalfIcon, NotePencilIcon } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useCourses } from "@/lib/app/api/hooks";
 import type { PracticeSet } from "@/lib/app/api/types";
 import { formatDate } from "@/lib/app/format";
 import { useT, type TFn } from "@/lib/app/i18n";
 import { answeredIn, openSets, practiceStatus } from "@/lib/app/practice";
 import { usePracticeSets } from "@/lib/app/api/hooks";
-import { subjectLabel } from "@/lib/app/subjects";
 
 /** "1 question", "4 questions" / "1 прашање", "4 прашања". */
 export const questionCount = (t: TFn, n: number) => t(n === 1 ? "pr.count.one" : "pr.count.other", { n });
@@ -43,11 +41,8 @@ function State({ set }: { set: PracticeSet }) {
 }
 
 /** One practice set in a list: the lesson it came from, how many questions, when it was sent, and where the student is in it. */
-export function PracticeRow({ set, withSubject = true }: { set: PracticeSet; withSubject?: boolean }) {
+export function PracticeRow({ set }: { set: PracticeSet }) {
   const { t, locale } = useT();
-  const courses = useCourses();
-  const course = courses.data?.find((c) => c.id === set.courseId);
-  const subject = course ? subjectLabel(t, course.subjectId, course.subjectName) : "";
   const meta = t("pr.meta", { count: questionCount(t, set.questions.length), date: formatDate(set.createdAt, locale) });
   const Icon = practiceStatus(set) === "done" ? CheckCircleIcon : NotePencilIcon;
   return (
@@ -58,9 +53,9 @@ export function PracticeRow({ set, withSubject = true }: { set: PracticeSet; wit
       <span className="grow item__main">
         <span className="item__text">
           <span className="item__title" style={{ display: "block" }}>
-            {withSubject && subject ? subject : (set.lessonTitle ?? subject)}
+            {set.lessonTitle ?? t("pr.title")}
           </span>
-          <span className="t-cap">{withSubject && set.lessonTitle ? `${set.lessonTitle} · ${meta}` : meta}</span>
+          <span className="t-cap">{meta}</span>
         </span>
         <State set={set} />
       </span>
@@ -76,12 +71,10 @@ export function PracticeRow({ set, withSubject = true }: { set: PracticeSet; wit
 export function PracticeCard() {
   const { t } = useT();
   const sets = usePracticeSets();
-  const courses = useCourses();
   const waiting = openSets(sets.data ?? []);
   const fresh = waiting.filter((s) => practiceStatus(s) === "new");
   const first = waiting[0];
-  const course = first ? courses.data?.find((c) => c.id === first.courseId) : undefined;
-  const subject = course ? subjectLabel(t, course.subjectId, course.subjectName) : "";
+  const title = (fresh[0] ?? first)?.lessonTitle;
   const line = !sets.data
     ? ""
     : waiting.length === 0
@@ -89,8 +82,12 @@ export function PracticeCard() {
       : fresh.length > 1
         ? t("pr.home.newN", { n: fresh.length })
         : fresh.length === 1
-          ? t("pr.home.new1", { subject })
-          : t("pr.home.resume", { subject });
+          ? title
+            ? t("pr.home.new1", { title })
+            : t("home.new")
+          : title
+            ? t("pr.home.resume", { title })
+            : t("pr.continue");
   return (
     <Link
       href={waiting.length === 1 ? `/app/practice/${encodeURIComponent(first.id)}` : "/app/practice"}
