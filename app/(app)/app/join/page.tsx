@@ -4,7 +4,7 @@ import { KeyboardIcon, QrCodeIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type CSSProperties } from "react";
-import { CodeForm, Miss } from "@/components/app/JoinCode";
+import { CodeForm, Joining, Miss } from "@/components/app/JoinCode";
 import { startJoin } from "@/lib/app/api/hooks";
 import { toApiError, type ApiErrorCode } from "@/lib/app/api/errors";
 import { HAPTICS, buzz } from "@/lib/app/haptics";
@@ -21,6 +21,9 @@ export default function Join() {
   const joining = useRef(false);
   const form = useRef<HTMLDivElement>(null);
 
+  const [waiting, setWaiting] = useState(false);
+  const last = useRef<string | null>(null);
+
   // The same path a scan takes: the API says whether the code opens a session, then the quiz carries on.
   const join = (typed: string) => {
     if (joining.current) return;
@@ -28,7 +31,10 @@ export default function Join() {
     const scan = interpretCode(typed);
     if (scan.kind !== "code") return;
     const code = scan.code;
+    last.current = code;
     joining.current = true;
+    setMiss(null);
+    setWaiting(true);
     startJoin(code, true).then(
       () => {
         buzz(HAPTICS.send);
@@ -36,6 +42,7 @@ export default function Join() {
       },
       (e) => {
         joining.current = false;
+        setWaiting(false);
         setMiss({ code: toApiError(e).code });
       },
     );
@@ -79,7 +86,8 @@ export default function Join() {
         )}
       </div>
 
-      {miss && <Miss clearOfTabs code={miss.code} again={t("join.again")} onAgain={tryAgain} />}
+      {waiting && <Joining clearOfTabs />}
+      {miss && <Miss clearOfTabs code={miss.code} again={t("join.again")} onAgain={tryAgain} onRetry={() => join(last.current!)} />}
     </main>
   );
 }

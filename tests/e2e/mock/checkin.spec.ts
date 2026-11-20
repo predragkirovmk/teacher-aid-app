@@ -80,8 +80,8 @@ test.describe("when the join fails", () => {
   test("no connection says nothing was recorded, and trying again joins", async ({ page }) => {
     await page.goto("/app/checkin/OFFLINE-7B");
     const s = screen(page, "offline");
-    await expect(s.getByRole("alert")).toContainText(mk.q("q.fail.network.title"));
-    await expect(s).toContainText(mk.q("q.fail.network.body"));
+    await expect(s.getByRole("alert")).toContainText(mk.t("join.offline.title"));
+    await expect(s).toContainText(mk.t("join.offline.body"));
     await nothingRecorded(page);
 
     await page.goBack();

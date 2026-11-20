@@ -60,8 +60,6 @@ const en = {
   "q.fail.class.body": "Your account isn't on the list for this lesson. Check that you're scanning the code for your own lesson. If you think this is a mistake, tell your teacher.",
   "q.fail.ended.title": "This lesson has ended",
   "q.fail.ended.body": "The teacher has closed this quiz, so you can't join any more. If you were in the room, tell your teacher.",
-  "q.fail.network.title": "No connection",
-  "q.fail.network.body": "We couldn't reach TeacherAid, so nothing has been recorded yet. Check your internet and try again.",
   "q.fail.unknown.title": "Code not recognized",
   "q.fail.unknown.body": "We don't know this code. Check it, or scan the code on the board.",
   "q.fail.scan": "Scan again",
@@ -209,8 +207,6 @@ const mk: Record<Key, string> = {
   "q.fail.class.body": "Твојата сметка не е на списокот за овој час. Провери дали го скенираш кодот од твојот час. Ако мислиш дека е грешка, кажи му на наставникот.",
   "q.fail.ended.title": "Часот заврши",
   "q.fail.ended.body": "Наставникот го затвори квизот, па не можеш повеќе да влезеш. Ако си бил во училница, кажи му на наставникот.",
-  "q.fail.network.title": "Нема врска",
-  "q.fail.network.body": "Не можевме да стигнеме до TeacherAid, па сѐ уште ништо не е запишано. Провери го интернетот и обиди се повторно.",
   "q.fail.unknown.title": "Кодот не е препознаен",
   "q.fail.unknown.body": "Не го знаеме овој код. Провери го или скенирај го кодот од таблата.",
   "q.fail.scan": "Скенирај пак",
@@ -322,7 +318,7 @@ export function useQT() {
 
 export type JoinFailure = {
   /** Which picture the screen draws. */
-  kind: "expired" | "class" | "ended" | "offline" | "unknown" | "generic";
+  kind: "expired" | "class" | "ended" | "offline" | "slow" | "server" | "unknown" | "generic";
   title: string;
   body: string;
   /** What the main button says, and what it does: scan again, go home, or ask the API again. */
@@ -357,12 +353,16 @@ export function useJoinFailureCopy() {
       case "network":
         return {
           kind: "offline",
-          title: t("q.fail.network.title"),
-          body: t("q.fail.network.body"),
+          title: tt("join.offline.title"),
+          body: tt("join.offline.body"),
           cta: t("q.fail.retry"),
           action: "retry",
           secondary: { label: t("q.home"), action: "home" },
         };
+      case "timeout":
+        return { kind: "slow", title: tt("join.slow.title"), body: tt("join.slow.body"), cta: t("q.fail.retry"), action: "retry", secondary: { label: t("q.home"), action: "home" } };
+      case "server_error":
+        return { kind: "server", title: tt("join.server.title"), body: tt("join.server.body"), cta: t("q.fail.retry"), action: "retry", secondary: { label: t("q.home"), action: "home" } };
       case undefined:
       case "not_found":
         return { kind: "unknown", title: t("q.fail.unknown.title"), body: t("q.fail.unknown.body"), cta: t("q.fail.scan"), action: "scan" };

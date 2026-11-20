@@ -352,7 +352,7 @@ test.describe("signing in", () => {
  * the second option), a true or false (false), and 7 x 8 (second option).
  */
 test.describe("a live session", () => {
-  test.use({ allowConsoleErrors: [/Failed to load resource: (the server responded with a status of (403|404|409|410|503)|net::ERR_)/] });
+  test.use({ allowConsoleErrors: [/Failed to load resource: (the server responded with a status of (403|404|409|410|500|503)|net::ERR_)/] });
 
   const OPTION = ".q-opt, .q-tf__btn";
   const teacher = (request: import("@playwright/test").APIRequestContext, action: string, data: object = {}) =>
@@ -808,9 +808,36 @@ test.describe("a live session", () => {
     test("no connection says so and tries again, and the join goes through", async ({ page, request, context }) => {
       await context.route(`${API}/api/v1/sessions/join`, (route) => route.abort());
       await page.goto("/app/checkin/LIVE-7B");
-      await expect(failure(page, "offline").getByRole("alert")).toContainText(mk.q("q.fail.network.title"));
+      await expect(failure(page, "offline").getByRole("alert")).toContainText(mk.t("join.offline.title"));
       await context.unroute(`${API}/api/v1/sessions/join`);
       await failure(page, "offline").getByRole("button", { name: mk.q("q.fail.retry") }).click();
+      await expect(page.getByText(mk.q("q.waitTeacher"))).toBeVisible();
+      expect((await serverState(request)).bodies["POST /sessions/join"]).toEqual({ token: "LIVE-7B" });
+    });
+
+    test("a 500 says it is on our side, and trying again joins the same code", async ({ page, request, context }) => {
+      await context.route(`${API}/api/v1/sessions/join`, (route) =>
+        route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: { code: "server_error" } }) }),
+      );
+      await page.goto("/app/checkin/LIVE-7B");
+      await expect(failure(page, "server").getByRole("alert")).toContainText(mk.t("join.server.title"));
+      await context.unroute(`${API}/api/v1/sessions/join`);
+      await failure(page, "server").getByRole("button", { name: mk.q("q.fail.retry") }).click();
+      await expect(page.getByText(mk.q("q.waitTeacher"))).toBeVisible();
+      expect((await serverState(request)).bodies["POST /sessions/join"]).toEqual({ token: "LIVE-7B" });
+    });
+
+    test("a join that gets no answer is called slow after the limit, and trying again joins", async ({ page, request, context }) => {
+      await page.clock.install();
+      // A request the server never answers: the route neither continues nor fulfils.
+      await context.route(`${API}/api/v1/sessions/join`, () => {});
+      await page.goto("/app/checkin/LIVE-7B");
+      await page.clock.runFor(4500);
+      await expect(page.getByText(mk.t("join.waitingSlow"))).toBeVisible();
+      await page.clock.runFor(8000);
+      await expect(failure(page, "slow").getByRole("alert")).toContainText(mk.t("join.slow.title"));
+      await context.unroute(`${API}/api/v1/sessions/join`);
+      await failure(page, "slow").getByRole("button", { name: mk.q("q.fail.retry") }).click();
       await expect(page.getByText(mk.q("q.waitTeacher"))).toBeVisible();
       expect((await serverState(request)).bodies["POST /sessions/join"]).toEqual({ token: "LIVE-7B" });
     });

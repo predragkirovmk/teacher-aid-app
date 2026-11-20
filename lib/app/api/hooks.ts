@@ -8,7 +8,8 @@ import { OUTBOX_STUDENT_KEY } from "../session/outbox-store";
 import { forgetSession, recallJoin, recallSession, rememberSession } from "../session/resume";
 import { client, demoOnly } from "./index";
 import type { SettledPromise } from "./client";
-import { toApiError, type ApiError } from "./errors";
+import { ApiError, toApiError } from "./errors";
+import { JOIN_LIMIT_MS } from "../join";
 import { endSession, onSessionEnd, useSessionEnd, type SessionEnd } from "./session";
 import { amend, change, invalidate, mapQuery, resetQueries, seed, useQuery, type Query } from "./query";
 import type {
@@ -243,8 +244,21 @@ export type JoinState =
 const started = new Map<string, Promise<JoinResult>>();
 
 const joinNow = (code: string, typed = false): Promise<JoinResult> => {
+  // No signal at all: say so at once, with no request and no wait.
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return Promise.reject(new ApiError("network"));
   // What a student typed is the short code; what a QR carried is the token. The API tells them apart by the field.
-  const p = client.joinSession(typed ? { shortCode: code } : { token: code });
+  // A call with no answer within the limit is a slow connection: the request is left to finish (or not) and the student may retry.
+  const call = client.joinSession(typed ? { shortCode: code } : { token: code });
+  const settled = (call as Partial<SettledPromise<JoinResult>>).settled;
+  const p = settled
+    ? call
+    : new Promise<JoinResult>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new ApiError("timeout")), JOIN_LIMIT_MS);
+        call.then(
+          (v) => (clearTimeout(timer), resolve(v)),
+          (e) => (clearTimeout(timer), reject(e)),
+        );
+      });
   // Joining is the attendance, so the lists that show it are stale from here, as the mock's store already knows.
   void p.then(
     (join) => {
@@ -287,7 +301,7 @@ export function useJoinSession(code: string, enabled: boolean): JoinState & { re
       const error = toApiError(e);
       // No connection, but this tab joined this lesson before (a reload with the signal gone): open it and wait
       // for the signal, so the answer the student saved is on screen and not behind a failed join.
-      const offline = error.code === "network" ? recallJoin(code) : null;
+      const offline = error.code === "network" || error.code === "timeout" ? recallJoin(code) : null;
       if (offline) return apply({ status: "joined", join: offline });
       const earlier = error.code === "token_expired" ? recallSession(code) : null;
       if (!earlier) return apply({ status: "failed", error });

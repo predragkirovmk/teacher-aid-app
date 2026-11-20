@@ -392,6 +392,41 @@ add("71-join-code-error", "/app/join", "Enter the code submitted empty, so the i
   await page.locator(".scan-code__err").waitFor();
 });
 
+// ---- Joining on a weak connection: the wait and each way it fails ----------------------------------------------------------
+// SLOW-7B is never answered the first time and FAIL-7B is a server error the first time (lib/app/api/mock/session.ts); the
+// phone's own `onLine` says false for the offline ones. The slow ones run on the paused clock, so 4 s and 12 s are a tick away.
+const OFFLINE = () => Object.defineProperty(navigator, "onLine", { get: () => false });
+const typeAndJoin = (path, code) => async (page) => {
+  await page.goto(`${base}${path}`);
+  await page.getByRole("button", { name: "Внеси код" }).click();
+  await page.locator(".scan-code__input").fill(code);
+  await page.locator(".scan-code__input").press("Enter");
+};
+const sheetJoin = (code, ms) => async (page) => {
+  await typeAndJoin("/app/join", code)(page);
+  await tick(page, ms);
+};
+const failureRoutes = `${APP}/join/page.tsx, ${C}/JoinCode.tsx, ${C}/quiz/JoinFailure.tsx`;
+add("72-join-waiting", "/app/join", "a typed code sent, no answer yet (0.8 s)", failureRoutes, sheetJoin("SLOW-7B", 800), { clock: "paused" });
+add("73-join-waiting-slow", "/app/join", "a typed code sent, no answer for 4.5 s: the quiet slow line", failureRoutes, sheetJoin("SLOW-7B", 4500), { clock: "paused" });
+add("74-join-slow", "/app/join", "a typed code, no answer for 13 s: Врската е бавна", failureRoutes, sheetJoin("SLOW-7B", 13000), { clock: "paused" });
+add("75-join-offline", "/app/join", "a typed code with the phone offline: Нема интернет", failureRoutes, typeAndJoin("/app/join", "MATH-7B"), { init: OFFLINE });
+add("76-join-server", "/app/join", "a typed code, the server fails: Нешто не е во ред кај нас", failureRoutes, typeAndJoin("/app/join", "FAIL-7B"));
+add("77-play-waiting", "/app/play/SLOW-7B", "a link or QR opens the lesson, no answer yet (0.8 s)", `${APP}/play/[code]/page.tsx, ${C}/quiz/JoinFailure.tsx`, async (page) => {
+  await page.goto(`${base}/app/play/SLOW-7B`);
+  await tick(page, 800);
+}, { clock: "paused" });
+add("78-play-waiting-slow", "/app/play/SLOW-7B", "the same, 4.5 s in: the quiet slow line", `${APP}/play/[code]/page.tsx, ${C}/quiz/JoinFailure.tsx`, async (page) => {
+  await page.goto(`${base}/app/play/SLOW-7B`);
+  await tick(page, 4500);
+}, { clock: "paused" });
+add("79-play-slow", "/app/play/SLOW-7B", "the same, 13 s in: the slow screen with Try again", `${APP}/play/[code]/page.tsx, ${C}/quiz/JoinFailure.tsx`, async (page) => {
+  await page.goto(`${base}/app/play/SLOW-7B`);
+  await tick(page, 13000);
+}, { clock: "paused" });
+add("80-play-offline", "/app/play/MATH-7B", "a link or QR opened with the phone offline", `${APP}/play/[code]/page.tsx, ${C}/quiz/JoinFailure.tsx`, go("/app/play/MATH-7B"), { init: OFFLINE });
+add("81-play-server", "/app/play/FAIL-7B", "a link or QR opened, the server fails", `${APP}/play/[code]/page.tsx, ${C}/quiz/JoinFailure.tsx`, go("/app/play/FAIL-7B"));
+
 // ---- Run ----------------------------------------------------------------------------------------------------------------
 const inventory = [];
 for (const s of states) {

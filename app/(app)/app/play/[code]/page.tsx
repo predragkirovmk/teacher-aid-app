@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { JoinFailureScreen } from "@/components/app/quiz/JoinFailure";
+import { JoiningScreen, JoinFailureScreen } from "@/components/app/quiz/JoinFailure";
 import { Play } from "@/components/app/quiz/Play";
 import { toApiError } from "@/lib/app/api/errors";
 import { useAuth, useCourse, useJoinSession } from "@/lib/app/api/hooks";
@@ -23,7 +23,7 @@ export default function PlayPage() {
   const signedIn = useAuth().status === "signedIn";
   const join = useJoinSession(code, signedIn);
   if (join.status === "failed") return <JoinFailureScreen code={join.error.code} onRetry={join.retry} />;
-  if (join.status === "joining") return <main className="screen screen--bare q" />;
+  if (join.status === "joining") return <JoiningScreen />;
   return <Joined key={join.join.session.id} join={join.join} retry={join.retry} />;
 }
 

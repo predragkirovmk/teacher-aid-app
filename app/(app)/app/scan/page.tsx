@@ -3,7 +3,7 @@
 import { CameraIcon, ImageIcon, KeyboardIcon, WarningIcon, XIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { CodeForm, Miss } from "@/components/app/JoinCode";
+import { CodeForm, Joining, Miss } from "@/components/app/JoinCode";
 import { startJoin } from "@/lib/app/api/hooks";
 import { toApiError, type ApiErrorCode } from "@/lib/app/api/errors";
 import { HAPTICS, buzz } from "@/lib/app/haptics";
@@ -51,6 +51,9 @@ export default function Scan() {
   const [result, setResult] = useState<{ scan: ScanResult; code?: ApiErrorCode } | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
+  // A join is on its way, and the one that was last sent, so a failed connection can be tried again with the same code.
+  const [waiting, setWaiting] = useState(false);
+  const sent = useRef<{ scan: ScanResult & { kind: "code" }; typed: boolean } | null>(null);
   const lockTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   // Typing the code is the way in for a student with no camera, or one who prefers it.
   const [typing, setTyping] = useState(false);
@@ -69,9 +72,11 @@ export default function Scan() {
     const miss = (code?: ApiErrorCode) =>
       beat.then(() => {
         setLocked(false);
+        setWaiting(false);
         setResult({ scan, code });
       });
     if (scan.kind === "other") return void miss();
+    sent.current = { scan, typed };
     // The API says whether the code opens a session; the quiz screen carries on from the answer.
     startJoin(scan.code, typed).then(
       () => {
@@ -80,7 +85,17 @@ export default function Scan() {
       },
       (e) => miss(toApiError(e).code),
     );
+    setWaiting(true);
   }, [router]);
+
+  // Try the same code again, with no retyping and no new scan.
+  const retry = () => {
+    const last = sent.current;
+    if (!last) return;
+    setResult(null);
+    handled.current = false;
+    handle(last.scan.code, last.typed);
+  };
 
   useEffect(() => () => clearTimeout(lockTimer.current), []);
 
@@ -276,7 +291,9 @@ export default function Scan() {
         </div>
       )}
 
-      {result && <Miss code={result.code} onAgain={() => {
+      {waiting && !result && <Joining />}
+
+      {result && <Miss code={result.code} onRetry={retry} onAgain={() => {
         setNote(null);
         setPhase("starting");
         setResult(null);

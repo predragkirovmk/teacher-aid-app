@@ -1160,6 +1160,12 @@
   color: var(--text-2);
 }
 
+/* The wait for a join shows only if it lasts: a quick join goes straight on with no flash. */
+.scan-miss[data-joining],
+.q[data-joining] .q__col {
+  animation: q-sheet var(--spring-snappy-dur) var(--spring-snappy) 400ms backwards;
+}
+
 /* ---- keyframes ---- */
 @keyframes q-rise {
   from {
