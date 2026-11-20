@@ -296,9 +296,9 @@ test.describe("the demo's test notification", () => {
           id: "n-practice-ps-session-math-1",
           kind: "practice_set_sent",
           locale: "mk",
-          title: mk.t("notif.practice_set_sent.title", { subject: mk.t("subj.math") }),
+          title: mk.t("notif.practice_set_sent.title"),
           body: mk.t("notif.practice_set_sent.body"),
-          payload: { course_id: "math", subject_id: "math", practice_set_id: "ps-session-math-1" },
+          payload: { practice_set_id: "ps-session-math-1" },
         },
       },
     ]);
@@ -327,7 +327,7 @@ test.describe("the demo's test notification", () => {
     await page.evaluate(async () => void (await navigator.serviceWorker.ready));
     await page.getByRole("button", { name: /Send a test notification/ }).click();
     const [payload] = await page.evaluate(() => (window as unknown as { __posted: { type: string; payload: unknown }[] }).__posted.filter((m) => m.type === "show-notification").map((m) => m.payload));
-    expect(payload).toMatchObject({ locale: "en", title: en.t("notif.practice_set_sent.title", { subject: en.t("subj.math") }) });
+    expect(payload).toMatchObject({ locale: "en", title: en.t("notif.practice_set_sent.title") });
   });
 });
 
@@ -395,7 +395,7 @@ test.describe("when a lesson ends", () => {
     await page.getByRole("button", { name: mk.t("push.ask.later") }).click();
 
     await bell.click();
-    await expect(page.getByRole("link", { name: new RegExp(mk.t("notif.result_ready.title", { subject: mk.t("subj.math") })) }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: new RegExp(mk.t("notif.result_ready.title")) }).first()).toBeVisible();
     await expect(page.locator(".item--unread")).toHaveCount(5);
     expect(await asked(page)).toBe(0);
   });

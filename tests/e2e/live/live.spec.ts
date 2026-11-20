@@ -29,7 +29,8 @@ test("Home draws the API's student and latest result, and asks for no ranking or
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Live");
   const latest = page.locator("main.screen ul.list a.item").first();
   await expect(latest).toContainText(mk.t("res.score", { right: 4, total: 5 }));
-  await expect(latest).toContainText(mk.t("subj.math"));
+  // The API still names a subject; the app does not show it.
+  await expect(latest).not.toContainText(mk.t("subj.math"));
   // The documents are not in the API yet (OPEN-18), so live Home has no such section.
   await expect(page.getByRole("heading", { name: mk.t("docs.title") })).toHaveCount(0);
 
@@ -61,11 +62,11 @@ test("Alerts lists the API's notifications and marks them all read", async ({ pa
   await expect(bell).toHaveAccessibleName(named(mk.t("notif.unreadCount", { n: 2 })));
   await bell.click();
 
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("notif.result_ready.title", { subject: mk.t("subj.math") })) })).toBeVisible();
+  await expect(page.getByRole("link", { name: new RegExp(mk.t("notif.result_ready.title")) })).toBeVisible();
   await expect(page.getByRole("link", { name: /Parents evening/ })).toBeVisible();
   await expect(page.locator(".item--unread")).toHaveCount(2);
   // A check-in record is the demo's own; the API sends none.
-  await expect(page.getByText(new RegExp(mk.t("notif.checkin.title", { subject: "" })))).toHaveCount(0);
+  await expect(page.getByText(new RegExp(mk.t("notif.checkin.title")))).toHaveCount(0);
 
   await page.getByRole("button", { name: mk.t("notif.markAll") }).click();
   await expect(page.locator(".item--unread")).toHaveCount(0);
@@ -1128,7 +1129,7 @@ test.describe("practice and the history of results", () => {
 
   test("Home offers the set the API lists", async ({ page }) => {
     await page.goto("/app");
-    await expect(page.getByRole("link", { name: new RegExp(`^${mk.t("pr.title")}`) })).toContainText(mk.t("pr.home.new1", { subject: mk.t("subj.math") }));
+    await expect(page.getByRole("link", { name: new RegExp(`^${mk.t("pr.title")}`) })).toContainText(mk.t("pr.home.new1", { title: "Linear equations" }));
   });
 
   test("a set is answered one question at a time, each verdict from the server, and the progress is the server's", async ({ page, request }) => {
@@ -1220,7 +1221,7 @@ test.describe("practice and the history of results", () => {
   test("a set the teacher sends arrives as an alert, and opens", async ({ page, request }) => {
     await request.post(`${API}/__control/practice/send`);
     await page.goto("/app/notifications");
-    await page.getByRole("link", { name: new RegExp(mk.t("notif.practice_set_sent.title", { subject: mk.t("subj.math") })) }).click();
+    await page.getByRole("link", { name: new RegExp(mk.t("notif.practice_set_sent.title")) }).click();
     await page.getByRole("link", { name: mk.t("notif.open.practice") }).click();
     await expect(page).toHaveURL(/\/app\/practice\/ps-2$/);
     await expect(page.getByText(progress(1))).toBeVisible();
@@ -1308,7 +1309,7 @@ test.describe("alerts and push", () => {
     test("marking one alert read shows at once and is told to the API", async ({ page, request }) => {
       await page.goto("/app/notifications");
       await expect(page.locator(".item--unread")).toHaveCount(2);
-      await page.getByRole("link", { name: new RegExp(mk.t("notif.result_ready.title", { subject: mk.t("subj.math") })) }).click();
+      await page.getByRole("link", { name: new RegExp(mk.t("notif.result_ready.title")) }).click();
       await expect(page).toHaveURL(/\/app\/notifications\/n-1$/);
       await page.getByRole("button", { name: mk.t("back") }).click();
       await expect(page.locator(".item--unread")).toHaveCount(1);

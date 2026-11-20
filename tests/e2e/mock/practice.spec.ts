@@ -26,7 +26,7 @@ async function typeNumber(page: Page, value: string) {
 test("a set is opened from Home, answered, left and carried on, and finished with its points", async ({ page }) => {
   await page.goto("/app");
   const row = page.locator("main.screen a.next");
-  await expect(row).toContainText(mk.t("pr.home.new1", { subject: mk.t("subj.math") }));
+  await expect(row).toContainText(mk.t("pr.home.new1", { title: mk.t("sum.lesson") }));
   await row.click();
   await expect(page).toHaveURL(new RegExp(`${SET}$`));
   await expect(page.getByText(progress(1))).toBeVisible();
@@ -61,7 +61,7 @@ test("a set is opened from Home, answered, left and carried on, and finished wit
   // Leave in the middle: the way back is where the student came from, nothing asks them to stay.
   await page.getByRole("button", { name: mk.t("pr.leave") }).click();
   await expect(page).toHaveURL(/\/app$/);
-  await expect(row).toContainText(mk.t("pr.home.resume", { subject: mk.t("subj.math") }));
+  await expect(row).toContainText(mk.t("pr.home.resume", { title: mk.t("sum.lesson") }));
 
   // Carry on: the third question, after the two that were answered.
   await row.click();
@@ -145,11 +145,13 @@ test("the list shows what is waiting, then what is finished, with the day each w
   await expect(page.getByRole("heading", { name: mk.t("pr.group.open") })).toBeVisible();
   await expect(page.getByRole("heading", { name: mk.t("pr.group.done") })).toBeVisible();
   const [waiting, finished] = await page.getByRole("list").all();
-  await expect(waiting).toContainText(mk.t("subj.math"));
+  await expect(waiting).toContainText(mk.t("sum.lesson"));
+  await expect(waiting).not.toContainText(mk.t("subj.math"));
   await expect(waiting).toContainText(mk.t("pr.state.new"));
   await expect(waiting).toContainText(mk.t("pr.count.other", { n: 4 }));
   await expect(waiting).toContainText("12 окт");
-  await expect(finished).toContainText(mk.t("subj.physics"));
+  await expect(finished).toContainText("Њутнови закони");
+  await expect(finished).not.toContainText(mk.t("subj.physics"));
   await expect(finished).toContainText(mk.t("pr.state.done", { score: 2, n: 3 }));
 });
 
@@ -169,10 +171,10 @@ test("results: every lesson newest first, and one lesson's summary with its prac
   await expect(page.getByRole("heading", { name: mk.t("res.title") })).toBeVisible();
   const rows = page.getByRole("listitem");
   await expect(rows).toHaveCount(8);
-  await expect(rows.first()).toContainText("Математика, дропки");
+  await expect(rows.first()).toContainText(mk.t("sum.lesson"));
   await expect(rows.first()).toContainText(mk.t("res.score", { right: 4, total: 5 }));
 
-  await rows.filter({ hasText: mk.t("subj.physics") }).first().getByRole("link").click();
+  await rows.filter({ hasText: "Њутнови закони" }).first().getByRole("link").click();
   await expect(page).toHaveURL(/\/app\/summary\/session-phys-2$/);
   await expect(page.getByText("Њутнови закони")).toBeVisible();
   await expect(page.getByRole("link", { name: new RegExp(mk.t("pr.fromLesson")) })).toContainText(mk.t("pr.state.done", { score: 2, n: 3 }));
@@ -186,5 +188,5 @@ test("Home's newest result opens that lesson's own summary", async ({ page }) =>
   await page.goto("/app");
   await page.locator("main.screen ul.list a.item").first().click();
   await expect(page).toHaveURL(/\/app\/summary\/session-math-1$/);
-  await expect(page.getByText(exact("Математика, дропки"))).toBeVisible();
+  await expect(page.getByText(exact(mk.t("sum.lesson")))).toBeVisible();
 });

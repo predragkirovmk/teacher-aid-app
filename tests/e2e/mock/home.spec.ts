@@ -10,7 +10,7 @@ test("Home leads with the practice card, then the recent quizzes and the teacher
   // The yellow card is the first thing after the header, says what waits, and opens that set.
   const card = page.locator("main.screen a.next");
   await expect(card).toContainText(mk.t("pr.title"));
-  await expect(card).toContainText(mk.t("pr.home.new1", { subject: mk.t("subj.math") }));
+  await expect(card).toContainText(mk.t("pr.home.new1", { title: mk.t("sum.lesson") }));
   await expect(card).toContainText(mk.t("pr.start"));
   expect(await card.evaluate((el) => el.closest(".stack")!.firstElementChild!.contains(el))).toBe(true);
   await card.click();
@@ -118,9 +118,31 @@ for (const width of [390, 360]) {
       const lines = await captions.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight))));
       expect(lines.length).toBeGreaterThan(0);
       expect(lines.every((n) => n === 1)).toBe(true);
-      // The "New" mark and the date are never the part that gives way.
-      const clipped = await page.locator("a.item .res-cap__fixed").evaluateAll((els) => els.filter((el) => el.scrollWidth > el.clientWidth + 1).length);
+      // Nothing in it is cut off: the "New" mark and the date show whole.
+      const clipped = await captions.evaluateAll((els) => els.filter((el) => el.scrollWidth > el.clientWidth + 1).length);
       expect(clipped).toBe(0);
     }
   });
 }
+
+test("Home, the results list and a document row show no subject: no name from the mock and no subject mark", async ({ page }) => {
+  const names = ["math", "physics", "mkd", "english", "german", "biology", "history", "geography", "informatics", "art", "music", "pe"].map((id) => mk.t(`subj.${id}` as Parameters<typeof mk.t>[0]));
+  for (const url of ["/app", "/app/summary", "/app/documents"]) {
+    await page.goto(url);
+    await expect(page.locator("main.screen")).not.toHaveAttribute("data-pending", "");
+    const text = (await page.locator("main.screen").innerText()).toLowerCase();
+    for (const name of names) expect(text, `${url} says ${name}`).not.toContain(name.toLowerCase());
+    // A letter or sign for a subject (π, Ѓ ...) is gone: every quiz tile holds the same icon and no text.
+    const tiles = page.locator("a.item--result .mark");
+    for (const tile of await tiles.all()) {
+      await expect(tile.locator("svg")).toHaveCount(1);
+      expect(await tile.innerText()).toBe("");
+    }
+  }
+  await page.goto("/app/summary");
+  expect(await page.locator("a.item--result .mark").count()).toBeGreaterThan(0);
+  const icons = await page.locator("a.item--result .mark svg").evaluateAll((els) => new Set(els.map((e) => e.innerHTML)).size);
+  expect(icons).toBe(1);
+  await page.goto("/app/documents");
+  await expect(page.locator("button.item").first()).toBeVisible();
+});

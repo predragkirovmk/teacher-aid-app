@@ -140,9 +140,6 @@ describe("the screen a notification opens", () => {
       kind,
       when: 0,
       unread: true,
-      courseId: payload.courseId,
-      subjectId: payload.subjectId,
-      subjectName: payload.subjectName,
       payload,
     });
     const wire = (p: AlertItem["payload"]) => ({ course_id: p.courseId, subject_id: p.subjectId, session_id: p.sessionId, practice_set_id: p.practiceSetId });

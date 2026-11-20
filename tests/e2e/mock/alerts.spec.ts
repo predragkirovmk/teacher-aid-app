@@ -28,13 +28,15 @@ test("mark all alerts read clears the unread count", async ({ page }) => {
 
 test("opening an alert marks it read and lands on what it is about", async ({ page }) => {
   await page.goto("/app/notifications");
-  await page.getByRole("link", { name: new RegExp(mk.t("notif.result_ready.title", { subject: mk.t("subj.math") })) }).click();
+  await page.getByRole("link", { name: new RegExp(mk.t("notif.result_ready.title")) }).click();
   await expect(page).toHaveURL(/\/app\/notifications\/n-math$/);
 });
 
 test("a practice alert opens the set it announces, and starting the set reads the alert", async ({ page }) => {
   await page.goto("/app/notifications");
-  const alert = page.getByRole("link", { name: new RegExp(mk.t("notif.practice_set_sent.title", { subject: mk.t("subj.math") })) });
+  // Two practice alerts say the same thing now that none names a subject, so this one is found by where it leads.
+  const alert = page.locator('a[href="/app/notifications/n-practice-ps-session-math-1"]');
+  await expect(alert).toContainText(mk.t("notif.practice_set_sent.title"));
   await alert.click();
   await expect(page).toHaveURL(/\/app\/notifications\/n-practice-ps-session-math-1$/);
   await page.getByRole("link", { name: mk.t("notif.open.practice") }).click();

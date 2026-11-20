@@ -11,12 +11,12 @@ test("a check-in link records attendance and opens the quiz", async ({ page }) =
   // The link hands over to the quiz, whose lobby is the first thing the student sees.
   await expect(page).toHaveURL(/\/app\/play\/MATH-7B$/);
   await expect(page.getByText(mk.q("q.live"))).toBeVisible();
-  await expect(page.getByText(mk.t("subj.math"), { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(mk.t("subj.math"))).toHaveCount(0);
 
   // Joining is the attendance: one check-in for maths, and the Alerts list says so.
   expect(await checkins(page)).toEqual([expect.objectContaining({ subject: "math" })]);
   await page.goto("/app/notifications");
-  await expect(page.getByText(mk.t("notif.checkin.title", { subject: mk.t("subj.math") }))).toBeVisible();
+  await expect(page.getByText(mk.t("notif.checkin.title"))).toBeVisible();
 });
 
 test("checking in twice is one attendance", async ({ page }) => {

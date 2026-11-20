@@ -2,11 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CLOCKS,
   PERIODS,
-  WEEK,
-  currentLesson,
-  dayOf,
   demoTime,
-  lessonsOn,
   shiftOf,
   weekStart,
 } from "@/lib/app/demo/schedule";
@@ -20,13 +16,6 @@ const hhmm = (ms: number) => {
 
 // 12 Oct 2026 is a Monday and the first morning-shift week; the shifts swap every week.
 describe("calendar helpers", () => {
-  it("finds the weekday, and nothing on a weekend", () => {
-    expect(dayOf(at(19, 10))).toBe("mon");
-    expect(dayOf(at(23, 10))).toBe("fri");
-    expect(dayOf(at(24, 10))).toBeNull();
-    expect(dayOf(at(25, 10))).toBeNull();
-  });
-
   it("puts the week at Monday midnight, and a weekend in the week ahead", () => {
     expect(weekStart(at(21, 15))).toBe(at(19));
     expect(weekStart(at(19, 0))).toBe(at(19));
@@ -59,34 +48,6 @@ describe("the timetable", () => {
       expect(minutes(p[3][0]) - minutes(p[2][1])).toBe(20);
     }
   });
-
-  it("has a lesson in every slot a day lists, at most six", () => {
-    for (const d of WEEK) expect(d.slots.length).toBeLessThanOrEqual(6);
-  });
-
-  it("lists the lessons of a day in the week's shift, none at the weekend", () => {
-    const tue = lessonsOn(at(20, 12));
-    expect(tue).toHaveLength(6);
-    expect(tue[0]).toMatchObject({ subject: "physics", kind: "test", day: "tue", period: 1, from: "13:00", to: "13:40" });
-    expect(hhmm(tue[0].start)).toBe("13:00");
-    expect(hhmm(tue[5].end)).toBe("17:40");
-    expect(lessonsOn(at(24, 12))).toEqual([]);
-  });
-
-  it("starts a lesson on the clock after the daylight-saving change, not an hour off", () => {
-    const mon = lessonsOn(at(26, 7));
-    expect(mon[0]).toMatchObject({ subject: "math", from: "08:00" });
-    expect(hhmm(mon[0].start)).toBe("08:00");
-    expect(mon[0].end - mon[0].start).toBe(40 * 60_000);
-  });
-
-  it("finds the lesson under way, and none in a break or after school", () => {
-    expect(currentLesson(at(20, 13, 10))?.subject).toBe("physics");
-    expect(currentLesson(at(20, 13, 40))).toBeUndefined();
-    expect(currentLesson(at(20, 13, 45))?.subject).toBe("english");
-    expect(currentLesson(at(20, 18))).toBeUndefined();
-    expect(currentLesson(at(24, 13, 10))).toBeUndefined();
-  });
 });
 
 describe("the demo clock", () => {
@@ -102,7 +63,7 @@ describe("the demo clock", () => {
     expect(hhmm(demoTime("midday", real))).toBe("15:40");
     expect(hhmm(demoTime("after", real))).toBe("18:30");
     for (const id of ["before", "during", "midday", "after"] as const) {
-      expect(dayOf(demoTime(id, real))).toBe("mon");
+      expect(new Date(demoTime(id, real)).getDay()).toBe(1);
       expect(new Date(demoTime(id, real)).getDate()).toBe(19);
     }
     const weekend = new Date(demoTime("weekend", real));
@@ -118,11 +79,16 @@ describe("the demo clock", () => {
   });
 
   it("puts 'during' inside the first lesson and 'before' ahead of it", () => {
-    expect(currentLesson(demoTime("during", real))?.period).toBe(1);
-    expect(currentLesson(demoTime("before", real))).toBeUndefined();
-    expect(lessonsOn(demoTime("before", real))[0].start).toBeGreaterThan(demoTime("before", real));
-    expect(currentLesson(demoTime("midday", real))?.period).toBe(4);
-    expect(currentLesson(demoTime("after", real))).toBeUndefined();
+    const [from, to] = PERIODS[shiftOf(real)][0];
+    const monday = weekStart(real);
+    const clock = (hm: string) => new Date(new Date(monday).setHours(Number(hm.slice(0, 2)), Number(hm.slice(3)))).getTime();
+    expect(demoTime("during", real)).toBeGreaterThan(clock(from));
+    expect(demoTime("during", real)).toBeLessThan(clock(to));
+    expect(demoTime("before", real)).toBeLessThan(clock(from));
+    const [from4, to4] = PERIODS[shiftOf(real)][3];
+    expect(demoTime("midday", real)).toBeGreaterThan(clock(from4));
+    expect(demoTime("midday", real)).toBeLessThan(clock(to4));
+    expect(demoTime("after", real)).toBeGreaterThan(clock(PERIODS[shiftOf(real)][5][1]));
   });
 
   it("knows every preset", () => {

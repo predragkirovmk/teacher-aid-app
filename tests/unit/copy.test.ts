@@ -54,8 +54,8 @@ describe("dictionaries", () => {
 
   it("fill their placeholders", () => {
     expect(translate("en", "home.afternoon", { name: "Ana" })).toBe("Good afternoon, Ana");
-    expect(translate("mk", "pr.home.new1", { subject: "Физика" })).toContain("Физика");
-    expect(translate("en", "pr.home.new1", { subject: "Physics" })).not.toContain("{subject}");
+    expect(translate("mk", "pr.home.new1", { title: "Дропки" })).toContain("Дропки");
+    expect(translate("en", "pr.home.new1", { title: "Fractions" })).not.toContain("{title}");
   });
 });
 
