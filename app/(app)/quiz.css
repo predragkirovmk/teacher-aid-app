@@ -1053,9 +1053,6 @@
   align-items: center;
   gap: 8px;
 }
-.pe-pop {
-  animation: q-pop var(--spring-bouncy-dur) var(--spring-bouncy) backwards;
-}
 .pe-photo-btn {
   position: relative;
   border-radius: 50%;
@@ -1137,6 +1134,10 @@
   text-align: center;
   animation: q-sheet var(--spring-snappy-dur) var(--spring-snappy) backwards;
 }
+/* On a screen with the tab bar the sheet sits above it, not under it. */
+.scan-miss--tabs {
+  bottom: calc(var(--tab-h) + env(safe-area-inset-bottom) + 24px);
+}
 .scan-miss__badge {
   width: 4rem;
   height: 4rem;
@@ -1157,6 +1158,12 @@
   font-size: var(--fs-callout);
   line-height: 1.45;
   color: var(--text-2);
+}
+
+/* The wait for a join shows only if it lasts: a quick join goes straight on with no flash. */
+.scan-miss[data-joining],
+.q[data-joining] .q__col {
+  animation: q-sheet var(--spring-snappy-dur) var(--spring-snappy) 400ms backwards;
 }
 
 /* ---- keyframes ---- */

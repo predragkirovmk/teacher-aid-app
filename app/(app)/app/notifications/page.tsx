@@ -8,6 +8,7 @@ import { markNotificationsRead } from "@/lib/app/api/hooks";
 import { alertCopy, useAlerts, type AlertItem } from "@/lib/app/alerts";
 import { useFeedMore } from "@/lib/app/feed";
 import { formatDate } from "@/lib/app/format";
+import { Top } from "@/components/app/Top";
 import { useUI } from "@/components/app/ui";
 import { errorCopy, useT } from "@/lib/app/i18n";
 import { useState } from "react";
@@ -15,11 +16,7 @@ import { useState } from "react";
 export default function Notifications() {
   const { t } = useT();
   const alerts = useAlerts();
-  const title = (
-    <h1 className="large" style={{ marginTop: 16 }}>
-      {t("notif.title")}
-    </h1>
-  );
+  const title = <Top title={t("notif.title")} />;
   return (
     <Gate query={alerts} header={title}>
       {(items) => <List items={items} title={title} />}

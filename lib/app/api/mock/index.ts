@@ -12,6 +12,7 @@ import type {
   FocusEventInput,
   Id,
   JoinInput,
+  JoinResult,
   Leaderboard,
   LeaderboardRow,
   Locale,
@@ -41,7 +42,7 @@ import { NOTIFICATIONS_PAGE } from "../config";
 import { net } from "../../session/net";
 import { buildResults, buildTopics } from "./history";
 import { answerPractice, buildPracticeSets } from "./practice";
-import { joinMock, mockSessionFor } from "./session";
+import { hangsOnce, joinMock, mockSessionFor } from "./session";
 import { startMockSignIn } from "./signin";
 import { actions, DEFAULT_STATE, getState, subscribeStore, type AppState } from "./store";
 import { cleanName, nameError } from "../../profile-rules";
@@ -340,8 +341,12 @@ export function createMockClient(source: MockSource): ApiClient {
         return write(() => answerPractice(state(), id, answers, locale()));
       }),
 
-    joinSession: (input: JoinInput) =>
-      authed(() => write(() => joinMock("token" in input ? input.token : input.shortCode, locale()))),
+    joinSession: (input: JoinInput) => {
+      const code = "token" in input ? input.token : input.shortCode;
+      // SLOW-7B: a call that is never answered, as on a dead Wi-Fi; the app's own limit ends the wait.
+      if (hangsOnce(code)) return new Promise<JoinResult>(() => {});
+      return authed(() => write(() => joinMock(code, locale())));
+    },
 
     getStudentState: (sessionId: Id) =>
       authed((): StudentSessionState => {

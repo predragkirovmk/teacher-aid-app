@@ -82,7 +82,7 @@ const privacyEn: PrivacyDoc = {
         },
         { p: "If you are not yet an adult, your school also tells your parents or guardians about the app. If they have questions, they can ask the school office." },
         {
-          p: "At a university, read \"school\" as your faculty, \"teacher\" as your professor, \"class\" as your study group, \"school office\" as the faculty office and \"headmaster\" as the dean.",
+          p: "At a university, read \"school\" as your faculty, \"teacher\" as your professor, \"school office\" as the faculty office and \"headmaster\" as the dean.",
         },
         { p: "The law behind this is North Macedonia's Law on Personal Data Protection (ЗЗЛП), which follows the EU's GDPR." },
       ],
@@ -99,7 +99,7 @@ const privacyEn: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "Your full name, school email, class and school. They come from the list of students your school gives us. We use them to sign you in and to put you in the right class. You can't change them in the app.",
+          p: "Your full name, school email and school. They come from the list of students your school gives us. We use them to sign you in and to open the right lessons for you. You can't change them in the app.",
         },
       ],
     },
@@ -119,7 +119,7 @@ const privacyEn: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "When you scan the class QR code, we record that you are at that lesson, and the time. Your teacher sees it. The headmaster only gets monthly totals without names. The camera reads the code on your phone. We don't save or send any pictures.",
+          p: "When you scan the lesson QR code, we record that you are at that lesson, and the time. Your teacher sees it. The headmaster only gets monthly totals without names. The camera reads the code on your phone. We don't save or send any pictures.",
         },
       ],
     },
@@ -129,7 +129,7 @@ const privacyEn: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "Each answer you give in a quiz, whether it was right, how long it took, and your points. We use them to score the quiz, show you your results, and let your teacher see how the class is doing. Your teacher sees your answers. Your classmates see only your name, your points and your place on the class board.",
+          p: "Each answer you give in a quiz, whether it was right, how long it took, and your points. We use them to score the quiz, show you your results, and let your teacher see how the lesson is going. Your teacher sees your answers. Your classmates see only your name, your points and your place on the board.",
         },
       ],
     },
@@ -230,7 +230,7 @@ const privacyEn: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "Your name, your points and your place on the class board, and the badges you earn. They never see your answers, your questions, your results, your attendance or when you leave the quiz.",
+          p: "Your name, your points and your place on the board, and the badges you earn. They never see your answers, your questions, your results, your attendance or when you leave the quiz.",
         },
       ],
     },
@@ -240,7 +240,7 @@ const privacyEn: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "The class lists and your school account details, and how often teachers use the app. Never your answers, questions or results by topic.",
+          p: "The student lists and your school account details, and how often teachers use the app. Never your answers, questions or results by topic.",
         },
       ],
     },
@@ -266,7 +266,7 @@ const privacyEn: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "AI helps teachers prepare lessons from their own material or a topic they type. It never receives your name, your email or the class list. Your data is stored in the European Union and is encrypted while it travels and while it is stored. Two services run the app for us: Vercel delivers the app to your phone and your browser, and Supabase stores the app's data.",
+          p: "AI helps teachers prepare lessons from their own material or a topic they type. It never receives your name, your email or the student list. Your data is stored in the European Union and is encrypted while it travels and while it is stored. Two services run the app for us: Vercel delivers the app to your phone and your browser, and Supabase stores the app's data.",
         },
       ],
     },
@@ -365,7 +365,7 @@ const privacyMk: PrivacyDoc = {
         },
         { p: "Ако не си сѐ уште полнолетен, училиштето ги известува и твоите родители или старатели за апликацијата. Ако имаат прашања, можат да се обратат во училишната канцеларија." },
         {
-          p: "На универзитет, „училиште“ читај го како твојот факултет, „наставник“ како професор, „клас“ како студиска група, „училишна канцеларија“ како факултетска канцеларија и „директор“ како декан.",
+          p: "На универзитет, „училиште“ читај го како твојот факултет, „наставник“ како професор, „училишна канцеларија“ како факултетска канцеларија и „директор“ како декан.",
         },
         { p: "Законот зад ова е Законот за заштита на личните податоци на Северна Македонија (ЗЗЛП), кој е усогласен со GDPR на ЕУ." },
       ],
@@ -382,7 +382,7 @@ const privacyMk: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "Твоето име и презиме, училишната е-пошта, класот и училиштето. Доаѓаат од списокот на ученици што ни го дава училиштето. Ги користиме за да те најавиме и да те ставиме во вистинскиот клас. Во апликацијата не можеш да ги менуваш.",
+          p: "Твоето име и презиме, училишната е-пошта и училиштето. Доаѓаат од списокот на ученици што ни го дава училиштето. Ги користиме за да те најавиме и да ти ги отвориме вистинските часови. Во апликацијата не можеш да ги менуваш.",
         },
       ],
     },
@@ -412,7 +412,7 @@ const privacyMk: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "Секој одговор во квиз, дали е точен, за колку време е даден и твоите поени. Ги користиме за да го бодуваме квизот, да ти ги покажеме резултатите и наставникот да види како оди класот. Наставникот ги гледа твоите одговори. Соучениците го гледаат само твоето име, поените и местото на листата на класот.",
+          p: "Секој одговор во квиз, дали е точен, за колку време е даден и твоите поени. Ги користиме за да го бодуваме квизот, да ти ги покажеме резултатите и наставникот да види како оди часот. Наставникот ги гледа твоите одговори. Соучениците го гледаат само твоето име, поените и местото на листата.",
         },
       ],
     },
@@ -513,7 +513,7 @@ const privacyMk: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "Твоето име, поените и местото на листата на класот, и значките што ги освојуваш. Никогаш не ги гледаат твоите одговори, прашања, резултати, присуство или кога излегуваш од квизот.",
+          p: "Твоето име, поените и местото на листата, и значките што ги освојуваш. Никогаш не ги гледаат твоите одговори, прашања, резултати, присуство или кога излегуваш од квизот.",
         },
       ],
     },
@@ -523,7 +523,7 @@ const privacyMk: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "Списоците на класовите и податоците од твојата училишна сметка, и колку често наставниците ја користат апликацијата. Никогаш твоите одговори, прашања или резултати по теми.",
+          p: "Списоците на ученици и податоците од твојата училишна сметка, и колку често наставниците ја користат апликацијата. Никогаш твоите одговори, прашања или резултати по теми.",
         },
       ],
     },
@@ -549,7 +549,7 @@ const privacyMk: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "Вештачка интелигенција им помага на наставниците да подготват часови од сопствен материјал или од тема што ја впишуваат. Таа никогаш не го добива твоето име, твојата е-пошта или списокот на класот. Податоците се чуваат во Европската Унија и се шифрирани при пренос и при чување. Две услуги ја одржуваат апликацијата за нас: Vercel ја доставува апликацијата до твојот телефон и твојот прелистувач, а Supabase ги чува податоците на апликацијата.",
+          p: "Вештачка интелигенција им помага на наставниците да подготват часови од сопствен материјал или од тема што ја впишуваат. Таа никогаш не го добива твоето име, твојата е-пошта или списокот на ученици. Податоците се чуваат во Европската Унија и се шифрирани при пренос и при чување. Две услуги ја одржуваат апликацијата за нас: Vercel ја доставува апликацијата до твојот телефон и твојот прелистувач, а Supabase ги чува податоците на апликацијата.",
         },
       ],
     },
@@ -662,7 +662,7 @@ const termsEn: Doc = {
     },
     {
       id: "qr",
-      title: "Keep the class code in class",
+      title: "Keep the lesson code in the lesson",
       level: 2,
       blocks: [
         {

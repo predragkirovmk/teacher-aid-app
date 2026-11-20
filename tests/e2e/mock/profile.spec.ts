@@ -10,6 +10,12 @@ test("editing the profile name changes it everywhere and keeps it", async ({ pag
   await page.getByRole("button", { name: mk.q("p.save") }).click();
 
   await expect(page.getByText(mk.q("p.saved")).first()).toBeVisible();
+  // The toast sits above the tab bar and covers neither the title nor the tabs.
+  const toast = await page.locator(".toast").boundingBox();
+  const title = await page.locator(".profile__name").boundingBox();
+  const bar = await page.locator(".tabbar").boundingBox();
+  expect(toast!.y).toBeGreaterThan(title!.y + title!.height);
+  expect(toast!.y + toast!.height).toBeLessThanOrEqual(bar!.y);
   await expect(page.locator(".profile__name")).toContainText("Мики Т");
 
   await page.goto("/app");

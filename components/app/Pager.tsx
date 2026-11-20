@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { SPRINGS, throwTo } from "@/lib/app/motion";
 
 /** The tab roots, in tab-bar order. Swiping moves along this list. */
-const TAB_ORDER = ["/app", "/app/subjects", "/app/notifications", "/app/profile"];
+export const TAB_ORDER = ["/app", "/app/join", "/app/profile"];
 
 /**
  * Every move of the pager is the app's own spring, started with the finger's speed (sampleThrow in lib/app/motion.ts), so a

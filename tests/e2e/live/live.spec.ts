@@ -13,6 +13,9 @@ const API = `http://127.0.0.1:${process.env.E2E_API_PORT ?? 3101}`;
 
 // One fake server holds the state, so the live project runs one worker and each test starts from the
 // starting data (see playwright.config.ts).
+/** The bell's accessible name carries the unread count; match a piece of it literally. */
+const named = (s: string) => new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+
 test.beforeEach(async ({ request }) => {
   expect((await request.post(`${API}/__control/reset`)).ok()).toBe(true);
 });
@@ -20,48 +23,55 @@ test.beforeEach(async ({ request }) => {
 const serverState = async (request: import("@playwright/test").APIRequestContext) =>
   (await (await request.get(`${API}/__control/state`)).json()) as { calls: string[]; bodies: Record<string, unknown> };
 
-test("Home draws the API's student, rank, attendance and latest result", async ({ page, request }) => {
+test("Home draws the API's student and latest result, and asks for no ranking or attendance", async ({ page, request }) => {
   await page.goto("/app");
 
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Live");
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.leaderboard")) })).toContainText("#3");
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.attendance")) })).toContainText("90%");
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.attendance")) })).toContainText("+2%");
-  const latest = page.getByRole("link", { name: new RegExp(mk.t("home.summary")) });
-  await expect(latest).toContainText("4/5");
-  await expect(latest).toContainText(mk.t("subj.math"));
-  // The subjects are a tab of their own now, not a row on Home.
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.allSubjects")) })).toHaveCount(0);
+  const latest = page.locator("main.screen ul.list a.item").first();
+  await expect(latest).toContainText(mk.t("res.score", { right: 4, total: 5 }));
+  // The API still names a subject; the app does not show it.
+  await expect(latest).not.toContainText(mk.t("subj.math"));
+  // The documents are not in the API yet (OPEN-18), so live Home has no such section.
+  await expect(page.getByRole("heading", { name: mk.t("docs.title") })).toHaveCount(0);
 
   const { calls } = await serverState(request);
-  expect(calls).toEqual(expect.arrayContaining(["GET /me", "GET /me/leaderboard", "GET /me/attendance", "GET /me/results"]));
+  expect(calls).toEqual(expect.arrayContaining(["GET /me", "GET /me/results"]));
+  // Home no longer shows the student's place or attendance, so it does not ask the API for them.
+  expect(calls).not.toContain("GET /me/leaderboard");
+  expect(calls).not.toContain("GET /me/attendance");
 });
 
-test("Home hides the demo-only cards", async ({ page }) => {
+test("Home's practice card works live, and with no results it says there are no quizzes yet", async ({ page }) => {
+  await page.route("**/me/results", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await page.goto("/app");
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.summary")) })).toContainText("4/5");
+  await expect(page.locator("main.screen a.next")).toContainText(mk.t("pr.title"));
+  await expect(page.getByText(mk.t("home.noQuizzes"))).toBeVisible();
+  await expect(page.getByRole("link", { name: mk.t("home.allResults") })).toHaveCount(0);
+});
 
-  await expect(page.getByText(mk.t("home.nextLesson"), { exact: true })).toHaveCount(0);
-  await expect(page.getByText(mk.t("home.nextTest"), { exact: true })).toHaveCount(0);
-  await expect(page.getByText(mk.t("home.nextPop"), { exact: true })).toHaveCount(0);
-  await expect(page.getByText(mk.t("home.scanNow"), { exact: true })).toHaveCount(0);
+test("Home hides the demo clock", async ({ page }) => {
+  await page.goto("/app");
+  await expect(page.locator("main.screen ul.list a.item").first()).toContainText(mk.t("res.score", { right: 4, total: 5 }));
+
   await expect(page.getByText(mk.t("home.demoTime"), { exact: true })).toHaveCount(0);
 });
 
 test("Alerts lists the API's notifications and marks them all read", async ({ page, request }) => {
-  await page.goto("/app/notifications");
-  const tabs = page.getByRole("navigation", { name: mk.t("nav.main") });
+  await page.goto("/app");
+  const bell = page.locator(".home-bar").getByRole("link", { name: mk.t("notif.title") });
+  await expect(bell).toHaveAccessibleName(named(mk.t("notif.unreadCount", { n: 2 })));
+  await bell.click();
 
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("notif.result_ready.title", { subject: mk.t("subj.math") })) })).toBeVisible();
+  await expect(page.getByRole("link", { name: new RegExp(mk.t("notif.result_ready.title")) })).toBeVisible();
   await expect(page.getByRole("link", { name: /Parents evening/ })).toBeVisible();
   await expect(page.locator(".item--unread")).toHaveCount(2);
-  await expect(tabs).toContainText(mk.t("notif.unreadCount", { n: 2 }));
   // A check-in record is the demo's own; the API sends none.
-  await expect(page.getByText(new RegExp(mk.t("notif.checkin.title", { subject: "" })))).toHaveCount(0);
+  await expect(page.getByText(new RegExp(mk.t("notif.checkin.title")))).toHaveCount(0);
 
   await page.getByRole("button", { name: mk.t("notif.markAll") }).click();
   await expect(page.locator(".item--unread")).toHaveCount(0);
-  await expect(tabs).not.toContainText(mk.t("notif.unreadCount", { n: 2 }));
+  await page.getByRole("button", { name: mk.t("back") }).click();
+  await expect(bell).not.toHaveAccessibleName(named(mk.t("notif.unreadCount", { n: 2 })));
 
   const { bodies } = await serverState(request);
   expect(bodies["POST /me/notifications/read"]).toEqual({ all: true });
@@ -71,10 +81,10 @@ test("Profile draws the API's student and saves a new display name through it", 
   await page.goto("/app/profile");
   await expect(page.locator(".profile__name")).toContainText("Live Student");
   await expect(page.getByText(/Test School/)).toBeVisible();
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.attendance")) })).toContainText("90%");
 
-  // The documents list is the demo's own.
-  await expect(page.getByRole("link", { name: mk.t("drawer.documents") })).toHaveCount(0);
+  // Profile has no attendance, last quiz or documents row.
+  await expect(page.locator("main.screen .card.tile")).toHaveCount(0);
+  await expect(page.locator('a[href="/app/documents"]')).toHaveCount(0);
 
   await page.getByRole("button", { name: mk.q("p.edit") }).click();
   await page.getByRole("textbox", { name: mk.q("p.name") }).fill("Liv");
@@ -91,7 +101,7 @@ test.describe("what the live build leaves out or refuses", () => {
   test.use({ allowConsoleErrors: [/Failed to load resource: the server responded with a status of (401|404|410)/] });
 
   test("the demo-only screens and settings are not there", async ({ page }) => {
-    for (const path of ["/app/schedule", "/app/qr-kit", "/app/documents"]) {
+    for (const path of ["/app/qr-kit", "/app/documents"]) {
       await page.goto(path);
       await expect(page.getByText(mk.t("notfound.title")).first(), path).toBeVisible();
     }
@@ -260,16 +270,48 @@ test.describe("signing in", () => {
     expect(bodies["POST /auth/student/start"]).toEqual({ provider: "google", return_to: "/app/welcome?next=%2Fapp%2Fcheckin%2FMATH-7B" });
   });
 
+  test("a code typed in the scanner joins with the short code, not the token", async ({ page, request }) => {
+    await page.addInitScript(() => localStorage.setItem("teacheraid-camera-intro", "1"));
+    await page.goto("/app/scan");
+    await page.getByRole("button", { name: mk.t("scan.code") }).click();
+    await page.getByRole("textbox", { name: mk.t("scan.codeLabel") }).fill("math-7b");
+    await page.keyboard.press("Enter");
+    // The API refuses this fake code, which is not the point: it was asked, once, with the field a typed code belongs in.
+    await expect(page.getByRole("alert").filter({ hasText: mk.q("q.fail.unknown.title") })).toBeVisible();
+    const { calls, bodies } = await serverState(request);
+    expect(bodies["POST /sessions/join"]).toEqual({ short_code: "MATH-7B" });
+    expect(calls.filter((c) => c === "POST /sessions/join")).toHaveLength(1);
+  });
+
+  test("the six-digit code a teacher shows joins with short_code, and a reload after it rotated reads the lesson back", async ({ page, request }) => {
+    await page.addInitScript(() => localStorage.setItem("teacheraid-camera-intro", "1"));
+    await page.goto("/app/scan");
+    await page.getByRole("button", { name: mk.t("scan.code") }).click();
+    await page.getByRole("textbox", { name: mk.t("scan.codeLabel") }).fill("482 913");
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/app\/play\/482913$/);
+    await expect(page.getByText(mk.q("q.waitTeacher"))).toBeVisible();
+    expect((await serverState(request)).bodies["POST /sessions/join"]).toEqual({ short_code: "482913" });
+
+    // The short code has rotated; the API calls it expired and the student, already in, is read back in.
+    expect((await request.post(`${API}/__control/expire-token`)).ok()).toBe(true);
+    await page.reload();
+    await expect(page.getByText(mk.q("q.waitTeacher"))).toBeVisible();
+    await expect(page.locator("main[data-failure]")).toHaveCount(0);
+    // The reload asked with the short code too, not as a token.
+    expect((await serverState(request)).bodies["POST /sessions/join"]).toEqual({ short_code: "482913" });
+  });
+
   test("signing in on another device ends this session: any call that hears of it shows the full screen", async ({ page, request }) => {
     await page.goto("/app");
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Live");
 
-    // Home is already drawn, and so are the alerts the tab bar counts. What the student does next
+    // Home is already drawn, and so are the alerts the bell counts. What the student does next
     // asks the API something it has not been asked before, and is told.
-    // (The alerts the tab bar counts must have been read already, or that read is the call that hears of it and the bar is gone.)
+    // (The alerts the bell counts must have been read already, or that read is the call that hears of it and the bar is gone.)
     await expect.poll(async () => (await serverState(request)).calls).toContain("GET /me/notifications");
     await control(request, "elsewhere");
-    await page.getByRole("navigation", { name: mk.t("nav.main") }).getByRole("link", { name: mk.t("nav.alerts") }).click();
+    await page.locator(".home-bar").getByRole("link", { name: mk.t("notif.title") }).click();
     await expect(page).toHaveURL(/\/app\/notifications$/);
     await page.getByRole("button", { name: mk.t("notif.markAll") }).click();
 
@@ -329,7 +371,7 @@ test.describe("signing in", () => {
  * the second option), a true or false (false), and 7 x 8 (second option).
  */
 test.describe("a live session", () => {
-  test.use({ allowConsoleErrors: [/Failed to load resource: (the server responded with a status of (403|404|409|410|503)|net::ERR_)/] });
+  test.use({ allowConsoleErrors: [/Failed to load resource: (the server responded with a status of (403|404|409|410|500|503)|net::ERR_)/] });
 
   const OPTION = ".q-opt, .q-tf__btn";
   const teacher = (request: import("@playwright/test").APIRequestContext, action: string, data: object = {}) =>
@@ -785,9 +827,36 @@ test.describe("a live session", () => {
     test("no connection says so and tries again, and the join goes through", async ({ page, request, context }) => {
       await context.route(`${API}/api/v1/sessions/join`, (route) => route.abort());
       await page.goto("/app/checkin/LIVE-7B");
-      await expect(failure(page, "offline").getByRole("alert")).toContainText(mk.q("q.fail.network.title"));
+      await expect(failure(page, "offline").getByRole("alert")).toContainText(mk.t("join.offline.title"));
       await context.unroute(`${API}/api/v1/sessions/join`);
       await failure(page, "offline").getByRole("button", { name: mk.q("q.fail.retry") }).click();
+      await expect(page.getByText(mk.q("q.waitTeacher"))).toBeVisible();
+      expect((await serverState(request)).bodies["POST /sessions/join"]).toEqual({ token: "LIVE-7B" });
+    });
+
+    test("a 500 says it is on our side, and trying again joins the same code", async ({ page, request, context }) => {
+      await context.route(`${API}/api/v1/sessions/join`, (route) =>
+        route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: { code: "server_error" } }) }),
+      );
+      await page.goto("/app/checkin/LIVE-7B");
+      await expect(failure(page, "server").getByRole("alert")).toContainText(mk.t("join.server.title"));
+      await context.unroute(`${API}/api/v1/sessions/join`);
+      await failure(page, "server").getByRole("button", { name: mk.q("q.fail.retry") }).click();
+      await expect(page.getByText(mk.q("q.waitTeacher"))).toBeVisible();
+      expect((await serverState(request)).bodies["POST /sessions/join"]).toEqual({ token: "LIVE-7B" });
+    });
+
+    test("a join that gets no answer is called slow after the limit, and trying again joins", async ({ page, request, context }) => {
+      await page.clock.install();
+      // A request the server never answers: the route neither continues nor fulfils.
+      await context.route(`${API}/api/v1/sessions/join`, () => {});
+      await page.goto("/app/checkin/LIVE-7B");
+      await page.clock.runFor(4500);
+      await expect(page.getByText(mk.t("join.waitingSlow"))).toBeVisible();
+      await page.clock.runFor(8000);
+      await expect(failure(page, "slow").getByRole("alert")).toContainText(mk.t("join.slow.title"));
+      await context.unroute(`${API}/api/v1/sessions/join`);
+      await failure(page, "slow").getByRole("button", { name: mk.q("q.fail.retry") }).click();
       await expect(page.getByText(mk.q("q.waitTeacher"))).toBeVisible();
       expect((await serverState(request)).bodies["POST /sessions/join"]).toEqual({ token: "LIVE-7B" });
     });
@@ -1104,32 +1173,9 @@ test.describe("practice and the history of results", () => {
   const bodies = async (request: Req) => (await serverState(request)) as unknown as { practiceBodies: { id: string; body: { answers: { question_id: string; response: string }[] } }[]; queries: Record<string, string> };
   const check = (page: Page) => page.getByRole("button", { name: mk.t("pr.check") });
 
-  test("Home offers the set the API lists, and a subject draws its lessons and topics from the API", async ({ page, request }) => {
+  test("Home offers the set the API lists", async ({ page }) => {
     await page.goto("/app");
-    await expect(page.getByRole("link", { name: new RegExp(`^${mk.t("pr.title")}`) })).toContainText(mk.t("pr.home.new1", { subject: mk.t("subj.math") }));
-
-    await page.goto("/app/subject/c-math");
-    // The lessons of this course only, asked of the API with the course; the other course's lesson is not here.
-    const lessons = page.getByRole("heading", { name: mk.t("res.recent") }).locator("xpath=ancestor::section[1]");
-    await expect(lessons.getByRole("listitem")).toHaveCount(2);
-    await expect(lessons).toContainText("Linear equations");
-    await expect(lessons).toContainText("Fractions");
-    await expect(lessons).not.toContainText("Motion");
-    expect((await bodies(request)).queries["GET /me/results"]).toBe("?course=c-math");
-
-    // A topic with three lessons is a line, with its numbers behind it.
-    const equations = page.getByRole("figure").filter({ hasText: "Linear equations" });
-    await expect(equations.getByText(mk.t("topic.range", { from: 40, to: 80, n: 3 }))).toBeVisible();
-    await expect(equations.getByRole("table").getByRole("row")).toHaveCount(4);
-    await expect(page.getByRole("figure").filter({ hasText: "Motion" })).toHaveCount(0);
-    // The set is in its subject, new.
-    await expect(page.getByRole("link", { name: new RegExp(mk.t("pr.state.new")) })).toBeVisible();
-
-    await page.goto("/app/subject/c-phys");
-    const motion = page.getByRole("figure").filter({ hasText: "Motion" });
-    await expect(motion.getByText(mk.t("topic.one", { right: 3, total: 4 }))).toBeVisible();
-    await expect(motion.locator(".tc__chart")).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: mk.t("pr.title") })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: new RegExp(`^${mk.t("pr.title")}`) })).toContainText(mk.t("pr.home.new1", { title: "Linear equations" }));
   });
 
   test("a set is answered one question at a time, each verdict from the server, and the progress is the server's", async ({ page, request }) => {
@@ -1174,7 +1220,7 @@ test.describe("practice and the history of results", () => {
     // Done is done: Home no longer offers it, and the list says how it went.
     await page.getByRole("button", { name: mk.t("close"), exact: true }).click();
     await page.goto("/app");
-    await expect(page.getByRole("link", { name: new RegExp(`^${mk.t("pr.title")}`) })).toHaveCount(0);
+    await expect(page.locator("main.screen a.next")).toContainText(mk.t("pr.home.none"));
     await page.goto("/app/practice");
     await expect(page.getByRole("link", { name: new RegExp(mk.t("pr.state.done", { score: 2, n: 3 })) })).toBeVisible();
   });
@@ -1221,7 +1267,7 @@ test.describe("practice and the history of results", () => {
   test("a set the teacher sends arrives as an alert, and opens", async ({ page, request }) => {
     await request.post(`${API}/__control/practice/send`);
     await page.goto("/app/notifications");
-    await page.getByRole("link", { name: new RegExp(mk.t("notif.practice_set_sent.title", { subject: mk.t("subj.math") })) }).click();
+    await page.getByRole("link", { name: new RegExp(mk.t("notif.practice_set_sent.title")) }).click();
     await page.getByRole("link", { name: mk.t("notif.open.practice") }).click();
     await expect(page).toHaveURL(/\/app\/practice\/ps-2$/);
     await expect(page.getByText(progress(1))).toBeVisible();
@@ -1243,7 +1289,7 @@ test.describe("alerts and push", () => {
   const control = (request: import("@playwright/test").APIRequestContext, what: string, data: object = {}) =>
     request.post(`${API}/__control/${what}`, { data });
   const calls = async (request: import("@playwright/test").APIRequestContext) => (await serverState(request)).calls;
-  const tabs = (page: Page) => page.getByRole("navigation", { name: mk.t("nav.main") });
+  const bell = (page: Page) => page.locator(".home-bar").getByRole("link", { name: mk.t("notif.title") });
   const unread = (n: number | string) => mk.t("notif.unreadCount", { n });
 
   test.describe("the feed", () => {
@@ -1255,14 +1301,24 @@ test.describe("alerts and push", () => {
 
     test("a new alert ticks the badge on a screen that is not Alerts", async ({ page, request }) => {
       await page.goto("/app");
-      await expect(tabs(page)).toContainText(unread(2));
+      await expect(bell(page)).toHaveAccessibleName(named(unread(2)));
       await control(request, "notify", { title: "Quiz moved", body: "To Friday." });
-      await expect(tabs(page)).toContainText(unread(3));
-      await page.getByRole("link", { name: mk.t("nav.alerts"), exact: false }).first().click();
+      await expect(bell(page)).toHaveAccessibleName(named(unread(3)));
+      // Said to a screen reader from a live region that every screen has.
+      await expect(page.getByRole("status").filter({ hasText: mk.t("notif.arrived", { n: 3 }) })).toBeAttached();
+      await bell(page).click();
       await expect(page.getByRole("link", { name: /Quiz moved/ })).toBeVisible();
     });
 
-    test("a new alert slides into the open list, on top, and is said to a screen reader", async ({ page, request }) => {
+    test("a new alert is announced on a screen that is not Home, on Profile", async ({ page, request }) => {
+      await page.goto("/app/profile");
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      await expect.poll(async () => ((await (await request.get(`${API}/__control/state`)).json()) as { streams: number }).streams).toBe(1);
+      await control(request, "notify", { title: "Quiz moved", body: "To Friday." });
+      await expect(page.getByRole("status").filter({ hasText: mk.t("notif.arrived", { n: 3 }) })).toBeAttached();
+    });
+
+    test("a new alert slides into the open list, on top", async ({ page, request }) => {
       await page.goto("/app/notifications");
       await expect(page.locator(".item--unread")).toHaveCount(2);
       await expect(page.locator(".item--fresh")).toHaveCount(0);
@@ -1271,7 +1327,6 @@ test.describe("alerts and push", () => {
       await expect(first).toContainText("Quiz moved");
       await expect(first.locator("a")).toHaveClass(/item--fresh/);
       await expect(page.locator(".item--unread")).toHaveCount(3);
-      await expect(page.getByRole("status").filter({ hasText: mk.t("notif.arrived", { n: 3 }) })).toBeAttached();
       // Older ones do not slide in again: the second alert is one more at the top.
       await control(request, "notify", { title: "Another" });
       await expect(page.locator(".item--fresh")).toHaveCount(2);
@@ -1281,12 +1336,12 @@ test.describe("alerts and push", () => {
       test.use({ allowConsoleErrors: [/https:\/\/vercel\.live\/|ERR_INCOMPLETE_CHUNKED_ENCODING/] });
     test("after the link drops and comes back, what was missed is read", async ({ page, request }) => {
       await page.goto("/app");
-      await expect(tabs(page)).toContainText(unread(2));
+      await expect(bell(page)).toHaveAccessibleName(named(unread(2)));
       await control(request, "block-streams", { on: true });
       await control(request, "drop-streams");
       await control(request, "notify", { title: "While away" });
       await control(request, "block-streams", { on: false });
-      await expect(tabs(page)).toContainText(unread(3), { timeout: 20_000 });
+      await expect(bell(page)).toHaveAccessibleName(named(unread(3)), { timeout: 20_000 });
     });
     });
 
@@ -1300,9 +1355,9 @@ test.describe("alerts and push", () => {
     test("marking one alert read shows at once and is told to the API", async ({ page, request }) => {
       await page.goto("/app/notifications");
       await expect(page.locator(".item--unread")).toHaveCount(2);
-      await page.getByRole("link", { name: new RegExp(mk.t("notif.result_ready.title", { subject: mk.t("subj.math") })) }).click();
+      await page.getByRole("link", { name: new RegExp(mk.t("notif.result_ready.title")) }).click();
       await expect(page).toHaveURL(/\/app\/notifications\/n-1$/);
-      await page.getByRole("link", { name: mk.t("nav.alerts") }).click();
+      await page.getByRole("button", { name: mk.t("back") }).click();
       await expect(page.locator(".item--unread")).toHaveCount(1);
       expect((await serverState(request)).bodies["POST /me/notifications/read"]).toEqual({ ids: ["n-1"] });
     });
@@ -1330,11 +1385,13 @@ test.describe("alerts and push", () => {
 
     test("a full feed of unread alerts says 30+ on the badge, and marking all read tells the API once", async ({ page, request }) => {
       for (let i = 0; i < 30; i++) await control(request, "notify", { title: `Burst ${i}` });
-      await page.goto("/app/notifications");
-      await expect(tabs(page)).toContainText(unread("30+"));
+      await page.goto("/app");
+      await expect(bell(page)).toHaveAccessibleName(named(unread("30+")));
+      await bell(page).click();
       await page.getByRole("button", { name: mk.t("notif.markAll") }).click();
       await expect(page.locator(".item--unread")).toHaveCount(0);
-      await expect(tabs(page)).not.toContainText(unread("30+"));
+      await page.getByRole("button", { name: mk.t("back") }).click();
+      await expect(bell(page)).not.toHaveAccessibleName(named(unread("30+")));
       expect(((await calls(request)).filter((c) => c === "POST /me/notifications/read"))).toHaveLength(1);
     });
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { DownloadSimpleIcon, FileIcon } from "@phosphor-icons/react";
 import { notFound } from "next/navigation";
+import { DocRow } from "@/components/app/DocRow";
 import { Top } from "@/components/app/Top";
 import { useUI } from "@/components/app/ui";
 import { demoOnly } from "@/lib/app/api";
@@ -20,18 +20,7 @@ export default function Documents() {
       <ul className="list">
         {DEMO_DOCS.map((d) => (
           <li key={d}>
-            <button className="item" onClick={() => toast(t("doc.demo"))}>
-              <span className="item__icon">
-                <FileIcon size={22} />
-              </span>
-              <span className="grow">
-                <span className="item__title" style={{ display: "block" }}>
-                  {t(`doc.${d}`)}
-                </span>
-                <span className="t-cap">{t("doc.pdf")}</span>
-              </span>
-              <DownloadSimpleIcon size={22} aria-hidden="true" />
-            </button>
+            <DocRow id={d} onOpen={() => toast(t("doc.demo"))} />
           </li>
         ))}
       </ul>

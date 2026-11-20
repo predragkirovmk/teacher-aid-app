@@ -122,7 +122,7 @@ const scenarios = [
     await page.locator("main.screen:not([data-pending])").waitFor();
     await page.waitForTimeout(1500);
     await m();
-    for (const sel of [".card.tile >> nth=0", ".card.tile >> nth=1", ".item >> nth=0", "button.btn >> nth=0"]) {
+    for (const sel of [".next >> nth=0", ".item >> nth=0", "button.btn >> nth=0"]) {
       const target = page.locator(sel.split(" >> ")[0]).nth(Number(sel.split("nth=")[1] ?? 0));
       if (await target.count()) await press(page, target);
     }
@@ -133,7 +133,7 @@ const scenarios = [
     await page.waitForTimeout(1500);
     const tabs = page.getByRole("navigation", { name: "Делови" });
     await m();
-    for (const href of ["/app/subjects", "/app/notifications", "/app/profile", "/app"]) {
+    for (const href of ["/app/join", "/app/profile", "/app"]) {
       await tabs.locator(`a[href="${href}"]`).click();
       await page.waitForURL(`**${href}`);
       await page.waitForTimeout(700);
@@ -144,20 +144,29 @@ const scenarios = [
     await page.locator("main.screen:not([data-pending])").waitFor();
     await page.waitForTimeout(1500);
     await m();
-    // Four sections now: all the way across and all the way back.
-    for (const [from, to] of [[330, 60], [330, 60], [330, 60], [60, 330], [60, 330], [60, 330]]) await swipe(page, from, to);
+    // Three sections: across to the last and back, twice.
+    for (const [from, to] of [[330, 60], [330, 60], [60, 330], [60, 330], [330, 60], [330, 60], [60, 330], [60, 330]]) await swipe(page, from, to);
   }],
-  ["subject-open-and-back", {}, async (page, m) => {
-    // Home no longer lists the subjects (Subjects is a tab), so the subject is opened from its own tab.
-    await page.goto(`${base}/app/subjects`);
+  ["join-idle", {}, async (page, m) => {
+    // The Scan tab with its button idling: one full cycle and a bit (the first waits 600 ms, a cycle is 4.5 s), then a press.
+    await page.goto(`${base}/app/join`);
+    await page.locator(".join-cta").waitFor();
+    await page.waitForTimeout(800);
+    await m();
+    await page.waitForTimeout(6000);
+    await press(page, page.locator(".join-cta"));
+  }],
+  ["result-open-and-back", {}, async (page, m) => {
+    // A result is opened from the list of results and Back returns to the list.
+    await page.goto(`${base}/app/summary`);
     await page.locator("main.screen:not([data-pending])").waitFor();
     await page.waitForTimeout(1500);
     await m();
-    await page.locator('a[href^="/app/subject/"]').first().click();
-    await page.waitForURL(/\/app\/subject\//);
+    await page.locator('a[href^="/app/summary/"]').first().click();
+    await page.waitForURL(/\/app\/summary\/./);
     await page.waitForTimeout(900);
     await page.goBack();
-    await page.waitForURL(/\/app\/subjects$/);
+    await page.waitForURL(/\/app\/summary$/);
     await page.waitForTimeout(900);
   }],
   ["sheet-open-close", {}, async (page, m) => {

@@ -170,12 +170,7 @@ add("08-home-clock-sheet", "/app", "demo clock set to midday so the pill shows; 
   await page.locator("button.pill").click();
   await page.getByRole("dialog").waitFor();
 }, { state: { clock: "midday" } });
-add("09-subjects", "/app/subjects", "signed in", `${APP}/subjects/page.tsx`, go("/app/subjects"));
-add("10-subject-detail", "/app/subject/math", "signed in", `${APP}/subject/[id]/page.tsx`, go("/app/subject/math"));
-add("11-schedule", "/app/schedule", "signed in", `${APP}/schedule/page.tsx`, go("/app/schedule"));
-add("12-attendance", "/app/attendance", "signed in", `${APP}/attendance/page.tsx`, go("/app/attendance"));
 add("13-achievements", "/app/achievements", "signed in", `${APP}/achievements/page.tsx`, go("/app/achievements"));
-add("14-leaderboard", "/app/leaderboard", "signed in", `${APP}/leaderboard/page.tsx`, go("/app/leaderboard"));
 add("15-summary-list", "/app/summary", "signed in", `${APP}/summary/page.tsx`, go("/app/summary"));
 add("16-summary-detail", "/app/summary/mock-session-math", "signed in; the maths lesson the demo starts with", `${APP}/summary/[id]/page.tsx, ${C}/Summary.tsx`, go("/app/summary/mock-session-math"));
 add("17-scan", "/app/scan", "camera intro, shown before the camera is asked for", `${APP}/scan/page.tsx`, go("/app/scan"));
@@ -291,7 +286,12 @@ add("42-practice-done", SET, "three answers seeded, the last one typed, then See
   await page.getByRole("region", { name: /./ }).first().waitFor();
 }, { state: { practiceAnswers: { "ps-session-math-1": { pf1: "1", pf2: "0", pf3: "true" } } } });
 add("43-practice-missing", "/app/practice/ps-nothing", "a set that does not exist", `${C}/practice/Player.tsx`, go("/app/practice/ps-nothing"));
-add("44-notifications", "/app/notifications", "signed in", `${APP}/notifications/page.tsx`, go("/app/notifications"));
+add("44-notifications", "/app/notifications", "signed in; opened from the bell on Home, as a pushed screen with Back", `${APP}/notifications/page.tsx`, async (page) => {
+  await page.goto(`${base}/app`);
+  await page.locator(".home-bar a.bell").click();
+  await page.waitForURL(/\/app\/notifications$/);
+  await page.getByRole("button", { name: "Назад" }).waitFor();
+});
 add("45-notification-detail", "/app/notifications/n-math", "signed in", `${APP}/notifications/[id]/page.tsx`, go("/app/notifications/n-math"));
 add("46-profile", "/app/profile", "signed in", `${APP}/profile/page.tsx`, go("/app/profile"));
 add("47-profile-editor", "/app/profile", "press Edit", `${C}/ProfileEditor.tsx`, async (page) => {
@@ -313,7 +313,7 @@ add("51-documents", "/app/documents", "signed in", `${APP}/documents/page.tsx`, 
 add("52-faq", "/app/faq", "signed in", `${APP}/faq/page.tsx`, go("/app/faq"));
 add("53-privacy", "/app/privacy", "signed in", `${APP}/privacy/page.tsx`, go("/app/privacy"));
 add("54-terms", "/app/terms", "signed in", `${APP}/terms/page.tsx`, go("/app/terms"));
-add("55-signed-elsewhere", "/app/attendance", "state endedElsewhere with signedIn false (the demo's stand-in for another phone)", `${C}/SessionScreens.tsx (SignedElsewhere)`, go("/app/attendance"), { state: { signedIn: false, endedElsewhere: true } });
+add("55-signed-elsewhere", "/app/profile", "state endedElsewhere with signedIn false (the demo's stand-in for another phone)", `${C}/SessionScreens.tsx (SignedElsewhere)`, go("/app/profile"), { state: { signedIn: false, endedElsewhere: true } });
 skip("56-unreachable", "/app", `${C}/SessionScreens.tsx (Unreachable)`, "the mock's getMe only fails with unauthenticated or signed_in_elsewhere; no setting, code or offline switch makes it throw a network or server error");
 add("57-offline-pill", "/app", "Home loaded, then the browser goes offline", `${C}/ConnectionPill.tsx`, async (page, { context }) => {
   await page.goto(`${base}/app`);
@@ -368,6 +368,64 @@ add("65-quiz-ask-sent", "/app/play/ASK-7B", "a question typed and sent from the 
   await page.getByRole("dialog").getByRole("heading").waitFor();
 }, { clock: "paused" });
 add("66-scan-no-camera", "/app/scan", "camera intro already seen; this browser has no camera", `${APP}/scan/page.tsx`, go("/app/scan"), { init: () => localStorage.setItem("teacheraid-camera-intro", "1") });
+add("67-scan-code", "/app/scan", "no camera; Enter the code opened, nothing typed yet", `${APP}/scan/page.tsx`, async (page) => {
+  await page.goto(`${base}/app/scan`);
+  await page.getByRole("button", { name: "Внеси код" }).click();
+  await page.locator(".scan-code__input").waitFor();
+}, { init: () => localStorage.setItem("teacheraid-camera-intro", "1") });
+add("68-scan-code-error", "/app/scan", "no camera; Enter the code submitted empty, so the inline message shows", `${APP}/scan/page.tsx`, async (page) => {
+  await page.goto(`${base}/app/scan`);
+  await page.getByRole("button", { name: "Внеси код" }).click();
+  await page.locator(".scan-code__input").press("Enter");
+  await page.locator(".scan-code__err").waitFor();
+}, { init: () => localStorage.setItem("teacheraid-camera-intro", "1") });
+add("69-join", "/app/join", "the Scan tab, with the dock", `${APP}/join/page.tsx`, go("/app/join"));
+add("70-join-code", "/app/join", "Enter the code opened, nothing typed yet", `${APP}/join/page.tsx, ${C}/JoinCode.tsx`, async (page) => {
+  await page.goto(`${base}/app/join`);
+  await page.getByRole("button", { name: "Внеси код" }).click();
+  await page.locator(".scan-code__input").waitFor();
+});
+add("71-join-code-error", "/app/join", "Enter the code submitted empty, so the inline message shows", `${APP}/join/page.tsx, ${C}/JoinCode.tsx`, async (page) => {
+  await page.goto(`${base}/app/join`);
+  await page.getByRole("button", { name: "Внеси код" }).click();
+  await page.locator(".scan-code__input").press("Enter");
+  await page.locator(".scan-code__err").waitFor();
+});
+
+// ---- Joining on a weak connection: the wait and each way it fails ----------------------------------------------------------
+// SLOW-7B is never answered the first time and FAIL-7B is a server error the first time (lib/app/api/mock/session.ts); the
+// phone's own `onLine` says false for the offline ones. The slow ones run on the paused clock, so 4 s and 12 s are a tick away.
+const OFFLINE = () => Object.defineProperty(navigator, "onLine", { get: () => false });
+const typeAndJoin = (path, code) => async (page) => {
+  await page.goto(`${base}${path}`);
+  await page.getByRole("button", { name: "Внеси код" }).click();
+  await page.locator(".scan-code__input").fill(code);
+  await page.locator(".scan-code__input").press("Enter");
+};
+const sheetJoin = (code, ms) => async (page) => {
+  await typeAndJoin("/app/join", code)(page);
+  await tick(page, ms);
+};
+const failureRoutes = `${APP}/join/page.tsx, ${C}/JoinCode.tsx, ${C}/quiz/JoinFailure.tsx`;
+add("72-join-waiting", "/app/join", "a typed code sent, no answer yet (0.8 s)", failureRoutes, sheetJoin("SLOW-7B", 800), { clock: "paused" });
+add("73-join-waiting-slow", "/app/join", "a typed code sent, no answer for 4.5 s: the quiet slow line", failureRoutes, sheetJoin("SLOW-7B", 4500), { clock: "paused" });
+add("74-join-slow", "/app/join", "a typed code, no answer for 13 s: Врската е бавна", failureRoutes, sheetJoin("SLOW-7B", 13000), { clock: "paused" });
+add("75-join-offline", "/app/join", "a typed code with the phone offline: Нема интернет", failureRoutes, typeAndJoin("/app/join", "MATH-7B"), { init: OFFLINE });
+add("76-join-server", "/app/join", "a typed code, the server fails: Нешто не е во ред кај нас", failureRoutes, typeAndJoin("/app/join", "FAIL-7B"));
+add("77-play-waiting", "/app/play/SLOW-7B", "a link or QR opens the lesson, no answer yet (0.8 s)", `${APP}/play/[code]/page.tsx, ${C}/quiz/JoinFailure.tsx`, async (page) => {
+  await page.goto(`${base}/app/play/SLOW-7B`);
+  await tick(page, 800);
+}, { clock: "paused" });
+add("78-play-waiting-slow", "/app/play/SLOW-7B", "the same, 4.5 s in: the quiet slow line", `${APP}/play/[code]/page.tsx, ${C}/quiz/JoinFailure.tsx`, async (page) => {
+  await page.goto(`${base}/app/play/SLOW-7B`);
+  await tick(page, 4500);
+}, { clock: "paused" });
+add("79-play-slow", "/app/play/SLOW-7B", "the same, 13 s in: the slow screen with Try again", `${APP}/play/[code]/page.tsx, ${C}/quiz/JoinFailure.tsx`, async (page) => {
+  await page.goto(`${base}/app/play/SLOW-7B`);
+  await tick(page, 13000);
+}, { clock: "paused" });
+add("80-play-offline", "/app/play/MATH-7B", "a link or QR opened with the phone offline", `${APP}/play/[code]/page.tsx, ${C}/quiz/JoinFailure.tsx`, go("/app/play/MATH-7B"), { init: OFFLINE });
+add("81-play-server", "/app/play/FAIL-7B", "a link or QR opened, the server fails", `${APP}/play/[code]/page.tsx, ${C}/quiz/JoinFailure.tsx`, go("/app/play/FAIL-7B"));
 
 // ---- Run ----------------------------------------------------------------------------------------------------------------
 const inventory = [];

@@ -1,10 +1,12 @@
 "use client";
 
-import { ClockCountdownIcon, FlagCheckeredIcon, QrCodeIcon, UsersThreeIcon, WarningCircleIcon, WifiSlashIcon, XIcon } from "@phosphor-icons/react";
+import { ClockCountdownIcon, CloudXIcon, FlagCheckeredIcon, HourglassIcon, QrCodeIcon, UsersThreeIcon, WarningCircleIcon, WifiMediumIcon, WifiSlashIcon, XIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
-import type { ComponentType } from "react";
+import { useEffect, type ComponentType } from "react";
 import type { ApiErrorCode } from "@/lib/app/api/errors";
+import { HAPTICS, buzz } from "@/lib/app/haptics";
 import { useT } from "@/lib/app/i18n";
+import { useSlowHint } from "@/lib/app/join";
 import { leave } from "@/lib/app/nav";
 import { useJoinFailureCopy, type JoinFailure } from "@/lib/app/quiz-copy";
 
@@ -14,9 +16,46 @@ export const FAILURE_ICON: Record<JoinFailure["kind"], ComponentType<{ size?: nu
   class: UsersThreeIcon,
   ended: FlagCheckeredIcon,
   offline: WifiSlashIcon,
+  slow: WifiMediumIcon,
+  server: CloudXIcon,
   unknown: QrCodeIcon,
   generic: WarningCircleIcon,
 };
+
+/** The failures that are only the connection or the server: the student did nothing wrong and trying again may work. */
+export const RETRYABLE: ReadonlySet<JoinFailure["kind"]> = new Set(["offline", "slow", "server"]);
+
+/** The one small buzz a failed try gets, the way a wrong entry does in Numeric; once per screen shown. */
+export function useProblemBuzz(kind: JoinFailure["kind"]) {
+  useEffect(() => {
+    if (RETRYABLE.has(kind)) buzz(HAPTICS.problem);
+  }, [kind]);
+}
+
+/** The calm wait while a join is on its way; after a few seconds it says, quietly, that the connection is slow. */
+export function JoiningScreen() {
+  const router = useRouter();
+  const { t } = useT();
+  const slow = useSlowHint();
+  return (
+    <main className="screen screen--bare q" data-joining>
+      <div className="q__col">
+        <header className="q-top">
+          <button className="round" aria-label={t("close")} onClick={() => leave(router)}>
+            <XIcon size={24} aria-hidden="true" />
+          </button>
+        </header>
+        <div className="q-body q-body--center" role="status">
+          <span className="q-badge q-badge--no">
+            <HourglassIcon size={52} color="var(--yellow)" aria-hidden="true" />
+          </span>
+          <h1 className="q-hero q-hero--fail">{t("join.waiting")}</h1>
+          {slow && <p className="t-body muted q-fail__body">{t("join.waitingSlow")}</p>}
+        </div>
+      </div>
+    </main>
+  );
+}
 
 /**
  * The screen for a join that did not work. Each reason has its own words and the one thing worth doing
@@ -39,6 +78,7 @@ export function JoinFailureScreen({
   const describe = useJoinFailureCopy();
   const failure = copy ?? describe(code);
   const Icon = FAILURE_ICON[failure.kind];
+  useProblemBuzz(failure.kind);
   const run = (action: "scan" | "home" | "retry") => {
     if (action === "retry") onRetry();
     else if (action === "scan") router.replace("/app/scan");

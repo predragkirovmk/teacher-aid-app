@@ -83,31 +83,6 @@ function expectOvershootBeforeStop(samples: Sample[], goal: { l: number; r: numb
   for (let i = peak + 1; i < samples.length; i++) expect(samples[i].r).toBeLessThanOrEqual(samples[i - 1].r + 0.3);
 }
 
-/**
- * How many frames, from `act` until 1.3 s after it, show a subject's view-transition morph running (the screens' and the dock's
- * own groups are not morphs). The watch starts before `act` and ends only after the wait, not on a clock set beforehand: on a
- * slow runner the click itself can take long enough to use up a fixed window before the morph begins.
- */
-async function morphsDuring(page: Page, act: () => Promise<unknown>) {
-  await page.evaluate(() => {
-    const w = window as unknown as { morphs: number; morphsDone: boolean };
-    w.morphs = 0;
-    w.morphsDone = false;
-    const look = () => {
-      if (document.getAnimations().some((a) => String((a.effect as KeyframeEffect).pseudoElement ?? "").startsWith("::view-transition-group(subject-"))) w.morphs++;
-      if (!w.morphsDone) requestAnimationFrame(look);
-    };
-    requestAnimationFrame(look);
-  });
-  await act();
-  await page.waitForTimeout(1300);
-  return page.evaluate(() => {
-    const w = window as unknown as { morphs: number; morphsDone: boolean };
-    w.morphsDone = true;
-    return w.morphs;
-  });
-}
-
 test.describe("the welcome screen's language switch", () => {
   test.beforeEach(async ({ page }) => {
     await start(page, { state: { signedIn: false } });
@@ -177,31 +152,61 @@ test.describe("the welcome screen's language switch", () => {
 });
 
 test.describe("the tab bar", () => {
-  test("one piece slides from Home to Profile over the scan, and never sits under the scan", async ({ page }) => {
-    await start(page, {});
-    await page.goto("/app");
-    const glide = page.locator(".tabbar > .seg__glide");
-    await expect(glide).toHaveAttribute("data-on", "true");
-    const { samples } = await tapAndWatch(page, ".tabbar", `.tab[href="/app/profile"]`);
-    await expect(page).toHaveURL(/\/app\/profile$/);
-    const goal = await page
-      .locator(`.tab[href="/app/profile"]`)
-      .evaluate((el: HTMLElement) => ({ l: el.offsetLeft, r: el.offsetLeft + el.offsetWidth }));
-    // One piece stretched over the way from Home to Profile for a moment (much wider than a tab), then it settles on Profile.
-    expect(Math.max(...samples.map((s) => s.r - s.l))).toBeGreaterThan(2 * (goal.r - goal.l));
-    const last = samples.at(-1)!;
-    expect(near(last.l, goal.l) && near(last.r, goal.r)).toBe(true);
-    // Just past Profile, a little, on the way in, and back.
-    expectOvershootBeforeStop(samples, goal, goal.l - samples[0].l);
-    await expect(page.getByRole("navigation", { name: mk.t("nav.main") }).locator("[aria-current=page]")).toHaveText(mk.t("nav.profile"));
-  });
+  const HREF = { home: "/app", scan: "/app/join", profile: "/app/profile" } as const;
+  type Tab = keyof typeof HREF;
+  const edgesOf = (page: Page, tab: Tab) =>
+    page.locator(`.tab[href="${HREF[tab]}"]`).evaluate((el: HTMLElement) => ({ l: el.offsetLeft, r: el.offsetLeft + el.offsetWidth }));
+  /** How far the piece covers a tab at one sampled moment. */
+  const covers = (s: Sample, tab: { l: number; r: number }) => Math.min(s.r, tab.r) - Math.max(s.l, tab.l);
+
+  for (const tab of Object.keys(HREF) as Tab[]) {
+    test(`the piece rests under ${tab}, exactly on its tab`, async ({ page }) => {
+      await start(page, {});
+      await page.goto(HREF[tab]);
+      await expect(page.locator(".tabbar > .seg__glide")).toHaveAttribute("data-on", "true");
+      const goal = await edgesOf(page, tab);
+      await expect
+        .poll(() => page.locator(".tabbar .seg__cap").first().evaluate((el) => el.getBoundingClientRect().left - el.closest(".tabbar")!.getBoundingClientRect().left))
+        .toBeCloseTo(goal.l + 1, 0);
+      await expect(page.locator(".tabbar")).toHaveAttribute("data-glide", "on");
+    });
+  }
+
+  for (const [from, to, over] of [
+    ["home", "scan", null],
+    ["scan", "profile", null],
+    ["home", "profile", "scan"],
+  ] as const) {
+    test(`one piece slides from ${from} to ${to}${over ? `, passing over ${over}` : ""}: a real part of two tabs at once`, async ({ page }) => {
+      await start(page, {});
+      await page.goto(HREF[from]);
+      await expect(page.locator(".tabbar > .seg__glide")).toHaveAttribute("data-on", "true");
+      const { samples } = await tapAndWatch(page, ".tabbar", `.tab[href="${HREF[to]}"]`);
+      await expect(page).toHaveURL(new RegExp(`${HREF[to]}$`));
+      const [a, b] = await Promise.all([edgesOf(page, from), edgesOf(page, to)]);
+      const quarter = (b.r - b.l) / 4;
+      // One piece, not two: at some moment a quarter tab of it is inside both tabs (two pieces resting at each, or a jump, never are).
+      expect(samples.some((s) => covers(s, a) >= quarter && covers(s, b) >= quarter)).toBe(true);
+      if (over) {
+        const mid = await edgesOf(page, over);
+        // On a longer way it passes over the tab between.
+        expect(samples.some((s) => covers(s, a) >= quarter && covers(s, mid) >= quarter)).toBe(true);
+        expect(samples.some((s) => covers(s, mid) >= quarter && covers(s, b) >= quarter)).toBe(true);
+      }
+      // Then it settles on the goal, a little past it on the way in and back.
+      const last = samples.at(-1)!;
+      expect(near(last.l, b.l) && near(last.r, b.r)).toBe(true);
+      expectOvershootBeforeStop(samples, b, b.l - samples[0].l);
+      await expect(page.getByRole("navigation", { name: mk.t("nav.main") }).locator("[aria-current=page]")).toHaveAttribute("href", HREF[to]);
+    });
+  }
 
   test("the slide is drawn by the compositor: nothing on the main thread animates but transforms", async ({ page }) => {
     await start(page, {});
     await page.goto("/app");
     await expect(page.locator(".tabbar > .seg__glide")).toHaveAttribute("data-on", "true");
     const props = await page.evaluate(async () => {
-      document.querySelector<HTMLElement>(`.tab[href="/app/subjects"]`)!.click();
+      document.querySelector<HTMLElement>(`.tab[href="/app/profile"]`)!.click();
       // The piece moves on the tap itself, before the screen has loaded: by the next frame the slide is under way.
       await new Promise(requestAnimationFrame);
       return document
@@ -215,27 +220,12 @@ test.describe("the tab bar", () => {
     expect(props.every((k) => k === "transform" || k === "opacity")).toBe(true);
   });
 
-  test("a tap between Home and Subjects swaps the screens with no morph between them; a subject still morphs into its screen", async ({ page }) => {
-    await start(page, {});
-    await page.goto("/app");
-    const tabs = page.getByRole("navigation", { name: mk.t("nav.main") });
-    expect(await morphsDuring(page, () => tabs.getByRole("link", { name: mk.t("subjects.title") }).click())).toBe(0);
-    await expect(page).toHaveURL(/\/app\/subjects$/);
-    expect(await morphsDuring(page, () => tabs.getByRole("link", { name: mk.t("nav.home") }).click())).toBe(0);
-    await expect(page).toHaveURL(/\/app$/);
-    await tabs.getByRole("link", { name: mk.t("subjects.title") }).click();
-    await expect(page).toHaveURL(/\/app\/subjects$/);
-    // The control: the same morph, from a row into the subject's own screen, still runs.
-    expect(await morphsDuring(page, () => page.locator("[data-morph]").first().click())).toBeGreaterThan(0);
-    await expect(page).toHaveURL(/\/app\/subject\//);
-  });
-
   test("after a tap, a swipe back to the screen it was made on puts the piece on that screen's tab", async ({ page }) => {
     await start(page, {});
     await page.goto("/app");
     const tabs = page.getByRole("navigation", { name: mk.t("nav.main") });
-    await tabs.getByRole("link", { name: mk.t("subjects.title") }).click();
-    await expect(page).toHaveURL(/\/app\/subjects$/);
+    await tabs.getByRole("link", { name: mk.t("nav.scan") }).click();
+    await expect(page).toHaveURL(/\/app\/join$/);
     // A finger drags the screen to the right: back to Home.
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 100, y: 400 }] });
@@ -257,7 +247,7 @@ test.describe("the tab bar", () => {
     await page.goto("/app/settings");
     const glide = page.locator(".tabbar > .seg__glide");
     await expect(glide).toHaveAttribute("data-on", "false");
-    await page.goto("/app/subjects");
+    await page.goto("/app/profile");
     await expect(glide).toHaveAttribute("data-on", "true");
   });
 });

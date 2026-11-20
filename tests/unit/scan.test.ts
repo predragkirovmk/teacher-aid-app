@@ -25,6 +25,16 @@ describe("interpretCode", () => {
     expect(interpretCode("MKD-12")).toMatchObject({ kind: "code", code: "MKD-12" });
   });
 
+  it("reads the six-digit code a teacher shows, grouped or not", () => {
+    expect(interpretCode("221121")).toMatchObject({ kind: "code", code: "221121" });
+    expect(interpretCode("221 121")).toMatchObject({ kind: "code", code: "221121" });
+    expect(interpretCode(" 482 913 ")).toMatchObject({ kind: "code", code: "482913" });
+  });
+
+  it("does not read five or seven digits, or digits with letters", () => {
+    for (const raw of ["22112", "2211211", "221 12", "22112A", "221-121"]) expect(interpretCode(raw), raw).toMatchObject({ kind: "other" });
+  });
+
   it("trims what it is given and keeps the trimmed text as raw", () => {
     expect(interpretCode("  MATH-7B \n")).toEqual({ kind: "code", code: "MATH-7B", raw: "MATH-7B" });
   });

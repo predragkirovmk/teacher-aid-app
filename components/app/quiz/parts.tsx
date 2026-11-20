@@ -6,7 +6,6 @@ import type { Course } from "@/lib/app/api/types";
 import { useT } from "@/lib/app/i18n";
 import { useQT } from "@/lib/app/quiz-copy";
 import { initials, personName } from "@/lib/app/quiz";
-import { subjectStyle } from "@/lib/app/subjects";
 
 const noop = () => () => {};
 const calmNow = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -100,7 +99,7 @@ export function TimerRing({ duration, elapsedAtMount, seconds }: { duration: num
   );
 }
 
-/** The quiz as a light subject card: what the QR opened. */
+/** The quiz as a light card: what the QR opened. */
 export function QuizCard({
   course,
   title,
@@ -117,16 +116,13 @@ export function QuizCard({
   const { t } = useQT();
   const teacher = personName(course.teacherName, locale);
   return (
-    <section className="subject tone-ice q-quizcard">
-      <span className="subject__glyphs" aria-hidden="true">
-        {subjectStyle(course.subjectId, course.subjectName).glyphs.split("  ")[0]}
-      </span>
+    <section className="qcard tone-ice q-quizcard">
       <span className="t-label q-live">
         {live && <span className="q-live__dot" aria-hidden="true" />}
         {t("q.live")}
       </span>
-      <h2 className="subject__name q-quizcard__name">{title}</h2>
-      <div className="subject__foot">
+      <h2 className="qcard__name q-quizcard__name">{title}</h2>
+      <div className="qcard__foot">
         <span className="monogram" aria-hidden="true">
           {initials(teacher)}
         </span>

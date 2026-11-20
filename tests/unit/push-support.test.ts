@@ -119,7 +119,7 @@ describe("when to ask", () => {
     }
   });
 
-  it("waits for a calm screen: a tab root, a summary or the practice list, not a quiz, a scan or a set", () => {
+  it("waits for a calm screen: a tab root, the alerts, a summary or the practice list, not a quiz, a scan or a set", () => {
     for (const path of ["/app", "/app/notifications", "/app/profile", "/app/summary/se-1", "/app/summary", "/app/practice"]) expect(calmScreen(path), path).toBe(true);
     for (const path of ["/app/play/MATH-7B", "/app/scan", "/app/practice/ps-1", "/app/checkin/MATH-7B", "/app/welcome", "/app/settings"]) expect(calmScreen(path), path).toBe(false);
   });

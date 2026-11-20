@@ -9,7 +9,6 @@ import { demoOnly } from "@/lib/app/api";
 import { CLASS_CODES } from "@/lib/app/demo";
 import { useT } from "@/lib/app/i18n";
 import { checkinLink } from "@/lib/app/scan";
-import { subjectLabel } from "@/lib/app/subjects";
 
 const noop = () => () => {};
 
@@ -26,11 +25,10 @@ export default function QrKit() {
       {origin && (
         <div className="kit">
           {CLASS_CODES.map((s) => (
-            <figure key={s.subjectId}>
+            <figure key={s.code}>
               <QRCodeSVG value={checkinLink(origin, s.code)} level="M" marginSize={1} fgColor="#07162f" bgColor="#ffffff" title={s.code} />
               <figcaption>
-                {subjectLabel(t, s.subjectId, s.subjectId)}
-                <small>{s.code}</small>
+                {s.code}
               </figcaption>
             </figure>
           ))}

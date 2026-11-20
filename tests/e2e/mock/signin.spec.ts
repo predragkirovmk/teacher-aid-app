@@ -139,11 +139,11 @@ test.describe("signing in through the provider", () => {
 
   test("says it once: the reason leaves the address, so a reload does not repeat it, and trying again clears it", async ({ page }) => {
     await signedOut(page);
-    await page.goto("/app/welcome?next=%2Fapp%2Fattendance");
+    await page.goto("/app/welcome?next=%2Fapp%2Fachievements");
     await signInWith(page, "personal");
     await expect(problem(page)).toContainText(mk.t("signin.err.unknown_email.title"));
     // The way on is kept; the reason is not.
-    await expect(page).toHaveURL(/\/app\/welcome\?next=%2Fapp%2Fattendance$/);
+    await expect(page).toHaveURL(/\/app\/welcome\?next=%2Fapp%2Fachievements$/);
     await page.reload();
     await expect(page.getByRole("heading", { name: mk.t("welcome.title") })).toBeVisible();
     await expect(problem(page)).toHaveCount(0);
@@ -235,17 +235,16 @@ test.describe("continuing what the student came for (EC-JOIN-05)", () => {
     await expect(page).toHaveURL(/\/app\/play\/MATH-7B$/);
     await expect(page.getByText(mk.q("q.live"))).toBeVisible();
 
-    // Joining was the attendance: 21 of 24, up from 20 of 23.
-    await page.goto("/app");
-    await expect(page.getByRole("link", { name: new RegExp(mk.t("home.attendance")) })).toContainText("88%");
+    // Joining was the attendance: the demo kept one check-in.
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("teacheraid-app-v1") ?? "{}").checkins ?? [])).toHaveLength(1);
   });
 
   test("a link to another place goes there, and an address that is not this app's goes Home", async ({ page }) => {
     await signedOut(page);
-    await page.goto("/app/attendance");
-    await expect(page).toHaveURL(/welcome\?next=%2Fapp%2Fattendance$/);
+    await page.goto("/app/achievements");
+    await expect(page).toHaveURL(/welcome\?next=%2Fapp%2Fachievements$/);
     await signInWith(page);
-    await expect(page).toHaveURL(/\/app\/attendance$/);
+    await expect(page).toHaveURL(/\/app\/achievements$/);
 
     await page.evaluate((noticeVersion) => localStorage.setItem("teacheraid-app-v1", JSON.stringify({ signedIn: false, noticeVersion })), NOTICE_VERSION);
     await page.goto("/app/welcome?next=https%3A%2F%2Fevil.example%2Fapp");
@@ -257,10 +256,10 @@ test.describe("continuing what the student came for (EC-JOIN-05)", () => {
 test.describe("signed in elsewhere (BR-AUTH-03)", () => {
   test("is a full screen with one way forward, which signs in and comes back", async ({ page }) => {
     await signedOut(page, { endedElsewhere: true });
-    await page.goto("/app/attendance");
+    await page.goto("/app/achievements");
 
     // The address stays: this is where the student was.
-    await expect(page).toHaveURL(/\/app\/attendance$/);
+    await expect(page).toHaveURL(/\/app\/achievements$/);
     const screen = problem(page).filter({ hasText: mk.t("elsewhere.title") });
     await expect(screen).toContainText(mk.t("elsewhere.body"));
     await expect(page.getByRole("button")).toHaveCount(1);
@@ -268,9 +267,9 @@ test.describe("signed in elsewhere (BR-AUTH-03)", () => {
     await expect(page.getByRole("navigation", { name: mk.t("nav.main") })).toHaveCount(0);
 
     await page.getByRole("button", { name: mk.t("elsewhere.cta") }).click();
-    await expect(page).toHaveURL(/\/app\/welcome\?next=%2Fapp%2Fattendance$/);
+    await expect(page).toHaveURL(/\/app\/welcome\?next=%2Fapp%2Fachievements$/);
     await signInWith(page);
-    await expect(page).toHaveURL(/\/app\/attendance$/);
+    await expect(page).toHaveURL(/\/app\/achievements$/);
     await expect(page.getByText(mk.t("elsewhere.title"))).toHaveCount(0);
   });
 
@@ -345,7 +344,7 @@ test.describe("signing out", () => {
 });
 
 test.describe("the route guard", () => {
-  const ROUTES = ["/app", "/app/profile", "/app/notifications", "/app/settings", "/app/attendance", "/app/leaderboard", "/app/scan", "/app/subjects"];
+  const ROUTES = ["/app", "/app/profile", "/app/notifications", "/app/settings", "/app/achievements", "/app/summary", "/app/scan"];
 
   for (const route of ROUTES) {
     test(`${route} sends a signed-out student to sign in without drawing a screen of the app first`, async ({ page }) => {
@@ -365,7 +364,7 @@ test.describe("the route guard", () => {
       expect(seen.length, "the observer saw the page being drawn").toBeGreaterThan(0);
       for (const text of seen) {
         expect(text, "a signed-in screen was drawn").not.toContain("Марко");
-        expect(text).not.toContain(mk.t("nav.alerts"));
+        expect(text).not.toContain(mk.t("nav.home"));
       }
       await expect(page.getByRole("navigation", { name: mk.t("nav.main") })).toHaveCount(0);
     });
@@ -379,8 +378,8 @@ test.describe("the route guard", () => {
 
   test("a signed-in student goes straight to the screen asked for, and the welcome screen is not kept in history", async ({ page }) => {
     await page.goto("/app/profile");
-    await page.goto("/app/welcome?next=%2Fapp%2Fattendance");
-    await expect(page).toHaveURL(/\/app\/attendance$/);
+    await page.goto("/app/welcome?next=%2Fapp%2Fachievements");
+    await expect(page).toHaveURL(/\/app\/achievements$/);
     await page.goBack();
     await expect(page).toHaveURL(/\/app\/profile$/);
   });

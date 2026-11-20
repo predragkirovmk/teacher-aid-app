@@ -20,6 +20,8 @@
  * go to (and the alert to mark read), or opens a new window on that screen. It makes no request of its own: the
  * subscription is sent to the API by the page (lib/app/push), and a subscription that changes is noticed there the next
  * time the app opens.
+ *
+ * The manifest's one shortcut opens /app/join (it was /app/scan); this line changes the worker's bytes so installed copies refetch the manifest.
  */
 
 importScripts("/app-push.js");
