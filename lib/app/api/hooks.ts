@@ -8,7 +8,8 @@ import { OUTBOX_STUDENT_KEY } from "../session/outbox-store";
 import { forgetSession, recallJoin, recallSession, rememberSession } from "../session/resume";
 import { client, demoOnly } from "./index";
 import type { SettledPromise } from "./client";
-import { toApiError, type ApiError } from "./errors";
+import { ApiError, toApiError } from "./errors";
+import { JOIN_LIMIT_MS, SIX_DIGITS } from "../join";
 import { endSession, onSessionEnd, useSessionEnd, type SessionEnd } from "./session";
 import { amend, change, invalidate, mapQuery, resetQueries, seed, useQuery, type Query } from "./query";
 import type {
@@ -19,9 +20,6 @@ import type {
   Id,
   JoinedSession,
   JoinResult,
-  Leaderboard,
-  LeaderboardRow,
-  LeaderboardScope,
   Locale,
   Notification,
   PhotoUpload,
@@ -30,7 +28,6 @@ import type {
   Student,
   SignInRedirect,
   StudentSignIn,
-  TopicProgress,
 } from "./types";
 
 export type { Query } from "./query";
@@ -50,9 +47,6 @@ export const useAttendance = (enabled = true): Query<AttendanceSummary> =>
 export const useResults = (courseId?: Id): Query<SessionResult[]> =>
   useQuery(courseId ? `results:${courseId}` : "results", (c) => c.listResults(courseId));
 
-/** The results of finished lessons, newest first; the topics the student has been tested on; the practice sets the teacher sent. */
-export const useTopics = (): Query<TopicProgress[]> => useQuery("topics", (c) => c.listTopics());
-
 /** The mock answers at once; the live API's sets are kept on the phone, so a set can still be opened with no signal. */
 export const usePracticeSets = (): Query<PracticeSet[]> =>
   useQuery("practice", (c) => (demoOnly ? c.listPracticeSets() : loadSets(c)));
@@ -65,9 +59,6 @@ export const useBadges = (): Query<Badge[]> => useQuery("badges", (c) => c.listB
 /** The Alerts feed, newest first: the newest page, and the older ones the student has asked for (feed.ts). */
 export const useNotifications = (): Query<Notification[]> => useQuery("notifications", (c) => loadFeed(c));
 
-export const useLeaderboard = (scope: LeaderboardScope = "class"): Query<Leaderboard> =>
-  useQuery(`leaderboard:${scope}`, (c) => c.getLeaderboard(scope));
-
 // ---- Derived ----------------------------------------------------------------------------------------
 
 /** One course, from the list of the student's courses. */
@@ -76,48 +67,10 @@ export function useCourse(id: Id): Query<Course | null> {
   return useMemo(() => mapQuery(q, (all) => all.find((c) => c.id === id) ?? null), [q, id]);
 }
 
-/** The newest finished session, or null when there is none yet. */
-export function useLatestResult(): Query<SessionResult | null> {
-  const q = useResults();
-  return useMemo(() => mapQuery(q, (all) => all[0] ?? null), [q]);
-}
-
 /** One finished session's result by id, or null when the list does not have it (yet). */
 export function useResult(sessionId: Id): Query<SessionResult | null> {
   const q = useResults();
   return useMemo(() => mapQuery(q, (all) => all.find((r) => r.sessionId === sessionId) ?? null), [q, sessionId]);
-}
-
-export type Standings = {
-  rows: LeaderboardRow[];
-  me: LeaderboardRow;
-  rank: number;
-  /** The student just above, or null at the top. */
-  above: LeaderboardRow | null;
-};
-
-/** The class leaderboard with the student's own place picked out. */
-export function useStandings(): Query<Standings | null> {
-  const q = useLeaderboard("class");
-  return useMemo(
-    () =>
-      mapQuery(q, (board): Standings | null => {
-        const index = board.rows.findIndex((r) => r.isMe);
-        if (index < 0) return null;
-        const me = board.rows[index];
-        return { rows: board.rows, me, rank: me.rank, above: index > 0 ? board.rows[index - 1] : null };
-      }),
-    [q],
-  );
-}
-
-/** Attendance with the change since a week ago, from the rounded figures a student would see. */
-export function useAttendanceView(enabled = true): Query<AttendanceSummary & { change: number | null }> {
-  const q = useAttendance(enabled);
-  return useMemo(
-    () => mapQuery(q, (a) => ({ ...a, change: a.percentWeekAgo === null ? null : a.percent - a.percentWeekAgo })),
-    [q],
-  );
 }
 
 // ---- Who is signed in -------------------------------------------------------------------------------------
@@ -290,8 +243,23 @@ export type JoinState =
 /** Joins started by the scanner, so the screen it opens carries on from the answer instead of asking again. */
 const started = new Map<string, Promise<JoinResult>>();
 
-const joinNow = (code: string): Promise<JoinResult> => {
-  const p = client.joinSession({ token: code });
+const joinNow = (code: string, typed = false): Promise<JoinResult> => {
+  // No signal at all: say so at once, with no request and no wait.
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return Promise.reject(new ApiError("network"));
+  // What a student typed is the short code; what a QR carried is the token. A bare six-digit value is always a short code,
+  // wherever it came from (a scan of the teacher's printed digits, a typed code, a reload). The API tells them apart by the field.
+  // A call with no answer within the limit is a slow connection: the request is left to finish (or not) and the student may retry.
+  const call = client.joinSession(typed || SIX_DIGITS.test(code) ? { shortCode: code } : { token: code });
+  const settled = (call as Partial<SettledPromise<JoinResult>>).settled;
+  const p = settled
+    ? call
+    : new Promise<JoinResult>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new ApiError("timeout")), JOIN_LIMIT_MS);
+        call.then(
+          (v) => (clearTimeout(timer), resolve(v)),
+          (e) => (clearTimeout(timer), reject(e)),
+        );
+      });
   // Joining is the attendance, so the lists that show it are stale from here, as the mock's store already knows.
   void p.then(
     (join) => {
@@ -303,9 +271,9 @@ const joinNow = (code: string): Promise<JoinResult> => {
   return p;
 };
 
-/** Join by the code a QR carried. Used by the scanner so it can show a failure where it stands. */
-export function startJoin(code: string): Promise<JoinResult> {
-  const p = joinNow(code);
+/** Join by the code a QR carried, or (`typed`) the short code a student typed. Used by the scanner so it can show a failure where it stands. */
+export function startJoin(code: string, typed = false): Promise<JoinResult> {
+  const p = joinNow(code, typed);
   started.set(code, p);
   // A join that failed is not worth handing on: the next screen asks again.
   p.catch(() => started.delete(code));
@@ -328,13 +296,14 @@ export function useJoinSession(code: string, enabled: boolean): JoinState & { re
     let current = true;
     const handed = attempt === 0 ? started.get(code) : undefined;
     started.delete(code);
+    // Six digits are the short code a student typed; a QR carries a token. A reload of /app/play/<six digits> must ask the same way.
     const p = handed ?? joinNow(code);
     const apply = (s: JoinState) => current && setState(s);
     const fail = (e: unknown) => {
       const error = toApiError(e);
       // No connection, but this tab joined this lesson before (a reload with the signal gone): open it and wait
       // for the signal, so the answer the student saved is on screen and not behind a failed join.
-      const offline = error.code === "network" ? recallJoin(code) : null;
+      const offline = error.code === "network" || error.code === "timeout" ? recallJoin(code) : null;
       if (offline) return apply({ status: "joined", join: offline });
       const earlier = error.code === "token_expired" ? recallSession(code) : null;
       if (!earlier) return apply({ status: "failed", error });

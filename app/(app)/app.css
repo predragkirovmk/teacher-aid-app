@@ -158,14 +158,6 @@ a {
   letter-spacing: -0.01em;
   margin: 0;
 }
-.t-num {
-  font-family: var(--font-display);
-  font-size: var(--fs-num);
-  line-height: 1;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
 .t-body {
   font-size: var(--fs-body);
   line-height: 1.45;
@@ -184,7 +176,7 @@ a {
   color: var(--text-2);
 }
 /* Headings even out their lines; running text avoids a lone last word. */
-:is(.t-display, .t-title, .large, .subject__name, .next__name, .profile__name) {
+:is(.t-display, .t-title, .large, .qcard__name, .next__name, .profile__name) {
   text-wrap: balance;
 }
 :is(.t-body, .t-cap, .item__title, details.faq summary, details.faq p) {
@@ -346,8 +338,8 @@ button.card:active {
    (its colour change), so it passes its timing in through --press-bg, which both rules below use for
    the background. Every other element on the list has no transition of its own, so it needs nothing. */
 :is(
-  .press, .btn, a.card, button.card, .round, .next, .scan-fab, .provider, .q-opt, .q-tf__btn, .n-minus, .pe-photo-btn,
-  a.item, button.item, .tab, .opt, .result, .switch, button.pill, .section-link, .pe-bar__text, .tc__dot
+  .press, .btn, a.card, button.card, .round, .next, .join-cta, .provider, .q-opt, .q-tf__btn, .n-minus, .pe-photo-btn,
+  a.item, button.item, .tab, .opt, .switch, button.pill, .pe-bar__text
 ) {
   transition:
     scale var(--spring-pop-dur) var(--spring-pop),
@@ -355,8 +347,8 @@ button.card:active {
     opacity var(--press-fade, 0s) linear;
 }
 :is(
-  .press, .btn, a.card, button.card, .round, .next, .scan-fab, .provider, .q-opt, .q-tf__btn, .n-minus, .pe-photo-btn,
-  a.item, button.item, .tab, .opt, .result, .switch, button.pill, .section-link, .pe-bar__text, .tc__dot
+  .press, .btn, a.card, button.card, .round, .next, .join-cta, .provider, .q-opt, .q-tf__btn, .n-minus, .pe-photo-btn,
+  a.item, button.item, .tab, .opt, .switch, button.pill, .pe-bar__text
 ):not(:disabled, [aria-disabled="true"]):active {
   scale: var(--press-reduce, var(--press-scale, 0.94));
   opacity: var(--press-dim, 1);
@@ -448,62 +440,8 @@ button.card:active {
   }
 }
 
-/* ---- search ---- */
-.search {
-  position: relative;
-  margin-bottom: 16px;
-}
-.search input {
-  width: 100%;
-  height: 56px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--card);
-  padding: 0 56px 0 24px;
-  font-size: var(--fs-callout);
-  outline: none;
-}
-.search input::placeholder {
-  color: var(--text-2);
-}
-.search input:focus-visible {
-  outline: 3px solid var(--yellow);
-  outline-offset: 2px;
-}
-.search svg {
-  position: absolute;
-  right: 20px;
-  top: 16px;
-  pointer-events: none;
-}
-.results {
-  list-style: none;
-  margin: 0;
-  position: absolute;
-  z-index: 5;
-  left: 0;
-  right: 0;
-  top: 64px;
-  border-radius: 24px;
-  padding: 8px;
-}
-.result {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 52px;
-  padding: 0 16px;
-  border-radius: 16px;
-  text-align: left;
-  --press-scale: 0.96;
-}
-.result:active {
-  background: rgba(255, 255, 255, 0.12);
-}
-
-/* ---- subject cards ---- */
-.subject {
+/* ---- the quiz card ---- */
+.qcard {
   position: relative;
   container-type: inline-size;
   flex: none;
@@ -516,19 +454,7 @@ button.card:active {
   flex-direction: column;
   justify-content: space-between;
 }
-.subject__glyphs {
-  position: absolute;
-  right: -8px;
-  top: 8px;
-  font-size: 88px;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.04em;
-  white-space: nowrap;
-  opacity: 1;
-  pointer-events: none;
-}
-.subject__name {
+.qcard__name {
   font-family: var(--font-display);
   position: relative;
   /* One word cannot wrap, so at large text the name stops growing at the card's width
@@ -541,7 +467,7 @@ button.card:active {
   overflow-wrap: break-word;
   hyphens: auto;
 }
-.subject__foot {
+.qcard__foot {
   position: relative;
   display: flex;
   align-items: center;
@@ -559,41 +485,14 @@ button.card:active {
   font-size: 15px;
   flex: none;
 }
-.tone-yellow {
-  background: var(--yellow);
-  color: var(--ink);
-}
-.tone-yellow .subject__glyphs {
-  color: rgba(7, 22, 47, 0.1);
-}
-.tone-yellow .monogram {
-  background: var(--ink);
-  color: var(--yellow);
-}
 .tone-ice {
   background: var(--ice);
   color: var(--ink);
-}
-.tone-ice .subject__glyphs {
-  color: rgba(36, 104, 190, 0.14);
 }
 .tone-ice .monogram {
   background: #2468be;
   color: #fff;
 }
-.tone-deep {
-  background: var(--sheet);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-}
-.tone-deep .subject__glyphs {
-  color: rgba(255, 200, 61, 0.14);
-}
-.tone-deep .monogram {
-  background: var(--yellow);
-  color: var(--ink);
-}
-
 /* ---- overlays ---- */
 .scrim {
   position: absolute;
@@ -718,14 +617,6 @@ button.card:active {
 .list > * + * {
   border-top: 1px solid rgba(255, 255, 255, 0.14);
 }
-/* A list whose rows leave and move (MotionList): a leaving row is held out of the flow at its old place, so the list is the
-   box it fades out of, and the card around it does not clip it while the rest close up. */
-.list--motion {
-  position: relative;
-}
-.list--motion[data-leaving] {
-  overflow: visible;
-}
 .item {
   display: flex;
   align-items: center;
@@ -780,6 +671,23 @@ button.item:active {
   flex: 1 1 8rem;
   min-width: 0;
 }
+/* A result row gives its text a little more room (gaps of 12 and 8 px), so a lesson title like "Математика, дропки" fits one line at 390. */
+.item--result {
+  gap: 12px;
+}
+.item--result .item__main {
+  column-gap: 8px;
+}
+/* The caption is one line: the mark and the date keep their width. */
+/* Two classes, because the shared caption rule (text-wrap: pretty, set through :is) outweighs one. */
+.t-cap.res-cap {
+  display: flex;
+  white-space: pre;
+  text-wrap: nowrap;
+}
+.res-cap__fixed {
+  flex: none;
+}
 .dot-unread {
   display: inline-flex;
   align-items: center;
@@ -823,24 +731,6 @@ button.item:active {
   font-weight: 700;
   margin-top: 12px;
 }
-/* ---- attendance ring ---- */
-.ring {
-  position: relative;
-  width: 200px;
-  height: 200px;
-  margin: 0 auto 8px;
-}
-.ring svg {
-  transform: rotate(-90deg);
-}
-.ring__val {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  text-align: center;
-}
-
 /* ---- leaderboard ---- */
 .rank {
   min-width: 2.25em;
@@ -854,17 +744,6 @@ button.item:active {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   flex: none;
-}
-.list .item--me {
-  background: var(--yellow);
-  color: var(--ink);
-}
-.item--me .rank {
-  background: var(--ink);
-  color: var(--yellow);
-}
-.item--me .t-cap {
-  color: rgba(7, 22, 47, 0.8);
 }
 
 /* ---- scanner ---- */
@@ -904,7 +783,13 @@ button.item:active {
   padding: calc(env(safe-area-inset-top) + 16px) 20px 0;
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr) 48px;
+  column-gap: 12px;
   align-items: center;
+}
+.scan__top .top__title {
+  text-align: center;
+  font-size: 1.125rem; /* 18: one line between the two 48px buttons at 360 */
+  line-height: 1.15;
 }
 .frame {
   position: absolute;
@@ -925,6 +810,29 @@ button.item:active {
   width: 38px;
   height: 38px;
   border: 5px solid var(--yellow);
+}
+/* On arrival the four corners snap in from the middle of the frame: scale 0.9 about the frame's centre, so each travels
+   a few px outward and settles past its place on the pop spring. The scale property keeps the compositor's transform free. */
+.frame i {
+  animation: corner-snap var(--spring-pop-dur) var(--spring-pop) backwards;
+}
+.frame i:nth-child(1) {
+  transform-origin: 50cqw 50cqh;
+}
+.frame i:nth-child(2) {
+  transform-origin: calc(38px - 50cqw) 50cqh;
+}
+.frame i:nth-child(3) {
+  transform-origin: 50cqw calc(38px - 50cqh);
+}
+.frame i:nth-child(4) {
+  transform-origin: calc(38px - 50cqw) calc(38px - 50cqh);
+}
+@keyframes corner-snap {
+  from {
+    scale: 0.9;
+    opacity: 0;
+  }
 }
 .frame i:nth-child(1) {
   top: 0;
@@ -1005,6 +913,49 @@ button.item:active {
 .scan__tools .span2 {
   --press-scale: 0.96;
   grid-column: 1 / -1;
+}
+.scan-code {
+  display: grid;
+  gap: 8px;
+}
+.scan-code__label {
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--text-2);
+}
+.scan-code__row {
+  display: flex;
+  gap: 8px;
+}
+.scan-code__input {
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: 26px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-callout);
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+/* A hint line instead of a placeholder: a grey sample inside the field reads as a value somebody typed. */
+.scan-code__hint {
+  margin: -4px 0 0;
+  font-size: var(--fs-label);
+  color: var(--text-2);
+}
+.scan-code__input[aria-invalid="true"] {
+  border-color: var(--yellow);
+}
+.scan-code__err {
+  margin: 0;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--yellow);
 }
 .warn {
   display: flex;
@@ -1356,6 +1307,11 @@ button.pill {
     transform: translateY(-8px);
   }
 }
+/* With the tab bar showing, the toast sits above it, so it covers no screen title. */
+.toast--dock {
+  top: auto;
+  bottom: calc(env(safe-area-inset-bottom) + var(--tab-h) + 20px);
+}
 /* A tap dismisses the toast, so it answers a press like any control. It is not on the press list because
    its own transition (opacity and transform, for the exit) would be replaced by the list's; it lists scale
    itself. The exit state is left alone so a press during the fade-out cannot bring the toast back. */
@@ -1392,7 +1348,7 @@ button.pill {
   }
 }
 
-/* ---- dock: the classic five, Home, Subjects, the raised scan, Alerts, Profile ---- */
+/* ---- dock: Home, Scan, Profile: three equal tabs ---- */
 .dock {
   position: absolute;
   z-index: 20;
@@ -1404,7 +1360,7 @@ button.pill {
   min-height: var(--tab-h);
   border-radius: 34px;
   display: grid;
-  grid-template-columns: 1fr 1fr auto 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   align-items: center;
   padding: 4px;
 }
@@ -1449,22 +1405,153 @@ button.pill {
   display: grid;
   place-items: center;
 }
-/* The scan is an action, not a section: a yellow circle in the middle of the bar, inside it like the tabs. */
-.scan-fab {
-  position: relative;
-  z-index: 1;
-  width: 56px;
-  height: 56px;
-  margin: 0 4px;
-  border-radius: 50%;
+/* ---- the Scan tab's call to action ---- */
+.join {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.join__stage {
   display: grid;
   place-items: center;
-  background: var(--yellow);
-  color: var(--ink);
-  box-shadow: 0 2px 8px rgba(2, 8, 24, 0.25);
+  /* Room for the halo, which reaches past the button. The button sits a fixed way down, so opening the field does not move it. */
+  padding: 32px 0 16px;
+  margin-top: clamp(0px, 14vh, 120px);
 }
-.scan-fab:active {
+/* The fun of the app: a big yellow button that idles on one CSS cycle of 4.5 s, about 1.2 s of motion (a shine across, the
+   glyph breathing, a halo of warm light) and then 3.3 s of rest, so it keeps calling without buzzing. Everything animates by
+   transform and opacity: the halo is painted once and only fades and grows. The idle runs on the children (`transform`)
+   and the press on the link (`scale`), so a press never restarts or jumps the cycle. The first cycle waits 600 ms, so it
+   does not compete with the screen's own arrival. Reduced motion removes all of it. */
+.join-cta {
+  --press-scale: 0.92;
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  /* The link has the face's radius, so its focus ring follows the pill and is not a square box around it. */
+  border-radius: 36px;
+  /* Its own stacking context, so the halo (z-index -1) paints under the link's focus ring and not over it. */
+  isolation: isolate;
+  color: var(--ink);
+}
+/* The usual yellow ring would sit on the button's own yellow and its amber halo; white reads against both and the blue. */
+.join-cta:focus-visible {
+  outline-color: #fff;
+}
+/* The bigger squash of the app's main action releases on the big spring (the base rule's pop is smaller). */
+a.join-cta {
+  transition:
+    scale var(--spring-big-dur) var(--spring-big),
+    opacity var(--press-fade, 0s) linear;
+}
+.join-cta__face {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 96px;
+  padding: 16px 20px;
+  border-radius: 36px;
+  background: var(--yellow);
+  box-shadow: 0 4px 16px rgba(2, 8, 24, 0.3);
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  line-height: 1.15;
+  font-weight: 750;
+  text-align: center;
+}
+.join-cta:active .join-cta__face {
   background: var(--yellow-soft);
+}
+.join-cta__face::after {
+  content: "";
+  position: absolute;
+  top: -10%;
+  bottom: -10%;
+  left: 0;
+  width: 34%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transform: translateX(-150%) skewX(-20deg);
+  opacity: 0;
+  animation: join-shine 4.5s 600ms infinite;
+}
+/* The shine is painted over the face, so the label and glyph sit above it: light passing over dark ink would grey it. */
+.join-cta__label {
+  position: relative;
+  z-index: 1;
+}
+.join-cta__glyph {
+  flex: none;
+  position: relative;
+  z-index: 1;
+  animation: join-breathe 4.5s 600ms infinite;
+}
+.join-cta__halo {
+  position: absolute;
+  inset: -3px;
+  border-radius: 39px;
+  /* Warm light, not a line. Yellow at part strength over this blue ground mixes to khaki, so the halo is a deeper amber, blurred once
+     (a static filter, painted before it is animated) into a short bright rim. The blur is what makes it read as glow and not as a band. */
+  background: #ffb02a;
+  filter: blur(9px);
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+  animation: join-halo 4.5s 600ms infinite;
+}
+@keyframes join-shine {
+  0% {
+    transform: translateX(-150%) skewX(-20deg);
+    opacity: 0;
+    animation-timing-function: ease-in-out;
+  }
+  4% {
+    opacity: 1;
+  }
+  22% {
+    opacity: 1;
+  }
+  26.7%,
+  100% {
+    transform: translateX(380%) skewX(-20deg);
+    opacity: 0;
+  }
+}
+@keyframes join-breathe {
+  0% {
+    transform: scale(1);
+    animation-timing-function: var(--spring-bouncy);
+  }
+  8% {
+    transform: scale(1.14);
+    animation-timing-function: var(--spring-bouncy);
+  }
+  26.7%,
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes join-halo {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+    animation-timing-function: ease-out;
+  }
+  26.7%,
+  100% {
+    transform: scale(1.12, 1.36);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .join-cta__face::after,
+  .join-cta__glyph,
+  .join-cta__halo {
+    animation: none;
+  }
 }
 /* ---- one piece per track ----
    Every segmented control and tab row (the tab bar, the welcome screen's language switch) has one piece for the whole
@@ -1589,6 +1676,21 @@ button.pill {
   margin-bottom: 16px;
 }
 
+/* Home's bell: a 44 px target with the unread count on its corner. */
+.bell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+}
+.bell .tab__badge {
+  top: 0;
+  left: auto;
+  right: -2px;
+}
+
 /* ---- home ---- */
 .next {
   display: block;
@@ -1602,7 +1704,7 @@ button.pill {
   min-height: 176px;
   --press-scale: 0.96;
 }
-/* The subject's sign, large and cropped in the corner, clear of the text. */
+/* The Practice card's sign, large and cropped in the corner, clear of the text. */
 .next__sign {
   position: absolute;
   right: 4px;
@@ -1641,6 +1743,7 @@ button.pill {
 }
 .next__when {
   position: relative;
+  min-height: 1.5em; /* holds the line's place until practice has loaded */
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1663,6 +1766,34 @@ button.pill {
   color: var(--yellow);
   font-size: var(--fs-callout);
   font-weight: 650;
+}
+/* Nothing waiting: the same full yellow as the waiting card (a washed-out yellow read as beige); only the copy and the
+   missing button differ, so the card is shorter. */
+.next--quiet {
+  min-height: 0;
+}
+.next__name {
+  display: block;
+}
+/* Home's sections: a title over a list, with the link to all of it under the list. */
+.home-sec .section-h {
+  margin: 16px 4px 8px;
+}
+.home-sec .home-sub {
+  margin: -4px 4px 8px;
+}
+.home-empty {
+  margin: 0 4px;
+}
+.more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  margin: 4px 4px 0;
+  font-size: var(--fs-callout);
+  font-weight: 650;
+  color: var(--yellow);
 }
 .next__foot {
   position: relative;
@@ -1697,51 +1828,14 @@ button.pill {
   flex: none;
   color: var(--text-2);
 }
-/* A word where the other tiles have a figure ("Утре"): smaller, in the figure's height, so the
-   captions line up. */
-.tile-word {
-  display: flex;
-  align-items: center;
-  min-height: var(--fs-num);
-  font-family: var(--font-display);
-  font-size: var(--fs-display);
-  line-height: 1;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
 .tile__new {
   color: #fff;
   font-weight: 700;
-}
-/* A section title with a link at its end, like "See all". */
-.section-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin: 16px 4px 8px;
-}
-.section-row .section-h {
-  margin: 0;
-}
-.section-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  margin-block: -12px;
-  font-size: var(--fs-label);
-  font-weight: 650;
 }
 .next__when .timed {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-}
-/* A lesson's mark from the teacher, or the student's own scan: an icon and a word. */
-.mark-line {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
 }
 .status {
   display: inline-flex;
@@ -1751,11 +1845,6 @@ button.pill {
   font-size: var(--fs-label);
   font-weight: 650;
   font-variant-numeric: tabular-nums;
-}
-.pill--now {
-  flex: none;
-  background: #fff;
-  color: var(--ink);
 }
 .home-date {
   display: flex;
@@ -1788,9 +1877,6 @@ button.pill {
 .large.fit {
   font-size: min(var(--fs-display), calc(100cqi / (var(--chars) * 0.58)));
 }
-.tile-word.fit {
-  font-size: min(var(--fs-display), calc(100cqi / (var(--chars) * 0.62)));
-}
 /* Until the phone's clock is known (Home), the text that depends on it shows as placeholder bars:
    the stand-in text, transparent, on a faint fill. */
 .screen {
@@ -1804,16 +1890,10 @@ button.pill {
   background: var(--skeleton);
   border-radius: 6px;
 }
-[data-pending] .timed svg,
-[data-pending] .timed-list svg,
-[data-pending] .timed-list .pill {
+[data-pending] .timed svg {
   visibility: hidden;
 }
-[data-pending] .timed-list,
-[data-pending] .timed-list * {
-  color: transparent;
-}
-/* A subject's sign in Home's list: square, where people (teachers, classmates) are round. */
+/* The quiz tile in Home's list: square, where people (teachers, classmates) are round. */
 .mark {
   width: 44px;
   height: 44px;
@@ -1885,21 +1965,18 @@ button.pill {
   .list,
   .tile,
   .next,
-  .subject,
+  .qcard,
   .avatar,
   .monogram,
   .glass,
   .toast,
   .btn,
   .round,
-  .scan-fab {
+  .join-cta__face {
     border: 1px solid CanvasText;
   }
   /* Decoration only, and its text backplate would cover the card's title. */
-  .subject__glyphs {
-    display: none;
-  }
-  .seg__glide {
+    .seg__glide {
     display: none;
   }
   .tabbar > .tab[data-checked="true"],
@@ -2016,17 +2093,12 @@ html[data-rise-seen] .rise {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .frame i {
+    animation: arrive-fade 150ms linear backwards;
+  }
   .frame--locked {
     transform: translate(-50%, -50%);
   }
-}
-
-/* A figure that is still counting turns yellow (large text, 3.6:1 on a card passes the 3:1 bar). */
-.tile-big {
-  transition: color 300ms var(--spring-smooth);
-}
-.tile-big.counting {
-  color: var(--yellow);
 }
 
 /* ---- screen transitions ----
@@ -2039,7 +2111,7 @@ html[data-rise-seen] .rise {
   /* Taps reach the live page while a transition runs. */
   pointer-events: none;
 }
-/* The tab bar and the scan button stay still, above the moving screens. They get a name only while a transition
+/* The tab bar stays still, above the moving screens. They get a name only while a transition
    runs: a name makes an element a backdrop root, which would flatten the glass of the bar at rest. */
 :root:active-view-transition .dock {
   view-transition-name: dock;
@@ -2150,7 +2222,7 @@ html[data-rise-seen] .rise {
   }
 }
 
-/* Shared-element morph between a subject card and its screen. */
+/* Shared-element morph between a card and its screen. */
 ::view-transition-group(.morph) {
   animation-duration: var(--spring-smooth-dur);
   animation-timing-function: var(--spring-smooth);
@@ -2223,17 +2295,6 @@ html[data-rise-seen] .rise {
   display: none;
 }
 
-/* Search results and toast: short in, short out. */
-.results {
-  animation: pop-in var(--spring-press-dur) var(--spring-press);
-  transform-origin: top center;
-}
-@keyframes pop-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px) scale(0.98);
-  }
-}
 /* The connection, said quietly: offline, reconnecting, back, and answers saved for later. Floats like a
    toast but takes no taps, so nothing under it is ever blocked. */
 .net-pill {
@@ -2261,6 +2322,10 @@ html[data-rise-seen] .rise {
     transform: translateX(-50%) translateY(-8px);
   }
 }
+/* The join screens say "no internet" in full themselves; the pill saying it again, over the title, is one message twice. */
+body:has([data-failure="offline"]) .net-pill[data-net="offline"] {
+  display: none;
+}
 .net-pill svg {
   flex: none;
 }
@@ -2286,6 +2351,15 @@ html[data-rise-seen] .rise {
   transform: translateY(-8px);
   transition-duration: 200ms;
   transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+/* Above the tab bar the toast rises from below, and leaves the same way. */
+.toast--dock {
+  @starting-style {
+    transform: translateY(8px);
+  }
+}
+.toast--dock.toast--out {
+  transform: translateY(8px);
 }
 
 /* FAQ: answers open and close smoothly where the browser supports animating a details element. */
@@ -2389,11 +2463,6 @@ html[data-rise-seen] .rise {
     }
   }
   @keyframes pop {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes pop-in {
     from {
       opacity: 0;
     }

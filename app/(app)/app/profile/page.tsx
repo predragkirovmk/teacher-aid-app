@@ -1,10 +1,8 @@
 "use client";
 
 import {
-  CaretRightIcon,
   DatabaseIcon,
   DownloadSimpleIcon,
-  FileIcon,
   FileTextIcon,
   GearSixIcon,
   LockKeyIcon,
@@ -14,15 +12,13 @@ import {
   TranslateIcon,
   TrophyIcon,
 } from "@phosphor-icons/react";
-import Link from "next/link";
 import { useState } from "react";
 import { Avatar } from "@/components/app/Avatar";
 import { ProfileEditor } from "@/components/app/ProfileEditor";
 import { Gate } from "@/components/app/QueryState";
 import { Row } from "@/components/app/Row";
 import { useUI } from "@/components/app/ui";
-import { demoOnly } from "@/lib/app/api";
-import { signOut, useAttendance, useLatestResult, useMe } from "@/lib/app/api/hooks";
+import { signOut, useMe } from "@/lib/app/api/hooks";
 import type { Student } from "@/lib/app/api/types";
 import { promptInstall, useInstall } from "@/lib/app/install";
 import { errorCopy, useT } from "@/lib/app/i18n";
@@ -53,8 +49,6 @@ function ProfileView({ student }: { student: Student }) {
   const { t, locale } = useT();
   const { openLang, confirm, openInstall, toast } = useUI();
   const install = useInstall();
-  const attendance = useAttendance();
-  const latest = useLatestResult();
   const { t: qt } = useQT();
   const me = useSelf();
   const [editing, setEditing] = useState(false);
@@ -78,7 +72,7 @@ function ProfileView({ student }: { student: Student }) {
         </button>
       </div>
       <div className="profile">
-        <Avatar key={`${me.initials}-${!!me.photo}`} photo={me.photo} initials={me.initials} size={112} className="pe-pop" />
+        <Avatar key={`${me.initials}-${!!me.photo}`} photo={me.photo} initials={me.initials} size={112} />
         <p className="profile__name" style={{ margin: "12px 0 0" }}>
           {me.name}
           <ShieldCheckIcon size={24} color="var(--yellow)" aria-label={t("user.verified")} />
@@ -87,23 +81,6 @@ function ProfileView({ student }: { student: Student }) {
         <div className="t-cap">
           {t("user.role")} · {personName(student.school.name, locale)}
         </div>
-      </div>
-
-      <div className="grid2" style={{ marginBottom: 24 }}>
-        <Link href="/app/attendance" className="card tile" transitionTypes={["nav-forward"]}>
-          <span className="tile__head t-label">
-            {t("home.attendance")}
-            <CaretRightIcon size={20} aria-hidden="true" />
-          </span>
-          <span className="tile-big">{attendance.data ? `${attendance.data.percent}%` : "–"}</span>
-        </Link>
-        <Link href={latest.data ? `/app/summary/${encodeURIComponent(latest.data.sessionId)}` : "/app/summary"} className="card tile" transitionTypes={["nav-forward"]}>
-          <span className="tile__head t-label">
-            {t("home.summary")}
-            <CaretRightIcon size={20} aria-hidden="true" />
-          </span>
-          <span className="tile-big">{latest.data ? `${latest.data.right}/${latest.data.total}` : "–"}</span>
-        </Link>
       </div>
 
       <div className="stack" style={{ gap: 16 }}>
@@ -124,7 +101,6 @@ function ProfileView({ student }: { student: Student }) {
           </div>
         )}
         <div className="list">
-          {demoOnly && <Row icon={FileIcon} label={t("drawer.documents")} href="/app/documents" />}
           <Row icon={TrophyIcon} label={t("drawer.achievements")} href="/app/achievements" />
         </div>
         <div className="list">

@@ -53,22 +53,19 @@
     return path;
   }
 
-  /** The screen a notification opens, from what it is about. The same places the Alerts tab sends a tap to (lib/app/alerts.ts). */
-  function deepLink(kind, p) {
+  /** The screen a notification opens, from what it is about. The same places the Alerts screen sends a tap to (lib/app/alerts.ts). */
+  function deepLink(kind, p, id) {
     p = p && typeof p === "object" ? p : {};
-    var course = text(p.course_id, 80);
-    var toSubject = course ? "/app/subject/" + encode(course) : ALERTS;
+    var self = text(id, 80) ? ALERTS + "/" + encode(text(id, 80)) : ALERTS;
     switch (kind) {
       case "result_ready":
         return text(p.session_id, 80) ? "/app/summary/" + encode(text(p.session_id, 80)) : "/app/summary";
       case "practice_set_sent":
-        return text(p.practice_set_id, 80) ? "/app/practice/" + encode(text(p.practice_set_id, 80)) : toSubject;
-      case "marked_late":
-        return "/app/attendance";
+        return text(p.practice_set_id, 80) ? "/app/practice/" + encode(text(p.practice_set_id, 80)) : "/app/practice";
       case "badge_earned":
         return "/app/achievements";
       default:
-        return toSubject;
+        return self;
     }
   }
 
@@ -89,7 +86,7 @@
       title: title || APP_NAME,
       body: title || body ? body : FALLBACK_BODY,
       lang: d.locale === "en" ? "en" : "mk",
-      link: appPath(deepLink(kind, d.payload)) || ALERTS,
+      link: appPath(deepLink(kind, d.payload, d.id)) || ALERTS,
       icon: picture(d.icon, ICON),
       badge: picture(d.badge, BADGE),
     };

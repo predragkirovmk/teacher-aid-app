@@ -22,7 +22,7 @@ export const SERVER_ERROR_CODES = [
   "server_error",
 ] as const;
 
-export const CLIENT_ERROR_CODES = ["network", "invalid_response", "not_implemented", "unknown"] as const;
+export const CLIENT_ERROR_CODES = ["network", "timeout", "invalid_response", "not_implemented", "unknown"] as const;
 
 export type ServerErrorCode = (typeof SERVER_ERROR_CODES)[number];
 export type ClientErrorCode = (typeof CLIENT_ERROR_CODES)[number];

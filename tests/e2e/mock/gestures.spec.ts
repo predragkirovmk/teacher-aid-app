@@ -3,7 +3,7 @@ import { expect, mk, test } from "../fixtures";
 
 /**
  * Step 6: a released swipe or sheet carries the finger's speed into the app's own spring, a new touch catches it where it
- * is, and what leaves (the toast, a row of a search) fades out while the rest closes up. Animations are paused to read a
+ * is, and what leaves (the toast) fades out. Animations are paused to read a
  * frame, so none of this depends on how fast the machine runs.
  */
 const pagerX = (page: Page) =>
@@ -54,7 +54,7 @@ test.describe("the pager carries the finger's speed", () => {
     await expect(page.locator("main.screen:not([data-pending])")).toBeVisible();
     // 60 px is well under a quarter of the phone: only the speed can carry it.
     await flick(page, 330, 270);
-    await expect(page).toHaveURL(/\/app\/subjects$/);
+    await expect(page).toHaveURL(/\/app\/join$/);
     await expect.poll(() => pagerAnimations(page)).toBeGreaterThan(0);
     await expect.poll(() => page.evaluate(() => (document.querySelector(".pager") as HTMLElement).style.transform)).toBe("");
   });
@@ -123,7 +123,7 @@ test.describe("the pager carries the finger's speed", () => {
     await flick(page, 330, 270);
     expect(await pagerAnimations(page)).toBe(0);
     expect(await pagerX(page)).toBe(0);
-    await expect(page).toHaveURL(/\/app\/subjects$/);
+    await expect(page).toHaveURL(/\/app\/join$/);
     expect(await pagerAnimations(page)).toBe(0);
   });
 });
@@ -187,7 +187,7 @@ test.describe("the sheet", () => {
   });
 });
 
-test.describe("what leaves, leaves with a move", () => {
+test.describe("what leaves, leaves with a fade", () => {
   test("the toast fades out when it is tapped, and is gone after it", async ({ page }) => {
     await page.goto("/app/profile");
     await page.getByRole("button", { name: mk.q("p.edit"), exact: true }).click();
@@ -211,78 +211,5 @@ test.describe("what leaves, leaves with a move", () => {
     );
     expect(exit).toEqual({ out: true, property: "opacity" });
     await expect(toast).toHaveCount(0);
-  });
-
-  /** Record every row put back to fade, and every row that slides to a new place, as they happen. */
-  const watch = (page: Page) =>
-    page.evaluate(() => {
-      const seen = { ghosts: [] as { hidden: string | null; inert: boolean; running: number; keyframes: string[] }[], moved: 0 };
-      (window as unknown as { __rows: typeof seen }).__rows = seen;
-      new MutationObserver(() => {
-        document.querySelectorAll<HTMLElement>("li[data-leaving]").forEach((n) => {
-          if (n.dataset.seen) return;
-          n.dataset.seen = "1";
-          seen.ghosts.push({
-            hidden: n.getAttribute("aria-hidden"),
-            inert: n.inert,
-            running: n.getAnimations().length,
-            keyframes: n.getAnimations().flatMap((a) => (a as CSSAnimation & { effect: KeyframeEffect }).effect.getKeyframes().map((k) => String(k.transform))),
-          });
-        });
-        document.querySelectorAll<HTMLElement>(".list--motion > li:not([data-leaving])").forEach((n) => {
-          if (n.getAnimations().some((a) => !(a instanceof CSSAnimation) && !(a instanceof CSSTransition))) seen.moved++;
-        });
-      }).observe(document.body, { childList: true, subtree: true });
-    });
-  const rows = (page: Page) => page.evaluate(() => (window as unknown as { __rows: { ghosts: { hidden: string | null; inert: boolean; running: number; keyframes: string[] }[]; moved: number } }).__rows);
-
-  async function search(page: Page) {
-    await page.goto("/app/subjects");
-    const list = page.locator(".list--motion").first();
-    const all = list.locator("> li:not([data-leaving])");
-    await expect(all.first()).toBeVisible();
-    const n = await all.count();
-    expect(n).toBeGreaterThan(1);
-    const last = (await all.last().locator(".item__title").first().textContent())!.trim();
-    await watch(page);
-    await page.getByRole("searchbox").fill(last);
-    return { list, all, n };
-  }
-
-  test("a row that a search takes away fades up and out, the rows left close up on a move, and it is gone after", async ({ page }) => {
-    const { list, all, n } = await search(page);
-    await expect.poll(async () => (await rows(page)).ghosts.length).toBeGreaterThan(0);
-    const seen = await rows(page);
-    expect(seen.ghosts.length).toBe(n - (await all.count()));
-    expect(seen.moved).toBeGreaterThan(0);
-    for (const g of seen.ghosts) {
-      expect(g.hidden).toBe("true");
-      expect(g.inert).toBe(true);
-      expect(g.running).toBe(1);
-      expect(g.keyframes).toContain("translateY(-6px)");
-    }
-    await expect(list.locator("[data-leaving]")).toHaveCount(0);
-    await expect(list).not.toHaveAttribute("data-leaving", /.*/);
-    expect(await all.count()).toBeLessThan(n);
-  });
-
-  test("with reduced motion a row only fades: no travel, no slide", async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: "reduce" });
-    const { list } = await search(page);
-    await expect.poll(async () => (await rows(page)).ghosts.length).toBeGreaterThan(0);
-    const seen = await rows(page);
-    for (const g of seen.ghosts) expect(g.keyframes).not.toContain("translateY(-6px)");
-    expect(seen.moved).toBe(0);
-    await expect(list.locator("[data-leaving]")).toHaveCount(0);
-  });
-
-  test("a search that finds nothing still fades its last rows out", async ({ page }) => {
-    await page.goto("/app/subjects");
-    const list = page.locator(".list--motion").first();
-    await expect(list.locator("> li").first()).toBeVisible();
-    await watch(page);
-    await page.getByRole("searchbox").fill("zzzzqx");
-    await expect.poll(async () => (await rows(page)).ghosts.length).toBeGreaterThan(0);
-    await expect(list.locator("> li")).toHaveCount(0);
   });
 });

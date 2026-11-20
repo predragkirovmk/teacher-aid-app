@@ -1,10 +1,9 @@
 "use client";
 
 import { CheckIcon } from "@phosphor-icons/react";
-import { CLOCKS, currentLesson, demoTime, useDemoClock, useRealNow } from "@/lib/app/demo";
+import { CLOCKS, demoTime, useDemoClock, useRealNow } from "@/lib/app/demo";
 import { formatTime } from "@/lib/app/format";
 import { useT } from "@/lib/app/i18n";
-import { subjectLabel } from "@/lib/app/subjects";
 
 const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
@@ -18,8 +17,7 @@ export function ClockOptions({ onDone }: { onDone?: () => void }) {
     if (c === "real") return t("clock.realAt");
     if (real === null) return " ";
     const ms = demoTime(c, real);
-    const lesson = c === "during" || c === "midday" ? currentLesson(ms) : undefined;
-    return `${t(`dayLong.${WEEKDAYS[new Date(ms).getDay()]}`)} ${formatTime(ms)}${lesson ? `, ${subjectLabel(t, lesson.subject, lesson.subject)}` : ""}`;
+    return `${t(`dayLong.${WEEKDAYS[new Date(ms).getDay()]}`)} ${formatTime(ms)}`;
   };
 
   return (

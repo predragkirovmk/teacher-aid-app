@@ -21,7 +21,6 @@ import { canAsk } from "@/lib/app/session/ask";
 import { useQT } from "@/lib/app/quiz-copy";
 import type { SessionRunView } from "@/lib/app/session/controller";
 import { useSession } from "@/lib/app/session/react";
-import { subjectLabel } from "@/lib/app/subjects";
 import { AskBody, AskEntry, FocusNotice } from "./Ask";
 import { JoinFailureScreen } from "./JoinFailure";
 import { formatNumeric } from "@/lib/app/numeric";
@@ -156,7 +155,7 @@ export function Play({ course, join }: { course: Course; join: JoinedSession }) 
 
 function Joined({ course, join }: { course: Course; join: JoinedSession }) {
   const { t } = useQT();
-  const { t: tt, locale } = useT();
+  const { locale } = useT();
   const joinedAt = join.attendance?.joinedAt ?? null;
   const late = join.attendance?.status === "late";
   return (
@@ -167,7 +166,7 @@ function Joined({ course, join }: { course: Course; join: JoinedSession }) {
         </span>
         <h1 className="q-hero">{t("q.joined.title")}</h1>
         <p className="q-strong">
-          {t("q.joined.sub", { subject: subjectLabel(tt, course.subjectId, course.subjectName), teacher: personName(course.teacherName, locale) })}
+          {personName(course.teacherName, locale)}
         </p>
         {joinedAt !== null && <p className="t-cap q-cap">{t("q.joined.time", { time: formatTime(joinedAt) })}</p>}
         {late && <p className="t-body muted q-late-text">{t("q.late.note")}</p>}
@@ -185,10 +184,9 @@ function Joined({ course, join }: { course: Course; join: JoinedSession }) {
 /** Between the confirmation and the first snapshot: the quiz card and a word that we are on our way. */
 function Connecting({ course, join, onLeave }: { course: Course; join: JoinedSession; onLeave: () => void }) {
   const { t } = useQT();
-  const { t: tt } = useT();
   return (
     <>
-      <QuizTop onLeave={onLeave} label={subjectLabel(tt, course.subjectId, course.subjectName)} />
+      <QuizTop onLeave={onLeave} />
       <div className="q-body q-stack">
         <QuizCard course={course} title={join.session.lessonTitle} count={join.session.questionCount} />
       </div>
@@ -204,13 +202,12 @@ function Connecting({ course, join, onLeave }: { course: Course; join: JoinedSes
 
 function Lobby({ course, join, run, onLeave, askEntry }: { course: Course; join: JoinedSession; run: SessionRunView; onLeave: () => void; askEntry: ReactNode }) {
   const { t } = useQT();
-  const { t: tt } = useT();
   const me = useSelf();
   const [editing, setEditing] = useState(false);
   const others = Math.max(0, run.joined - run.recent.length);
   return (
     <>
-      <QuizTop onLeave={onLeave} label={subjectLabel(tt, course.subjectId, course.subjectName)} />
+      <QuizTop onLeave={onLeave} />
       <div className="q-body q-stack">
         <ViewTransition name="q-card" share="q-morph" default="none">
           <QuizCard course={course} title={run.title ?? join.session.lessonTitle} count={run.questionCount ?? join.session.questionCount} />
@@ -525,7 +522,6 @@ function Between({
   askEntry: ReactNode;
 }) {
   const { t } = useQT();
-  const { t: tt } = useT();
   const q = run.question;
   const wrapping = run.sessionState === "review" || (run.last && q !== null);
 
@@ -533,7 +529,7 @@ function Between({
   if (!q || run.rank === null) {
     return (
       <>
-        <QuizTop onLeave={onLeave} label={subjectLabel(tt, course.subjectId, course.subjectName)} />
+        <QuizTop onLeave={onLeave} />
         <div className="q-body q-stack">
           <QuizCard course={course} title={run.title ?? join.session.lessonTitle} count={run.questionCount ?? join.session.questionCount} />
         </div>

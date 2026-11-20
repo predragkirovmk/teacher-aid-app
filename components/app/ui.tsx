@@ -20,6 +20,3 @@ type UI = {
 
 export const UIContext = createContext<UI>({ openLang() {}, confirm() {}, toast() {}, openInstall() {}, openPushHelp() {}, openClock() {}, back() {} });
 export const useUI = () => useContext(UIContext);
-
-/** True while a tap on a tab is going somewhere (Shell). Things that must not animate on a tab switch ask it, not the transition type, which React can lose under load. */
-export const TabTapContext = createContext(false);

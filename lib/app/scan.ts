@@ -1,16 +1,19 @@
 import jsQR from "jsqr";
+import { SIX_DIGITS } from "./join";
 export type ScanResult = { kind: "code"; code: string; raw: string } | { kind: "other"; raw: string };
 
 /**
  * A class QR is either a link ending in /app/checkin/<code> (so the phone's own camera app works
- * too), a TA:<code> string, or the bare code typed by hand. Whether the code opens a session is for
+ * too), a TA:<code> string, or the bare code typed by hand: the six digits the teacher's screen shows
+ * (grouped "221 121" or not) or a demo class code such as MATH-7B. Whether the code opens a session is for
  * the API to say (EC-JOIN-03: a QR that is not a TeacherAid code never reaches it).
  */
 export function interpretCode(raw: string): ScanResult {
   const text = raw.trim();
   const link = text.match(/\/app\/checkin\/([A-Za-z0-9-]+)\/?(?:[?#].*)?$/);
   const tagged = text.match(/^TA:([A-Za-z0-9-]+)$/i);
-  const bare = /^[A-Za-z]{2,5}-\d{1,3}[A-Za-z]?$/.test(text) ? text : null;
+  const digits = text.replace(/\s/g, "");
+  const bare = SIX_DIGITS.test(digits) ? digits : /^[A-Za-z]{2,5}-\d{1,3}[A-Za-z]?$/.test(text) ? text : null;
   const code = link?.[1] ?? tagged?.[1] ?? bare;
   return code ? { kind: "code", code, raw: text } : { kind: "other", raw: text };
 }

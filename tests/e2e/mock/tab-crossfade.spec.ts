@@ -44,12 +44,12 @@ async function record(page: Page) {
   });
 }
 
-const TABS = ["/app", "/app/subjects", "/app/notifications", "/app/profile"];
+/** The tabs; every ordered pair of them is tried below, so each is tapped from each of the others. */
+const TABS = ["/app", "/app/join", "/app/profile"];
 
 for (const rate of [1, 4]) {
   test.describe(`a tab tap crossfades (CPU ${rate}x)`, () => {
-    for (const [i, to] of TABS.entries()) {
-      const from = TABS[(i + 1) % TABS.length];
+    for (const [from, to] of TABS.flatMap((a) => TABS.filter((b) => b !== a).map((b) => [a, b] as const))) {
       test(`${from} to ${to}`, async ({ page }) => {
         await record(page);
         if (rate > 1) await (await page.context().newCDPSession(page)).send("Emulation.setCPUThrottlingRate", { rate });
@@ -66,7 +66,7 @@ for (const rate of [1, 4]) {
         const all = await calls();
         expect(all.length).toBeGreaterThan(0);
         for (const c of all) {
-          // React can lose the `tab` type under load; the screens crossfade either way (Shell, TabTapContext), but never slide.
+          // React can lose the `tab` type under load; the screens crossfade either way (Shell), but never slide.
           expect(c.types.filter((t) => t !== "tab"), c.stack).toEqual([]);
           expect(c.ready, c.stack).toBe("ready");
           expect(c.finished, c.stack).toBe("finished");
@@ -74,8 +74,6 @@ for (const rate of [1, 4]) {
         const fades = await page.evaluate(() => (window as unknown as { __fades: string[] }).__fades);
         // React names the screen's group itself (_t_0_), so the group is any but the dock's.
         expect(fades.some((f) => /^::view-transition-old\((?!dock)[^)]+\) vt-fade-out$/.test(f))).toBe(true);
-        // No subject morph between the Home card and its row on Subjects.
-        expect(fades.filter((f) => /^::view-transition-group\(subject-/.test(f) && f.includes("group-anim"))).toEqual([]);
         expect(fades.some((f) => /^::view-transition-new\((?!dock)[^)]+\) vt-fade-in$/.test(f))).toBe(true);
       });
     }

@@ -1,15 +1,14 @@
 "use client";
 
-import { CameraIcon, ImageIcon, WarningIcon, XIcon } from "@phosphor-icons/react";
+import { CameraIcon, ImageIcon, KeyboardIcon, WarningIcon, XIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { FAILURE_ICON } from "@/components/app/quiz/JoinFailure";
+import { CodeForm, Joining, Miss } from "@/components/app/JoinCode";
 import { startJoin } from "@/lib/app/api/hooks";
 import { toApiError, type ApiErrorCode } from "@/lib/app/api/errors";
 import { HAPTICS, buzz } from "@/lib/app/haptics";
 import { useT } from "@/lib/app/i18n";
 import { FORWARD, leave } from "@/lib/app/nav";
-import { useJoinFailureCopy, useQT } from "@/lib/app/quiz-copy";
 import { decodeCanvas, decodeImageFile, interpretCode, type ScanResult } from "@/lib/app/scan";
 
 type Phase = "starting" | "scanning" | "denied" | "unavailable" | "error" | "stopped";
@@ -52,9 +51,14 @@ export default function Scan() {
   const [result, setResult] = useState<{ scan: ScanResult; code?: ApiErrorCode } | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
+  // A join is on its way, and the one that was last sent, so a failed connection can be tried again with the same code.
+  const [waiting, setWaiting] = useState(false);
+  const sent = useRef<{ scan: ScanResult & { kind: "code" }; typed: boolean } | null>(null);
   const lockTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Typing the code is the way in for a student with no camera, or one who prefers it.
+  const [typing, setTyping] = useState(false);
 
-  const handle = useCallback((raw: string) => {
+  const handle = useCallback((raw: string, typed = false) => {
     if (handled.current) return;
     handled.current = true;
     const scan = interpretCode(raw);
@@ -68,18 +72,30 @@ export default function Scan() {
     const miss = (code?: ApiErrorCode) =>
       beat.then(() => {
         setLocked(false);
+        setWaiting(false);
         setResult({ scan, code });
       });
     if (scan.kind === "other") return void miss();
+    sent.current = { scan, typed };
     // The API says whether the code opens a session; the quiz screen carries on from the answer.
-    startJoin(scan.code).then(
+    startJoin(scan.code, typed).then(
       () => {
         buzz(HAPTICS.send);
         return beat.then(() => router.replace(`/app/play/${scan.code}`, FORWARD));
       },
       (e) => miss(toApiError(e).code),
     );
+    setWaiting(true);
   }, [router]);
+
+  // Try the same code again, with no retyping and no new scan.
+  const retry = () => {
+    const last = sent.current;
+    if (!last) return;
+    setResult(null);
+    handled.current = false;
+    handle(last.scan.code, last.typed);
+  };
 
   useEffect(() => () => clearTimeout(lockTimer.current), []);
 
@@ -171,7 +187,7 @@ export default function Scan() {
 
   return (
     <main className="scan">
-      <div className="scan__view">
+      <div className="scan__view" role="region" aria-label={t("scan.camera")}>
         <video ref={videoRef} playsInline muted aria-hidden="true" />
         <canvas ref={canvasRef} hidden />
         <div className="scan__top">
@@ -236,6 +252,14 @@ export default function Scan() {
           <ImageIcon size={20} aria-hidden="true" />
           {t("scan.upload")}
         </button>
+        {typing ? (
+          <CodeForm className="span2" onCode={(code) => handle(code, true)} />
+        ) : (
+          <button className="btn btn--ghost span2" onClick={() => setTyping(true)}>
+            <KeyboardIcon size={20} aria-hidden="true" />
+            {t("scan.code")}
+          </button>
+        )}
       </div>
 
       {needIntro && (
@@ -267,30 +291,13 @@ export default function Scan() {
         </div>
       )}
 
-      {result && <Miss code={result.code} onAgain={() => {
+      {waiting && !result && <Joining />}
+
+      {result && <Miss code={result.code} onRetry={retry} onAgain={() => {
         setNote(null);
         setPhase("starting");
         setResult(null);
       }} />}
     </main>
-  );
-}
-
-/** A code that did not open a quiz, said where the camera was: the reason, and a way to scan again. */
-function Miss({ code, onAgain }: { code?: ApiErrorCode; onAgain: () => void }) {
-  const failure = useJoinFailureCopy()(code);
-  const { t } = useQT();
-  const Icon = FAILURE_ICON[failure.kind];
-  return (
-    <section className="scan-miss glass" role="alert">
-      <span className="scan-miss__badge" aria-hidden="true">
-        <Icon size={32} color="var(--yellow)" />
-      </span>
-      <h2 className="scan-miss__title">{failure.title}</h2>
-      <p className="scan-miss__body">{failure.body}</p>
-      <button className="btn btn--primary btn--block" autoFocus onClick={onAgain}>
-        {t("q.fail.scan")}
-      </button>
-    </section>
   );
 }

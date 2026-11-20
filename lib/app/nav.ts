@@ -34,7 +34,7 @@ export const BACK = { transitionTypes: ["nav-back"] };
  * The in-app Back. Going back is a history traversal, which React leaves unanimated on purpose (a
  * browser's own swipe back draws its animation), so the in-app button runs the transition itself:
  * the screen being left and the one restored get a shared name by hand, because React only names
- * its boundaries inside transitions it starts, and the subject card morph keeps working the same
+ * its boundaries inside transitions it starts, and the card morph keeps working the same
  * way. Without view transitions or their types the Back is instant.
  */
 export function goBack(router: { back(): void }) {

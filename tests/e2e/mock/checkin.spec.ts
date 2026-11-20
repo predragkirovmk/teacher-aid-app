@@ -1,5 +1,9 @@
-import { expect, mk, test } from "../fixtures";
+import { expect, mk, STORE_KEY, test } from "../fixtures";
 import type { Page } from "@playwright/test";
+
+/** The check-ins the demo has recorded: joining a lesson is the attendance, and the demo keeps it here. */
+const checkins = (page: Page) =>
+  page.evaluate((key) => (JSON.parse(localStorage.getItem(key) ?? "{}").checkins ?? []) as { subject: string; late?: boolean }[], STORE_KEY);
 
 test("a check-in link records attendance and opens the quiz", async ({ page }) => {
   await page.goto("/app/checkin/MATH-7B");
@@ -7,14 +11,12 @@ test("a check-in link records attendance and opens the quiz", async ({ page }) =
   // The link hands over to the quiz, whose lobby is the first thing the student sees.
   await expect(page).toHaveURL(/\/app\/play\/MATH-7B$/);
   await expect(page.getByText(mk.q("q.live"))).toBeVisible();
-  await expect(page.getByText(mk.t("subj.math"), { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(mk.t("subj.math"))).toHaveCount(0);
 
-  // Joining is the attendance: 21 of 24, up from 20 of 23.
-  await page.goto("/app");
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.attendance")) })).toContainText("88%");
-
-  await page.goto("/app/attendance");
-  await expect(page.getByText(mk.t("subj.math")).first()).toBeVisible();
+  // Joining is the attendance: one check-in for maths, and the Alerts list says so.
+  expect(await checkins(page)).toEqual([expect.objectContaining({ subject: "math" })]);
+  await page.goto("/app/notifications");
+  await expect(page.getByText(mk.t("notif.checkin.title"))).toBeVisible();
 });
 
 test("checking in twice is one attendance", async ({ page }) => {
@@ -24,15 +26,13 @@ test("checking in twice is one attendance", async ({ page }) => {
   await expect(page).toHaveURL(/\/app\/play\/math-7b$/);
   await expect(page.getByText(mk.q("q.live"))).toBeVisible();
 
-  await page.goto("/app");
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.attendance")) })).toContainText("88%");
+  expect(await checkins(page)).toHaveLength(1);
 });
 
 test("checking in earns no points", async ({ page }) => {
   await page.goto("/app/checkin/MATH-7B");
   await expect(page.getByText(mk.q("q.live"))).toBeVisible();
-  await page.goto("/app/leaderboard");
-  await expect(page.locator(".item--me")).toContainText(/1\D?310/);
+  expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "{}").quizPoints ?? 0, STORE_KEY)).toBe(0);
 });
 
 /**
@@ -42,8 +42,9 @@ test("checking in earns no points", async ({ page }) => {
 test.describe("when the join fails", () => {
   const screen = (page: Page, kind: string) => page.locator(`main[data-failure="${kind}"]`);
   const nothingRecorded = async (page: Page) => {
+    // Home is where the student lands next; the failed join left no check-in behind.
     await page.goto("/app");
-    await expect(page.getByRole("link", { name: new RegExp(mk.t("home.attendance")) })).toContainText("87%");
+    expect(await checkins(page)).toEqual([]);
   };
 
   test("an expired code says so, and offers to scan the new one", async ({ page }) => {
@@ -79,8 +80,8 @@ test.describe("when the join fails", () => {
   test("no connection says nothing was recorded, and trying again joins", async ({ page }) => {
     await page.goto("/app/checkin/OFFLINE-7B");
     const s = screen(page, "offline");
-    await expect(s.getByRole("alert")).toContainText(mk.q("q.fail.network.title"));
-    await expect(s).toContainText(mk.q("q.fail.network.body"));
+    await expect(s.getByRole("alert")).toContainText(mk.t("join.offline.title"));
+    await expect(s).toContainText(mk.t("join.offline.body"));
     await nothingRecorded(page);
 
     await page.goBack();
@@ -88,8 +89,7 @@ test.describe("when the join fails", () => {
     await s.getByRole("button", { name: mk.q("q.fail.retry") }).click();
     await expect(page.getByText(mk.q("q.live"))).toBeVisible();
     await expect(page).toHaveURL(/\/app\/play\/OFFLINE-7B$/);
-    await page.goto("/app");
-    await expect(page.getByRole("link", { name: new RegExp(mk.t("home.attendance")) })).toContainText("88%");
+    expect(await checkins(page)).toHaveLength(1);
   });
 
   test("a code nobody issued is not recognized, and offers to scan again", async ({ page }) => {
@@ -139,10 +139,7 @@ test("joining after the lobby is a late attendance with a gentle note", async ({
   await expect(page.getByRole("status").filter({ hasText: mk.q("q.late.note") })).toBeVisible();
 
   // The attendance says late, and joining earned no points.
-  await page.goto("/app/attendance");
-  await expect(page.getByText(mk.t("att.status.late"), { exact: true }).first()).toBeVisible();
-  await page.goto("/app");
-  await expect(page.getByRole("link", { name: new RegExp(mk.t("home.attendance")) })).toContainText("88%");
+  expect(await checkins(page)).toEqual([expect.objectContaining({ subject: "math", late: true })]);
 });
 
 test("NUMERIC-7B checks in and goes straight to the numeric question, with no opener first", async ({ page }) => {

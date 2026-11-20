@@ -12,8 +12,8 @@ export function testPayload(t: TFn, locale: Locale) {
     id: "n-practice-ps-session-math-1",
     kind: "practice_set_sent",
     locale,
-    title: t("notif.practice_set_sent.title", { subject: t("subj.math") }),
+    title: t("notif.practice_set_sent.title"),
     body: t("notif.practice_set_sent.body"),
-    payload: { course_id: "math", subject_id: "math", practice_set_id: "ps-session-math-1" },
+    payload: { practice_set_id: "ps-session-math-1" },
   };
 }

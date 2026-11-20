@@ -46,6 +46,8 @@ import { actions } from "./store";
  * Special codes (the class QR codes are MATH-7B, PHYS-7B, MKD-7B and ENG-7B):
  *   EXPIRED-7B  the code has expired (token_expired)    OTHER-8A   another class's code (not_enrolled)
  *   ENDED-7B    the lesson is over (session_ended)       OFFLINE-7B no connection the first time, then MATH-7B
+ *   FAIL-7B  the server fails (server_error) the first time, then MATH-7B
+ *   SLOW-7B    the first try never gets an answer (the app gives up after its limit), then MATH-7B
  *   LATE-7B     joins a lesson in progress, marked late  FLAKY-7B   the connection drops during question 1
  *   OFFLINE-ANSWER-7B  the network drops for about 15 s the moment the student sends their first answer, so
  *               "saved, will send when you're back online" turns into "sent" with no airplane mode (BR-NET-01);
@@ -692,12 +694,25 @@ const sessions = new Map<string, MockSession>();
 let runs = 0;
 /** Codes whose first try fails with no connection, once per page. */
 const triedOffline = new Set<string>();
+/** Codes whose first try fails with a server error / gets no answer at all, once per page. */
+const triedServer = new Set<string>();
+const triedSlow = new Set<string>();
+
+/** SLOW-7B: true the first time, when the call should simply never answer. */
+export function hangsOnce(code: string): boolean {
+  const c = code.trim().toLowerCase();
+  if (c !== SPECIAL.slow || triedSlow.has(c)) return false;
+  triedSlow.add(c);
+  return true;
+}
 
 const SPECIAL = {
   expired: "expired-7b",
   other: "other-8a",
   ended: "ended-7b",
   offline: "offline-7b",
+  server: "fail-7b",
+  slow: "slow-7b",
   late: "late-7b",
   flaky: "flaky-7b",
   offlineAnswer: "offline-answer-7b",
@@ -725,12 +740,19 @@ function resolve(code: string): { subject: ClassSubject; scenario: Scenario } {
     }
     return { subject: MATH, scenario: "normal" };
   }
+  if (c === SPECIAL.server && !triedServer.has(c)) {
+    triedServer.add(c);
+    throw new ApiError("server_error");
+  }
+  if (c === SPECIAL.server || c === SPECIAL.slow) return { subject: MATH, scenario: "normal" };
   if (c === SPECIAL.late) return { subject: MATH, scenario: "late" };
   if (c === SPECIAL.flaky) return { subject: MATH, scenario: "flaky" };
   if (c === SPECIAL.offlineAnswer) return { subject: MATH, scenario: "offline-answer" };
   if (c === SPECIAL.numeric) return { subject: PHYSICS, scenario: "numeric" };
   if (c === SPECIAL.ask) return { subject: MATH, scenario: "ask" };
   if (c === SPECIAL.focus) return { subject: MATH, scenario: "focus" };
+  // The demo has no teacher: any six digits, the code a teacher's screen shows, open its lesson.
+  if (/^\d{6}$/.test(c)) return { subject: MATH, scenario: "normal" };
   const subject = subjectByCode(c);
   if (!subject || !QUIZZES[subject.id]) throw new ApiError("not_found");
   return { subject, scenario: "normal" };
@@ -771,6 +793,8 @@ export function resetMockSessions() {
   sessions.forEach((s) => s.stop());
   sessions.clear();
   triedOffline.clear();
+  triedServer.clear();
+  triedSlow.clear();
   runs = 0;
 }
 
