@@ -128,7 +128,7 @@ export function ProfileEditor({ onDone }: { onDone: () => void }) {
       />
       <div className="pe-preview">
         <button type="button" className="pe-photo-btn" aria-label={photo ? t("p.photoChange") : t("p.photo")} onClick={() => fileRef.current?.click()}>
-          <Avatar key={`${!!photo}`} photo={photo} initials={shown} size={128} className="pe-pop" />
+          <Avatar key={`${!!photo}`} photo={photo} initials={shown} size={128} />
           <span className="pe-photo-badge" aria-hidden="true">
             <CameraIcon size={20} weight="fill" />
           </span>
