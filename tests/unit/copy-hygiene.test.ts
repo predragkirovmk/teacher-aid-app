@@ -42,3 +42,33 @@ describe("the app manifest", () => {
     expect(manifest.shortcuts.map((s) => s.url)).toEqual(["/app/join"]);
   });
 });
+
+describe("the student copy names no class", () => {
+  // Classes, class assignments and subjects do not exist in the product; "час" (a lesson) and "соученици" are fine.
+  const NAMES_A_CLASS = /клас|груп|\bclass(es)?\b|\bgroups?\b/iu;
+  // Every string the privacy copy shows; the `id` fields are anchors, not words.
+  const words = (v: unknown): string[] =>
+    typeof v === "string"
+      ? [v]
+      : Array.isArray(v)
+        ? v.flatMap(words)
+        : v && typeof v === "object"
+          ? Object.entries(v).flatMap(([k, x]) => (k === "id" ? [] : words(x)))
+          : [];
+
+  for (const [name, all] of [
+    ["lib/app/i18n.ts", dictionaries],
+    ["lib/app/quiz-copy.ts", quizDictionaries],
+  ] as const) {
+    it(`has no class or group word in ${name}`, () => {
+      const rows = entries(all as Record<string, Record<string, string>>);
+      expect(rows.filter((r) => NAMES_A_CLASS.test(r.value)).map((r) => `${r.locale}:${r.key}`)).toEqual([]);
+    });
+  }
+
+  it("has no class or group word in the privacy copy", async () => {
+    const mod = (await import("@/lib/app/privacy-copy")) as Record<string, unknown>;
+    const text = words(mod).filter((s) => NAMES_A_CLASS.test(s));
+    expect(text).toEqual([]);
+  });
+});

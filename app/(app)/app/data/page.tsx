@@ -89,7 +89,6 @@ function DataView({ student }: { student: Student }) {
         <Fact label={t("data.name")} value={personName(student.fullName, locale)} />
         <Fact label={t("data.display")} value={student.displayName ?? t("data.displayNone")} />
         <Fact label={t("data.photo")} value={t(student.photoUrl ? "data.yes" : "data.no")} />
-        <Fact label={t("data.class")} value={student.class.name} />
         <Fact label={t("data.school")} value={personName(student.school.name, locale)} />
       </div>
 
