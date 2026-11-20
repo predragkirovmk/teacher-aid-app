@@ -128,6 +128,5 @@ Found in the live run (a spec-faithful fake API, the app built with `NEXT_PUBLIC
 
 ## Also noted (not blockers)
 
-- The old demo's host key falls back to a default written in the code when `HOST_KEY` is empty, and the repository is public.
-  It only guards the old `/host` demo's reset and advance; set `HOST_KEY` in Vercel or retire that demo.
+- The old `/host` demo (Startup Weekend, with its default host key) was retired on 2026-11-20: its pages, its `/api` routes and the modules only they used are deleted. `HOST_KEY` and the Upstash variables are no longer read by the demo.
 - Fixed 2026-11-08: a 409 with no body was read as `validation_failed`; it is now `invalid_state`, the spec's 409.

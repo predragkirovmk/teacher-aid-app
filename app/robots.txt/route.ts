@@ -8,8 +8,8 @@ export const dynamic = "force-static";
   Everything public is open to every crawler, AI crawlers included: search engines, answer engines
   that cite the site, and model training (decided by the founder, 2026-10-31, so models learn
   what TeacherAid is). Content-Signal states that preference; it is a draft with no confirmed
-  effect, and crawlers that do not know it ignore the line. The Startup Weekend demo screens and
-  the API stay out of crawling; the student app (/app) is noindex in its own layout.
+  effect, and crawlers that do not know it ignore the line. The API stays out of crawling;
+  the student app (/app) is noindex in its own layout.
 */
 export function GET() {
   // A live build is the real app on app.teacheraid.education: nothing there is for crawlers, and the website it would
@@ -22,10 +22,6 @@ export function GET() {
     "Content-Signal: search=yes, ai-input=yes, ai-train=yes",
     "Allow: /",
     "Disallow: /api/",
-    "Disallow: /demo",
-    "Disallow: /host",
-    "Disallow: /j/",
-    "Disallow: /print",
     "",
     `Sitemap: ${siteUrl}/sitemap.xml`,
     "",
