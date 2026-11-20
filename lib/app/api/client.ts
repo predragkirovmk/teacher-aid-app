@@ -24,6 +24,7 @@ import type {
   SettingsUpdate,
   Student,
   StudentSessionState,
+  TeacherDocument,
   SignInRedirect,
   StudentSignIn,
   TopicProgress,
@@ -80,6 +81,12 @@ export interface ApiClient {
   getLeaderboard(scope?: LeaderboardScope): Promise<Leaderboard>;
   /** GET /me/badges. */
   listBadges(): Promise<Badge[]>;
+
+  // Teacher documents
+  /** GET /me/documents (PROPOSED, OPEN-18): the handouts teachers sent to the student's classes, newest first. Until the API has it, it answers 404 or 501. */
+  listDocuments(): Promise<TeacherDocument[]>;
+  /** POST /me/documents/{id}/opened (PROPOSED, OPEN-18): 204, also when it was already opened. */
+  markDocumentOpened(id: Id): Promise<void>;
 
   // Notifications
   /** GET /me/notifications, newest first, a page at a time (PROPOSED: `?limit=&before=`). */

@@ -32,3 +32,11 @@ export function formatTime(ms: number) {
   const d = new Date(ms);
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
+
+/** A file's size as a person reads it: "12 B", "240 KB", "1,5 MB" (a comma in Macedonian). Units of 1024, a megabyte to one decimal. */
+export function formatSize(bytes: number, locale: Locale) {
+  if (bytes < 1024) return `${Math.max(0, Math.floor(bytes))} B`;
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  const mb = (Math.round((bytes / (1024 * 1024)) * 10) / 10).toString();
+  return `${locale === "mk" ? mb.replace(".", ",") : mb} MB`;
+}

@@ -176,6 +176,24 @@ export type Leaderboard = {
   rows: LeaderboardRow[];
 };
 
+/** The kind of file a teacher sent, as the API names it (`type` of GET /me/documents, spec 11.3); anything else reads as `other`. */
+export const DOCUMENT_TYPES = ["pdf", "doc", "sheet", "slides", "image", "other"] as const;
+export type DocumentType = (typeof DOCUMENT_TYPES)[number];
+
+/** GET /me/documents (PROPOSED, OPEN-18): a handout a teacher sent. No subject or course: the app shows none. */
+export type TeacherDocument = {
+  id: Id;
+  title: string;
+  teacherName: string;
+  sentAt: number;
+  type: DocumentType;
+  sizeBytes: number;
+  /** A signed download address that expires a few minutes after the answer: never stored, asked for again when old. */
+  url: string;
+  /** Whether this student has opened it. */
+  opened: boolean;
+};
+
 export type Badge = {
   /** The badge's code; the app has copy for the ones it knows and shows `title` for the rest. */
   code: string;

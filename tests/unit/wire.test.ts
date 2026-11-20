@@ -358,3 +358,21 @@ describe("domain to wire (request bodies)", () => {
     expect(wire.signInBody({ provider: "microsoft" })).toEqual({ provider: "microsoft" });
   });
 });
+
+describe("teacher documents (PROPOSED GET /me/documents)", () => {
+  const w = { id: "d1", title: "Worksheet", teacher: { name: "Ana" }, sent_at: AT, type: "pdf", size_bytes: 245_760, url: "https://files.example/d1?sig=x", opened: false };
+
+  it("maps the spec's fields to the app's, and keeps no subject or course", () => {
+    const d = wire.document({ ...w, course: { id: "c1" }, subject: { id: "math" } } as wire.WireDocument);
+    expect(d).toEqual({ id: "d1", title: "Worksheet", teacherName: "Ana", sentAt: AT_MS, type: "pdf", sizeBytes: 245_760, url: w.url, opened: false });
+  });
+
+  it("reads a file kind it does not know as other, and every kind the spec names as itself", () => {
+    for (const t of ["pdf", "doc", "sheet", "slides", "image", "other"]) expect(wire.document({ ...w, type: t }).type).toBe(t);
+    expect(wire.document({ ...w, type: "video" }).type).toBe("other");
+  });
+
+  it("treats a malformed sent_at as an invalid response", () => {
+    expect(() => wire.document({ ...w, sent_at: "soon" })).toThrow(ApiError);
+  });
+});

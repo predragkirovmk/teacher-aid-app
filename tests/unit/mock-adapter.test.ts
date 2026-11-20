@@ -409,3 +409,20 @@ describe("a client over a custom source", () => {
     await expect(elsewhere.getMe()).rejects.toMatchObject({ code: "signed_in_elsewhere" });
   });
 });
+
+describe("teacher documents", () => {
+  it("lists the four newest first with the spec's fields, none opened, and no subject", async () => {
+    const docs = await mockClient.listDocuments();
+    expect(docs.map((d) => d.id)).toEqual(["d1", "d2", "d3", "d4"]);
+    expect(docs.map((d) => d.sentAt)).toEqual([...docs.map((d) => d.sentAt)].sort((a, b) => b - a));
+    expect(docs.every((d) => !d.opened && d.url && d.sizeBytes > 0 && d.teacherName && d.title)).toBe(true);
+    expect(Object.keys(docs[0]).sort()).toEqual(["id", "opened", "sentAt", "sizeBytes", "teacherName", "title", "type", "url"]);
+  });
+
+  it("marks one opened, keeps it so, and refuses an id that is not the student's", async () => {
+    await mockClient.markDocumentOpened("d2");
+    await mockClient.markDocumentOpened("d2");
+    expect((await mockClient.listDocuments()).filter((d) => d.opened).map((d) => d.id)).toEqual(["d2"]);
+    await expect(mockClient.markDocumentOpened("nope")).rejects.toMatchObject({ code: "not_found" });
+  });
+});

@@ -5,7 +5,7 @@ import { keepOnClear } from "../../keep-keys";
 import { resetFocusNotice } from "../../session/focus-notice";
 import { DEFAULT_PROFILE, isPhoto, type Profile } from "./avatars";
 import { CLOCKS, demoTime, type ClockId } from "../../demo/schedule";
-import { SUBJECTS, type SubjectId } from "./data";
+import { DOCS, SUBJECTS, type SubjectId } from "./data";
 
 /** `late`: the student joined after the lobby (attendance `late`, OPEN-05). */
 export type Checkin = { id: string; subject: SubjectId; at: number; late?: boolean };
@@ -38,6 +38,9 @@ export type AppState = {
   endedElsewhere: boolean;
   notificationsOn: boolean;
   read: string[];
+  /** The demo handouts the teachers have sent (all four to start), and the ones the student has opened. */
+  docs: string[];
+  docsOpened: string[];
   checkins: Checkin[];
   /** The display name and photo the student chose; null name means the school account's. */
   profile: Profile;
@@ -74,6 +77,8 @@ const DEFAULT: AppState = {
   endedElsewhere: false,
   notificationsOn: true,
   read: [],
+  docs: [...DOCS],
+  docsOpened: [],
   checkins: [],
   profile: DEFAULT_PROFILE,
   quizPoints: 0,
@@ -142,6 +147,8 @@ function sanitize(saved: unknown): AppState {
     endedElsewhere: s.endedElsewhere === true && s.signedIn === false,
     notificationsOn: typeof s.notificationsOn === "boolean" ? s.notificationsOn : DEFAULT.notificationsOn,
     read: Array.isArray(s.read) ? s.read.filter((id): id is string => typeof id === "string") : DEFAULT.read,
+    docs: Array.isArray(s.docs) ? DOCS.filter((id) => (s.docs as unknown[]).includes(id)) : DEFAULT.docs,
+    docsOpened: Array.isArray(s.docsOpened) ? DOCS.filter((id) => (s.docsOpened as unknown[]).includes(id)) : DEFAULT.docsOpened,
     checkins: Array.isArray(s.checkins) ? s.checkins.filter(isCheckin) : DEFAULT.checkins,
     profile: sanitizeProfile(s.profile),
     quizPoints:
@@ -265,6 +272,10 @@ export const actions = {
   markRead: (id: string) => {
     load();
     if (!state.read.includes(id)) set({ read: [...state.read, id] });
+  },
+  markDocOpened: (id: string) => {
+    load();
+    if (!state.docsOpened.includes(id)) set({ docsOpened: [...state.docsOpened, id] });
   },
   markAllRead: (ids: string[]) => {
     load();

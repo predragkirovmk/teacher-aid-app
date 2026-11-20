@@ -199,6 +199,9 @@ export function seed<T>(key: string, data: T) {
   (slots.get(key) as Slot<T> | undefined)?.put(data);
 }
 
+/** The answer a slot holds now, if it has one. */
+export const peek = <T>(key: string) => (slots.get(key) as Slot<T> | undefined)?.entry.data;
+
 /**
  * Change the answer a slot holds, when it holds one: for showing a change at once, before the server has confirmed it.
  * Returns what the slot held, to put back if the server refuses.
