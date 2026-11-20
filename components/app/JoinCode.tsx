@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, type FormEvent } from "react";
+import { useId, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { HourglassIcon } from "@phosphor-icons/react";
 import { FAILURE_ICON, RETRYABLE, useProblemBuzz } from "@/components/app/quiz/JoinFailure";
 import type { ApiErrorCode } from "@/lib/app/api/errors";
@@ -15,6 +15,13 @@ import { interpretCode } from "@/lib/app/scan";
  * what was typed and calls `onCode` with the code as it is sent: in capitals, with no spaces. Nothing that is not shaped
  * like a class code reaches the API; the message says so in place, tied to the field.
  */
+/** Digits typed on their own are shown grouped as the teacher's screen shows them ("221 121"); a demo code with letters is left as typed. */
+export function groupDigits(value: string): string {
+  if (!/^[\d\s]*$/.test(value)) return value;
+  const d = value.replace(/\s/g, "").slice(0, 6);
+  return d.length > 3 ? `${d.slice(0, 3)} ${d.slice(3)}` : d;
+}
+
 export function CodeForm({ onCode, className }: { onCode: (code: string) => void; className?: string }) {
   const { t } = useT();
   const [typed, setTyped] = useState("");
@@ -23,6 +30,12 @@ export function CodeForm({ onCode, className }: { onCode: (code: string) => void
   const errorId = `${id}-err`;
   const hintId = `${id}-hint`;
   const field = useRef<HTMLInputElement>(null);
+  const caret = useRef<number | null>(null);
+  // Regrouping makes React put the caret at the end; this runs before paint and puts it back, before the next key.
+  useLayoutEffect(() => {
+    if (caret.current !== null) field.current?.setSelectionRange(caret.current, caret.current);
+    caret.current = null;
+  }, [typed]);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -65,7 +78,16 @@ export function CodeForm({ onCode, className }: { onCode: (code: string) => void
           aria-invalid={problem !== null}
           aria-describedby={problem ? `${hintId} ${errorId}` : hintId}
           onChange={(e) => {
-            setTyped(e.target.value);
+            const input = e.target;
+            const raw = input.value;
+            const next = groupDigits(raw);
+            setTyped(next);
+            // Keep the caret after the same digit it was after, whatever spaces were added or removed.
+            if (next !== raw) {
+              const before = raw.slice(0, input.selectionStart ?? raw.length).replace(/\s/g, "").length;
+              const at = before > 3 ? before + 1 : before;
+              caret.current = Math.min(at, next.length);
+            }
             setProblem(null);
           }}
         />

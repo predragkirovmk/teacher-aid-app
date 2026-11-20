@@ -170,3 +170,21 @@ test("axe finds nothing serious on the join screen, with the code field closed a
   const closed = await new AxeBuilder({ page }).analyze();
   for (const r of [open, closed]) expect(r.violations.filter((v) => v.impact === "serious" || v.impact === "critical")).toEqual([]);
 });
+
+test("the code field groups six digits as the teacher's screen does, and keeps the caret", async ({ page }) => {
+  await start(page, {});
+  await page.goto("/app/join");
+  await page.getByRole("button", { name: mk.t("scan.code") }).click();
+  const field = page.getByRole("textbox", { name: mk.t("scan.codeLabel") });
+  await field.pressSequentially("4829");
+  await expect(field).toHaveValue("482 9");
+  await field.press("ArrowLeft", { delay: 0 });
+  await field.press("ArrowLeft");
+  await field.press("ArrowLeft");
+  await field.pressSequentially("7");
+  await expect(field).toHaveValue("487 29");
+  await field.pressSequentially("1");
+  await expect(field).toHaveValue("487 129");
+  await field.fill("MATH-7B");
+  await expect(field).toHaveValue("MATH-7B");
+});
