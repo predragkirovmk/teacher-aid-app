@@ -246,9 +246,10 @@ const started = new Map<string, Promise<JoinResult>>();
 const joinNow = (code: string, typed = false): Promise<JoinResult> => {
   // No signal at all: say so at once, with no request and no wait.
   if (typeof navigator !== "undefined" && navigator.onLine === false) return Promise.reject(new ApiError("network"));
-  // What a student typed is the short code; what a QR carried is the token. The API tells them apart by the field.
+  // What a student typed is the short code; what a QR carried is the token. A bare six-digit value is always a short code,
+  // wherever it came from (a scan of the teacher's printed digits, a typed code, a reload). The API tells them apart by the field.
   // A call with no answer within the limit is a slow connection: the request is left to finish (or not) and the student may retry.
-  const call = client.joinSession(typed ? { shortCode: code } : { token: code });
+  const call = client.joinSession(typed || SIX_DIGITS.test(code) ? { shortCode: code } : { token: code });
   const settled = (call as Partial<SettledPromise<JoinResult>>).settled;
   const p = settled
     ? call
@@ -296,7 +297,7 @@ export function useJoinSession(code: string, enabled: boolean): JoinState & { re
     const handed = attempt === 0 ? started.get(code) : undefined;
     started.delete(code);
     // Six digits are the short code a student typed; a QR carries a token. A reload of /app/play/<six digits> must ask the same way.
-    const p = handed ?? joinNow(code, SIX_DIGITS.test(code));
+    const p = handed ?? joinNow(code);
     const apply = (s: JoinState) => current && setState(s);
     const fail = (e: unknown) => {
       const error = toApiError(e);
