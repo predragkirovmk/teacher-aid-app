@@ -37,6 +37,8 @@ test.describe("no internet", () => {
     await go(page);
     await expect(sheet(page)).toContainText(mk.t("join.offline.title"));
     await expect(sheet(page)).toContainText(mk.t("join.offline.body"));
+    // One message, not two: the floating pill stays out of the way while the sheet says it.
+    await expect(page.locator('.net-pill[data-net="offline"]')).toBeHidden();
     await expect(field).toHaveValue("482 913");
     await clean(page);
 

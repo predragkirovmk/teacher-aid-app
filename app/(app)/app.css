@@ -2311,6 +2311,10 @@ html[data-rise-seen] .rise {
     transform: translateX(-50%) translateY(-8px);
   }
 }
+/* The join screens say "no internet" in full themselves; the pill saying it again, over the title, is one message twice. */
+body:has([data-failure="offline"]) .net-pill[data-net="offline"] {
+  display: none;
+}
 .net-pill svg {
   flex: none;
 }
