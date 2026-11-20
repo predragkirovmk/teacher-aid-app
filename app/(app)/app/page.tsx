@@ -11,8 +11,8 @@ import { ResultRow } from "@/components/app/Results";
 import { QueryState } from "@/components/app/QueryState";
 import { useUI } from "@/components/app/ui";
 import { demoOnly } from "@/lib/app/api";
-import { useMe, useNotifications, useResults } from "@/lib/app/api/hooks";
-import { DEMO_DOCS, useDemoClock, useNow } from "@/lib/app/demo";
+import { useDocuments, useMe, useNotifications, useResults } from "@/lib/app/api/hooks";
+import { useDemoClock, useNow } from "@/lib/app/demo";
 import { formatLongDate, formatTime } from "@/lib/app/format";
 import { useT } from "@/lib/app/i18n";
 import { useSelf } from "@/lib/app/profile";
@@ -111,11 +111,11 @@ export default function Home() {
   );
 }
 
-/** The three sections of Home: practice, the last quizzes, and the teachers' documents (demo only). */
+/** The three sections of Home: practice, the last quizzes, and the teachers' documents. */
 function Cards() {
   const { t } = useT();
-  const { toast } = useUI();
   const results = useResults();
+  const documents = useDocuments();
   const notifications = useNotifications();
   // The alert that announced a result stays unread until its summary has been opened.
   const fresh = new Set(
@@ -123,8 +123,9 @@ function Cards() {
   );
   const recent = (results.data ?? []).slice(0, RECENT);
   // The two "all" links do not prefetch: they are the less taken way, and a prefetch would add their screens to Home's first load.
-  // Documents are not in the API yet (OPEN-18), so live mode hides the section rather than show made-up files.
-  const docs = demoOnly ? DEMO_DOCS : [];
+  // `null`: the API has no documents yet (404 or 501), so the section is left out. Still loading shows nothing, as the quizzes do.
+  const docs = documents.data ?? [];
+  const showDocs = documents.data !== null && (documents.data !== undefined || documents.status === "error");
   let i = 0;
   return (
     <>
@@ -158,7 +159,7 @@ function Cards() {
         )}
       </section>
 
-      {docs.length > 0 && (
+      {showDocs && (
         <section className="home-sec" aria-labelledby="home-docs">
           <h2 id="home-docs" className="section-h rise" style={{ "--i": i++ } as CSSProperties}>
             {t("docs.title")}
@@ -166,13 +167,21 @@ function Cards() {
           <p className="t-cap home-sub rise" style={{ "--i": i++ } as CSSProperties}>
             {t("docs.sub")}
           </p>
-          <ul className="list">
-            {docs.slice(0, RECENT).map((d) => (
-              <li key={d} {...rise(i++)}>
-                <DocRow id={d} onOpen={() => toast(t("doc.demo"))} />
-              </li>
-            ))}
-          </ul>
+          {documents.status === "error" && <QueryState query={documents} />}
+          {documents.data && docs.length === 0 && (
+            <p className="t-cap home-empty rise" style={{ "--i": i++ } as CSSProperties}>
+              {t("docs.none")}
+            </p>
+          )}
+          {docs.length > 0 && (
+            <ul className="list">
+              {docs.slice(0, RECENT).map((d) => (
+                <li key={d.id} {...rise(i++)}>
+                  <DocRow doc={d} />
+                </li>
+              ))}
+            </ul>
+          )}
           {docs.length > RECENT && (
             <Link href="/app/documents" prefetch={false} className="more press rise" style={{ "--i": i++ } as CSSProperties} transitionTypes={["nav-forward"]}>
               {t("docs.all")}

@@ -1,24 +1,36 @@
 "use client";
 
-import { DownloadSimpleIcon, FileIcon } from "@phosphor-icons/react";
-import { DEMO_DOCS } from "@/lib/app/demo";
+import { DownloadSimpleIcon } from "@phosphor-icons/react";
+import type { TeacherDocument } from "@/lib/app/api/types";
+import { openDocument } from "@/lib/app/documents";
+import { formatDate, formatSize } from "@/lib/app/format";
 import { useT } from "@/lib/app/i18n";
 
-/** One teacher handout: an icon, its title and its type. Shared by Home and the documents screen. */
-export function DocRow({ id, onOpen }: { id: (typeof DEMO_DOCS)[number]; onOpen: () => void }) {
-  const { t } = useT();
+/**
+ * One teacher handout (no file icon, so the caption has the room): the title, then one line with the teacher (which gives way first), the date, the kind and the size, and the
+ * "New" mark of the quiz rows until it is opened. A link to the signed address in a new tab: opening is a navigation, which needs
+ * no `connect-src`, and there is no `download` attribute because a cross-origin address ignores it. Shared by Home and the documents screen.
+ */
+export function DocRow({ doc }: { doc: TeacherDocument }) {
+  const { t, locale } = useT();
   return (
-    <button className="item" onClick={onOpen}>
-      <span className="item__icon">
-        <FileIcon size={22} aria-hidden="true" />
-      </span>
+    <a className="item item--doc" href={doc.url} target="_blank" rel="noopener" onClick={(e) => openDocument(e, doc)}>
       <span className="grow">
         <span className="item__title" style={{ display: "block" }}>
-          {t(`doc.${id}`)}
+          {doc.title}
         </span>
-        <span className="t-cap">{t("doc.pdf")}</span>
+        <span className="t-cap res-cap">
+          {!doc.opened && (
+            <>
+              <b className="tile__new res-cap__fixed">{t("home.new")}</b>
+              <span className="res-cap__fixed">{" · "}</span>
+            </>
+          )}
+          <span className="doc-cap__teacher">{doc.teacherName}</span>
+          <span className="res-cap__fixed">{` · ${formatDate(doc.sentAt, locale)} · ${t(`doc.type.${doc.type}`)} · ${formatSize(doc.sizeBytes, locale)}`}</span>
+        </span>
       </span>
       <DownloadSimpleIcon size={22} aria-hidden="true" />
-    </button>
+    </a>
   );
 }
