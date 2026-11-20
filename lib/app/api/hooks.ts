@@ -9,7 +9,7 @@ import { forgetSession, recallJoin, recallSession, rememberSession } from "../se
 import { client, demoOnly } from "./index";
 import type { SettledPromise } from "./client";
 import { ApiError, toApiError } from "./errors";
-import { JOIN_LIMIT_MS } from "../join";
+import { JOIN_LIMIT_MS, SIX_DIGITS } from "../join";
 import { endSession, onSessionEnd, useSessionEnd, type SessionEnd } from "./session";
 import { amend, change, invalidate, mapQuery, resetQueries, seed, useQuery, type Query } from "./query";
 import type {
@@ -295,7 +295,8 @@ export function useJoinSession(code: string, enabled: boolean): JoinState & { re
     let current = true;
     const handed = attempt === 0 ? started.get(code) : undefined;
     started.delete(code);
-    const p = handed ?? joinNow(code);
+    // Six digits are the short code a student typed; a QR carries a token. A reload of /app/play/<six digits> must ask the same way.
+    const p = handed ?? joinNow(code, SIX_DIGITS.test(code));
     const apply = (s: JoinState) => current && setState(s);
     const fail = (e: unknown) => {
       const error = toApiError(e);

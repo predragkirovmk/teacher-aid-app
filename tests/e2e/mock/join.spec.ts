@@ -93,6 +93,26 @@ test("a typed class code joins the quiz", async ({ page }) => {
   await expect(page.getByText(mk.q("q.live"))).toBeVisible();
 });
 
+test("the six-digit code a teacher shows joins, typed with its space, and a reload stays in the lesson", async ({ page }) => {
+  const field = await openCode(page);
+  await expect(page.getByText(mk.t("scan.codeHint"))).toHaveText("Шест бројки, на пример 482 913");
+  await field.fill("482 913");
+  await field.press("Enter");
+  await expect(page).toHaveURL(/\/app\/play\/482913$/);
+  await expect(page.getByText(mk.q("q.live"))).toBeVisible();
+  await page.reload();
+  await expect(page).toHaveURL(/\/app\/play\/482913$/);
+  await expect(page.getByText(mk.q("q.live"))).toBeVisible();
+});
+
+test("five digits say the code has six", async ({ page }) => {
+  const field = await openCode(page);
+  await field.fill("48291");
+  await field.press("Enter");
+  await expect(page.locator(".scan-code__err")).toHaveText(mk.t("scan.codeBad"));
+  await expect(page.locator(".scan-code__err")).toContainText("шест бројки");
+});
+
 test("a typed TA: tag joins the code in it, not the tag", async ({ page }) => {
   const field = await openCode(page);
   await field.fill("ta:math-7b");

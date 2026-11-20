@@ -751,6 +751,8 @@ function resolve(code: string): { subject: ClassSubject; scenario: Scenario } {
   if (c === SPECIAL.numeric) return { subject: PHYSICS, scenario: "numeric" };
   if (c === SPECIAL.ask) return { subject: MATH, scenario: "ask" };
   if (c === SPECIAL.focus) return { subject: MATH, scenario: "focus" };
+  // The demo has no teacher: any six digits, the code a teacher's screen shows, open its lesson.
+  if (/^\d{6}$/.test(c)) return { subject: MATH, scenario: "normal" };
   const subject = subjectByCode(c);
   if (!subject || !QUIZZES[subject.id]) throw new ApiError("not_found");
   return { subject, scenario: "normal" };

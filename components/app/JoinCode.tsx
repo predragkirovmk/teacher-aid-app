@@ -52,6 +52,7 @@ export function CodeForm({ onCode, className }: { onCode: (code: string) => void
           ref={field}
           className="scan-code__input"
           type="text"
+          // Text, not numeric: the code is six digits, but the demo's class codes (MATH-7B) have letters and a digit pad cannot type them.
           inputMode="text"
           autoCapitalize="characters"
           autoComplete="off"

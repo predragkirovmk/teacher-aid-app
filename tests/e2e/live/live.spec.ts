@@ -283,6 +283,25 @@ test.describe("signing in", () => {
     expect(calls.filter((c) => c === "POST /sessions/join")).toHaveLength(1);
   });
 
+  test("the six-digit code a teacher shows joins with short_code, and a reload after it rotated reads the lesson back", async ({ page, request }) => {
+    await page.addInitScript(() => localStorage.setItem("teacheraid-camera-intro", "1"));
+    await page.goto("/app/scan");
+    await page.getByRole("button", { name: mk.t("scan.code") }).click();
+    await page.getByRole("textbox", { name: mk.t("scan.codeLabel") }).fill("482 913");
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/app\/play\/482913$/);
+    await expect(page.getByText(mk.q("q.waitTeacher"))).toBeVisible();
+    expect((await serverState(request)).bodies["POST /sessions/join"]).toEqual({ short_code: "482913" });
+
+    // The short code has rotated; the API calls it expired and the student, already in, is read back in.
+    expect((await request.post(`${API}/__control/expire-token`)).ok()).toBe(true);
+    await page.reload();
+    await expect(page.getByText(mk.q("q.waitTeacher"))).toBeVisible();
+    await expect(page.locator("main[data-failure]")).toHaveCount(0);
+    // The reload asked with the short code too, not as a token.
+    expect((await serverState(request)).bodies["POST /sessions/join"]).toEqual({ short_code: "482913" });
+  });
+
   test("signing in on another device ends this session: any call that hears of it shows the full screen", async ({ page, request }) => {
     await page.goto("/app");
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Live");

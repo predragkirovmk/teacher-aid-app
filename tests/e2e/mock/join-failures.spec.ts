@@ -32,17 +32,17 @@ test.describe("no internet", () => {
   test.use({ allowConsoleErrors: [/net::ERR/, /ERR_INTERNET_DISCONNECTED/] });
 
   test("says so at once, keeps the code, and retrying the same code joins when the signal is back", async ({ page, context }) => {
-    const field = await typeCode(page, "MATH-7B");
+    const field = await typeCode(page, "482 913");
     await context.setOffline(true);
     await go(page);
     await expect(sheet(page)).toContainText(mk.t("join.offline.title"));
     await expect(sheet(page)).toContainText(mk.t("join.offline.body"));
-    await expect(field).toHaveValue("MATH-7B");
+    await expect(field).toHaveValue("482 913");
     await clean(page);
 
     await context.setOffline(false);
     await retry(page).click();
-    await expect(page).toHaveURL(/\/app\/play\/MATH-7B$/);
+    await expect(page).toHaveURL(/\/app\/play\/482913$/);
   });
 
   test("a failed try gives the problem buzz once", async ({ page, context }) => {

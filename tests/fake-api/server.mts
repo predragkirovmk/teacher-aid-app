@@ -479,7 +479,9 @@ function snapshot() {
 }
 
 /** POST /sessions/join, with the codes the tests use. */
-function join(res: ServerResponse, code: string) {
+function join(res: ServerResponse, typed: string) {
+  // The six-digit short code a teacher shows opens the same lesson as LIVE-7B.
+  const code = typed === "482913" ? "LIVE-7B" : typed;
   const sess = state.session;
   if (code === "EXPIRED-7B" || (code === "LIVE-7B" && state.tokenExpired)) return fail(res, 410, "token_expired");
   if (code === "OTHER-8A") return fail(res, 403, "not_enrolled");

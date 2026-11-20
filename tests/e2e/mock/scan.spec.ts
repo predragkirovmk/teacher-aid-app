@@ -27,6 +27,14 @@ test("a typed class code joins the quiz", async ({ page }) => {
   await expect(page.getByText(mk.q("q.live"))).toBeVisible();
 });
 
+test("the six-digit code joins from the scanner too, typed as the teacher shows it", async ({ page }) => {
+  const field = await openCode(page);
+  await field.fill("482 913");
+  await page.getByRole("button", { name: mk.t("scan.codeGo") }).click();
+  await expect(page).toHaveURL(/\/app\/play\/482913$/);
+  await expect(page.getByText(mk.q("q.live"))).toBeVisible();
+});
+
 test("a code nobody issued shows the Miss sheet", async ({ page }) => {
   const field = await openCode(page);
   await field.fill("NOPE-9");

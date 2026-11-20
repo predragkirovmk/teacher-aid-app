@@ -9,6 +9,9 @@ import { useEffect, useState } from "react";
  */
 export const JOIN_LIMIT_MS = 12_000;
 
+/** The short code a teacher's screen shows and a student types; the API takes it in `short_code`, not `token`. Kept here, not in scan.ts, so the API hooks need not pull in the QR decoder. */
+export const SIX_DIGITS = /^\d{6}$/;
+
 /** After this long a waiting student is told, quietly, that it is taking a while. */
 export const JOIN_SLOW_HINT_MS = 4_000;
 
