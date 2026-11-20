@@ -46,7 +46,7 @@ export function JoiningScreen() {
           </button>
         </header>
         <div className="q-body q-body--center" role="status">
-          <span className="q-badge">
+          <span className="q-badge q-badge--no">
             <HourglassIcon size={52} color="var(--yellow)" aria-hidden="true" />
           </span>
           <h1 className="q-hero q-hero--fail">{t("join.waiting")}</h1>

@@ -783,7 +783,13 @@ button.item:active {
   padding: calc(env(safe-area-inset-top) + 16px) 20px 0;
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr) 48px;
+  column-gap: 12px;
   align-items: center;
+}
+.scan__top .top__title {
+  text-align: center;
+  font-size: 1.125rem; /* 18: one line between the two 48px buttons at 360 */
+  line-height: 1.15;
 }
 .frame {
   position: absolute;
@@ -1300,6 +1306,11 @@ button.pill {
     opacity: 0;
     transform: translateY(-8px);
   }
+}
+/* With the tab bar showing, the toast sits above it, so it covers no screen title. */
+.toast--dock {
+  top: auto;
+  bottom: calc(env(safe-area-inset-bottom) + var(--tab-h) + 20px);
 }
 /* A tap dismisses the toast, so it answers a press like any control. It is not on the press list because
    its own transition (opacity and transform, for the exit) would be replaced by the list's; it lists scale
@@ -2340,6 +2351,15 @@ body:has([data-failure="offline"]) .net-pill[data-net="offline"] {
   transform: translateY(-8px);
   transition-duration: 200ms;
   transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+/* Above the tab bar the toast rises from below, and leaves the same way. */
+.toast--dock {
+  @starting-style {
+    transform: translateY(8px);
+  }
+}
+.toast--dock.toast--out {
+  transform: translateY(8px);
 }
 
 /* FAQ: answers open and close smoothly where the browser supports animating a details element. */

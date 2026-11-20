@@ -255,7 +255,7 @@ export function Shell({ children }: { children: ReactNode }) {
           {/* Not behind the privacy notice: nothing of the student's is read before it has been answered. */}
           {status === "signedIn" && view === "screen" && <AlertAnnouncer />}
           {toastMsg && (
-            <div className={`toast glass${toastOut ? " toast--out" : ""}`} aria-hidden="true" onClick={dismissToast}>
+            <div className={`toast glass${showTabs ? " toast--dock" : ""}${toastOut ? " toast--out" : ""}`} aria-hidden="true" onClick={dismissToast}>
               {toastMsg}
             </div>
           )}

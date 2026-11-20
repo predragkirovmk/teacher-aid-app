@@ -3,7 +3,10 @@ import type { Page } from "@playwright/test";
 import { expect, mk, start, test } from "../fixtures";
 
 /** The camera intro is answered, so the scanner shows its camera area (a headless browser has none) and its tools. */
-const seen = (page: Page) => page.addInitScript(() => localStorage.setItem("teacheraid-camera-intro", "1"));
+const seen = (page: Page) =>
+  page.addInitScript(() =>
+    localStorage.setItem("teacheraid-camera-intro", "1"),
+  );
 
 async function openCode(page: Page) {
   await start(page, {});
@@ -12,6 +15,25 @@ async function openCode(page: Page) {
   await page.getByRole("button", { name: mk.t("scan.code") }).click();
   return page.getByRole("textbox", { name: mk.t("scan.codeLabel") });
 }
+
+for (const width of [390, 360])
+  test(`the scanner's title keeps a gap from the close button and does not wrap at ${width}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await openCode(page);
+    const close = (await page.locator(".scan__top .round").boundingBox())!;
+    const title = page.locator(".scan__top .top__title");
+    const box = (await title.boundingBox())!;
+    expect(box.x - (close.x + close.width)).toBeGreaterThanOrEqual(12);
+    const lines = await title.evaluate((el) =>
+      Math.round(
+        el.getBoundingClientRect().height /
+          parseFloat(getComputedStyle(el).lineHeight),
+      ),
+    );
+    expect(lines).toBe(1);
+  });
 
 test("a typed class code joins the quiz", async ({ page }) => {
   const field = await openCode(page);
@@ -27,7 +49,9 @@ test("a typed class code joins the quiz", async ({ page }) => {
   await expect(page.getByText(mk.q("q.live"))).toBeVisible();
 });
 
-test("the six-digit code joins from the scanner too, typed as the teacher shows it", async ({ page }) => {
+test("the six-digit code joins from the scanner too, typed as the teacher shows it", async ({
+  page,
+}) => {
   const field = await openCode(page);
   await field.fill("482 913");
   await page.getByRole("button", { name: mk.t("scan.codeGo") }).click();
@@ -39,17 +63,23 @@ test("a code nobody issued shows the Miss sheet", async ({ page }) => {
   const field = await openCode(page);
   await field.fill("NOPE-9");
   await field.press("Enter");
-  await expect(page.locator(".scan-miss")).toContainText(mk.q("q.fail.unknown.title"));
+  await expect(page.locator(".scan-miss")).toContainText(
+    mk.q("q.fail.unknown.title"),
+  );
   await expect(page).toHaveURL(/\/app\/scan$/);
 });
 
-test("an empty or malformed code says so in place, tied to the field", async ({ page }) => {
+test("an empty or malformed code says so in place, tied to the field", async ({
+  page,
+}) => {
   const field = await openCode(page);
   await field.press("Enter");
   const note = page.locator(".scan-code__err");
   await expect(note).toHaveText(mk.t("scan.codeEmpty"));
   // The hint line stays in the field's description, and the note joins it.
-  const describedBy = (await field.getAttribute("aria-describedby"))!.split(" ");
+  const describedBy = (await field.getAttribute("aria-describedby"))!.split(
+    " ",
+  );
   expect(describedBy).toContain((await note.getAttribute("id"))!);
   expect(describedBy).toHaveLength(2);
   await field.fill("hello there");
@@ -63,11 +93,15 @@ test("an empty or malformed code says so in place, tied to the field", async ({ 
   await expect(note).toHaveCount(0);
 });
 
-test("with no camera the scanner still offers Enter the code, and it works with the keyboard alone", async ({ page }) => {
+test("with no camera the scanner still offers Enter the code, and it works with the keyboard alone", async ({
+  page,
+}) => {
   await start(page, {});
   await seen(page);
   await page.goto("/app/scan");
-  await expect(page.getByRole("region", { name: mk.t("scan.camera") })).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: mk.t("scan.camera") }),
+  ).toBeVisible();
   // A headless browser has no camera: the scanner says so.
   await expect(page.locator(".scan__msg--block")).toBeVisible();
   const enter = page.getByRole("button", { name: mk.t("scan.code") });
@@ -80,12 +114,19 @@ test("with no camera the scanner still offers Enter the code, and it works with 
 });
 
 test.describe("accessibility", () => {
-  test("axe finds nothing serious on the scanner, with and without the code field", async ({ page }) => {
+  test("axe finds nothing serious on the scanner, with and without the code field", async ({
+    page,
+  }) => {
     const field = await openCode(page);
     await field.press("Enter");
     const open = await new AxeBuilder({ page }).analyze();
     await page.goto("/app/scan");
     const closed = await new AxeBuilder({ page }).analyze();
-    for (const r of [open, closed]) expect(r.violations.filter((v) => v.impact === "serious" || v.impact === "critical")).toEqual([]);
+    for (const r of [open, closed])
+      expect(
+        r.violations.filter(
+          (v) => v.impact === "serious" || v.impact === "critical",
+        ),
+      ).toEqual([]);
   });
 });

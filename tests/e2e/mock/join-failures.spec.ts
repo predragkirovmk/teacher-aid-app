@@ -133,6 +133,10 @@ test.describe("a link or QR that opens the lesson directly", () => {
     await page.goto("/app/checkin/SLOW-7B");
     await page.clock.runFor(500);
     await expect(page.locator("[data-joining]").getByRole("status")).toContainText(mk.t("join.waiting"));
+    // The hourglass sits in the same badge circle the failure screens use.
+    const badge = page.locator("[data-joining] .q-badge");
+    await expect(badge).toHaveClass(/q-badge--no/);
+    expect((await badge.boundingBox())!.width).toBeGreaterThan(100);
     await clean(page);
     await page.clock.runFor(4000);
     await expect(page.getByText(mk.t("join.waitingSlow"))).toBeVisible();
