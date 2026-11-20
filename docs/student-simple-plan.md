@@ -269,3 +269,20 @@ Builders: two runs in turn. The first does item 1, the second items 2 and 3. The
   "Известија": `notif.title` (the alerts screen's title and the bell's name) and `data.n.alerts` now say it; English is
   unchanged. The Practice card with nothing waiting is the same full yellow as the waiting card (the half-strength mix read
   as beige on the owner's phone); only the copy and the missing button differ. `home.spec` asserts the two backgrounds match.
+- **No subjects, 2026-11-20.** The owner's rule: classes, assignments for a class and subjects are not in the product, so the
+  student app shows none. Quiz rows (`ResultRow`, Home and the results list) read title, then "Ново" (when new) and the date,
+  then the score, on one `ListChecksIcon` in the old mark tile; the caption is one line at 390 and 360. The Practice card says
+  "Ново" and the set's title (`pr.home.new1`, `pr.home.resume` take `{title}`; with no title, "Ново" or "Продолжи" alone); a
+  count when more than one is new. The practice list rows, the player's end screen, the alerts (`notif.*.title` and bodies),
+  the quiz screens (the top bar label, the "joined" line shows only the teacher), the test QR kit (it prints the code) and the
+  demo clock's list name no subject. Mock lesson titles and the `doc.d4` title lost their subject word. Deleted:
+  `SubjectMark` (`SubjectCard.tsx`), `lib/app/subjects.ts`, the `.subject__glyphs`, `.res-cap__subject` styles, `q.joined.sub`,
+  and the demo timetable's `WEEK`, `lessonsOn`, `currentLesson` (the clock's presets read `PERIODS` only). The quiz card's
+  `.subject*` classes are `.qcard*`. Kept on purpose: the `subj.*` keys and the mock's subject fields (the mock stands in for an
+  API that still sends them; the new Home test uses the names to prove nothing shows them). Left as the API sends it: `Course`
+  (`subjectId`, `subjectName`), `SessionResult`, `PracticeSet`, `NotificationPayload` and the wire types in `lib/app/api`; the
+  UI no longer reads those fields (it still reads a course's `id` and `teacherName` for the quiz card). `public/app-push.js`
+  still lists `course_id` and `subject_id` in its comment on the proposed payload; the worker reads neither. Documents show
+  title and type as before (no teacher or size is drawn today). Backend handoff 2.16 in the brain, both documents. Checks: lint, types, 1565 unit,
+  `pnpm build`, mock and teacher e2e 799 passed and 4 skipped (the teacher's live-code specs, not mine), live e2e 92 of 92.
+  Frames in the session scratchpad, `nosubj/`.
