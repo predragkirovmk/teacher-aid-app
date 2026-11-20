@@ -1,29 +1,50 @@
 import { tokenAt } from "../../../lib/teacher/api/mock-live";
 import { expect, test } from "./fixtures";
-import { at, classCode, code, count, nextEdge, openProjector, people, readQr, SESSION, start, T0 } from "./live-helpers";
+import { at, classCode, code, count, nextEdge, openProjector, readQr, SESSION, start, T0 } from "./live-helpers";
 
 /**
- * The code to read out, which is shown only while a student can type it (`STUDENTS_CAN_TYPE_CODE` in lib/teacher/live.ts, OPEN-03). The
- * default build has it off and `live.spec.ts` says nothing of it is shown; these tests run against a build made with
- * `NEXT_PUBLIC_STUDENTS_CAN_TYPE_CODE=1` and are skipped otherwise:
+ * The code to read out, which is shown by default (`STUDENTS_CAN_TYPE_CODE` in lib/teacher/live.ts, OPEN-03): the student app has a
+ * "Внеси код" button. These tests run against the default build and are skipped only in a build made with
+ * `NEXT_PUBLIC_STUDENTS_CAN_TYPE_CODE=0`, which hides the code (`live.spec.ts` has the tests for that build):
  *
- *   NEXT_PUBLIC_STUDENTS_CAN_TYPE_CODE=1 NEXT_PUBLIC_E2E=1 pnpm build && pnpm exec next start -p 3100
- *   NEXT_PUBLIC_STUDENTS_CAN_TYPE_CODE=1 pnpm exec playwright test live-code
+ *   NEXT_PUBLIC_E2E=1 pnpm build && pnpm exec next start -p 3100
+ *   pnpm exec playwright test live-code
  */
-test.skip(process.env.NEXT_PUBLIC_STUDENTS_CAN_TYPE_CODE !== "1", "needs a build with the code switched on");
+test.skip(process.env.NEXT_PUBLIC_STUDENTS_CAN_TYPE_CODE === "0", "the code is switched off in this build");
 
 const grouped = (short: string) => `${short.slice(0, 3)} ${short.slice(3)}`;
 
-test.describe("with the code switched on", () => {
+test.describe("with the code shown", () => {
   test("the console shows it large, in two groups of three, with the sentence that it changes", async ({ page, context }) => {
     await start(page, context);
     await expect(page.getByRole("heading", { name: "Код за приклучување" })).toBeVisible();
     await expect(code(page)).toHaveText(grouped(tokenAt(SESSION, T0).short_code));
     expect(await code(page).evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(48);
     await expect(page.getByText("Кодот се менува на секои 30 секунди.")).toBeVisible();
-    await expect(people(page)).toHaveCount(26);
+    // Beside it, the list of who has joined, empty until someone scans.
+    await expect(count(page)).toHaveText("0 се приклучија");
     // The one main button is still alone.
     await expect(page.locator(".btn--primary:visible")).toHaveCount(1);
+  });
+
+  test("while teaching, the code steps back to one line under the question, no larger than the question", async ({ page, context }) => {
+    await start(page, context);
+    const lobby = (await page.locator(".live__code").boundingBox())!.height;
+    await openProjector(page, context);
+    await page.bringToFront();
+    await page.getByRole("button", { name: "Почни го часот" }).click();
+    await page.getByRole("button", { name: "Да, почни го часот" }).click();
+    const prompt = page.getByTestId("panel-prompt");
+    await expect(prompt).toBeVisible();
+    await expect(code(page)).toHaveText(grouped(tokenAt(SESSION, T0).short_code));
+    const px = (l: typeof prompt) => l.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    expect(await px(code(page))).toBeLessThanOrEqual(await px(prompt));
+    // The code sits on its heading's line, so the card is shorter than in the lobby.
+    const [heading, digits] = await Promise.all([page.locator("#live-code").boundingBox(), code(page).boundingBox()]);
+    expect(Math.abs(heading!.y + heading!.height / 2 - (digits!.y + digits!.height / 2))).toBeLessThan(heading!.height);
+    expect((await page.locator(".live__code").boundingBox())!.height).toBeLessThan(lobby);
+    // Under the question, not above it.
+    expect((await page.locator(".live__code").boundingBox())!.y).toBeGreaterThan((await prompt.boundingBox())!.y);
   });
 
   test("the code changes every 30 seconds on both screens, together with the QR", async ({ page, context }) => {

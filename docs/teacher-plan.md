@@ -48,6 +48,11 @@ student's row is just the name. The projector's ranking between questions keeps 
   two lines that line up: the way back above, then the title level with the projector button and End, and the course level with
   the line that says where the projected window stands.
 
+- 2026-11-20: the class code to type is shown by default for launch (on the console, on the projector in the lobby, and in the
+  corner for latecomers), because the student app has "Внеси код" (the student-simple branch, PR #12, which must reach main
+  first or with it). While the lesson runs the console shows the code as one quiet line under the question, no larger than the
+  question; the projector keeps it large. A build made with `NEXT_PUBLIC_STUDENTS_CAN_TYPE_CODE=0` hides it.
+
 ## Owner decisions (2026-10-27, do not re-ask)
 
 - Installable web app at `/teacher`, branch `teacher-v1` off `main`. The student app (`/app`)

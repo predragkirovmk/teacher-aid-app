@@ -16,7 +16,8 @@ test("the QR stays big, on a white quiet zone, and scannable at every size", asy
   for (const size of SIZES) {
     await projector.setViewportSize(size);
     const box = (await projector.locator(".cv__qr").boundingBox())!;
-    expect(box.width, `${size.width}`).toBeGreaterThanOrEqual(size.height * 0.5);
+    // The code shown beside it takes room: the QR is min(54vh, 34vw) then (teacher.css, `.cv__lobby--code`), so 0.4 of the height at 1024 x 768.
+    expect(box.width, `${size.width}`).toBeGreaterThanOrEqual(size.height * (process.env.NEXT_PUBLIC_STUDENTS_CAN_TYPE_CODE === "0" ? 0.5 : 0.4));
     expect(box.width, `${size.width}`).toBeLessThanOrEqual(size.width * 0.45);
     // The white panel is the quiet zone: the symbol inside leaves at least two modules of white on every side.
     const quiet = await projector.locator(".cv__qr").evaluate((el) => {
