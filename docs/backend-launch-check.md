@@ -292,7 +292,9 @@ Never copy a key, a secret, a connection string or a person's details into the r
 ## 7. Domains and settings
 
 - **H1.** `api.teacheraid.education` resolves to the backend and serves TLS.
-- **H2.** The OAuth apps (Google, Microsoft) list the callback on `api.teacheraid.education` and only that.
+- **H2.** The OAuth apps (Google, Microsoft) list one callback: the API's (`/api/v1/auth/callback/{provider}` on
+  `api.teacheraid.education`), or, when Supabase Auth runs the handshake, Supabase's own callback, with only the API's
+  callbacks in Supabase's redirect allow-list (`docs/backend-integration-guide.md`, section 3).
 - **H3.** The allowed origin in CORS (T3) and the redirect target after sign-in (T7) come from configuration, set to
   `https://app.teacheraid.education` in production.
 
