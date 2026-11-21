@@ -29,8 +29,9 @@ export type SiteV2Dict = {
     deck: string;
     /** The deck on phones, where the first screen also has to show the devices. */
     deckShort: string;
-    cta: string;
-    secondary: string;
+    /** The two ways into the real apps, on app.teacheraid.education. */
+    teacher: string;
+    student: string;
     meta: string[];
     /** The pinned scene: the one phone becomes the class, and every student answers. */
     class: { of: string; label: string; alt: string };
