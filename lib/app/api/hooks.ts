@@ -26,6 +26,7 @@ import type {
   PracticeSet,
   SessionResult,
   Student,
+  TeacherDocument,
   SignInRedirect,
   StudentSignIn,
 } from "./types";
@@ -50,6 +51,31 @@ export const useResults = (courseId?: Id): Query<SessionResult[]> =>
 /** The mock answers at once; the live API's sets are kept on the phone, so a set can still be opened with no signal. */
 export const usePracticeSets = (): Query<PracticeSet[]> =>
   useQuery("practice", (c) => (demoOnly ? c.listPracticeSets() : loadSets(c)));
+
+let documentsListedAt = 0;
+/** How long ago the list of documents arrived: the signed addresses in it are good for a few minutes from then (see documents.ts). */
+export const documentsAge = () => Date.now() - documentsListedAt;
+
+/** The API has not built the documents yet (OPEN-18): it answers 404 or 501 to the list. */
+const notBuilt = (e: unknown) => e instanceof ApiError && (e.status === 404 || e.status === 501);
+
+/**
+ * The teachers' documents, newest first (PROPOSED `GET /me/documents`). `null` means the API does not have them yet, so Home
+ * leaves the section out and the screen says there are none; any other failure is the ordinary error with a retry.
+ * The mock answers at once and always has them, so its promise is returned as it is (a settled one fills the slot in the same render).
+ */
+export const useDocuments = (): Query<TeacherDocument[] | null> =>
+  useQuery("documents", (c) =>
+    demoOnly
+      ? c.listDocuments()
+      : c.listDocuments().then(
+          (docs) => ((documentsListedAt = Date.now()), docs),
+          (e) => {
+            if (notBuilt(e)) return null;
+            throw e;
+          },
+        ),
+  );
 
 /** What the server holds about the student, as counts, for the "Your data" screen (PROPOSED `GET /me/data-summary`). */
 export const useDataSummary = (): Query<DataSummary> => useQuery("data-summary", (c) => c.getDataSummary());

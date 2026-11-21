@@ -4,6 +4,7 @@
  * 11.3; if the backend changes one, only this file changes.
  */
 import { ApiError } from "./errors";
+import { DOCUMENT_TYPES } from "./types";
 import type {
   AnswerInput,
   AskInput,
@@ -13,6 +14,7 @@ import type {
   AttendanceStatus,
   AttendanceSummary,
   Badge,
+  TeacherDocument,
   BoardRow,
   Course,
   DataSummary,
@@ -318,6 +320,28 @@ export const result = (w: WireResult): SessionResult => ({
   right: w.right,
   total: w.total,
   questions: w.questions.map(resultQuestion),
+});
+
+export type WireDocument = {
+  id: string;
+  title: string;
+  teacher: { name: string };
+  sent_at: string;
+  type: string;
+  size_bytes: number;
+  url: string;
+  opened: boolean;
+};
+
+export const document = (w: WireDocument): TeacherDocument => ({
+  id: w.id,
+  title: w.title,
+  teacherName: w.teacher.name,
+  sentAt: ms(w.sent_at),
+  type: DOCUMENT_TYPES.find((t) => t === w.type) ?? "other",
+  sizeBytes: w.size_bytes,
+  url: w.url,
+  opened: w.opened,
 });
 
 export const topic = (w: WireTopic): TopicProgress => ({

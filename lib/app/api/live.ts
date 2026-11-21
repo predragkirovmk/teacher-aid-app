@@ -91,6 +91,9 @@ export function createLiveClient(): ApiClient {
       wire.leaderboard(await request<wire.WireLeaderboard>("GET", "/me/leaderboard", { query: { scope } })),
     listBadges: async () => (await request<wire.WireBadge[]>("GET", "/me/badges")).map(wire.badge),
 
+    listDocuments: async () => (await request<wire.WireDocument[]>("GET", "/me/documents")).map(wire.document),
+    markDocumentOpened: (id) => request<void>("POST", `/me/documents/${encodeURIComponent(id)}/opened`),
+
     listNotifications: async (page) =>
       (
         await request<wire.WireNotification[]>("GET", "/me/notifications", {

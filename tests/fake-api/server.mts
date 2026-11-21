@@ -66,6 +66,10 @@
  * carries `notification.created`.
  *   POST /__control/notify            { kind?, title?, body? }   the server creates a notification for the student and tells the stream
  *   POST /__control/notifications/seed { count }                 `count` older read notifications, to page through
+ * Teacher documents (PROPOSED, OPEN-18): `GET /me/documents` lists three handouts, newest first, in the spec's fields (`id`, `title`, `teacher.name`,
+ * `sent_at`, `type`, `size_bytes`, `url`, `opened`); `url` is a signed-looking address on this server (`/files/{id}?sig=`) that a test can open.
+ * `POST /me/documents/{id}/opened` is a 204, also when it was already opened, and `not_found` for an id that is not the student's.
+ *   POST /__control/documents/mode    { mode }                 list (the default) | missing (the list answers 404 not_found) | not-built (501) | error (500) | empty ([])
  * Class codes: LIVE-7B joins; EXPIRED-7B, OTHER-8A and ENDED-7B are refused as the API would; any other is unknown.
  */
 import { readFileSync } from "node:fs";
@@ -74,6 +78,7 @@ import type {
   WireAttendance,
   WireBadge,
   WireCourse,
+  WireDocument,
   WireLeaderboard,
   WireNotification,
   WireResult,
@@ -299,6 +304,9 @@ const initial = () => ({
   practiceSets: [practiceSetOne()] as PracticeSetData[],
   practiceAnswers: {} as Record<string, Record<string, string>>,
   practiceDone: {} as Record<string, string>,
+  /** What `GET /me/documents` does, and the ids the student has opened. */
+  documentsMode: "list" as "list" | "missing" | "not-built" | "error" | "empty",
+  documentsOpened: [] as string[],
   /** The push subscription the API holds for the student, or null. */
   pushToken: null as null | Record<string, unknown>,
   /** Every body of `POST /practice-sets/{id}/answers`, in the order they came, with the set's id. */
@@ -306,6 +314,13 @@ const initial = () => ({
 });
 
 let state = initial();
+
+const DOCUMENTS = (): WireDocument[] =>
+  [
+    { id: "doc-1", title: "Fractions worksheet", teacher: { name: "Ana Stojanova" }, sent_at: iso(DAY), type: "pdf", size_bytes: 245_760 },
+    { id: "doc-2", title: "Reading list", teacher: { name: "Elena Dimitrova" }, sent_at: iso(3 * DAY), type: "doc", size_bytes: 88_064 },
+    { id: "doc-3", title: "Force and motion notes", teacher: { name: "Jordanco Milev" }, sent_at: iso(6 * DAY), type: "pdf", size_bytes: 1_572_864 },
+  ].map((d) => ({ ...d, url: `http://127.0.0.1:${PORT}/files/${d.id}?sig=${Date.now()}`, opened: state.documentsOpened.includes(d.id) }));
 
 const ATTENDANCE: WireAttendance = {
   attended: 18,
@@ -851,6 +866,10 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     state.signedOut = "signed_in_elsewhere";
     return send(res, 204);
   }
+  if (path === "/__control/documents/mode" && method === "POST") {
+    state.documentsMode = (((await readJson(req)) as { mode?: typeof state.documentsMode } | undefined)?.mode ?? "list") as typeof state.documentsMode;
+    return send(res, 204);
+  }
   if (path === "/__control/rate-limit" && method === "POST") {
     state.rateLimit = Number(((await readJson(req)) as { seconds?: number } | undefined)?.seconds ?? 30);
     return send(res, 204);
@@ -925,6 +944,12 @@ async function route(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
+  // The file a document's signed address leads to: a tiny page, so a test can open it in a new tab.
+  if (method === "GET" && /^\/files\/doc-\d+$/.test(path)) {
+    state.calls.push(`${method} ${path}`);
+    return void res.writeHead(200, { "Content-Type": "text/html" }).end("<!doctype html><meta charset=\"utf-8\"><title>Handout</title><p>Handout</p>");
+  }
+
   if (!path.startsWith("/api/v1/")) return fail(res, 404, "not_found");
   const api = path.slice("/api/v1".length);
   state.calls.push(`${method} ${api}`);
@@ -980,11 +1005,26 @@ async function route(req: IncomingMessage, res: ServerResponse) {
       const from = before ? sorted.findIndex((n) => n.id === before) + 1 : 0;
       return send(res, 200, before && from === 0 ? [] : sorted.slice(from, from + limit));
     }
+    if (api === "/me/documents") {
+      const mode = state.documentsMode;
+      if (mode === "missing") return fail(res, 404, "not_found");
+      if (mode === "not-built") return fail(res, 501, "unknown");
+      if (mode === "error") return fail(res, 500, "server_error");
+      return send(res, 200, mode === "empty" ? [] : DOCUMENTS());
+    }
     if (api === "/me/practice-sets") return send(res, 200, [...state.practiceSets].reverse().map(practiceWire));
   }
 
   const practice = /^\/practice-sets\/([^/]+)\/answers$/.exec(api);
   if (practice && method === "POST") return practiceAnswer(res, req, decodeURIComponent(practice[1]));
+
+  const opened = /^\/me\/documents\/([^/]+)\/opened$/.exec(api);
+  if (opened && method === "POST") {
+    const id = decodeURIComponent(opened[1]);
+    if (!DOCUMENTS().some((d) => d.id === id)) return fail(res, 404, "not_found");
+    if (!state.documentsOpened.includes(id)) state.documentsOpened.push(id);
+    return send(res, 204);
+  }
 
   if (method === "POST" && api === "/me/notifications/read") {
     const body = (await readJson(req)) as { all?: boolean; ids?: string[] } | undefined;

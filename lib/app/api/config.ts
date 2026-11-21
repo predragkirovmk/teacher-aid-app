@@ -9,7 +9,7 @@ export const apiMode: ApiMode = process.env.NEXT_PUBLIC_API_MODE === "live" ? "l
 
 /**
  * True only in mock mode. Everything the spec has no API for (the timetable and its next-lesson
- * card, the scheduled quiz, the streak badge, documents, the demo clock) is shown only when this
+ * card, the scheduled quiz, the streak badge, the demo clock) is shown only when this
  * is set, so live mode hides it and shows what the API can back.
  */
 export const demoOnly: boolean = apiMode === "mock";

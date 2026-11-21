@@ -24,6 +24,7 @@ import type {
   Student,
   StudentSessionState,
 } from "../types";
+import { buildDocuments } from "./documents";
 import {
   ACHIEVEMENTS,
   BASE_ATTENDED,
@@ -316,6 +317,15 @@ export function createMockClient(source: MockSource): ApiClient {
     listTopics: () => authed(() => buildTopics(state(), locale())),
     getLeaderboard: () => authed(() => buildLeaderboard(state(), locale())),
     listBadges: () => authed(() => buildBadges(state(), locale())),
+
+    listDocuments: () => authed(() => buildDocuments(state(), locale())),
+    markDocumentOpened: (id) =>
+      authed(() =>
+        write(() => {
+          if (!buildDocuments(state(), locale()).some((d) => d.id === id)) throw new ApiError("not_found");
+          actions.markDocOpened(id);
+        }),
+      ),
 
     listNotifications: (page) => authed(() => pageOf(buildNotifications(state(), locale()), page)),
     markNotificationsRead: (ids) =>

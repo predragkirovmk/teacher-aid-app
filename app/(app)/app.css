@@ -688,6 +688,16 @@ button.item:active {
 .res-cap__fixed {
   flex: none;
 }
+/* A document row's caption: the teacher's name gives way first, with an ellipsis, so the date, kind and size stay whole at 360. */
+.item--doc .grow {
+  min-width: 0;
+}
+.doc-cap__teacher {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .dot-unread {
   display: inline-flex;
   align-items: center;

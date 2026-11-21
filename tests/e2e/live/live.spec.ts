@@ -31,14 +31,105 @@ test("Home draws the API's student and latest result, and asks for no ranking or
   await expect(latest).toContainText(mk.t("res.score", { right: 4, total: 5 }));
   // The API still names a subject; the app does not show it.
   await expect(latest).not.toContainText(mk.t("subj.math"));
-  // The documents are not in the API yet (OPEN-18), so live Home has no such section.
-  await expect(page.getByRole("heading", { name: mk.t("docs.title") })).toHaveCount(0);
 
   const { calls } = await serverState(request);
   expect(calls).toEqual(expect.arrayContaining(["GET /me", "GET /me/results"]));
   // Home no longer shows the student's place or attendance, so it does not ask the API for them.
   expect(calls).not.toContain("GET /me/leaderboard");
   expect(calls).not.toContain("GET /me/attendance");
+});
+
+test.describe("the teachers' documents (PROPOSED OPEN-18)", () => {
+  test.use({ allowConsoleErrors: [/Failed to load resource: the server responded with a status of (404|500|501)/] });
+  const mode = (request: import("@playwright/test").APIRequestContext, m: string) => request.post(`${API}/__control/documents/mode`, { data: { mode: m } });
+  const section = (page: Page) => page.locator("section[aria-labelledby=home-docs]");
+
+  test("Home draws the API's documents as rows, and the screen lists them", async ({ page, request }) => {
+    await page.goto("/app");
+    const rows = section(page).locator("a.item--doc");
+    await expect(rows).toHaveCount(3);
+    await expect(rows.first()).toContainText("Fractions worksheet");
+    await expect(rows.first()).toContainText("Ana Stojanova");
+    await expect(rows.first()).toContainText(`${mk.t("doc.type.pdf")} · 240 KB`);
+    await expect(rows.nth(2)).toContainText("1,5 MB");
+    await expect(rows.locator(".tile__new")).toHaveCount(3);
+    await expect(rows.first()).toHaveAttribute("target", "_blank");
+    await expect(rows.first()).toHaveAttribute("rel", "noopener");
+    await expect(rows.first()).toHaveAttribute("href", /\/files\/doc-1\?sig=/);
+    expect((await serverState(request)).calls).toContain("GET /me/documents");
+
+    await page.goto("/app/documents");
+    await expect(page.locator("a.item--doc")).toHaveCount(3);
+    await expect(page.getByRole("button", { name: mk.t("state.retry") })).toHaveCount(0);
+  });
+
+  test("a tap opens the signed address in a new tab, tells the API, and the New mark goes", async ({ page, request }) => {
+    await page.goto("/app");
+    const rows = section(page).locator("a.item--doc");
+    await expect(rows).toHaveCount(3);
+    const [popup] = await Promise.all([page.context().waitForEvent("page"), rows.first().click()]);
+    await popup.waitForURL(/\/files\/doc-1\?sig=/);
+    await popup.close();
+    await expect(rows.first().locator(".tile__new")).toHaveCount(0);
+    await expect.poll(async () => (await serverState(request)).calls).toContain("POST /me/documents/doc-1/opened");
+    // The API now says opened, so a fresh list agrees.
+    await page.reload();
+    await expect(section(page).locator("a.item--doc")).toHaveCount(3);
+    await expect(section(page).locator("a.item--doc").first().locator(".tile__new")).toHaveCount(0);
+    await expect(section(page).locator("a.item--doc").nth(1).locator(".tile__new")).toHaveCount(1);
+  });
+
+  test("a list older than a minute is fetched again before the document opens", async ({ page, request }) => {
+    await page.clock.install();
+    await page.goto("/app");
+    const rows = section(page).locator("a.item--doc");
+    await expect(rows).toHaveCount(3);
+    const before = (await serverState(request)).calls.filter((c) => c === "GET /me/documents").length;
+    await page.clock.fastForward(61_000);
+    const [popup] = await Promise.all([page.context().waitForEvent("page"), rows.first().click()]);
+    await popup.waitForURL(/\/files\/doc-1\?sig=/);
+    await popup.close();
+    const calls = (await serverState(request)).calls;
+    expect(calls.filter((c) => c === "GET /me/documents").length).toBe(before + 1);
+    await expect.poll(async () => (await serverState(request)).calls).toContain("POST /me/documents/doc-1/opened");
+  });
+
+  for (const [name, m] of [["404", "missing"], ["501", "not-built"]] as const) {
+    test(`a ${name} from the list hides the section on Home and the screen says there are none, with no error`, async ({ page, request }) => {
+      await mode(request, m);
+      await page.goto("/app");
+      await expect(page.locator("main.screen a.next")).toBeVisible();
+      await expect(page.locator("section[aria-labelledby=home-recent]")).toBeVisible();
+      await expect.poll(async () => (await serverState(request)).calls).toContain("GET /me/documents");
+      await expect(section(page)).toHaveCount(0);
+      await expect(page.getByRole("button", { name: mk.t("state.retry") })).toHaveCount(0);
+
+      await page.goto("/app/documents");
+      await expect(page.getByText(mk.t("docs.none"))).toBeVisible();
+      await expect(page.getByRole("button", { name: mk.t("state.retry") })).toHaveCount(0);
+    });
+  }
+
+  test("an empty list shows the one-line empty state on Home", async ({ page, request }) => {
+    await mode(request, "empty");
+    await page.goto("/app");
+    await expect(section(page).getByText(mk.t("docs.none"))).toBeVisible();
+    await expect(section(page).getByRole("link", { name: mk.t("docs.all") })).toHaveCount(0);
+  });
+
+  test("a 500 shows the quiet error with a retry, and the retry brings the list", async ({ page, request }) => {
+    await mode(request, "error");
+    await page.goto("/app/documents");
+    const retry = page.getByRole("button", { name: mk.t("state.retry") });
+    await expect(retry).toBeVisible();
+    await mode(request, "list");
+    await retry.click();
+    await expect(page.locator("a.item--doc")).toHaveCount(3);
+
+    await mode(request, "error");
+    await page.goto("/app");
+    await expect(section(page).getByRole("button", { name: mk.t("state.retry") })).toBeVisible();
+  });
 });
 
 test("Home's practice card works live, and with no results it says there are no quizzes yet", async ({ page }) => {
@@ -101,7 +192,7 @@ test.describe("what the live build leaves out or refuses", () => {
   test.use({ allowConsoleErrors: [/Failed to load resource: the server responded with a status of (401|404|410)/] });
 
   test("the demo-only screens and settings are not there", async ({ page }) => {
-    for (const path of ["/app/qr-kit", "/app/documents"]) {
+    for (const path of ["/app/qr-kit"]) {
       await page.goto(path);
       await expect(page.getByText(mk.t("notfound.title")).first(), path).toBeVisible();
     }

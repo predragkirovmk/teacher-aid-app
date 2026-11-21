@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatLongDate, formatPoints, formatTime } from "@/lib/app/format";
+import { formatDate, formatLongDate, formatPoints, formatSize, formatTime } from "@/lib/app/format";
 import { initials, personName, transliterate } from "@/lib/app/quiz";
 
 import { NAME_MAX, NAME_MIN, PHOTO_MAX_BYTES, cleanName, nameError } from "@/lib/app/profile-rules";
@@ -82,5 +82,22 @@ describe("the display name", () => {
 
   it("limits a photo to 200 KB", () => {
     expect(PHOTO_MAX_BYTES).toBe(200 * 1024);
+  });
+});
+
+describe("formatSize", () => {
+  it("says bytes under a kilobyte, whole kilobytes under a megabyte, and a megabyte to one decimal", () => {
+    expect(formatSize(0, "en")).toBe("0 B");
+    expect(formatSize(1023, "en")).toBe("1023 B");
+    expect(formatSize(1024, "en")).toBe("1 KB");
+    expect(formatSize(245_760, "en")).toBe("240 KB");
+    expect(formatSize(1024 * 1024 - 1, "en")).toBe("1024 KB");
+    expect(formatSize(1_572_864, "en")).toBe("1.5 MB");
+    expect(formatSize(5 * 1024 * 1024, "en")).toBe("5 MB");
+  });
+
+  it("uses the decimal comma in Macedonian", () => {
+    expect(formatSize(1_572_864, "mk")).toBe("1,5 MB");
+    expect(formatSize(245_760, "mk")).toBe("240 KB");
   });
 });

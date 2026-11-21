@@ -83,21 +83,6 @@ test("a result whose alert is unread carries the New tag", async ({ page }) => {
   await expect(tagged).toHaveCount(1);
 });
 
-test("the documents section shows three rows and a link to all four, and a tap says it is a demo", async ({ page }) => {
-  await page.goto("/app");
-  const section = page.locator("section[aria-labelledby=home-docs]");
-  await expect(section.getByRole("heading", { name: mk.t("docs.title") })).toBeVisible();
-  await expect(section.getByText(mk.t("docs.sub"))).toBeVisible();
-  const rows = section.locator("button.item");
-  await expect(rows).toHaveCount(3);
-  await expect(rows.first()).toContainText(mk.t("doc.pdf"));
-  await rows.first().click();
-  await expect(page.locator(".toast")).toContainText(mk.t("doc.demo"));
-
-  await section.getByRole("link", { name: mk.t("docs.all") }).click();
-  await expect(page).toHaveURL(/\/app\/documents$/);
-});
-
 test("Home has no subjects row, and the bell takes the place of the avatar", async ({ page }) => {
   await page.goto("/app");
   await expect(page.getByRole("link", { name: mk.t("nav.profile") })).toHaveCount(1);
@@ -144,5 +129,5 @@ test("Home, the results list and a document row show no subject: no name from th
   const icons = await page.locator("a.item--result .mark svg").evaluateAll((els) => new Set(els.map((e) => e.innerHTML)).size);
   expect(icons).toBe(1);
   await page.goto("/app/documents");
-  await expect(page.locator("button.item").first()).toBeVisible();
+  await expect(page.locator("a.item--doc").first()).toBeVisible();
 });

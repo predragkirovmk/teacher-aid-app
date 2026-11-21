@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { demoOnly } from "../api";
-import { CLASS_SUBJECTS, DOCS, NOTIFS } from "../api/mock/data";
+import { CLASS_SUBJECTS, NOTIFS } from "../api/mock/data";
 import { actions, useApp } from "../api/mock/store";
 import { demoTime, type ClockId } from "./schedule";
 
@@ -53,8 +53,6 @@ export const showNoticeAgain = () => actions.acknowledgeNotice(null);
 
 /** The class QR codes the test kit prints, one for each class that has a live quiz. */
 export const CLASS_CODES = CLASS_SUBJECTS.map((s) => ({ code: s.code }));
-
-export const DEMO_DOCS = DOCS;
 
 /** Screens the offline worker should keep, which only the demo knows the names of. */
 export const demoRoutes = () => [
