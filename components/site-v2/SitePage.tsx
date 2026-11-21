@@ -45,12 +45,11 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
               <p className="lead hero__lead">{t.hero.deck}</p>
               <p className="lead hero__lead-short">{t.hero.deckShort}</p>
               <div className="actions">
-                <a className="btn btn--primary" href="#book">
-                  {t.hero.cta}
+                <a className="btn btn--primary" href="https://app.teacheraid.education/teacher">
+                  {t.hero.teacher}
                 </a>
-                <a className="chev" href="#teacher">
-                  {t.hero.secondary}
-                  <ArrowRightIcon size={18} weight="bold" aria-hidden="true" />
+                <a className="btn btn--quiet" href="https://app.teacheraid.education/app">
+                  {t.hero.student}
                 </a>
               </div>
               <ul className="hero__meta">

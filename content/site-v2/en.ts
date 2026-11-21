@@ -28,8 +28,8 @@ export const en: SiteV2Dict = {
     title: ["The whole class", "answers."],
     deck: "TeacherAid turns your lesson into questions for class. You send them from your laptop, students answer on their phones, and you see at once who understood.",
     deckShort: "Questions from your lesson. Answers from every phone.",
-    cta: "Book a free lesson",
-    secondary: "See how it works",
+    teacher: "I'm a teacher",
+    student: "I'm a student",
     meta: ["Secondary schools and universities", "In Macedonian", "Made in Bitola"],
     class: {
       of: "of 29",
