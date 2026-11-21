@@ -1,17 +1,12 @@
-# TeacherAid — demo build
+# TeacherAid
 
-The live opener from a TeacherAid class, as a web app the audience opens by QR.
-Built for Startup Weekend Bitola, 11–13 September 2026.
+One Next.js app with three surfaces:
 
-- `/host` — projector screen: QR, joined counter, live vote bars, reveal with reasons,
-  mini leaderboard, class summary. Keys: **Space** next · **N** next question ·
-  **R** reset · **S** simulation (fake students, no network) · **F** fullscreen.
-  Query: `?sim=1` start in simulation, `?reset=1` reset on load, `?motion=0` no entrance
-  animations, `?key=` host key (default `bitola`, or `HOST_KEY`).
-- `/j/BITOLA` — the phone: auto nickname → Join → vote → one-line reason → result → rank.
-- `/print` — A4 QR sheet.
+- the website, at `/` (Macedonian) and `/en`;
+- the student app, at `/app`, on phones in class;
+- the teacher app, at `/teacher`, on a school laptop and a projector.
 
-Content (questions, class, topic, app name) lives in `content/opener.json`.
+`CLAUDE.md` says which code and styles belong to which surface, and how the work is done and checked.
 
 ## Run
 
@@ -20,11 +15,25 @@ pnpm install
 pnpm dev
 ```
 
-Without Upstash credentials the session lives in the dev server's memory — enough for
-rehearsal. In production set `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`
-(or the `KV_REST_API_*` pair the Vercel marketplace injects).
+Both apps run on a mock that lives in the browser unless the build sets `NEXT_PUBLIC_API_MODE=live` and
+`NEXT_PUBLIC_API_URL`. `docs/launch-plan.md` describes the live build and where it is served.
+
+The website's early-access form keeps its signups in Upstash Redis: set `UPSTASH_REDIS_REST_URL` and
+`UPSTASH_REDIS_REST_TOKEN` (or the `KV_REST_API_*` pair the Vercel marketplace injects).
+
+## Checks
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm test:e2e
+```
 
 ## Stack
 
-Next.js 16 (App Router) · Tailwind 4 · Upstash Redis · GSAP for the reveal · polling, not
-sockets, on purpose. Design context in `.impeccable.md`.
+Next.js 16 (App Router), React 19, TypeScript, pnpm. The teacher app uses hand-written CSS, `@phosphor-icons/react`
+and GSAP.
+
+The old Startup Weekend demo (`/host`, `/j/…`, `/print`) was retired on 2026-11-20.

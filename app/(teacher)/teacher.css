@@ -2806,6 +2806,19 @@ button {
   line-height: 1;
   white-space: nowrap;
 }
+/* While the lesson runs the question is the screen's one job, so the code steps back to one line beside its heading, no
+   larger than the question. The projector still shows it large for a student who comes in late. */
+.live__code--quiet {
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  column-gap: var(--sp-2);
+}
+.live__code--quiet > :not(h2, .live__digits) {
+  grid-column: 1 / -1;
+}
+.card.live__code--quiet .live__digits {
+  font-size: var(--fs-xl);
+}
 .card .live__rotates,
 .card .live__starthint {
   font-size: var(--fs-small);

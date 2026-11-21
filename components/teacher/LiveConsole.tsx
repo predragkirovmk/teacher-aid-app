@@ -226,9 +226,9 @@ function ProjectorNotes({ folded }: { folded: boolean }) {
 
 /**
  * In the lobby, the page's one main button. The question before it is the app's own kind: the lesson cannot be taken back to the lobby
- * (4.1), so it asks first, with the safe answer as the default. The code to read out is shown only
- * while a student can type it (`STUDENTS_CAN_TYPE_CODE`, OPEN-03); until then the QR on the projector is the one way in, and a code here
- * would only invite the teacher to read out what nobody can use.
+ * (4.1), so it asks first, with the safe answer as the default. The code to read out is shown by default, in the lobby and while
+ * teaching (`STUDENTS_CAN_TYPE_CODE`, OPEN-03), because a student can type it; a build with the switch off shows only the lobby card, with
+ * the QR on the projector as the one way in.
  */
 function JoinCard({ snapshot }: { snapshot: ConsoleSnapshot }) {
   const { t, te } = useT();
@@ -248,7 +248,7 @@ function JoinCard({ snapshot }: { snapshot: ConsoleSnapshot }) {
   };
 
   return (
-    <section className="card live__code" aria-labelledby="live-code">
+    <section className={lobby ? "card live__code" : "card live__code live__code--quiet"} aria-labelledby="live-code">
       <h2 id="live-code">
         {t(STUDENTS_CAN_TYPE_CODE ? "live.code.label" : "live.start.title")}
       </h2>

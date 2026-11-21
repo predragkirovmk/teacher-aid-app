@@ -12,6 +12,9 @@ import type { Locale } from "./api/types";
  *    BR-RET-03 (a leaver, 30 days after the school asks); the notification address goes with the subscription (BR-NOT-05);
  *  - requests go through the school (F-16) and are done by hand; there is no delete button.
  *
+ * Services named (confirmed): Vercel delivers the app, Supabase stores its data. The AI provider and the regions stay unnamed until
+ * the backend developer confirms them.
+ *
  * PROPOSED here, not in the spec, and true only until the owner or a lawyer says otherwise (each is in the handoff docs as
  * PROPOSED or OPEN): alerts are kept like lesson data; the school's office is where a student asks; the list of rights; the
  * right to complain to the Personal Data Protection Agency; that the school informs parents; "no ads and no tracking" (true of
@@ -263,7 +266,7 @@ const privacyEn: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "AI helps teachers prepare lessons from their own material or a topic they type. It never receives your name, your email or the student list. Your data is stored in the European Union and is encrypted while it travels and while it is stored.",
+          p: "AI helps teachers prepare lessons from their own material or a topic they type. It never receives your name, your email or the student list. Your data is stored in the European Union and is encrypted while it travels and while it is stored. Two services run the app for us: Vercel delivers the app to your phone and your browser, and Supabase stores the app's data.",
         },
       ],
     },
@@ -546,7 +549,7 @@ const privacyMk: PrivacyDoc = {
       level: 3,
       blocks: [
         {
-          p: "Вештачка интелигенција им помага на наставниците да подготват часови од сопствен материјал или од тема што ја впишуваат. Таа никогаш не го добива твоето име, твојата е-пошта или списокот на ученици. Податоците се чуваат во Европската Унија и се шифрирани при пренос и при чување.",
+          p: "Вештачка интелигенција им помага на наставниците да подготват часови од сопствен материјал или од тема што ја впишуваат. Таа никогаш не го добива твоето име, твојата е-пошта или списокот на ученици. Податоците се чуваат во Европската Унија и се шифрирани при пренос и при чување. Две услуги ја одржуваат апликацијата за нас: Vercel ја доставува апликацијата до твојот телефон и твојот прелистувач, а Supabase ги чува податоците на апликацијата.",
         },
       ],
     },

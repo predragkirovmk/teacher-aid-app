@@ -43,11 +43,11 @@ test.describe("the lobby", () => {
     await expect(mainButton(page)).toHaveText("Почни го часот");
   });
 
-  test("no code is shown to read out while students cannot type it, and nobody is listed before anyone scans: the list says students appear then", async ({ page, context }) => {
+  test("the code to read out is shown, and nobody is listed before anyone scans: the list says students appear then", async ({ page, context }) => {
     await start(page, context);
-    await expect(code(page)).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Код за приклучување" })).toHaveCount(0);
-    await expect(page.getByText(/Кодот се менува/)).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Код за приклучување" })).toBeVisible();
+    await expect(code(page)).toHaveText(grouped(tokenAt(SESSION, T0).short_code));
+    await expect(page.getByText("Кодот се менува на секои 30 секунди.")).toBeVisible();
     await expect(count(page)).toHaveText("0 се приклучија");
     await expect(people(page)).toHaveCount(0);
     await expect(page.getByText("Учениците се појавуваат овде кога ќе го скенираат кодот.")).toBeVisible();
@@ -99,17 +99,19 @@ test.describe("the lobby", () => {
   });
 });
 
+const grouped = (short: string) => `${short.slice(0, 3)} ${short.slice(3)}`;
+
 test.describe("the projector", () => {
-  test("one click opens the class view in a window of its own: the QR, how to join and who has joined, and no code, with no sidebar and no names of those who have not joined", async ({ page, context }) => {
+  test("one click opens the class view in a window of its own: the QR, how to join with the code to type and who has joined, with no sidebar and no names of those who have not joined", async ({ page, context }) => {
     await start(page, context);
     await at(context, 30, page);
     const n = joinedAt(30);
     const projector = await openProjector(page, context);
     await expect(projector).toHaveURL(new RegExp(`/teacher/live/${SESSION}/class$`));
-    await expect(projector.getByText("Скенирајте го QR-кодот со TeacherAid или со камерата на телефонот")).toBeVisible();
+    await expect(projector.getByText("Скенирајте го QR-кодот или внесете го кодот во TeacherAid")).toBeVisible();
     await expect(projector.locator(".cv__qr svg")).toBeVisible();
-    await expect(classCode(projector)).toHaveCount(0);
-    await expect(projector.getByText(/се менува/)).toHaveCount(0);
+    await expect(classCode(projector)).toHaveText(await code(page).innerText());
+    await expect(projector.getByText("Кодот се менува на секои 30 секунди.")).toBeVisible();
     await expect(projector.getByText(n === 1 ? "1 се приклучи" : `${n} се приклучија`)).toBeVisible();
     // Nothing of the console: no sidebar, no roster, no word that belongs to it.
     await expect(projector.getByRole("navigation")).toHaveCount(0);
@@ -130,25 +132,29 @@ test.describe("the projector", () => {
         .filter((px) => px < 20).length,
     );
     expect(small).toBe(0);
-    // The count is the biggest thing after the QR: a class reads how many are in from the back.
+    // The count is the biggest thing after the QR (and the code, when it is shown): a class reads how many are in from the back.
+    // The code beside it takes room, so the count is 6.4vh then (teacher.css, `.cv__lobby--code`) and 7vh or more without it.
     const size = await projector.locator(".cv__count").evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
-    expect(size).toBeGreaterThanOrEqual(0.07 * 768);
+    expect(size).toBeGreaterThanOrEqual((process.env.NEXT_PUBLIC_STUDENTS_CAN_TYPE_CODE === "0" ? 0.07 : 0.064) * 768);
   });
 
-  test("the QR changes every 30 seconds, in place and without being drawn again, and the projector shows no countdown and no code", async ({ page, context }) => {
+  test("the QR changes every 30 seconds, in place and without being drawn again, and the projector shows the code but no countdown", async ({ page, context }) => {
     await start(page, context);
     const projector = await openProjector(page, context);
     const qr = projector.locator(".cv__qr svg");
     await expect(qr).toBeVisible();
     await qr.evaluate((el) => ((window as unknown as { __qr: Element }).__qr = el));
     const before = await qr.innerHTML();
-    await context.clock.setFixedTime(nextEdge() + 500);
+    const edge = nextEdge();
+    await context.clock.setFixedTime(edge + 500);
     await expect.poll(() => qr.innerHTML()).not.toBe(before);
     // The same element, changed in place: there was no moment with none, so no flash.
     expect(await qr.evaluate((el) => el === (window as unknown as { __qr: Element }).__qr)).toBe(true);
-    await expect(projector.getByText(/сек/)).toHaveCount(0);
+    // The only word of seconds is the sentence that the code changes; there is no ticking countdown.
+    await expect(projector.getByText(/сек/)).toHaveCount(1);
+    await expect(projector.getByText("Кодот се менува на секои 30 секунди.")).toBeVisible();
     await expect(projector.getByText(/\b[0-9]+:[0-9]{2}\b/)).toHaveCount(0);
-    await expect(classCode(projector)).toHaveCount(0);
+    await expect(classCode(projector)).toHaveText(grouped(tokenAt(SESSION, edge + 500).short_code));
   });
 
   test("the address in the QR, read back from the picture, is the check-in path of the student app on this app's own origin, with the token of the moment", async ({ page, context, baseURL }) => {
@@ -401,9 +407,9 @@ test.describe("starting the lesson, and teaching", () => {
     await expect(projector.getByRole("heading", { name: "Часот е во тек" })).toBeVisible();
     const corner = projector.locator(".cv__corner");
     await expect(corner).toBeVisible();
-    await expect(corner.getByText("Доцните? Скенирајте го QR-кодот.")).toBeVisible();
+    await expect(corner.getByText("Доцните? Скенирајте го QR-кодот или внесете го кодот.")).toBeVisible();
     await expect(corner.locator(".cv__qr svg")).toBeVisible();
-    await expect(classCode(projector)).toHaveCount(0);
+    await expect(classCode(projector)).toHaveText(await code(page).innerText());
     await expect(projector.locator(".person")).toHaveCount(0);
     // The QR keeps changing there too.
     const before = await corner.locator(".cv__qr svg").innerHTML();
@@ -521,7 +527,7 @@ test.describe("words", () => {
     await page.goto("/teacher");
     await cards(page).filter({ hasText: "Проценти и пропорции" }).getByRole("button", { name: "Start lesson" }).click();
     await expect(page.locator(".head__sub")).toHaveText("Проценти и пропорции");
-    await expect(page.getByRole("heading", { name: "When you are ready" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Code to join" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Projector screen" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Start the lesson" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Open the projector screen" })).toBeVisible();
@@ -531,9 +537,10 @@ test.describe("words", () => {
     const name = await page.locator(".person__name").first().innerText();
     expect(name).toMatch(/^[A-Za-z' -]+$/);
     const projector = await openProjector(page, context, "Open the projector screen");
-    await expect(projector.getByText("Scan the QR code with TeacherAid, or with your phone's camera")).toBeVisible();
+    await expect(projector.getByText("Scan the QR code, or enter the code in TeacherAid")).toBeVisible();
     await expect(projector.getByText(/^\d+ joined$|^1 joined$/)).toBeVisible();
-    await expect(projector.getByText(/code changes|Code/i)).toHaveCount(1); // only "QR code" in the line that says to scan
+    await expect(classCode(projector)).toHaveText(await code(page).innerText());
+    await expect(projector.getByText("The code changes every 30 seconds.")).toBeVisible();
     await expect(projector.getByRole("button", { name: "Full screen" })).toBeVisible();
     const opened = context.waitForEvent("page");
     await page.getByRole("link", { name: /How do I set that up/ }).click();
@@ -705,5 +712,30 @@ test.describe("what the review of step 8 changed", () => {
     await expect(closed).toContainText("Екранот за проектор е затворен.", { timeout: 15_000 });
     await expect(closed.locator("svg")).toBeVisible();
     await expect(page.getByRole("button", { name: "Отвори повторно" })).toBeVisible();
+  });
+});
+
+// A build made with `NEXT_PUBLIC_STUDENTS_CAN_TYPE_CODE=0` shows no code anywhere: the QR is the one way in. Run with that build, else skipped.
+test.describe("with the code switched off", () => {
+  test.skip(process.env.NEXT_PUBLIC_STUDENTS_CAN_TYPE_CODE !== "0", "needs a build with the code switched off");
+
+  test("the console shows no code and no sentence that it changes", async ({ page, context }) => {
+    await start(page, context);
+    await expect(code(page)).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Код за приклучување" })).toHaveCount(0);
+    await expect(page.getByText(/Кодот се менува/)).toHaveCount(0);
+  });
+
+  test("the projector says only to scan, in the lobby and in the corner for those who are late, and shows no code", async ({ page, context }) => {
+    await start(page, context);
+    await at(context, 30, page);
+    const projector = await openProjector(page, context);
+    await expect(projector.getByText("Скенирајте го QR-кодот со TeacherAid или со камерата на телефонот")).toBeVisible();
+    await expect(classCode(projector)).toHaveCount(0);
+    await expect(projector.getByText(/се менува/)).toHaveCount(0);
+    await page.getByRole("button", { name: "Почни го часот" }).click();
+    await page.getByRole("button", { name: "Да, почни го часот" }).click();
+    await expect(projector.locator(".cv__corner").getByText("Доцните? Скенирајте го QR-кодот.")).toBeVisible();
+    await expect(classCode(projector)).toHaveCount(0);
   });
 });
