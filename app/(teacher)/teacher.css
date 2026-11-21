@@ -1417,6 +1417,18 @@ button {
 .entry__help span {
   overflow-wrap: anywhere;
 }
+/* The line under the sign-in buttons that names the terms. Quiet, as everything but the buttons is here. */
+.card .entry__terms {
+  width: 100%;
+  color: var(--ink-2);
+}
+.entry__terms a {
+  color: var(--teal);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
+}
 
 /* ---- the welcome guide ---- */
 .card .guide__step {

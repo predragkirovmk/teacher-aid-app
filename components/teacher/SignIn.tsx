@@ -195,6 +195,12 @@ export function SignIn() {
             <Link href={HELP}>{t("signin.help")}</Link>
             <span>{t("help.contact.email")}</span>
           </p>
+
+          {/* Signing in is where a teacher accepts the terms (point 3.2 of them), so the screen says so and links the one copy
+              on the website. A plain link: the website is outside this app, and a live build sends it to teacheraid.education. */}
+          <p className="entry__terms">
+            {t("signin.terms")} <a href={locale === "en" ? "/en/terms" : "/uslovi"}>{t("signin.terms.link")}</a>.
+          </p>
         </div>
       </div>
 

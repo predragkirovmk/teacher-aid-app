@@ -226,6 +226,8 @@ test.describe("the terms of use", () => {
     await expect(page.getByRole("heading", { level: 1, name: TERMS.mk.title })).toBeVisible();
     for (const id of ["yourself", "respect", "qr"]) await expect(page.locator(`#${id}`), id).toContainText(TERMS.mk.sections.find((s) => s.id === id)!.title);
     await expect(page.locator("#data").getByRole("link")).toHaveAttribute("href", "/app/privacy");
+    // The student's rules point to the full terms on the website, the one copy of the agreement with the school.
+    await expect(page.locator("#full").getByRole("link")).toHaveAttribute("href", "/uslovi");
   });
 });
 

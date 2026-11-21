@@ -59,6 +59,7 @@ export type ChromeDict = {
   definition: string;
   pagesLabel: string;
   privacy: { label: string; href: string };
+  terms: { label: string; href: string };
   book: { title: string; body: string; cta: string; email: string; pilot: string };
   /** The nav's section links point at the home page from every other page. */
   sectionsLabel: string;
@@ -74,6 +75,7 @@ export const chrome: Record<Lang, ChromeDict> = {
       "TeacherAid е апликација за часот за средни училишта и факултети во Македонија. Од лекцијата на наставникот прави прашања, учениците одговараат на своите телефони, присуството се запишува со скенирање на QR-код, а директорот секој месец добива извештај. Направено во Битола.",
     pagesLabel: "Страници",
     privacy: { label: "Приватност за учениците", href: "/app/privacy" },
+    terms: { label: "Услови за користење", href: "/uslovi" },
     book: {
       title: "Закажете бесплатен час.",
       body: "Доаѓаме во вашето училиште и со едно одделение водиме вистински час, од скенирањето до списокот на крајот. Вие и наставниците гледате.",
@@ -92,6 +94,7 @@ export const chrome: Record<Lang, ChromeDict> = {
       "TeacherAid is a classroom app for secondary schools and universities in North Macedonia. It turns the teacher's lesson into questions, students answer on their phones, attendance is taken by scanning a QR code, and the director gets a report every month. Made in Bitola.",
     pagesLabel: "Pages",
     privacy: { label: "Privacy for students", href: "/app/privacy" },
+    terms: { label: "Terms of Service", href: "/en/terms" },
     book: {
       title: "Book a free lesson.",
       body: "We come to your school and run a real lesson with one class, from the scan to the list at the end. You and your teachers watch.",

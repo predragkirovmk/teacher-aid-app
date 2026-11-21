@@ -695,6 +695,16 @@ const termsEn: Doc = {
       blocks: [{ p: "How the app uses your data is in the [Privacy notice](/app/privacy)." }],
     },
     {
+      id: "full",
+      title: "The full terms",
+      level: 2,
+      blocks: [
+        {
+          p: "These are the rules for you. The full agreement between TeacherAid and your school is in the [Terms of Service](/en/terms). If they differ, the full terms apply.",
+        },
+      ],
+    },
+    {
       id: "changes",
       title: "Changes",
       level: 2,
@@ -777,6 +787,16 @@ const termsMk: Doc = {
       title: "Твоите податоци",
       level: 2,
       blocks: [{ p: "Како апликацијата ги користи твоите податоци пишува во [Известувањето за приватност](/app/privacy)." }],
+    },
+    {
+      id: "full",
+      title: "Целите услови",
+      level: 2,
+      blocks: [
+        {
+          p: "Ова се правилата за тебе. Целиот договор помеѓу TeacherAid и твоето училиште е во [Условите за користење](/uslovi). Ако се разликуваат, важат целите услови.",
+        },
+      ],
     },
     {
       id: "changes",
