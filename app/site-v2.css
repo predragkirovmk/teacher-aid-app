@@ -3076,3 +3076,24 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
   gap: 0.5rem;
   font-size: 1rem;
 }
+
+/* The terms of service: 24 numbered clauses read in order, so the sections sit closer and their
+   headings are a step smaller than a reading page's, and the contents list links to each one. */
+.terms .article__body {
+  gap: clamp(2rem, 5vh, 3rem);
+}
+
+.terms .article__section h2 {
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+}
+
+.terms__contents {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.terms__contents a {
+  display: inline-block;
+  padding-block: 0.25rem;
+}

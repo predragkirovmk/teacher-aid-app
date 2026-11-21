@@ -13,6 +13,7 @@ import {
 } from "@/lib/app/privacy";
 import { PRIVACY, TERMS, type Block, type Doc } from "@/lib/app/privacy-copy";
 import { dictionaries as quizDictionaries, type QKey } from "@/lib/app/quiz-copy";
+import { termsPaths } from "@/content/site-v2/terms";
 
 const LOCALES: Locale[] = ["mk", "en"];
 const ack = (version: string): Pick<Student, "acknowledgement"> => ({ acknowledgement: { version, at: 1 } });
@@ -86,7 +87,8 @@ describe("the privacy notice and the terms", () => {
 
   it("links only to anchors and screens that exist", () => {
     const anchors = new Set(PRIVACY.en.sections.map((s) => s.id));
-    const screens = ["/app/data", "/app/privacy", "/app/terms"];
+    // The app's own screens, and the full terms on the website, which the student's rules point to.
+    const screens = ["/app/data", "/app/privacy", "/app/terms", termsPaths.mk, termsPaths.en];
     for (const doc of [...LOCALES.map((l) => PRIVACY[l]), ...LOCALES.map((l) => TERMS[l])]) {
       for (const text of texts(doc)) {
         for (const [, href] of text.matchAll(/\]\(([^)]+)\)/g)) {
