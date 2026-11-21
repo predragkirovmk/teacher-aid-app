@@ -45,6 +45,9 @@ export const team = ["Предраг Киров", "Огнен Кецеџи", "Н
 
 export const CONTACT = "hello@teacheraid.education";
 
+/** Which legal page this is, its paths in both languages, and its version and date. */
+export type LegalMeta = { key: "terms" | "privacy"; paths: Record<Lang, string>; version: string; updated: string };
+
 const mk: TermsDict = {
   lang: "mk",
   meta: {
@@ -277,7 +280,7 @@ const mk: TermsDict = {
       title: "11. Лични податоци",
       blocks: [
         {
-          p: "11.1. Како ги обработуваме личните податоци на учениците пишува во Известувањето за приватност (teacheraid.education/app/privacy), кое е дел од овие Услови.",
+          p: "11.1. Како ги обработуваме личните податоци пишува во Политиката за приватност (teacheraid.education/privatnost) и, за учениците, во Известувањето за приватност (teacheraid.education/app/privacy). Двата документи се дел од овие Услови.",
         },
         {
           p: "11.2. За податоците на учениците и наставниците што се создаваат во наставата, Училиштето е контролор, а TeacherAid е обработувач што ги обработува само по упатство на Училиштето. За податоците што ни ги праќате директно (на пример е-пошта до нас), TeacherAid е контролор.",
@@ -473,7 +476,7 @@ const mk: TermsDict = {
         { p: "23.5. Ако некоја одредба е неважечка, другите продолжуваат да важат, а неважечката се заменува со важечка што е најблиску до нејзината цел." },
         { p: "23.6. Ако не бараме исполнување на некоја одредба, тоа не значи дека се откажуваме од неа." },
         {
-          p: "23.7. Овие Услови, Известувањето за приватност и Договорот за обработка се целиот договор помеѓу Училиштето и TeacherAid за Услугата. Посебен писмен договор потпишан од двете страни има предност пред овие Услови.",
+          p: "23.7. Овие Услови, Политиката за приватност, Известувањето за приватност за учениците и Договорот за обработка се целиот договор помеѓу Училиштето и TeacherAid за Услугата. Посебен писмен договор потпишан од двете страни има предност пред овие Услови.",
         },
       ],
     },
@@ -707,7 +710,7 @@ const en: TermsDict = {
       id: "data",
       title: "11. Personal data",
       blocks: [
-        { p: "11.1. How we process students' personal data is set out in the privacy notice (teacheraid.education/app/privacy), which forms part of these Terms." },
+        { p: "11.1. How we process personal data is set out in the Privacy Policy (teacheraid.education/en/privacy) and, for students, in the privacy notice (teacheraid.education/app/privacy). Both form part of these Terms." },
         {
           p: "11.2. For the data of students and teachers created in teaching, the School is the controller and TeacherAid is the processor, processing it only on the School's instructions. For data you send us directly (for example an email to us), TeacherAid is the controller.",
         },
@@ -898,7 +901,7 @@ const en: TermsDict = {
         { p: "23.5. If a provision is invalid, the others continue to apply, and the invalid one is replaced by a valid one closest to its purpose." },
         { p: "23.6. If we do not enforce a provision, that does not mean we waive it." },
         {
-          p: "23.7. These Terms, the privacy notice and the Data Processing Agreement are the whole agreement between the School and TeacherAid about the Service. A separate written agreement signed by both parties takes precedence over these Terms.",
+          p: "23.7. These Terms, the Privacy Policy, the students' privacy notice and the Data Processing Agreement are the whole agreement between the School and TeacherAid about the Service. A separate written agreement signed by both parties takes precedence over these Terms.",
         },
       ],
     },
@@ -911,3 +914,4 @@ const en: TermsDict = {
 };
 
 export const terms: Record<Lang, TermsDict> = { mk, en };
+export const termsLegal: LegalMeta = { key: "terms", paths: termsPaths, version: termsVersion, updated: termsUpdated };

@@ -223,6 +223,12 @@ body {
   text-align: center;
 }
 
+.ea-fine a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
 .ea-done {
   margin: 28px 0 0;
   font-size: 1.375rem;

@@ -63,14 +63,16 @@ test.describe("the sign-in screen", () => {
     await expect(page.getByText("hello@teacheraid.education")).toBeVisible();
   });
 
-  test("says that signing in accepts the terms, and links the one copy of them on the website, in the screen's language", async ({ page }) => {
+  test("says that signing in accepts the terms, and links them and the privacy policy on the website, in the screen's language", async ({ page }) => {
     await page.goto("/teacher/sign-in");
     await expect(page.getByText("Со најавувањето ги прифаќате")).toBeVisible();
     await expect(page.getByRole("link", { name: "Условите за користење" })).toHaveAttribute("href", "/uslovi");
+    await expect(page.getByRole("link", { name: "Политиката за приватност" })).toHaveAttribute("href", "/privatnost");
 
     await page.getByRole("button", { name: "EN, English" }).click();
     await expect(page.getByText("By signing in, you accept the")).toBeVisible();
     await expect(page.getByRole("link", { name: "Terms of Service" })).toHaveAttribute("href", "/en/terms");
+    await expect(page.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute("href", "/en/privacy");
   });
 
   test("its help link opens Help, which needs no sign-in, and Sign in comes back", async ({ page }) => {

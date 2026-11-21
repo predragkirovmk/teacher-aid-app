@@ -2,7 +2,7 @@
   Makes the Word document for the lawyer from the one copy of the terms (content/site-v2/terms.ts), so the
   document and the website can never say different things. Run from the repo root:
 
-    node --experimental-strip-types scripts/legal/terms-docx.mts <out.docx>
+    node --experimental-strip-types --import ./scripts/legal/resolve-ts.mjs scripts/legal/terms-docx.mts <out.docx>
 
   The document has four parts: what the lawyer is asked to do, the facts the terms rest on, the points of law
   that were checked and where (and what was not), the questions, and then the terms in Macedonian and English.
@@ -11,7 +11,11 @@ import { createRequire } from "node:module";
 import { writeFileSync } from "node:fs";
 // Node runs this file by stripping its types, and needs the real file name; the app's tsconfig does not allow a .ts ending.
 // @ts-expect-error TS5097: the extension is required here.
-import { terms, termsUpdated, termsVersion } from "../../content/site-v2/terms.ts";
+import { terms, termsUpdated, termsVersion, type TermsDict } from "../../content/site-v2/terms.ts";
+// @ts-expect-error TS5097: the extension is required here, as above.
+import { privacy, privacyUpdated, privacyVersion } from "../../content/site-v2/privacy.ts";
+// @ts-expect-error TS5097: the extension is required here, as above.
+import { dpaIntro, dpaSections, dpaSignatures, dpaTitle } from "./dpa.mts";
 
 const require = createRequire(import.meta.url);
 const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, LevelFormat, PageBreak, Footer, PageNumber, ExternalHyperlink } =
@@ -36,10 +40,9 @@ const link = (label: string, url: string) =>
   });
 const pageBreak = () => new Paragraph({ children: [new PageBreak()] });
 
-/** The terms of one language, clause by clause, as the website shows them. */
-function termsPart(lang: "mk" | "en") {
-  const d = terms[lang];
-  const parts: unknown[] = [h1(d.title), p(`${d.versionLabel} ${termsVersion}. ${d.updatedLabel}: ${termsUpdated}.`, { italics: true }), h2(d.summaryTitle)];
+/** A legal document of one language, clause by clause, as the website shows it. */
+function docPart(d: TermsDict, version: string, updated: string) {
+  const parts: unknown[] = [h1(d.title), p(`${d.versionLabel} ${version}. ${d.updatedLabel}: ${updated}.`, { italics: true }), h2(d.summaryTitle)];
   for (const line of d.summary) parts.push(bullet(line));
   for (const s of d.sections) {
     parts.push(h2(s.title));
@@ -51,11 +54,25 @@ function termsPart(lang: "mk" | "en") {
   return parts;
 }
 
+/** The draft data processing agreement, clause by clause, with lines for what each school writes in. */
+function dpaPart() {
+  const parts: unknown[] = [h1(dpaTitle), ...dpaIntro.map((line) => p(line))];
+  for (const s of dpaSections) {
+    parts.push(h2(s.title));
+    for (const b of s.blocks) {
+      if ("p" in b) parts.push(p(b.p));
+      else for (const li of b.ul) parts.push(bullet(li));
+    }
+  }
+  for (const line of dpaSignatures) parts.push(p(line));
+  return parts;
+}
+
 const brief = [
-  new Paragraph({ heading: HeadingLevel.TITLE, children: [new TextRun("TeacherAid: Услови за користење")] }),
-  p(`Нацрт ${termsVersion} за правен преглед, ${termsUpdated}`, { bold: true }),
+  new Paragraph({ heading: HeadingLevel.TITLE, children: [new TextRun("TeacherAid: Услови за користење, Политика за приватност и Договор за обработка")] }),
+  p(`Нацрти за правен преглед, ${termsUpdated}: Услови ${termsVersion}, Политика ${privacyVersion}, Договор за обработка (нацрт).`, { bold: true }),
   p(
-    "Овој документ е подготвен за адвокатот на TeacherAid. Во него се: што се бара од прегледот, фактите врз кои се напишани условите, правните точки што се проверени и од каде, прашањата за адвокатот, и целиот текст на условите на македонски (обврзувачки) и на англиски (превод).",
+    "Овој документ е подготвен за адвокатот на TeacherAid. Во него се: што се бара од прегледот, фактите врз кои се напишани документите, правните точки што се проверени и од каде, прашањата за адвокатот, и целиот текст на три документи: Условите за користење и Политиката за приватност (на веб-страницата, на македонски и англиски) и нацртот на Договорот за обработка што секое училиште го потпишува (на македонски).",
   ),
   p(
     "Текстот не е правен совет. Напишан е како нацрт, без измислени членови на закони: каде што бројот на член не е потврден од официјален текст, условите го наведуваат само законот или правилото, без број.",
@@ -121,22 +138,45 @@ const brief = [
   bullet("Точка 8.1 и 11.4: давателот на вештачка интелигенција и регионот, во Договорот за обработка."),
   bullet("Датумот од кој важат условите, кога ќе се објават."),
 
-  h1("6. Документи што уште недостасуваат"),
-  bullet("Договор за обработка на лични податоци помеѓу училиштето и TeacherAid (условите се потпираат на него, точка 11.3)."),
-  bullet("Политика за приватност за наставниците и посетителите на веб-страницата. За учениците постои Известување за приватност во апликацијата (teacheraid.education/app/privacy)."),
+  h1("6. Политика за приватност: одлуки и прашања"),
+  p("Политиката за приватност (teacheraid.education/privatnost) ги опфаќа наставниците, персоналот на училиштето, посетителите на веб-страницата, пријавите за ран пристап и Демото. За учениците важи Известувањето за приватност во апликацијата. Што е проверено во кодот (21.11.2026):", { italics: true }),
+  bullet("Веб-страницата не поставува колачиња и не вчитува ништо од други сајтови (тоа го забранува нејзината Content-Security-Policy); нема аналитика ни реклами."),
+  bullet("Формуларот за ран пристап чува е-пошта, време и кратка ознака на изворот (Upstash Redis), и отпечаток (hash) од IP-адресата една минута за да спречи злоупотреба. Под формуларот стои: „We’ll only email you about TeacherAid. Unsubscribe anytime.“ и врска до политиката."),
+  bullet("Демото ги чува податоците само во прелистувачот."),
+  p("Рокови што ги нема во спецификацијата и се поставени во политиката, за потврда:", { bold: true }),
+  bullet("пријава за ран пристап: до барање за бришење, најдолго една година;"),
+  bullet("пораки до TeacherAid: една година по последната порака, освен за спор;"),
+  bullet("сметка на наставник што заминал: бришење во рок од 30 дена од барањето на училиштето (како за ученик);"),
+  bullet("технички податоци на серверот: „кратко, само колку што е потребно за безбедност“, без број, бидејќи рокот уште не е одлучен."),
+  p("Прашања:", { bold: true }),
+  numbered("Дали колачето за сесија (за да остане наставникот најавен) е строго неопходно и затоа не бара согласност според прописите за електронски комуникации?"),
+  numbered("Дали пријавата за ран пристап може да се темели на согласност дадена со самото пријавување, со текстот под формуларот, или е потребно поле за штиклирање?"),
+  numbered("Дали сметката на наставникот е податок на училиштето (контролор) или на TeacherAid, кога наставникот се најавува со училишна сметка?"),
+  numbered("Vercel и Upstash се компании од САД. Која заштита е потребна според законот за пренос, и дали тоа треба да се наведе поконкретно во политиката?"),
+
+  h1("7. Договор за обработка"),
+  p("Нацртот на крајот на документот е договорот што секое училиште го потпишува пред да ја користи апликацијата со вистински ученици (Условите, точка 11.3). Ги следи обврските на обработувачот од Законот за заштита на личните податоци. Празните линии се пополнуваат за секое училиште или кога ќе се избере давателот на серверот и на вештачката интелигенција.", { italics: true }),
+  numbered("Дали нацртот ги содржи сите задолжителни елементи на договорот помеѓу контролор и обработувач според законот?"),
+  numbered("Дали рокот од 48 часа за известување на училиштето и правото на проверка (член 9) се соодветни?"),
 
   pageBreak(),
-  ...termsPart("mk"),
+  ...docPart(terms.mk, termsVersion, termsUpdated),
   pageBreak(),
-  p("Annex: English translation. If the two differ, the Macedonian text prevails.", { italics: true }),
-  ...termsPart("en"),
+  ...docPart(privacy.mk, privacyVersion, privacyUpdated),
+  pageBreak(),
+  ...dpaPart(),
+  pageBreak(),
+  p("Annex: English translation of the Terms of Service and the Privacy Policy. If they differ, the Macedonian text prevails.", { italics: true }),
+  ...docPart(terms.en, termsVersion, termsUpdated),
+  pageBreak(),
+  ...docPart(privacy.en, privacyVersion, privacyUpdated),
 ];
 
 const heading = (size: number) => ({ run: { font: FONT, size, bold: true }, paragraph: { spacing: { before: 240, after: 120 }, keepNext: true } });
 
 const doc = new Document({
   creator: "TeacherAid",
-  title: "TeacherAid: Услови за користење, нацрт за правен преглед",
+  title: "TeacherAid: Услови за користење, Политика за приватност и Договор за обработка, нацрти за правен преглед",
   styles: {
     default: { document: { run: { font: FONT, size: 22 } }, title: { run: { font: FONT, size: 40, bold: true }, paragraph: { spacing: { before: 0, after: 200 } } }, heading1: heading(30), heading2: heading(24) },
   },
