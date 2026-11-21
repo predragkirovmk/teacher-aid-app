@@ -28,8 +28,9 @@ point that exists.
 ## Facts the terms rest on (the owner, 2026-11-21)
 
 Run by a natural person, with no company planned soon; schools are the customer and the controller, TeacherAid the
-processor; free; North Macedonia only; court in Bitola. The operator's name and address are still in [brackets] in
-`terms.ts` (`operator`): fill them in after the lawyer's answer, before the page is relied on.
+processor; free; North Macedonia only; court in Bitola. By the owner's choice the page names no person or street
+address yet, only "a natural person from Bitola" and the email (`operatorCity` in `terms.ts`). The e-commerce law asks
+for the provider's name and seat to be published: the lawyer's document asks what must be added (question 10).
 
 ## Points of law
 

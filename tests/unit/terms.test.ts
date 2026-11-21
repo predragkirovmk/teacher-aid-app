@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import sitemap from "@/app/sitemap";
 import { termsMetadata } from "@/components/site-v2/TermsPage";
-import { CONTACT, operator, terms, termsPaths } from "@/content/site-v2/terms";
+import { CONTACT, operatorCity, terms, termsPaths } from "@/content/site-v2/terms";
 
 /**
  * The terms of service (content/site-v2/terms.ts). Macedonian is the binding text and English its translation, so the two
@@ -74,7 +74,14 @@ describe("the terms of service", () => {
       "court with subject-matter jurisdiction in Bitola",
     );
     expect(CONTACT).toBe("hello@teacheraid.education");
-    expect(operator.mk.address).toContain("Битола");
+    expect(operatorCity.mk).toBe("Битола");
+  });
+
+  it("has no blank left to fill in: no [bracketed] text anywhere", () => {
+    for (const lang of ["mk", "en"] as const) {
+      const words = [...terms[lang].summary, ...terms[lang].sections.flatMap((s) => s.blocks.flatMap((b) => ("p" in b ? [b.p] : b.ul)))];
+      for (const w of words) expect(w, w).not.toMatch(/\[[^\]]*\]/);
+    }
   });
 
   it("stays out of search results and the sitemap, with each language naming the other", () => {

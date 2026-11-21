@@ -36,14 +36,11 @@ export const termsVersion = "1.0";
 export const termsUpdated = "2026-11-21";
 
 /**
- * Who runs the service. With no company, it is a natural person, and the law on electronic commerce
- * asks for the provider's name and seat to be easy to find. The owner fills these in after the
- * lawyer's advice; until then the page says plainly that they are missing.
+ * Who runs the service. With no company, it is a natural person. The owner chose (2026-11-21) not to publish a name or
+ * street address until the lawyer has said what the law on electronic commerce requires; the page names the city and
+ * the address to write to. The lawyer's document asks this question (4.10).
  */
-export const operator: Record<Lang, { name: string; address: string }> = {
-  mk: { name: "[име и презиме на операторот]", address: "[адреса], Битола" },
-  en: { name: "[operator's full name]", address: "[address], Bitola" },
-};
+export const operatorCity: Record<Lang, string> = { mk: "Битола", en: "Bitola" };
 
 export const CONTACT = "hello@teacheraid.education";
 
@@ -76,7 +73,7 @@ const mk: TermsDict = {
       title: "1. Кој ја дава услугата",
       blocks: [
         {
-          p: `1.1. Услугата TeacherAid ја дава ${operator.mk.name}, физичко лице, со адреса ${operator.mk.address}, Република Северна Македонија, е-пошта ${CONTACT} (во натамошниот текст: „TeacherAid“, „ние“).`,
+          p: `1.1. Услугата TeacherAid ја дава физичко лице од ${operatorCity.mk}, Република Северна Македонија (во натамошниот текст: „TeacherAid“, „ние“). До нас се стигнува на е-пошта ${CONTACT}.`,
         },
         {
           p: "1.2. TeacherAid засега го води физичко лице, не регистрирано трговско друштво. Ако основаме трговско друштво, тоа го презема договорот според точка 23.3 и ве известуваме однапред.",
@@ -482,7 +479,7 @@ const mk: TermsDict = {
     {
       id: "contact",
       title: "24. Контакт",
-      blocks: [{ p: `${operator.mk.name}, ${operator.mk.address}, Република Северна Македонија. Е-пошта: ${CONTACT}.` }],
+      blocks: [{ p: `TeacherAid, ${operatorCity.mk}, Република Северна Македонија. Е-пошта: ${CONTACT}.` }],
     },
   ],
 };
@@ -515,7 +512,7 @@ const en: TermsDict = {
       title: "1. Who provides the service",
       blocks: [
         {
-          p: `1.1. TeacherAid is provided by ${operator.en.name}, a natural person, at ${operator.en.address}, Republic of North Macedonia, email ${CONTACT} ("TeacherAid", "we").`,
+          p: `1.1. TeacherAid is provided by a natural person from ${operatorCity.en}, Republic of North Macedonia ("TeacherAid", "we"). You can reach us by email at ${CONTACT}.`,
         },
         {
           p: "1.2. For now TeacherAid is run by a natural person, not a registered company. If we found a company, it takes over the agreement under point 23.3, and we tell you in advance.",
@@ -907,7 +904,7 @@ const en: TermsDict = {
     {
       id: "contact",
       title: "24. Contact",
-      blocks: [{ p: `${operator.en.name}, ${operator.en.address}, Republic of North Macedonia. Email: ${CONTACT}.` }],
+      blocks: [{ p: `TeacherAid, ${operatorCity.en}, Republic of North Macedonia. Email: ${CONTACT}.` }],
     },
   ],
 };
