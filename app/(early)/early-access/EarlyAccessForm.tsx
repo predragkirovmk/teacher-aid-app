@@ -95,7 +95,10 @@ export function EarlyAccessForm() {
         {sending ? "Sending..." : "Get early access"}
       </button>
 
-      <p className="ea-fine">We’ll only email you about TeacherAid. Unsubscribe anytime.</p>
+      {/* Signing up is consent (point 8 of the privacy policy), so the form says what the email is for and links the policy. */}
+      <p className="ea-fine">
+        We’ll only email you about TeacherAid. Unsubscribe anytime. <a href="/en/privacy">Privacy Policy</a>
+      </p>
     </form>
   );
 }

@@ -197,9 +197,10 @@ export function SignIn() {
           </p>
 
           {/* Signing in is where a teacher accepts the terms (point 3.2 of them), so the screen says so and links the one copy
-              on the website. A plain link: the website is outside this app, and a live build sends it to teacheraid.education. */}
+              of them and of the privacy policy on the website. A plain link: the website is outside this app, and a live build sends it to teacheraid.education. */}
           <p className="entry__terms">
-            {t("signin.terms")} <a href={locale === "en" ? "/en/terms" : "/uslovi"}>{t("signin.terms.link")}</a>.
+            {t("signin.terms")} <a href={locale === "en" ? "/en/terms" : "/uslovi"}>{t("signin.terms.link")}</a>.{" "}
+            {t("signin.privacy")} <a href={locale === "en" ? "/en/privacy" : "/privatnost"}>{t("signin.privacy.link")}</a>.
           </p>
         </div>
       </div>

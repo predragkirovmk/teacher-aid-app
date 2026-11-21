@@ -60,6 +60,7 @@ export type ChromeDict = {
   pagesLabel: string;
   privacy: { label: string; href: string };
   terms: { label: string; href: string };
+  privacyPolicy: { label: string; href: string };
   book: { title: string; body: string; cta: string; email: string; pilot: string };
   /** The nav's section links point at the home page from every other page. */
   sectionsLabel: string;
@@ -76,6 +77,7 @@ export const chrome: Record<Lang, ChromeDict> = {
     pagesLabel: "Страници",
     privacy: { label: "Приватност за учениците", href: "/app/privacy" },
     terms: { label: "Услови за користење", href: "/uslovi" },
+    privacyPolicy: { label: "Политика за приватност", href: "/privatnost" },
     book: {
       title: "Закажете бесплатен час.",
       body: "Доаѓаме во вашето училиште и со едно одделение водиме вистински час, од скенирањето до списокот на крајот. Вие и наставниците гледате.",
@@ -95,6 +97,7 @@ export const chrome: Record<Lang, ChromeDict> = {
     pagesLabel: "Pages",
     privacy: { label: "Privacy for students", href: "/app/privacy" },
     terms: { label: "Terms of Service", href: "/en/terms" },
+    privacyPolicy: { label: "Privacy Policy", href: "/en/privacy" },
     book: {
       title: "Book a free lesson.",
       body: "We come to your school and run a real lesson with one class, from the scan to the list at the end. You and your teachers watch.",
