@@ -7,7 +7,7 @@ import type { Lang } from "./types";
   Word document for the lawyer is made from it (scripts/legal/terms-docx.mjs), so the two cannot differ.
 
   Every rule here is either what the app does today or what the owner decided (2026-11-21: schools are
-  the customer, the service is free, North Macedonia only, run by a natural person, court in Bitola).
+  the customer, the service is free, North Macedonia only, run by a team of natural persons from Bitola, court in Bitola).
   Points of law are written without article numbers; the ones that were checked, and where, are in
   docs/legal/README.md. A lawyer reviews this before the first real school accepts it.
 */
@@ -36,11 +36,12 @@ export const termsVersion = "1.0";
 export const termsUpdated = "2026-11-21";
 
 /**
- * Who runs the service. With no company, it is a natural person. The owner chose (2026-11-21) not to publish a name or
- * street address until the lawyer has said what the law on electronic commerce requires; the page names the city and
- * the address to write to. The lawyer's document asks this question (4.10).
+ * Who runs the service: with no company, the team of natural persons the owner named on 2026-11-21. Their names are
+ * written in Cyrillic in both languages, as the owner gave them, so the English page does not guess at a spelling.
+ * The law on electronic commerce asks for the provider's name and seat to be easy to find.
  */
 export const operatorCity: Record<Lang, string> = { mk: "Битола", en: "Bitola" };
+export const team = ["Предраг Киров", "Огнен Кецеџи", "Никола Христовски", "Леонид Стојановски", "Дамјан Фузевски"];
 
 export const CONTACT = "hello@teacheraid.education";
 
@@ -73,10 +74,10 @@ const mk: TermsDict = {
       title: "1. Кој ја дава услугата",
       blocks: [
         {
-          p: `1.1. Услугата TeacherAid ја дава физичко лице од ${operatorCity.mk}, Република Северна Македонија (во натамошниот текст: „TeacherAid“, „ние“). До нас се стигнува на е-пошта ${CONTACT}.`,
+          p: `1.1. Услугата TeacherAid ја дава тим од физички лица од ${operatorCity.mk}, Република Северна Македонија: ${team.join(", ")} (во натамошниот текст: „TeacherAid“, „ние“). До нас се стигнува на е-пошта ${CONTACT}.`,
         },
         {
-          p: "1.2. TeacherAid засега го води физичко лице, не регистрирано трговско друштво. Ако основаме трговско друштво, тоа го презема договорот според точка 23.3 и ве известуваме однапред.",
+          p: "1.2. TeacherAid засега го водат физички лица, не регистрирано трговско друштво. Ако основаме трговско друштво, тоа го презема договорот според точка 23.3 и ве известуваме однапред.",
         },
         {
           p: "1.3. Овие Услови се договор помеѓу TeacherAid и Училиштето, и правила што важат за секој што ја користи Услугата.",
@@ -479,7 +480,7 @@ const mk: TermsDict = {
     {
       id: "contact",
       title: "24. Контакт",
-      blocks: [{ p: `TeacherAid, ${operatorCity.mk}, Република Северна Македонија. Е-пошта: ${CONTACT}.` }],
+      blocks: [{ p: `TeacherAid: ${team.join(", ")}. ${operatorCity.mk}, Република Северна Македонија. Е-пошта: ${CONTACT}.` }],
     },
   ],
 };
@@ -512,10 +513,10 @@ const en: TermsDict = {
       title: "1. Who provides the service",
       blocks: [
         {
-          p: `1.1. TeacherAid is provided by a natural person from ${operatorCity.en}, Republic of North Macedonia ("TeacherAid", "we"). You can reach us by email at ${CONTACT}.`,
+          p: `1.1. TeacherAid is provided by a team of natural persons from ${operatorCity.en}, Republic of North Macedonia: ${team.join(", ")} ("TeacherAid", "we"). You can reach us by email at ${CONTACT}.`,
         },
         {
-          p: "1.2. For now TeacherAid is run by a natural person, not a registered company. If we found a company, it takes over the agreement under point 23.3, and we tell you in advance.",
+          p: "1.2. For now TeacherAid is run by natural persons, not a registered company. If we found a company, it takes over the agreement under point 23.3, and we tell you in advance.",
         },
         { p: "1.3. These Terms are an agreement between TeacherAid and the School, and rules for everyone who uses the Service." },
       ],
@@ -904,7 +905,7 @@ const en: TermsDict = {
     {
       id: "contact",
       title: "24. Contact",
-      blocks: [{ p: `TeacherAid, ${operatorCity.en}, Republic of North Macedonia. Email: ${CONTACT}.` }],
+      blocks: [{ p: `TeacherAid: ${team.join(", ")}. ${operatorCity.en}, Republic of North Macedonia. Email: ${CONTACT}.` }],
     },
   ],
 };

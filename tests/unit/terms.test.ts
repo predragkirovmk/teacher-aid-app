@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import sitemap from "@/app/sitemap";
 import { termsMetadata } from "@/components/site-v2/TermsPage";
-import { CONTACT, operatorCity, terms, termsPaths } from "@/content/site-v2/terms";
+import { CONTACT, operatorCity, team, terms, termsPaths } from "@/content/site-v2/terms";
 
 /**
  * The terms of service (content/site-v2/terms.ts). Macedonian is the binding text and English its translation, so the two
@@ -75,6 +75,15 @@ describe("the terms of service", () => {
     );
     expect(CONTACT).toBe("hello@teacheraid.education");
     expect(operatorCity.mk).toBe("Битола");
+    // The team that runs the service is named, in full, where the terms say who provides it and in the contact.
+    for (const lang of ["mk", "en"] as const) {
+      const who = terms[lang].sections.find((x) => x.id === "who")!;
+      const contact = terms[lang].sections.find((x) => x.id === "contact")!;
+      for (const name of team) {
+        expect(JSON.stringify(who.blocks), `${lang} ${name}`).toContain(name);
+        expect(JSON.stringify(contact.blocks), `${lang} ${name}`).toContain(name);
+      }
+    }
   });
 
   it("has no blank left to fill in: no [bracketed] text anywhere", () => {
