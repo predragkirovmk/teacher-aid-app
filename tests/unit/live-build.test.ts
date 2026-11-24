@@ -96,4 +96,22 @@ describe("the demo build (teacheraid.education)", () => {
     expect(body).toContain("Sitemap: ");
     expect(body).not.toContain("Disallow: /\n");
   });
+
+  it("keeps the student app out of crawling, and nothing else that starts with /app", async () => {
+    // Google's matching: each Disallow is a prefix of the path and query, `$` anchors the end, and the
+    // longest matching rule wins over the shorter Allow: /.
+    const disallows = (await robots())
+      .split("\n")
+      .filter((l) => l.startsWith("Disallow: "))
+      .map((l) => l.slice("Disallow: ".length));
+    const blocked = (path: string) =>
+      disallows.some((rule) => (rule.endsWith("$") ? path === rule.slice(0, -1) : path.startsWith(rule)));
+
+    for (const path of ["/app", "/app?next=%2Fapp", "/app/", "/app/welcome?next=%2Fapp", "/app/privacy", "/api/join"]) {
+      expect(blocked(path), path).toBe(true);
+    }
+    for (const path of ["/", "/en", "/prasanja", "/apple-icon.png", "/app-icons/icon-192.png", "/app.webmanifest", "/app-sw.js", "/llms.txt"]) {
+      expect(blocked(path), path).toBe(false);
+    }
+  });
 });
