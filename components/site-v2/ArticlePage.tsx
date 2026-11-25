@@ -71,6 +71,18 @@ export function ArticlePage({ t, page }: { t: SiteV2Dict; page: ArticleDict }) {
                   ))}
                 </ul>
               )}
+              {s.links && (
+                <ul className="article__links">
+                  {s.links.map((l) => (
+                    <li key={l.href}>
+                      <a href={l.href} download={l.download || undefined}>
+                        {l.label}
+                      </a>
+                      {l.note && <span>{l.note}</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
               {s.items?.map((qa) => (
                 <div key={qa.q} className="qa">
                   <h3>{qa.q}</h3>

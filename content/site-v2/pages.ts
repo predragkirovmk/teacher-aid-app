@@ -6,7 +6,7 @@ import type { Lang } from "./types";
   or checked and dated where it is stated (other tools' prices and features).
 */
 
-export type PageKey = "faq" | "alternative" | "about" | "tools" | "ai";
+export type PageKey = "faq" | "alternative" | "about" | "tools" | "ai" | "press";
 
 /** Each page's path in each language. The pairs are each other's hreflang alternates. */
 export const pagePaths: Record<PageKey, Record<Lang, string>> = {
@@ -15,6 +15,7 @@ export const pagePaths: Record<PageKey, Record<Lang, string>> = {
   about: { mk: "/za-nas", en: "/en/about" },
   tools: { mk: "/digitalni-alatki-vo-nastavata", en: "/en/digital-tools-for-teaching" },
   ai: { mk: "/vestachka-inteligencija-vo-obrazovanieto", en: "/en/ai-in-education" },
+  press: { mk: "/za-mediumi", en: "/en/press" },
 };
 
 export const homePaths: Record<Lang, string> = { mk: "/", en: "/en" };
@@ -27,6 +28,7 @@ export const pageUpdated: Record<PageKey | "home", string> = {
   about: "2026-10-31",
   tools: "2026-11-25",
   ai: "2026-11-25",
+  press: "2026-11-25",
 };
 
 export type QA = { q: string; a: string[] };
@@ -39,6 +41,8 @@ export type Section = {
   /** Questions under the section heading, each an h3 with its answer. */
   items?: QA[];
   table?: { caption: string; cols: string[]; rows: { label: string; cells: string[] }[]; note: string };
+  /** Files and pages to open or download, each with a short note. */
+  links?: { label: string; href: string; note?: string; download?: boolean }[];
 };
 
 export type ArticleDict = {
@@ -1134,12 +1138,154 @@ const aiEn: ArticleDict = {
   ],
 };
 
+
+// The press page makes writing about TeacherAid, and linking to it, a five-minute job for a
+// journalist, a school or an organiser. Links from other sites are what the site lacks most
+// (brain: Areas/website/ranking-plan.md). Only facts already on the site; no names (decided
+// 2026-10-31).
+const pressMk: ArticleDict = {
+  key: "press",
+  lang: "mk",
+  meta: {
+    title: "TeacherAid за медиуми: факти, лого и слики",
+    description:
+      "Сè што ви треба за да напишете за TeacherAid: краток и подолг опис, факти, логоа, слики од апликацијата и контакт. Апликација за часот од Битола, за средни училишта и факултети во Македонија.",
+  },
+  name: "За медиуми",
+  kicker: "За медиуми, училишта и организатори",
+  title: "Пишувате за TeacherAid?",
+  lead: "Тука е сè што ви треба: опис во една реченица и во еден пасус, фактите, логоата и сликите од апликацијата. Слободно користете ги.",
+  sections: [
+    {
+      id: "edna-recenica",
+      title: "Во една реченица",
+      paras: [
+        "TeacherAid е апликација за часот од Битола: од лекцијата на наставникот прави прашања, учениците одговараат на своите телефони, а присуството се запишува со едно скенирање.",
+      ],
+    },
+    {
+      id: "pasus",
+      title: "Во еден пасус",
+      paras: [
+        "TeacherAid е апликација за часот за средни училишта и факултети во Македонија. Наставникот ја додава лекцијата, како PDF, Word или неколку реченици, а TeacherAid подготвува прашања на македонски со точните одговори и кратко објаснување. Во час наставникот ги испраќа од лаптопот, учениците одговараат на своите телефони, а присуството се запишува кога ќе го скенираат QR-кодот на таблата. На крајот на часот наставникот го има списокот за е-Дневник, а директорот секој месец добива извештај. Податоците се на училиштето и се чуваат во Европската унија.",
+      ],
+    },
+    {
+      id: "fakti",
+      title: "Факти",
+      list: [
+        "Почеток: Startup Weekend Bitola, 11 до 13 септември 2026.",
+        "Седиште: Битола, Македонија.",
+        "За кого: наставници и директори во средните училишта, професори и декани на факултетите.",
+        "Јазик: македонски.",
+        "Првите училишта: учебната 2026/27. Првиот час во секое училиште е бесплатен.",
+        "Веб-страница: teacheraid.education. Контакт: hello@teacheraid.education.",
+      ],
+    },
+    {
+      id: "logo",
+      title: "Лого и слики",
+      paras: ["Логоата и сликите од апликацијата се слободни за објавување во текст за TeacherAid. Ве молиме не ги менувајте боите и обликот на логото."],
+      links: [
+        { label: "Сите логоа (ZIP, 22 датотеки)", href: "/brand/teacheraid-logo-kit.zip", note: "SVG и PNG, во боја, црно, бело", download: true },
+        { label: "Лого, SVG", href: "/brand/teacheraid-logo-ink.svg", download: true },
+        { label: "Икона на апликацијата, PNG 1024 × 1024", href: "/brand/teacheraid-app-icon-square.png", download: true },
+        { label: "Апликацијата за наставникот", href: "/site-v2/screens/t-today-mk-1800.webp", note: "слика од екранот, 1800 пиксели" },
+        { label: "Апликацијата за ученикот", href: "/site-v2/screens/s-question-mk-780.webp", note: "слика од екранот, прашање од лекцијата" },
+      ],
+    },
+    {
+      id: "vrska",
+      title: "Врска до нас",
+      paras: [
+        "Ако пишувате за нас, ве молиме ставете врска до teacheraid.education. Името TeacherAid лесно се меша со англиското „teacher aide“, па врската им помага на читателите да не најдат.",
+      ],
+    },
+    {
+      id: "kontakt",
+      title: "Контакт",
+      paras: [
+        "За разговор, прашања или да дојдете на час: hello@teacheraid.education.",
+      ],
+    },
+  ],
+};
+
+const pressEn: ArticleDict = {
+  key: "press",
+  lang: "en",
+  meta: {
+    title: "TeacherAid press kit: facts, logos and images",
+    description:
+      "Everything you need to write about TeacherAid: a short and a longer description, facts, logos, app screenshots and contact. A classroom app from Bitola for secondary schools and universities in North Macedonia.",
+  },
+  name: "Press",
+  kicker: "For media, schools and organisers",
+  title: "Writing about TeacherAid?",
+  lead: "Here is everything you need: a description in one sentence and in one paragraph, the facts, the logos and screenshots of the app. Feel free to use them.",
+  sections: [
+    {
+      id: "one-sentence",
+      title: "In one sentence",
+      paras: [
+        "TeacherAid is a classroom app from Bitola: it turns the teacher's lesson into questions, students answer on their phones, and attendance is taken with one scan.",
+      ],
+    },
+    {
+      id: "paragraph",
+      title: "In one paragraph",
+      paras: [
+        "TeacherAid is a classroom app for secondary schools and universities in North Macedonia. The teacher adds the lesson, as a PDF, a Word file or a few sentences, and TeacherAid prepares questions in Macedonian with the right answers and a short explanation. In class the teacher sends them from a laptop, students answer on their phones, and attendance is taken when they scan the QR code on the board. At the end of class the teacher has the list for e-Dnevnik, and every month the director gets a report. The data belongs to the school and stays in the European Union.",
+      ],
+    },
+    {
+      id: "facts",
+      title: "Facts",
+      list: [
+        "Started: Startup Weekend Bitola, 11 to 13 September 2026.",
+        "Based in: Bitola, North Macedonia.",
+        "For: teachers and directors in secondary schools, professors and deans at universities.",
+        "Language: Macedonian.",
+        "First schools: the 2026/27 school year. The first lesson in every school is free.",
+        "Website: teacheraid.education. Contact: hello@teacheraid.education.",
+      ],
+    },
+    {
+      id: "logos",
+      title: "Logos and images",
+      paras: ["The logos and app screenshots are free to publish in a piece about TeacherAid. Please do not change the logo's colours or shape."],
+      links: [
+        { label: "All logos (ZIP, 22 files)", href: "/brand/teacheraid-logo-kit.zip", note: "SVG and PNG, colour, black, white", download: true },
+        { label: "Logo, SVG", href: "/brand/teacheraid-logo-ink.svg", download: true },
+        { label: "App icon, PNG 1024 × 1024", href: "/brand/teacheraid-app-icon-square.png", download: true },
+        { label: "The teacher app", href: "/site-v2/screens/t-today-en-1800.webp", note: "screenshot, 1800 pixels" },
+        { label: "The student app", href: "/site-v2/screens/s-question-en-780.webp", note: "screenshot, a question from the lesson" },
+      ],
+    },
+    {
+      id: "link",
+      title: "Linking to us",
+      paras: [
+        "If you write about us, please link to teacheraid.education. The name TeacherAid is easily confused with the English \"teacher aide\", so the link helps readers find us.",
+      ],
+    },
+    {
+      id: "contact",
+      title: "Contact",
+      paras: [
+        "For an interview, questions or to sit in on a lesson: hello@teacheraid.education.",
+      ],
+    },
+  ],
+};
+
 export const pages: Record<PageKey, Record<Lang, ArticleDict>> = {
   faq: { mk: faqMk, en: faqEn },
   alternative: { mk: alternativeMk, en: alternativeEn },
   about: { mk: aboutMk, en: aboutEn },
   tools: { mk: toolsMk, en: toolsEn },
   ai: { mk: aiMk, en: aiEn },
+  press: { mk: pressMk, en: pressEn },
 };
 
-export const pageOrder: PageKey[] = ["faq", "alternative", "tools", "ai", "about"];
+export const pageOrder: PageKey[] = ["faq", "alternative", "tools", "ai", "about", "press"];
