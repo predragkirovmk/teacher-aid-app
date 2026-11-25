@@ -1,3 +1,15 @@
+import {
+  attendanceEn,
+  attendanceMk,
+  formsEn,
+  formsMk,
+  mentimeterEn,
+  mentimeterMk,
+  quizEn,
+  quizMk,
+  waygroundEn,
+  waygroundMk,
+} from "./guides";
 import type { Lang } from "./types";
 
 /*
@@ -6,7 +18,18 @@ import type { Lang } from "./types";
   or checked and dated where it is stated (other tools' prices and features).
 */
 
-export type PageKey = "faq" | "alternative" | "about" | "tools" | "ai" | "press";
+export type PageKey =
+  | "faq"
+  | "alternative"
+  | "mentimeter"
+  | "wayground"
+  | "forms"
+  | "about"
+  | "tools"
+  | "quiz"
+  | "attendance"
+  | "ai"
+  | "press";
 
 /** Each page's path in each language. The pairs are each other's hreflang alternates. */
 export const pagePaths: Record<PageKey, Record<Lang, string>> = {
@@ -16,6 +39,11 @@ export const pagePaths: Record<PageKey, Record<Lang, string>> = {
   tools: { mk: "/digitalni-alatki-vo-nastavata", en: "/en/digital-tools-for-teaching" },
   ai: { mk: "/vestachka-inteligencija-vo-obrazovanieto", en: "/en/ai-in-education" },
   press: { mk: "/za-mediumi", en: "/en/press" },
+  mentimeter: { mk: "/alternativa-na-mentimeter", en: "/en/mentimeter-alternative" },
+  wayground: { mk: "/alternativa-na-wayground-quizizz", en: "/en/wayground-quizizz-alternative" },
+  forms: { mk: "/google-forms-ili-teacheraid", en: "/en/google-forms-or-teacheraid" },
+  quiz: { mk: "/kako-da-napravite-kviz", en: "/en/how-to-make-a-quiz" },
+  attendance: { mk: "/prisustvo-so-qr-kod", en: "/en/qr-code-attendance" },
 };
 
 export const homePaths: Record<Lang, string> = { mk: "/", en: "/en" };
@@ -29,6 +57,11 @@ export const pageUpdated: Record<PageKey | "home", string> = {
   tools: "2026-11-25",
   ai: "2026-11-25",
   press: "2026-11-25",
+  mentimeter: "2026-11-25",
+  wayground: "2026-11-25",
+  forms: "2026-11-25",
+  quiz: "2026-11-25",
+  attendance: "2026-11-25",
 };
 
 export type QA = { q: string; a: string[] };
@@ -1286,6 +1319,24 @@ export const pages: Record<PageKey, Record<Lang, ArticleDict>> = {
   tools: { mk: toolsMk, en: toolsEn },
   ai: { mk: aiMk, en: aiEn },
   press: { mk: pressMk, en: pressEn },
+  mentimeter: { mk: mentimeterMk, en: mentimeterEn },
+  wayground: { mk: waygroundMk, en: waygroundEn },
+  forms: { mk: formsMk, en: formsEn },
+  quiz: { mk: quizMk, en: quizEn },
+  attendance: { mk: attendanceMk, en: attendanceEn },
 };
 
-export const pageOrder: PageKey[] = ["faq", "alternative", "tools", "ai", "about", "press"];
+/** The order of the pages in the footer and the home page's list: the questions, the comparisons, the guides, then about us. */
+export const pageOrder: PageKey[] = [
+  "faq",
+  "alternative",
+  "mentimeter",
+  "wayground",
+  "forms",
+  "tools",
+  "quiz",
+  "attendance",
+  "ai",
+  "about",
+  "press",
+];
