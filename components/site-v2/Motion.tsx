@@ -150,6 +150,8 @@ export function Motion() {
                   start: "top top",
                   end: "+=200%",
                   pin: true,
+                  // The wrapper from the server HTML, so the hero is never taken out and put back.
+                  pinSpacer: hero.closest<HTMLElement>("[data-hero-pin]") ?? undefined,
                   scrub: fine ? 0.6 : 0.35,
                   invalidateOnRefresh: true,
                   onUpdate: (st) => {

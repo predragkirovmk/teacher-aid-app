@@ -783,13 +783,14 @@ body.v2 {
   }
 }
 
+/* The devices are on screen from the first frame and only settle into place: fading the page's
+   largest picture in from nothing made it paint late (Lighthouse, 2026-11-25). The rise and the
+   scale are as before. */
 @keyframes v2-stage {
   from {
-    opacity: 0;
     transform: translate3d(0, 56px, 0) scale(0.97);
   }
   to {
-    opacity: 1;
     transform: none;
   }
 }
