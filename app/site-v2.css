@@ -3097,3 +3097,81 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
   display: inline-block;
   padding-block: 0.25rem;
 }
+
+/* ---------- The home page's list of reading pages ---------- */
+
+.more__title {
+  margin-top: clamp(1rem, 2.4vh, 1.5rem);
+  margin-bottom: clamp(2.5rem, 6vh, 4rem);
+  max-width: 12em;
+}
+
+.more__list {
+  border-top: 1px solid var(--ink);
+}
+
+.more__list li {
+  border-bottom: 1px solid var(--line);
+}
+
+.more__list a {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 7fr) auto;
+  align-items: baseline;
+  gap: 8px clamp(16px, 3vw, 48px);
+  min-height: 44px;
+  padding-block: clamp(1.25rem, 3vh, 1.75rem);
+  text-decoration: none;
+  transition: transform 160ms var(--ease-out);
+}
+
+.more__list a:active {
+  transform: scale(0.99);
+}
+
+.more__name {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(1.5rem, 2.6vw, 2.4rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.more__lead {
+  max-width: 56ch;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.more__arrow {
+  align-self: center;
+  color: var(--deep);
+  transition: transform 200ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .more__list a:hover .more__name {
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-underline-offset: 0.14em;
+  }
+
+  .more__list a:hover .more__arrow {
+    transform: translateX(4px);
+  }
+}
+
+@media (max-width: 767px) {
+  .more__list a {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .more__lead {
+    grid-column: 1;
+  }
+
+  .more__arrow {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}

@@ -6,13 +6,15 @@ import type { Lang } from "./types";
   or checked and dated where it is stated (other tools' prices and features).
 */
 
-export type PageKey = "faq" | "alternative" | "about";
+export type PageKey = "faq" | "alternative" | "about" | "tools" | "ai";
 
 /** Each page's path in each language. The pairs are each other's hreflang alternates. */
 export const pagePaths: Record<PageKey, Record<Lang, string>> = {
   faq: { mk: "/prasanja", en: "/en/faq" },
   alternative: { mk: "/alternativa-na-kahoot", en: "/en/kahoot-alternative" },
   about: { mk: "/za-nas", en: "/en/about" },
+  tools: { mk: "/digitalni-alatki-vo-nastavata", en: "/en/digital-tools-for-teaching" },
+  ai: { mk: "/vestachka-inteligencija-vo-obrazovanieto", en: "/en/ai-in-education" },
 };
 
 export const homePaths: Record<Lang, string> = { mk: "/", en: "/en" };
@@ -23,6 +25,8 @@ export const pageUpdated: Record<PageKey | "home", string> = {
   faq: "2026-10-31",
   alternative: "2026-10-31",
   about: "2026-10-31",
+  tools: "2026-11-25",
+  ai: "2026-11-25",
 };
 
 export type QA = { q: string; a: string[] };
@@ -64,6 +68,8 @@ export type ChromeDict = {
   book: { title: string; body: string; cta: string; email: string; pilot: string };
   /** The nav's section links point at the home page from every other page. */
   sectionsLabel: string;
+  /** The home page's list of the reading pages, before the booking scene. */
+  readMore: { kicker: string; title: string };
 };
 
 export const chrome: Record<Lang, ChromeDict> = {
@@ -86,6 +92,7 @@ export const chrome: Record<Lang, ChromeDict> = {
       pilot: "Во учебната 2026/27 почнуваме со првите училишта.",
     },
     sectionsLabel: "Делови од почетната страница",
+    readMore: { kicker: "Прочитајте повеќе", title: "Пред да ни пишете." },
   },
   en: {
     homeName: "Home",
@@ -106,6 +113,7 @@ export const chrome: Record<Lang, ChromeDict> = {
       pilot: "We start with the first schools in the 2026/27 school year.",
     },
     sectionsLabel: "Sections of the home page",
+    readMore: { kicker: "Read more", title: "Before you write to us." },
   },
 };
 
@@ -765,10 +773,373 @@ const aboutEn: ArticleDict = {
   ],
 };
 
+// The two guides answer what teachers in Macedonia actually type into Google (autocomplete, hl=mk,
+// 2026-11-24): "дигитални алатки во наставата" and "вештачка интелигенција во образованието".
+// Other tools' prices are the ones on the comparison page, checked 2026-10-31.
+const toolsMk: ArticleDict = {
+  key: "tools",
+  lang: "mk",
+  meta: {
+    title: "Дигитални алатки во наставата: водич за наставници во Македонија",
+    description:
+      "Кои дигитални алатки ги има наставникот во Македонија и за што служи секоја: е-Дневник, EDUINO, Kahoot, Mentimeter, Google и Microsoft Forms, вештачка интелигенција и TeacherAid. Со пет прашања за избор.",
+  },
+  name: "Дигитални алатки",
+  kicker: "Водич за наставници",
+  title: "Дигитални алатки во наставата.",
+  lead: "Наставникот во Македонија денес има повеќе алатки отколку време да ги пробува. Еве ги подредени по тоа што прават и што бараат од вас и од учениците.",
+  sections: [
+    {
+      id: "nakratko",
+      title: "Накратко",
+      paras: [
+        "Секоја алатка решава еден дел од работата. е-Дневник ја води службената евиденција, EDUINO нуди материјали, Google и Microsoft служат за споделување и тестови, а алатките за квиз и анкета го оживуваат часот. Ниедна не мора да ги замени другите.",
+        "Подобро е една алатка што ја користите секој ден, отколку пет што ги пробавте по еднаш.",
+      ],
+    },
+    {
+      id: "nacionalni",
+      title: "Националните алатки",
+      items: [
+        {
+          q: "Што е е-Дневник?",
+          a: [
+            "е-Дневник е националниот електронски дневник: во него се внесуваат присуството и оценките на учениците. Тоа е службената евиденција на училиштето и ниедна алатка за часот не ја заменува.",
+          ],
+        },
+        {
+          q: "Што е EDUINO?",
+          a: [
+            "EDUINO е националната платформа за дигитално учење. Во март 2020 UNICEF, заедно со Министерството за образование и наука и Бирото за развој на образованието, ја отвори нејзината е-училница, со видео-часови и активности за учење.",
+            "EDUINO е библиотека на материјали. Добро е место за подготовка и за домашна работа, но не е алатка за водење на часот во живо.",
+          ],
+        },
+      ],
+    },
+    {
+      id: "vo-chas",
+      title: "Алатки за во часот",
+      items: [
+        {
+          q: "Квиз-игри: Kahoot и Wayground",
+          a: [
+            "Kahoot е квиз-игра во живо: прашањата се на таблата, учениците одговараат на своите уреди, а на крајот има победник. Wayground, порано Quizizz, нуди квизови што учениците ги решаваат во живо или со свое темпо. Двете се добри за десет минути повторување.",
+            "Прашањата ги пишувате сами или ги земате од библиотеката. Платените планови на Kahoot за наставник почнуваат од 3 USD месечно со годишна наплата (проверено на 31 октомври 2026).",
+          ],
+        },
+        {
+          q: "Анкети за време на предавање: Mentimeter",
+          a: [
+            "Mentimeter е за анкети, облаци од зборови и прашања од публиката. Корисен е кога сакате брзо да видите што мисли целиот клас, без оценување.",
+          ],
+        },
+        {
+          q: "Тестови и формулари: Google Forms и Microsoft Forms",
+          a: [
+            "За тест или анкета што учениците ги решаваат сами, во час или дома. Ги отворате со училишната Google или Microsoft сметка. Не се за прашања во живо: резултатите ги гледате откако учениците ќе предадат.",
+          ],
+        },
+        {
+          q: "Целиот час: TeacherAid",
+          a: [
+            "TeacherAid од вашата лекција прави прашања на македонски, вие ги испраќате од лаптопот, а учениците одговараат на своите телефони. Присуството се запишува со скенирање на QR-код, а на крајот го имате списокот за е-Дневник. Ништо не стигнува до учениците додека вие не го прегледате.",
+          ],
+        },
+      ],
+    },
+    {
+      id: "vestachka-inteligencija",
+      title: "Вештачка интелигенција за подготовка",
+      paras: [
+        "Алатките како ChatGPT можат да предложат прашања, објаснувања или полесна и потешка верзија на задача. Заштедуваат време, но грешат со сигурен тон: проверете сè пред да стигне до учениците.",
+        "Никогаш не внесувајте имиња, оценки или други лични податоци на ученици во јавна алатка за вештачка интелигенција. Повеќе за ова во водичот за вештачката интелигенција во образованието.",
+      ],
+    },
+    {
+      id: "izbor",
+      title: "Како да изберете: пет прашања",
+      list: [
+        "Дали алатката и прашањата се на македонски?",
+        "Што треба да имаат учениците: апликација, сметка, телефон, интернет?",
+        "Каде одат податоците на учениците? Училиштето одговара за нив според Законот за заштита на личните податоци.",
+        "Кој плаќа, наставникот или училиштето, и колку?",
+        "Колку време бара подготовката пред секој час?",
+      ],
+    },
+  ],
+  sources: [
+    {
+      label: "UNICEF: Нова дигитална платформа за учење од далечина (март 2020)",
+      href: "https://www.unicef.org/northmacedonia/press-releases/new-digital-learning-platform-launched-support-distance-learning-children",
+    },
+    { label: "Kahoot: планови за училишта (kahoot.com, 31.10.2026)", href: "https://kahoot.com/schools/plans/" },
+    { label: "Mentimeter: планови (mentimeter.com, 31.10.2026)", href: "https://www.mentimeter.com/plans" },
+  ],
+};
+
+const toolsEn: ArticleDict = {
+  key: "tools",
+  lang: "en",
+  meta: {
+    title: "Digital tools for teaching: a guide for teachers in North Macedonia",
+    description:
+      "The digital tools a teacher in North Macedonia has, and what each is for: e-Dnevnik, EDUINO, Kahoot, Mentimeter, Google and Microsoft Forms, AI and TeacherAid. With five questions for choosing.",
+  },
+  name: "Digital tools",
+  kicker: "A guide for teachers",
+  title: "Digital tools for teaching.",
+  lead: "A teacher in North Macedonia has more tools today than time to try them. Here they are, sorted by what they do and what they ask of you and your students.",
+  sections: [
+    {
+      id: "in-short",
+      title: "In short",
+      paras: [
+        "Each tool does one part of the job. e-Dnevnik keeps the official record, EDUINO offers materials, Google and Microsoft are for sharing and tests, and quiz and poll tools bring the lesson to life. None of them has to replace the others.",
+        "One tool you use every day beats five you tried once.",
+      ],
+    },
+    {
+      id: "national",
+      title: "The national tools",
+      items: [
+        {
+          q: "What is e-Dnevnik?",
+          a: [
+            "e-Dnevnik is the national electronic class register: attendance and grades are entered in it. It is the school's official record, and no classroom tool replaces it.",
+          ],
+        },
+        {
+          q: "What is EDUINO?",
+          a: [
+            "EDUINO is the national digital learning platform. In March 2020 UNICEF, with the Ministry of Education and Science and the Bureau for Development of Education, opened its e-classroom, with video lessons and learning activities.",
+            "EDUINO is a library of materials. It is a good place for preparation and homework, but not a tool for running a live lesson.",
+          ],
+        },
+      ],
+    },
+    {
+      id: "in-class",
+      title: "Tools for the lesson",
+      items: [
+        {
+          q: "Quiz games: Kahoot and Wayground",
+          a: [
+            "Kahoot is a live quiz game: the questions are on the board, students answer on their devices, and there is a winner at the end. Wayground, formerly Quizizz, offers quizzes students do live or at their own pace. Both are good for ten minutes of review.",
+            "You write the questions yourself or take them from the library. Kahoot's paid teacher plans start at USD 3 a month, billed yearly (checked on 31 October 2026).",
+          ],
+        },
+        {
+          q: "Polls during a lecture: Mentimeter",
+          a: [
+            "Mentimeter is for polls, word clouds and questions from the audience. It is useful when you want to see quickly what the whole class thinks, without grading.",
+          ],
+        },
+        {
+          q: "Tests and forms: Google Forms and Microsoft Forms",
+          a: [
+            "For a test or survey students do on their own, in class or at home. You open them with the school's Google or Microsoft account. They are not for live questions: you see the results after students hand in.",
+          ],
+        },
+        {
+          q: "The whole lesson: TeacherAid",
+          a: [
+            "TeacherAid turns your lesson into questions in Macedonian, you send them from your laptop, and students answer on their phones. Attendance is taken with one scan of a QR code, and at the end you have the list for e-Dnevnik. Nothing reaches your students until you have checked it.",
+          ],
+        },
+      ],
+    },
+    {
+      id: "ai",
+      title: "AI for preparation",
+      paras: [
+        "Tools like ChatGPT can suggest questions, explanations, or an easier and a harder version of a task. They save time, but they are wrong in a confident voice: check everything before it reaches your students.",
+        "Never type students' names, grades or other personal data into a public AI tool. More on this in the guide to AI in education.",
+      ],
+    },
+    {
+      id: "choosing",
+      title: "How to choose: five questions",
+      list: [
+        "Are the tool and its questions in Macedonian?",
+        "What do students need: an app, an account, a phone, the internet?",
+        "Where does students' data go? The school is answerable for it under the Law on Personal Data Protection.",
+        "Who pays, the teacher or the school, and how much?",
+        "How much preparation does each lesson take?",
+      ],
+    },
+  ],
+  sources: [
+    {
+      label: "UNICEF: New digital learning platform launched to support distance learning (March 2020)",
+      href: "https://www.unicef.org/northmacedonia/press-releases/new-digital-learning-platform-launched-support-distance-learning-children",
+    },
+    { label: "Kahoot: plans for schools (kahoot.com, 31 Oct 2026)", href: "https://kahoot.com/schools/plans/" },
+    { label: "Mentimeter: plans (mentimeter.com, 31 Oct 2026)", href: "https://www.mentimeter.com/plans" },
+  ],
+};
+
+const aiMk: ArticleDict = {
+  key: "ai",
+  lang: "mk",
+  meta: {
+    title: "Вештачка интелигенција во образованието: што може во час, а што не",
+    description:
+      "Што може вештачката интелигенција за наставникот, каде греши, како да ги заштитите податоците на учениците и зошто прашањата во час помагаат во учењето. Водич за наставници во Македонија.",
+  },
+  name: "Вештачка интелигенција",
+  kicker: "Водич за наставници",
+  title: "Вештачката интелигенција во часот.",
+  lead: "Вештачката интелигенција може да ви заштеди време за подготовка. Не може да го замени наставникот, и не смее да ги добие податоците на учениците. Еве каде е границата.",
+  sections: [
+    {
+      id: "nakratko",
+      title: "Накратко",
+      paras: [
+        "Вештачката интелигенција е добра во предлагање: прашања, објаснувања, верзии на задача. Лоша е во знаење што е точно за вашиот клас. Затоа наставникот одлучува, а алатката помага.",
+      ],
+    },
+    {
+      id: "shto-moze",
+      title: "Што може за наставникот",
+      list: [
+        "Од вашиот материјал да предложи прашања, со точните одговори и кратко објаснување.",
+        "Да направи полесна и потешка верзија на исто прашање, за класови што се на различно ниво.",
+        "Да предложи прашање за почетокот на часот, пред да ја предавате темата.",
+        "Да објасни тежок поим со други зборови, кога првото објаснување не стигнало до сите.",
+      ],
+    },
+    {
+      id: "shto-ne-moze",
+      title: "Што не може",
+      list: [
+        "Не знае кога греши. Може да напише погрешен факт со ист сигурен тон како и точниот. Проверете сè пред да стигне до учениците.",
+        "Не ги познава вашите ученици: што разбрале вчера, кој молчи, кој се мачи.",
+        "Не одлучува наместо вас. Наставникот бира што ќе се праша, кога и како.",
+      ],
+    },
+    {
+      id: "podatoci",
+      title: "Податоците на учениците",
+      paras: [
+        "Никогаш не внесувајте имиња, оценки или други лични податоци на ученици во јавна алатка за вештачка интелигенција. Училиштето одговара за податоците на учениците според Законот за заштита на личните податоци, кој го следи европскиот GDPR.",
+        "Пред училиштето да избере алатка, нека праша: каде се чуваат податоците, дали остануваат во Европската унија, дали се користат за обучување модели и кој може да ги види.",
+      ],
+    },
+    {
+      id: "prashanja",
+      title: "Зошто прашањата во час помагаат",
+      paras: [
+        "Обидот да се одговори, дури и кога одговорот е погрешен, помага подоцна да се запомни. Истражувачите тоа го нарекуваат ефект на претходно тестирање (Richland, Kornell и Kao, 2009).",
+        "Грешките направени со самодоверба полесно се поправаат кога ученикот веднаш го види точниот одговор (Metcalfe, 2017). Затоа е важно прашањето да стигне до секој ученик, а точниот одговор да се открие пред целиот клас.",
+      ],
+    },
+    {
+      id: "teacheraid",
+      title: "Како TeacherAid ја користи вештачката интелигенција",
+      list: [
+        "Прашањата се прават само од материјалот што наставникот го додава.",
+        "Имињата на учениците никогаш не се испраќаат до вештачката интелигенција.",
+        "Ништо не стигнува до учениците додека наставникот не го прегледа.",
+        "Податоците, резервните копии и записите остануваат во Европската унија.",
+      ],
+    },
+  ],
+  sources: [
+    {
+      label: "Richland, Kornell и Kao (2009). The pretesting effect. Journal of Experimental Psychology: Applied, 15(3), 243–257.",
+      href: "https://doi.org/10.1037/a0016496",
+    },
+    {
+      label: "Metcalfe (2017). Learning from errors. Annual Review of Psychology, 68, 465–489.",
+      href: "https://doi.org/10.1146/annurev-psych-010416-044022",
+    },
+  ],
+};
+
+const aiEn: ArticleDict = {
+  key: "ai",
+  lang: "en",
+  meta: {
+    title: "AI in education: what it can do in a lesson, and what it can't",
+    description:
+      "What AI can do for a teacher, where it goes wrong, how to protect students' data, and why questions in class help students learn. A guide for teachers in North Macedonia.",
+  },
+  name: "AI in education",
+  kicker: "A guide for teachers",
+  title: "AI in the lesson.",
+  lead: "AI can save you preparation time. It cannot replace the teacher, and it must not get students' data. Here is where the line is.",
+  sections: [
+    {
+      id: "in-short",
+      title: "In short",
+      paras: [
+        "AI is good at suggesting: questions, explanations, versions of a task. It is bad at knowing what is true for your class. So the teacher decides, and the tool helps.",
+      ],
+    },
+    {
+      id: "can",
+      title: "What it can do for a teacher",
+      list: [
+        "Suggest questions from your material, with the right answers and a short explanation.",
+        "Make an easier and a harder version of the same question, for classes at different levels.",
+        "Suggest a question for the start of the lesson, before you teach the topic.",
+        "Explain a hard idea in other words, when the first explanation did not reach everyone.",
+      ],
+    },
+    {
+      id: "cannot",
+      title: "What it cannot do",
+      list: [
+        "It does not know when it is wrong. It can state a false fact in the same confident voice as a true one. Check everything before it reaches your students.",
+        "It does not know your students: what they understood yesterday, who stays quiet, who is struggling.",
+        "It does not decide for you. The teacher chooses what to ask, when and how.",
+      ],
+    },
+    {
+      id: "data",
+      title: "Students' data",
+      paras: [
+        "Never type students' names, grades or other personal data into a public AI tool. The school is answerable for students' data under North Macedonia's Law on Personal Data Protection, which follows the EU's GDPR.",
+        "Before a school chooses a tool, it should ask: where is the data stored, does it stay in the European Union, is it used to train models, and who can see it.",
+      ],
+    },
+    {
+      id: "questions",
+      title: "Why questions in class help",
+      paras: [
+        "Trying to answer, even when the answer is wrong, helps students remember later. Researchers call it the pretesting effect (Richland, Kornell and Kao, 2009).",
+        "Mistakes made with confidence are corrected more readily when the student sees the right answer straight away (Metcalfe, 2017). That is why it matters that the question reaches every student, and that the right answer is revealed to the whole class.",
+      ],
+    },
+    {
+      id: "teacheraid",
+      title: "How TeacherAid uses AI",
+      list: [
+        "Questions are made only from the material the teacher adds.",
+        "Students' names are never sent to the AI.",
+        "Nothing reaches students until the teacher has checked it.",
+        "Data, backups and logs stay in the European Union.",
+      ],
+    },
+  ],
+  sources: [
+    {
+      label: "Richland, Kornell and Kao (2009). The pretesting effect. Journal of Experimental Psychology: Applied, 15(3), 243–257.",
+      href: "https://doi.org/10.1037/a0016496",
+    },
+    {
+      label: "Metcalfe (2017). Learning from errors. Annual Review of Psychology, 68, 465–489.",
+      href: "https://doi.org/10.1146/annurev-psych-010416-044022",
+    },
+  ],
+};
+
 export const pages: Record<PageKey, Record<Lang, ArticleDict>> = {
   faq: { mk: faqMk, en: faqEn },
   alternative: { mk: alternativeMk, en: alternativeEn },
   about: { mk: aboutMk, en: aboutEn },
+  tools: { mk: toolsMk, en: toolsEn },
+  ai: { mk: aiMk, en: aiEn },
 };
 
-export const pageOrder: PageKey[] = ["faq", "alternative", "about"];
+export const pageOrder: PageKey[] = ["faq", "alternative", "tools", "ai", "about"];
