@@ -783,13 +783,14 @@ body.v2 {
   }
 }
 
+/* The devices are on screen from the first frame and only settle into place: fading the page's
+   largest picture in from nothing made it paint late (Lighthouse, 2026-11-25). The rise and the
+   scale are as before. */
 @keyframes v2-stage {
   from {
-    opacity: 0;
     transform: translate3d(0, 56px, 0) scale(0.97);
   }
   to {
-    opacity: 1;
     transform: none;
   }
 }
@@ -3174,4 +3175,33 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
     grid-column: 2;
     grid-row: 1;
   }
+}
+
+/* Files and pages to open or download on a reading page (the press page's logos and images). */
+.article__links {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+
+.article__links li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  padding-block: 0.9rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.article__links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-block: -10px;
+  font-weight: 600;
+}
+
+.article__links span {
+  color: var(--ink-2);
+  font-size: 1rem;
 }

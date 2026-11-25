@@ -30,61 +30,66 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
       <main id="main" tabIndex={-1}>
         {/* Act 1, hook: the claim in one line, then the scene that proves it. The motion layer
             pins this section: the one phone is joined by the whole class, and every student answers. */}
-        <section className="hero" id="top" data-theme="paper" data-hero aria-labelledby="hero-title">
-          <div className="wrap hero__grid">
-            <p className="kicker hero__kicker" data-hero-out>
-              {t.hero.kicker}
-            </p>
-            <h1 className="mega hero__title" id="hero-title" data-hero-title>
-              {t.hero.title.map((line, i) => (
-                <span className="line" key={line} style={{ "--i": i } as React.CSSProperties}>
-                  <span>{line}</span>
-                </span>
-              ))}
-            </h1>
-            <div className="hero__deck" data-hero-out>
-              <p className="lead hero__lead">{t.hero.deck}</p>
-              <p className="lead hero__lead-short">{t.hero.deckShort}</p>
-              <div className="actions">
-                <a className="btn btn--primary" href="https://app.teacheraid.education/teacher">
-                  {t.hero.teacher}
-                </a>
-                <a className="btn btn--quiet" href="https://app.teacheraid.education/app">
-                  {t.hero.student}
-                </a>
-              </div>
-              <ul className="hero__meta">
-                {t.hero.meta.map((m) => (
-                  <li key={m}>{m}</li>
+        {/* The hero's pin spacer, rendered here so the motion layer never moves the hero in the DOM:
+            a moved node repaints its pictures as new ones, and the page's largest paint (the
+            laptop) then counts a second time, a second late (Lighthouse, 2026-11-25). */}
+        <div className="hero-pin" data-hero-pin>
+          <section className="hero" id="top" data-theme="paper" data-hero aria-labelledby="hero-title">
+            <div className="wrap hero__grid">
+              <p className="kicker hero__kicker" data-hero-out>
+                {t.hero.kicker}
+              </p>
+              <h1 className="mega hero__title" id="hero-title" data-hero-title>
+                {t.hero.title.map((line, i) => (
+                  <span className="line" key={line} style={{ "--i": i } as React.CSSProperties}>
+                    <span>{line}</span>
+                  </span>
                 ))}
-              </ul>
+              </h1>
+              <div className="hero__deck" data-hero-out>
+                <p className="lead hero__lead">{t.hero.deck}</p>
+                <p className="lead hero__lead-short">{t.hero.deckShort}</p>
+                <div className="actions">
+                  <a className="btn btn--primary" href="https://app.teacheraid.education/teacher">
+                    {t.hero.teacher}
+                  </a>
+                  <a className="btn btn--quiet" href="https://app.teacheraid.education/app">
+                    {t.hero.student}
+                  </a>
+                </div>
+                <ul className="hero__meta">
+                  {t.hero.meta.map((m) => (
+                    <li key={m}>{m}</li>
+                  ))}
+                </ul>
+              </div>
             </div>
-          </div>
 
-          <div className="wrap hero__stage">
-            <Laptop label={s.alt.console} className="hero__laptop">
-              <Shot name="t-today" lang={t.lang} sizes="(max-width: 899px) 92vw, 1000px" eager />
-            </Laptop>
-            <Phone label={s.alt.phone} className="hero__phone">
-              <PhoneShot name="s-question" lang={t.lang} sizes="(max-width: 767px) 48vw, 230px" eager />
-            </Phone>
-          </div>
+            <div className="wrap hero__stage">
+              <Laptop label={s.alt.console} className="hero__laptop">
+                <Shot name="t-today" lang={t.lang} sizes="(max-width: 899px) 92vw, 1000px" eager />
+              </Laptop>
+              <Phone label={s.alt.phone} className="hero__phone">
+                <PhoneShot name="s-question" lang={t.lang} sizes="(max-width: 767px) 48vw, 230px" eager />
+              </Phone>
+            </div>
 
-          {/* Where the scene ends, laid out in CSS; the motion layer measures it. */}
-          <div className="hero__end">
-            <span className="hero__title-end" data-hero-title-end aria-hidden="true" />
-            <p className="hero__count" data-hero-count aria-hidden="true">
-              <b data-count>1</b>
-              <span>
-                {t.hero.class.of}
-                <br />
-                {t.hero.class.label}
-              </span>
-            </p>
-            <span className="hero__desk" data-hero-desk />
-            <ClassStack label={t.hero.class.alt} />
-          </div>
-        </section>
+            {/* Where the scene ends, laid out in CSS; the motion layer measures it. */}
+            <div className="hero__end">
+              <span className="hero__title-end" data-hero-title-end aria-hidden="true" />
+              <p className="hero__count" data-hero-count aria-hidden="true">
+                <b data-count>1</b>
+                <span>
+                  {t.hero.class.of}
+                  <br />
+                  {t.hero.class.label}
+                </span>
+              </p>
+              <span className="hero__desk" data-hero-desk />
+              <ClassStack label={t.hero.class.alt} />
+            </div>
+          </section>
+        </div>
 
         {/* Act 2, build: the teacher chapter, the page's one deep-teal moment. */}
         <div className="chapter" id="teacher" data-theme="teal" tabIndex={-1}>
