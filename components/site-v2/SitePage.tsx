@@ -7,6 +7,7 @@ import { JsonLd } from "./JsonLd";
 import { Board, Laptop, Phone } from "./Devices";
 import { Motion } from "./Motion";
 import { Nav } from "./Nav";
+import { ReadMore } from "./ReadMore";
 import { BoardScreen, EndScreen, LiveConsoleScreen, PhoneShot, ReportSheets, ResultsScreen, Shot } from "./Screens";
 
 // One icon per data fact, in the order they are written: the EU, the AI, staff access, retention.
@@ -443,6 +444,9 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
         </div>
 
         {/* Epilogue: the one thing to do next, the page's one field of yellow. */}
+        {/* Before the epilogue: the reading pages, for whoever wants more before booking. */}
+        <ReadMore t={t} />
+
         <section className="scene book" id="book" data-theme="yellow" aria-labelledby="book-title" tabIndex={-1}>
           <div className="wrap book__grid">
             <h2 className="mega book__title" id="book-title" data-reveal>

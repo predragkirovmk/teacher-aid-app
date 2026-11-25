@@ -27,6 +27,8 @@ export type PageSchemaInput = {
   crumbs?: { name: string; path: string }[];
 };
 
+const ALTERNATE_NAMES = ["TeacherAid Македонија", "teacheraid.education"];
+
 const inLanguage: Record<Lang, string> = { mk: "mk", en: "en" };
 
 export function absolute(origin: string, path: string): string {
@@ -46,6 +48,7 @@ export function pageSchema(input: PageSchemaInput) {
       "@type": "Organization",
       "@id": org,
       name: "TeacherAid",
+      alternateName: ALTERNATE_NAMES,
       url: `${origin}/`,
       email: "hello@teacheraid.education",
       logo: {
@@ -67,6 +70,9 @@ export function pageSchema(input: PageSchemaInput) {
       "@id": site,
       url: `${origin}/`,
       name: "TeacherAid",
+      // Google takes the site name in results from here. The short forms tie the name to this
+      // domain: typed alone, "teacheraid" is read as "teacher aide" (autocomplete, 2026-11-24).
+      alternateName: ALTERNATE_NAMES,
       inLanguage: ["mk", "en"],
       publisher: { "@id": org },
     },
