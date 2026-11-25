@@ -62,6 +62,9 @@ export function pageSchema(input: PageSchemaInput) {
           ? "Тим од Битола што прави апликација за часот за средни училишта и факултети во Македонија."
           : "A team from Bitola making a classroom app for secondary schools and universities in North Macedonia.",
       address: { "@type": "PostalAddress", addressLocality: "Bitola", addressCountry: "MK" },
+      // The brand's slogan, chosen by the founders on 2026-11-25. Macedonian is the brand's
+      // language; the English pages carry its translation.
+      slogan: lang === "mk" ? "Иднината на Наставата" : "The Future of Teaching",
       areaServed: { "@type": "Country", name: "North Macedonia" },
       knowsLanguage: ["mk", "en"],
     },

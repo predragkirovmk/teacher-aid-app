@@ -57,6 +57,10 @@ describe("structured data", () => {
     expect(types).toEqual(["Organization", "WebSite", "WebApplication", "WebPage", "BreadcrumbList"]);
   });
 
+  it("gives the organisation its slogan in the page's language", () => {
+    expect(schema["@graph"][0].slogan).toBe("Иднината на Наставата");
+  });
+
   it("uses no type Google has retired", () => {
     const text = JSON.stringify(schema);
     for (const retired of ["FAQPage", "HowTo", "SpeakableSpecification"]) expect(text).not.toContain(retired);
