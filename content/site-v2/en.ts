@@ -25,7 +25,7 @@ export const en: SiteV2Dict = {
   },
   hero: {
     kicker: "For teachers and school directors",
-    title: ["The future", "of teaching."],
+    title: ["The Future", "of Teaching."],
     deck: "TeacherAid turns your lesson into questions for class. You send them from your laptop, students answer on their phones, and you see at once who understood.",
     deckShort: "Questions from your lesson. Answers from every phone.",
     teacher: "I'm a teacher",

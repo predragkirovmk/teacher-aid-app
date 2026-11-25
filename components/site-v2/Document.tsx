@@ -70,8 +70,8 @@ export function SiteV2Document({ lang, children }: { lang: "mk" | "en"; children
   home page of their language (app/(mk)/opengraph-image.jpg, app/(en)/en/opengraph-image.jpg).
 */
 const shareImage: Record<ArticleDict["lang"], { url: string; alt: string }> = {
-  mk: { url: "/og/teacheraid-mk.jpg", alt: "TeacherAid: „Иднината на наставата.“ над лаптоп со апликацијата за наставникот и телефон на ученик." },
-  en: { url: "/og/teacheraid-en.jpg", alt: "TeacherAid: \"The future of teaching.\" over a laptop with the teacher app and a student's phone." },
+  mk: { url: "/og/teacheraid-mk.jpg", alt: "TeacherAid: „Иднината на Наставата.“ над лаптоп со апликацијата за наставникот и телефон на ученик." },
+  en: { url: "/og/teacheraid-en.jpg", alt: "TeacherAid: \"The Future of Teaching.\" over a laptop with the teacher app and a student's phone." },
 };
 
 /** A reading page's metadata: its own title, description, canonical and language pair. */

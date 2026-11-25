@@ -58,7 +58,7 @@ describe("structured data", () => {
   });
 
   it("gives the organisation its slogan in the page's language", () => {
-    expect(schema["@graph"][0].slogan).toBe("Иднината на наставата");
+    expect(schema["@graph"][0].slogan).toBe("Иднината на Наставата");
   });
 
   it("uses no type Google has retired", () => {

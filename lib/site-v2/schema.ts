@@ -64,7 +64,7 @@ export function pageSchema(input: PageSchemaInput) {
       address: { "@type": "PostalAddress", addressLocality: "Bitola", addressCountry: "MK" },
       // The brand's slogan, chosen by the founders on 2026-11-25. Macedonian is the brand's
       // language; the English pages carry its translation.
-      slogan: lang === "mk" ? "Иднината на наставата" : "The future of teaching",
+      slogan: lang === "mk" ? "Иднината на Наставата" : "The Future of Teaching",
       areaServed: { "@type": "Country", name: "North Macedonia" },
       knowsLanguage: ["mk", "en"],
     },

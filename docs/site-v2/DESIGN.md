@@ -155,7 +155,7 @@ the hero). Refresh them whenever an app changes:
 
 | Act | Scene | Theme |
 |---|---|---|
-| Hook | Hero: the slogan, "Иднината на наставата." (2026-11-25; before, "Целиот клас одговара."). Pinned for two screens: the text clears, the headline becomes the caption, the laptop settles on the desk, the student's phone moves to the front of a stack of the class's 28 other phones beside it, and their edges light yellow front to back as the count reaches 29 | Paper |
+| Hook | Hero: the slogan, "Иднината на Наставата." (2026-11-25; before, "Целиот клас одговара."). Pinned for two screens: the text clears, the headline becomes the caption, the laptop settles on the desk, the student's phone moves to the front of a stack of the class's 28 other phones beside it, and their edges light yellow front to back as the count reaches 29 | Paper |
 | Build | Teacher chapter opener: ready before the bell | Morph to teal |
 | Build | Prepare: plays once on arrival. The file and the line of emphasis land, the AI writes, the questions appear, one tap on Harder rewrites them | Teal |
 | Climax | In class: pinned for three screens. Students join (0 to 27), Send is pressed, the question flies from the laptop to the board, answers and the timer count, the bars fill, the right answer is revealed. One caption per beat | Teal |

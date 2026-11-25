@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "TeacherAid",
     short_name: "TeacherAid",
-    description: "Иднината на наставата.",
+    description: "Иднината на Наставата.",
     lang: "mk",
     start_url: "/",
     scope: "/",
