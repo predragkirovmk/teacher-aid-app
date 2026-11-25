@@ -1004,7 +1004,7 @@ const aiMk: ArticleDict = {
     },
     {
       id: "shto-moze",
-      title: "Што може за наставникот",
+      title: "Што може вештачката интелигенција за наставникот?",
       list: [
         "Од вашиот материјал да предложи прашања, со точните одговори и кратко објаснување.",
         "Да направи полесна и потешка верзија на исто прашање, за класови што се на различно ниво.",
@@ -1014,7 +1014,7 @@ const aiMk: ArticleDict = {
     },
     {
       id: "shto-ne-moze",
-      title: "Што не може",
+      title: "Каде греши вештачката интелигенција?",
       list: [
         "Не знае кога греши. Може да напише погрешен факт со ист сигурен тон како и точниот. Проверете сè пред да стигне до учениците.",
         "Не ги познава вашите ученици: што разбрале вчера, кој молчи, кој се мачи.",
@@ -1023,7 +1023,7 @@ const aiMk: ArticleDict = {
     },
     {
       id: "podatoci",
-      title: "Податоците на учениците",
+      title: "Како да ги заштитите податоците на учениците?",
       paras: [
         "Никогаш не внесувајте имиња, оценки или други лични податоци на ученици во јавна алатка за вештачка интелигенција. Училиштето одговара за податоците на учениците според Законот за заштита на личните податоци, кој го следи европскиот GDPR.",
         "Пред училиштето да избере алатка, нека праша: каде се чуваат податоците, дали остануваат во Европската унија, дали се користат за обучување модели и кој може да ги види.",
@@ -1031,7 +1031,7 @@ const aiMk: ArticleDict = {
     },
     {
       id: "prashanja",
-      title: "Зошто прашањата во час помагаат",
+      title: "Зошто прашањата во час помагаат во учењето?",
       paras: [
         "Обидот да се одговори, дури и кога одговорот е погрешен, помага подоцна да се запомни. Истражувачите тоа го нарекуваат ефект на претходно тестирање (Richland, Kornell и Kao, 2009).",
         "Грешките направени со самодоверба полесно се поправаат кога ученикот веднаш го види точниот одговор (Metcalfe, 2017). Затоа е важно прашањето да стигне до секој ученик, а точниот одговор да се открие пред целиот клас.",
@@ -1039,7 +1039,7 @@ const aiMk: ArticleDict = {
     },
     {
       id: "teacheraid",
-      title: "Како TeacherAid ја користи вештачката интелигенција",
+      title: "Како TeacherAid ја користи вештачката интелигенција?",
       list: [
         "Прашањата се прават само од материјалот што наставникот го додава.",
         "Имињата на учениците никогаш не се испраќаат до вештачката интелигенција.",
@@ -1082,7 +1082,7 @@ const aiEn: ArticleDict = {
     },
     {
       id: "can",
-      title: "What it can do for a teacher",
+      title: "What can AI do for a teacher?",
       list: [
         "Suggest questions from your material, with the right answers and a short explanation.",
         "Make an easier and a harder version of the same question, for classes at different levels.",
@@ -1092,7 +1092,7 @@ const aiEn: ArticleDict = {
     },
     {
       id: "cannot",
-      title: "What it cannot do",
+      title: "Where does AI go wrong?",
       list: [
         "It does not know when it is wrong. It can state a false fact in the same confident voice as a true one. Check everything before it reaches your students.",
         "It does not know your students: what they understood yesterday, who stays quiet, who is struggling.",
@@ -1101,7 +1101,7 @@ const aiEn: ArticleDict = {
     },
     {
       id: "data",
-      title: "Students' data",
+      title: "How do you protect students' data?",
       paras: [
         "Never type students' names, grades or other personal data into a public AI tool. The school is answerable for students' data under North Macedonia's Law on Personal Data Protection, which follows the EU's GDPR.",
         "Before a school chooses a tool, it should ask: where is the data stored, does it stay in the European Union, is it used to train models, and who can see it.",
@@ -1109,7 +1109,7 @@ const aiEn: ArticleDict = {
     },
     {
       id: "questions",
-      title: "Why questions in class help",
+      title: "Why do questions in class help students learn?",
       paras: [
         "Trying to answer, even when the answer is wrong, helps students remember later. Researchers call it the pretesting effect (Richland, Kornell and Kao, 2009).",
         "Mistakes made with confidence are corrected more readily when the student sees the right answer straight away (Metcalfe, 2017). That is why it matters that the question reaches every student, and that the right answer is revealed to the whole class.",
@@ -1117,7 +1117,7 @@ const aiEn: ArticleDict = {
     },
     {
       id: "teacheraid",
-      title: "How TeacherAid uses AI",
+      title: "How does TeacherAid use AI?",
       list: [
         "Questions are made only from the material the teacher adds.",
         "Students' names are never sent to the AI.",
