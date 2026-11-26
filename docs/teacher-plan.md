@@ -105,21 +105,23 @@ the owner approved the light look on 2026-11-12):
 ## Design tokens (teacher app only)
 
 The app is light: a pale ground, white surfaces, dark ink and one accent, the teal of the logo.
+2026-11-26: the owner moved the teacher app from teal to the brand blue of the student app so the two read as one brand; the token names stay.
+
 The values live in `:root` of `app/(teacher)/teacher.css`; this table is the summary.
 
 | Token | Value | Use |
 |---|---|---|
-| `--ground` | `#EEF2F2` | The window |
+| `--ground` | `#EEF2F7` | The window |
 | `--surface` | `#FFFFFF` | A card, a list, the sidebar, a dialog |
-| `--well`, `--well-2` | `#EEF2F2`, `#E2E9EA` | A quieter block inside a surface; a track or a chip |
-| `--ink` | `#0D2A32` | Words (15.1:1 on white, 13.4:1 on the ground) |
-| `--ink-2` | `#4A6068` | Secondary words (6.6:1 on white, 5.9:1 on the ground) |
-| `--ink-3` | `#8A9BA1` | Marks that carry no meaning alone; never words (2.9:1) |
-| `--teal` | `#124554` | The accent: the main button, links, what is selected (white on it 10.5:1) |
-| `--tint` | `#E1ECEE` | The fill of a quiet button and of the selected row (teal on it 8.7:1) |
+| `--well`, `--well-2` | `#EEF2F7`, `#E1E8F1` | A quieter block inside a surface; a track or a chip |
+| `--ink` | `#0A2347` | Words (15.6:1 on white, 13.9:1 on the ground) |
+| `--ink-2` | `#4A5B74` | Secondary words (6.9:1 on white, 6.1:1 on the ground) |
+| `--ink-3` | `#8794A8` | Marks that carry no meaning alone; never words (3.1:1) |
+| `--teal` | `#134785` | The accent: the main button, links, what is selected (white on it 9.3:1) |
+| `--tint` | `#E1EDFB` | The fill of a quiet button and of the selected row (teal on it 7.8:1) |
 | `--yellow` | `#FFC83E` | A lesson is live, and nothing else (ink on it 9.7:1) |
 | `--red` | `#B42318` | End, deleting a lesson and what went wrong (6.6:1 on white), as words and an edge, not a block |
-| `--hairline`, `--edge`, `--edge-strong` | ink at 9%, ink at 20%, `#77898F` | A line between rows; the edge of a quiet control; the edge of a box to write in (3.7:1) |
+| `--hairline`, `--edge`, `--edge-strong` | ink at 9%, ink at 20%, `#75849A` | A line between rows; the edge of a quiet control; the edge of a box to write in (3.8:1) |
 
 Contrast: every pair of words and ground above is 4.5:1 or more, so there is no rule about which
 text may sit where. Opacity is never used to dim words. Right and wrong are never shown by colour
@@ -137,9 +139,9 @@ filled for the selected sidebar item. Spacing on the 8pt grid. Focus ring 3px te
 
 The projected window (`.cv`) is read from the back of a classroom, so it keeps the sizes it had,
 under its own names. Since the owner's note on step 7 of the redesign (2026-11-15) it wears the
-app's light colours: the pale ground (`--ground-top` `#EEF2F2`), white panels with a hairline ring
-(`--deep`), dark teal words (`--text` `#0D2A32`), a tinted block for the right answer and the code
-(`--shadow` `#E1ECEE`) and the app's teal focus ring.
+app's light colours: the pale ground (`--ground-top` `#EEF2F7`), white panels with a hairline ring
+(`--deep`), dark teal words (`--text` `#0A2347`), a tinted block for the right answer and the code
+(`--shadow` `#E1EDFB`) and the app's teal focus ring.
 
 Motion (owner, 2026-11-08: simple and luxurious): the student app's springs, no bounce;
 a press sinks and springs back, a page and late content rise in (header first), the menu's selection

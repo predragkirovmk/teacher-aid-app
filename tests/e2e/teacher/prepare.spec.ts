@@ -984,11 +984,11 @@ test.describe("the drawer layout and a laptop's small window", () => {
 
   test("the words on the ground are dark ink at the body size, and nothing on the form is under 16px", async ({ page }) => {
     await expect(page.locator(".head__sub")).toBeVisible();
-    // On the light ground the second ink is 5.9:1, enough for words of any size: these lines no longer have to be large to be read.
+    // On the light ground the second ink is 6.1:1, enough for words of any size: these lines no longer have to be large to be read.
     const size = (selector: string) => page.locator(selector).evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
     expect(await size(".head__sub")).toBeGreaterThanOrEqual(17);
     expect(await size(".prepare__go p")).toBeGreaterThanOrEqual(17);
-    await expect(page.locator(".head__sub")).toHaveCSS("color", "rgb(74, 96, 104)");
+    await expect(page.locator(".head__sub")).toHaveCSS("color", "rgb(74, 91, 116)");
     // Nothing on the form is under 16px, and what is chosen is the body size, 17px, or more.
     const small = await page.locator("main *:visible").evaluateAll((els) =>
       els

@@ -114,7 +114,7 @@ test.describe("the sign-in screen", () => {
     expect(Math.round(b.width * 100)).toBe(Math.round(a.width * 100));
     expect(parseFloat(await google.evaluate((el) => getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(17);
     // These keep the providers' own look, not the accent of the app's main button.
-    await expect(google).not.toHaveCSS("background-color", "rgb(18, 69, 84)");
+    await expect(google).not.toHaveCSS("background-color", "rgb(19, 71, 133)");
     expect(outside, "requests to another origin").toEqual([]);
   });
 

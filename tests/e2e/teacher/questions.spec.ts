@@ -713,7 +713,7 @@ test.describe("the projector uses the window", () => {
       return projector.evaluate(() =>
         [...document.querySelectorAll("main *")]
           .filter((el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent?.trim()) && !el.closest(".sr, .cvq__rightmark, .cvq__letter"))
-          .filter((el) => getComputedStyle(el).color !== "rgb(13, 42, 50)" || Number(getComputedStyle(el).opacity) < 1)
+          .filter((el) => getComputedStyle(el).color !== "rgb(10, 35, 71)" || Number(getComputedStyle(el).opacity) < 1)
           .map((el) => `${el.className}: ${getComputedStyle(el).color}`),
       );
     };

@@ -365,7 +365,7 @@ test.describe("editing a question of each kind", () => {
       await expect(rows.nth(i)).not.toContainText("Точен одговор");
     }
     // The tick is a drawing next to the words, never alone: the one with the words is the one with the edge, in the accent.
-    expect(await rows.nth(1).evaluate((el) => getComputedStyle(el).borderTopColor)).toBe("rgb(18, 69, 84)");
+    expect(await rows.nth(1).evaluate((el) => getComputedStyle(el).borderTopColor)).toBe("rgb(19, 71, 133)");
     expect(await rows.nth(0).evaluate((el) => getComputedStyle(el).borderTopColor)).toBe("rgba(0, 0, 0, 0)");
     // What a screen reader says of each, with the words that are on the screen in it.
     await expect(isRight(page, 2)).toHaveAccessibleName("Одговор 2, точен одговор");

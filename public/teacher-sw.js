@@ -12,7 +12,7 @@
  *
  * The files in ASSETS are fetched when the worker is installed, and a browser installs it again only when this file
  * changes. So a change to one of them (the offline page, the manifest) needs a change here: move the date on.
- * Assets as of 2026-11-13 (the light look).
+ * Assets as of 2026-11-26 (the brand blue look: the teacher app's colours moved from teal to the brand blue in the manifest, offline page and icons).
  */
 
 const PAGES = "teacher-pages";
