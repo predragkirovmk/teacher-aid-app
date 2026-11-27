@@ -2,6 +2,7 @@
 
 import { EnvelopeSimpleIcon } from "@phosphor-icons/react";
 import { useEffect, useRef } from "react";
+import { GuideVideo } from "@/components/GuideVideo";
 import { PageHeader } from "@/components/teacher/PageHeader";
 import { SettingRow } from "@/components/teacher/SettingRow";
 import { useT, type Key } from "@/lib/teacher/i18n";
@@ -22,7 +23,7 @@ const PROJECTOR_STEPS: { title: Key; steps: Key[] }[] = [
 ];
 
 export default function HelpPage() {
-  const { t } = useT();
+  const { t, locale } = useT();
   const projector = useRef<HTMLDetailsElement>(null);
 
   // The lesson's console links to the steps that make the projector show only the class view (`#projector`): they open, and the focus is on them.
@@ -44,6 +45,12 @@ export default function HelpPage() {
     <>
       <PageHeader title={t("help.title")} subtitle={t("help.what")} />
       <div className="content">
+        {/* The guide film first: most questions here are answered by watching one lesson go by. */}
+        <section className="card card--stack help__video" aria-labelledby="help-video-title">
+          <h2 id="help-video-title">{t("video.title")}</h2>
+          <p>{t("video.about")}</p>
+          <GuideVideo lang={locale} title={t("video.title")} chaptersLabel={t("video.chapters")} />
+        </section>
         {/* The questions are rows of one list, each opening in place; the way to write to us is a row of its own under them. */}
         <div className="setgroup">
           {FAQ.map(([q, a]) => (

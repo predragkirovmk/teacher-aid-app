@@ -413,6 +413,11 @@ const en = {
   "guide.error.title": "We could not carry on",
   "guide.anyway": "Continue anyway",
   "guide.note": "You can see the guide again in Settings.",
+  "guide.video": "Video guide, 3 min, in Macedonian",
+
+  "video.title": "Video guide",
+  "video.about": "Three minutes, in Macedonian: one lesson, from preparing it to the results.",
+  "video.chapters": "Parts of the video",
 
   "notfound.title": "This page does not exist",
   "notfound.body": "The link may be old or wrong. Go back to the start.",
@@ -1120,6 +1125,11 @@ const mk: Record<Key, Entry> = {
   "guide.error.title": "Не успеавме да продолжиме",
   "guide.anyway": "Продолжи сепак",
   "guide.note": "Водичот можете да го погледнете повторно во Поставки.",
+  "guide.video": "Видео-водич, 3 минути",
+
+  "video.title": "Видео-водич",
+  "video.about": "Три минути: една лекција, од подготовката до резултатите.",
+  "video.chapters": "Делови од видеото",
 
   "notfound.title": "Оваа страница не постои",
   "notfound.body": "Можеби врската е стара или погрешна. Вратете се на почеток.",
