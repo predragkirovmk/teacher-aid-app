@@ -3,7 +3,7 @@ import { ClassView } from "@/components/teacher/ClassView";
 
 // The projector wears the app's light colours (the owner's note on step 7), so the browser's bar takes the pale ground of the window.
 export const viewport: Viewport = {
-  themeColor: "#eef2f2",
+  themeColor: "#eef2f7",
   colorScheme: "light",
 };
 

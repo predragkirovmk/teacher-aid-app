@@ -67,7 +67,7 @@ How the work moves, and this is not optional:
 A teacher uses this in front of a class, on a weak laptop, with no time to think. Judge every
 screen by that.
 
-- **One job per screen.** One main button a screen: deep teal, 48px, a pill. Everything else is
+- **One job per screen.** One main button a screen: deep brand blue, 48px, a pill. Everything else is
   quiet (44px). Nothing is hidden behind hover, right-click, drag or a shortcut.
 - **Yellow means a lesson is live** and nothing else. Red is for End, for deleting a lesson and for warnings.
 - **Type carries the order**: one large title, 17px body, 16px floor, bold only for names and

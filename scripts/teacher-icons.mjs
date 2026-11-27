@@ -1,4 +1,4 @@
-// Draws the teacher app's icons: the official white M on the teacher app's deep teal.
+// Draws the teacher app's icons: the official white M on the teacher app's deep blue.
 // Run after a logo or colour change: node scripts/teacher-icons.mjs (needs Google Chrome).
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { LOGO_ASPECT, LOGO_BODY, LOGO_EYES, LOGO_VIEWBOX } from "../lib/brand.ts";
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const DEEP = "#124554";
+const DEEP = "#134785";
 const WHITE = "#FFFFFF";
 
 const shapes = () => `<path d="${LOGO_BODY}"/>${LOGO_EYES.map((e) => `<circle cx="${e.cx}" cy="${e.cy}" r="${e.r}"/>`).join("")}`;

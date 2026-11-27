@@ -31,10 +31,10 @@ const drawing = (svg: string, alt: string): Picture => ({ url: `data:image/svg+x
 
 const RIGHT_TRIANGLE = drawing(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" width="320" height="240"><rect width="320" height="240" fill="#ffffff"/>' +
-    '<polygon points="40,210 280,210 40,30" fill="#cfe8ec" stroke="#124554" stroke-width="4" stroke-linejoin="round"/>' +
-    '<rect x="40" y="186" width="24" height="24" fill="none" stroke="#124554" stroke-width="3"/>' +
-    '<text x="150" y="234" font-size="24" font-family="sans-serif" fill="#124554">8</text>' +
-    '<text x="14" y="125" font-size="24" font-family="sans-serif" fill="#124554">6</text></svg>',
+    '<polygon points="40,210 280,210 40,30" fill="#d9e7f8" stroke="#134785" stroke-width="4" stroke-linejoin="round"/>' +
+    '<rect x="40" y="186" width="24" height="24" fill="none" stroke="#134785" stroke-width="3"/>' +
+    '<text x="150" y="234" font-size="24" font-family="sans-serif" fill="#134785">8</text>' +
+    '<text x="14" y="125" font-size="24" font-family="sans-serif" fill="#134785">6</text></svg>',
   "Правоаголен триаголник со катети 6 и 8",
 );
 

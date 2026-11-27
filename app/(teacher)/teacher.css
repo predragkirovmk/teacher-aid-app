@@ -7,38 +7,38 @@
  */
 :root {
   /* Surfaces, from the back forward. */
-  --ground: #eef2f2; /* the window */
+  --ground: #eef2f7; /* the window */
   --surface: #ffffff; /* a card, a list, the sidebar, a dialog */
-  --well: #eef2f2; /* a quieter block inside a surface */
-  --well-2: #e2e9ea; /* a track, a placeholder, the ground of a switch */
+  --well: #eef2f7; /* a quieter block inside a surface */
+  --well-2: #e1e8f1; /* a track, a placeholder, the ground of a switch */
 
   /* Ink. On white 15.1:1 and 6.6:1; on the ground 13.4:1 and 5.9:1; the second on the tint 5.5:1. The third is for marks
      that carry no meaning alone (a chevron), never for words: it is 2.9:1. */
-  --ink: #0d2a32;
-  --ink-2: #4a6068;
-  --ink-3: #8a9ba1;
+  --ink: #0a2347;
+  --ink-2: #4a5b74;
+  --ink-3: #8794a8;
 
   /* Lines. A hairline parts rows; an edge draws a quiet control; the strong edge is the one a box to write in needs to be
      found at all (3.7:1 on white, 3.2:1 on the ground). */
-  --hairline: rgba(13, 42, 50, 0.09);
-  --edge: rgba(13, 42, 50, 0.2);
-  --edge-strong: #77898f;
+  --hairline: rgba(10, 35, 71, 0.09);
+  --edge: rgba(10, 35, 71, 0.2);
+  --edge-strong: #75849a;
 
   /* The accent: the main button, links, what is selected. White on it is 10.5:1; it is 8.7:1 on the tint. */
-  --teal: #124554;
-  --teal-hover: #0e3a47;
-  --teal-active: #0b2f3a;
+  --teal: #134785;
+  --teal-hover: #0f3b6f;
+  --teal-active: #0c3160;
   --on-teal: #ffffff;
-  --tint: #e1ecee;
-  --tint-hover: #d6e5e8;
-  --tint-active: #cbdde1;
-  --hover: rgba(13, 42, 50, 0.05);
-  --pressed: rgba(13, 42, 50, 0.1);
+  --tint: #e1edfb;
+  --tint-hover: #d6e6f9;
+  --tint-active: #cfe2f8;
+  --hover: rgba(10, 35, 71, 0.05);
+  --pressed: rgba(10, 35, 71, 0.1);
 
   /* Yellow says a lesson is live, and only that; ink on it is 9.7:1. Red is End and what went wrong: 6.6:1 on white, and
      5.8:1 on its own tint. */
   --yellow: #ffc83e;
-  --on-yellow: #0d2a32;
+  --on-yellow: #0a2347;
   --red: #b42318;
   --red-tint: #fdecea;
   --red-tint-hover: #fbdad6;
@@ -47,10 +47,10 @@
 
   /* Depth. A surface has a hairline ring and no shadow; only what floats over the page (the sidebar, a bar that stays, a
      window) has a soft one. */
-  --ring: 0 0 0 1px rgba(13, 42, 50, 0.06);
-  --shadow-panel: 0 0 0 1px rgba(13, 42, 50, 0.05), 0 12px 32px -20px rgba(13, 42, 50, 0.3);
-  --shadow-float: 0 0 0 1px rgba(13, 42, 50, 0.07), 0 18px 44px -14px rgba(13, 42, 50, 0.32);
-  --shadow-window: 0 0 0 1px rgba(13, 42, 50, 0.06), 0 32px 80px -24px rgba(13, 42, 50, 0.45);
+  --ring: 0 0 0 1px rgba(10, 35, 71, 0.06);
+  --shadow-panel: 0 0 0 1px rgba(10, 35, 71, 0.05), 0 12px 32px -20px rgba(10, 35, 71, 0.3);
+  --shadow-float: 0 0 0 1px rgba(10, 35, 71, 0.07), 0 18px 44px -14px rgba(10, 35, 71, 0.32);
+  --shadow-window: 0 0 0 1px rgba(10, 35, 71, 0.06), 0 32px 80px -24px rgba(10, 35, 71, 0.45);
 
   /* What a quiet button is filled with depends on what it sits on. On the ground it is white with a thin edge; a surface
      sets these two to the tint and no edge, and a well inside a surface sets them back (the rules are under "buttons"). */
@@ -437,7 +437,7 @@ button {
     position: fixed;
     inset: 0;
     z-index: 35;
-    background: rgba(13, 42, 50, 0.36);
+    background: rgba(10, 35, 71, 0.36);
     opacity: 0;
     visibility: hidden;
     transition:
@@ -1157,7 +1157,7 @@ button {
   box-shadow: var(--shadow-window);
 }
 .dialog::backdrop {
-  background: rgba(13, 42, 50, 0.36);
+  background: rgba(10, 35, 71, 0.36);
 }
 .dialog__title {
   margin: 0 0 var(--sp-3);
@@ -1279,8 +1279,8 @@ button {
 .pill[aria-pressed="true"] {
   background: var(--surface);
   box-shadow:
-    0 1px 2px rgba(13, 42, 50, 0.18),
-    0 0 0 1px rgba(13, 42, 50, 0.04);
+    0 1px 2px rgba(10, 35, 71, 0.18),
+    0 0 0 1px rgba(10, 35, 71, 0.04);
   color: var(--ink);
   font-weight: 600;
 }
@@ -2669,7 +2669,7 @@ button {
 .seg .choice[data-checked="true"] {
   border-color: transparent;
   background: var(--surface);
-  box-shadow: 0 0 0 1px rgba(13, 42, 50, 0.06), 0 1px 3px rgba(13, 42, 50, 0.14);
+  box-shadow: 0 0 0 1px rgba(10, 35, 71, 0.06), 0 1px 3px rgba(10, 35, 71, 0.14);
   color: var(--teal);
   font-weight: 600;
 }
@@ -3028,16 +3028,16 @@ button {
      --deep is a panel, --ground-top the window, --shadow a tinted block (the right answer, the code),
      --text the words and the filled marks, --on-text what sits on a filled mark. */
   --deep: #ffffff;
-  --ground-top: #eef2f2;
-  --shadow: #e1ecee;
-  --text: #0d2a32;
-  --text-2: #4a6068;
+  --ground-top: #eef2f7;
+  --shadow: #e1edfb;
+  --text: #0a2347;
+  --text-2: #4a5b74;
   --on-text: #ffffff;
-  --ink: #0d2a32;
-  --line-strong: #77898f;
-  --track: #dbe4e6;
-  --cv-ring: 0 0 0 1px rgba(13, 42, 50, 0.1), 0 12px 32px -20px rgba(13, 42, 50, 0.3);
-  --focus: #124554;
+  --ink: #0a2347;
+  --line-strong: #75849a;
+  --track: #dae4f0;
+  --cv-ring: 0 0 0 1px rgba(10, 35, 71, 0.1), 0 12px 32px -20px rgba(10, 35, 71, 0.3);
+  --focus: #134785;
   --quiet-edge: 0 0 transparent;
   /* The system's own font for running words, as before: the sizes of the window were fitted with it. */
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -3046,12 +3046,12 @@ button {
   color-scheme: light;
 }
 html:has(.cv) {
-  background: #eef2f2;
+  background: #eef2f7;
   color-scheme: light;
 }
 body:has(.cv) {
-  background: #eef2f2;
-  color: #0d2a32;
+  background: #eef2f7;
+  color: #0a2347;
 }
 /* A light gap between the teal ring and what is behind it keeps the ring clear on a panel and on the ground. */
 .cv :focus-visible {
@@ -4499,12 +4499,12 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
   --seg-trail: var(--spring-smooth-dur) var(--spring-smooth) 50ms;
   /* The face of the piece it stands for: its corners, its hairline ring and its shadow. */
   --seg-round: 1.375rem;
-  --seg-ring: rgba(13, 42, 50, 0.06);
+  --seg-ring: rgba(10, 35, 71, 0.06);
   position: absolute;
   inset: 0;
   opacity: 0;
   pointer-events: none;
-  filter: drop-shadow(0 1px 1.5px rgba(13, 42, 50, 0.14));
+  filter: drop-shadow(0 1px 1.5px rgba(10, 35, 71, 0.14));
   transition:
     --seg-t var(--seg-lead),
     --seg-r var(--seg-lead),
@@ -4552,13 +4552,13 @@ nav[data-glide="on"] .nav__item[aria-current="page"] {
 }
 .lang > .seg__glide {
   --seg-round: var(--r-pill);
-  --seg-ring: rgba(13, 42, 50, 0.04);
-  filter: drop-shadow(0 1px 1px rgba(13, 42, 50, 0.18));
+  --seg-ring: rgba(10, 35, 71, 0.04);
+  filter: drop-shadow(0 1px 1px rgba(10, 35, 71, 0.18));
 }
 .tabs > .seg__glide {
   --seg-round: var(--r-pill);
-  --seg-ring: rgba(13, 42, 50, 0.05);
-  filter: drop-shadow(0 3px 3px rgba(13, 42, 50, 0.07));
+  --seg-ring: rgba(10, 35, 71, 0.05);
+  filter: drop-shadow(0 3px 3px rgba(10, 35, 71, 0.07));
 }
 .seg__glide::before {
   background: var(--seg-ring);
