@@ -1,5 +1,6 @@
-import { ArrowRightIcon, ClockCounterClockwiseIcon, GlobeHemisphereEastIcon, LockKeyIcon, SparkleIcon } from "@phosphor-icons/react/ssr";
-import { homePaths, pageUpdated } from "@/content/site-v2/pages";
+import { ArrowRightIcon, ClockCounterClockwiseIcon, GlobeHemisphereEastIcon, LockKeyIcon, PlayCircleIcon, SparkleIcon } from "@phosphor-icons/react/ssr";
+import { GuideVideoButton } from "@/components/GuideVideo";
+import { chrome, homePaths, pageUpdated } from "@/content/site-v2/pages";
 import type { SiteV2Dict } from "@/content/site-v2/types";
 import { ClassStack } from "./ClassStack";
 import { SiteFooter } from "./Footer";
@@ -21,6 +22,7 @@ const FACT_ICONS = [GlobeHemisphereEastIcon, SparkleIcon, LockKeyIcon, ClockCoun
 export function SitePageV2({ t }: { t: SiteV2Dict }) {
   const s = t.screens;
   const mailto = `mailto:${t.book.email}`;
+  const video = chrome[t.lang].video;
 
   return (
     <>
@@ -56,6 +58,10 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
                   <a className="btn btn--quiet" href="https://app.teacheraid.education/app">
                     {t.hero.student}
                   </a>
+                  <GuideVideoButton title={video.title} closeLabel={video.close} className="chev hero__video">
+                    <PlayCircleIcon size={28} weight="fill" aria-hidden="true" />
+                    {video.cta}
+                  </GuideVideoButton>
                 </div>
                 <ul className="hero__meta">
                   {t.hero.meta.map((m) => (

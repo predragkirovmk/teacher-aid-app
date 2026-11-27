@@ -25,6 +25,8 @@ export type PageSchemaInput = {
   type?: "WebPage" | "AboutPage";
   /** Breadcrumb from the home page down to this page, home first. Omitted on the home page. */
   crumbs?: { name: string; path: string }[];
+  /** A film the page shows, as a VideoObject; paths are the site's own. The guide film is in Macedonian on both languages' pages. */
+  video?: { name: string; description: string; thumbnail: string; content: string; uploaded: string; duration: string };
 };
 
 const ALTERNATE_NAMES = ["TeacherAid Македонија", "teacheraid.education"];
@@ -36,7 +38,7 @@ export function absolute(origin: string, path: string): string {
 }
 
 export function pageSchema(input: PageSchemaInput) {
-  const { origin, lang, path, name, description, updated, type = "WebPage", crumbs } = input;
+  const { origin, lang, path, name, description, updated, type = "WebPage", crumbs, video } = input;
   const org = `${origin}/#organization`;
   const site = `${origin}/#website`;
   const app = `${origin}/#app`;
@@ -128,8 +130,24 @@ export function pageSchema(input: PageSchemaInput) {
       publisher: { "@id": org },
       dateModified: updated,
       ...(crumbs ? { breadcrumb: { "@id": `${url}#breadcrumb` } } : {}),
+      ...(video ? { video: { "@id": `${url}#video` } } : {}),
     },
   ];
+
+  if (video) {
+    graph.push({
+      "@type": "VideoObject",
+      "@id": `${url}#video`,
+      name: video.name,
+      description: video.description,
+      thumbnailUrl: absolute(origin, video.thumbnail),
+      contentUrl: absolute(origin, video.content),
+      uploadDate: video.uploaded,
+      duration: video.duration,
+      inLanguage: "mk",
+      publisher: { "@id": org },
+    });
+  }
 
   if (crumbs) {
     graph.push({

@@ -317,6 +317,23 @@ body.v2 {
   }
 }
 
+/* The guide film's button, a chevron link with a play mark (components/GuideVideo.tsx). */
+.hero__video {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* The video page: the film between the head and the text, wider than the text and lined up with it. */
+.article__video {
+  max-width: calc(64rem + 2 * var(--gutter));
+  margin-inline: 0;
+  padding-top: clamp(2rem, 6vh, 4rem);
+}
+
 /* Apple's chevron link: the secondary action, never a box. */
 .chev {
   display: inline-flex;

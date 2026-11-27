@@ -71,6 +71,24 @@ describe("structured data", () => {
     expect(crumbs.itemListElement.map((i) => i.item)).toEqual([`${ORIGIN}/`, `${ORIGIN}/prasanja`]);
   });
 
+  it("describes the guide film on its page, with absolute URLs", () => {
+    const withVideo = pageSchema({
+      origin: ORIGIN,
+      lang: "en",
+      path: pagePaths.video.en,
+      name: "Video guide",
+      description: "Description",
+      updated: pageUpdated.video,
+      video: { name: "Film", description: "About it", thumbnail: "/teacher-guide.jpg", content: "/teacher-guide.mp4", uploaded: "2026-11-27T12:00:00+01:00", duration: "PT2M59S" },
+    });
+    const video = withVideo["@graph"].find((n) => n["@type"] === "VideoObject") as Record<string, unknown>;
+    expect(video.contentUrl).toBe(`${ORIGIN}/teacher-guide.mp4`);
+    expect(video.thumbnailUrl).toBe(`${ORIGIN}/teacher-guide.jpg`);
+    expect(video.inLanguage).toBe("mk");
+    expect(withVideo["@graph"].find((n) => n["@type"] === "WebPage")?.video).toEqual({ "@id": video["@id"] });
+    expect(types).not.toContain("VideoObject");
+  });
+
   it("cannot close its own script tag", () => {
     expect(serializeSchema({ x: "</script><script>alert(1)</script>" })).not.toContain("</script>");
   });

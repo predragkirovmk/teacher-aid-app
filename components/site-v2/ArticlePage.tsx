@@ -1,4 +1,6 @@
+import { GuideVideo } from "@/components/GuideVideo";
 import { chrome, homePaths, pagePaths, pageUpdated, type ArticleDict } from "@/content/site-v2/pages";
+import { GUIDE_VIDEO } from "@/lib/guide-video";
 import type { SiteV2Dict } from "@/content/site-v2/types";
 import { SiteFooter } from "./Footer";
 import { JsonLd } from "./JsonLd";
@@ -32,6 +34,16 @@ export function ArticlePage({ t, page }: { t: SiteV2Dict; page: ArticleDict }) {
         description={page.meta.description}
         updated={updated}
         type={page.key === "about" ? "AboutPage" : "WebPage"}
+        video={
+          page.video && {
+            name: c.video.title,
+            description: c.video.description,
+            thumbnail: GUIDE_VIDEO.poster,
+            content: GUIDE_VIDEO.src,
+            uploaded: GUIDE_VIDEO.uploaded,
+            duration: GUIDE_VIDEO.duration,
+          }
+        }
         crumbs={[
           { name: c.homeName, path: home },
           { name: page.name, path },
@@ -56,6 +68,12 @@ export function ArticlePage({ t, page }: { t: SiteV2Dict; page: ArticleDict }) {
             {c.updated}: <time dateTime={updated}>{dateFormat[t.lang].format(new Date(updated))}</time>
           </p>
         </header>
+
+        {page.video && (
+          <div className="wrap article__video">
+            <GuideVideo lang={t.lang} title={c.video.title} chaptersLabel={c.video.chapters} />
+          </div>
+        )}
 
         <div className="wrap article__body">
           {page.sections.map((s) => (
