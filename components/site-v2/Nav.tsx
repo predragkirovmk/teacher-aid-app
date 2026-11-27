@@ -6,7 +6,7 @@ import type { SiteV2Dict } from "@/content/site-v2/types";
 import { getLenis } from "@/lib/site-v2/lenis";
 
 /**
- * The slim bar on top. It takes the theme of the section under it (paper, teal, blue or yellow), gains a
+ * The slim bar on top. It takes the theme of the section under it (paper, sky, blue or yellow), gains a
  * hairline once the page has moved, and opens a full-screen menu on narrow screens. Solid
  * colours only: a blurred bar re-blurs the page on every scrolled frame.
  */
@@ -24,7 +24,7 @@ export function Nav({
   switchHref?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [theme, setTheme] = useState<"paper" | "teal" | "blue" | "yellow">("paper");
+  const [theme, setTheme] = useState<"paper" | "sky" | "blue" | "yellow">("paper");
   const [moved, setMoved] = useState(false);
   const bar = useRef<HTMLElement>(null);
   const sentinel = useRef<HTMLSpanElement>(null);
@@ -45,7 +45,7 @@ export function Nav({
           for (const e of entries) {
             if (!e.isIntersecting) continue;
             const next = (e.target as HTMLElement).dataset.theme;
-            setTheme(next === "teal" || next === "blue" || next === "yellow" ? next : "paper");
+            setTheme(next === "sky" || next === "blue" || next === "yellow" ? next : "paper");
           }
         },
         { rootMargin: `-${mid}px 0px -${Math.max(0, window.innerHeight - mid - 1)}px 0px` },

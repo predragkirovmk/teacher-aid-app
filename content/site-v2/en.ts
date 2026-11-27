@@ -192,7 +192,7 @@ export const en: SiteV2Dict = {
       report:
         "The monthly report: page one with the lessons held, active teachers, attendance and answers, and page two, for the director only, comparing the school with others.",
     },
-    console: { nav: ["Today", "Lessons", "Classes", "Settings"] },
+    console: { nav: ["Lessons", "Library"] },
     board: {
       course: "Biology · I-2",
       progress: "Question 3 of 7",

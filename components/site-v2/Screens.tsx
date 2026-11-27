@@ -81,7 +81,7 @@ const KEYS_EN = ["A", "B", "C", "D"];
 // Illustrative answer shares for the board: the right answer (index 1) leads, as in a real class.
 const SHARES = [12, 62, 17, 9];
 
-/** The teacher app's sidebar: the four places, one of them current. */
+/** The teacher app's sidebar: its two places, Lessons and Library, one of them current. */
 function Side({ s, on }: { s: S; on: number }) {
   return (
     <aside className="scr-side">
@@ -181,7 +181,7 @@ function FakeQr() {
   return (
     <svg viewBox={`-1 -1 ${QR_SIZE + 2} ${QR_SIZE + 2}`} aria-hidden="true">
       <rect x="-1" y="-1" width={QR_SIZE + 2} height={QR_SIZE + 2} fill="#fff" />
-      <g fill="#0a2e37">{cells}</g>
+      <g fill="#0a2347">{cells}</g>
     </svg>
   );
 }
@@ -253,7 +253,7 @@ export function EndScreen({ s }: { s: S }) {
             <p className="scr-h3">{e.title}</p>
             <small className="scr-sub">{e.course}</small>
           </div>
-          <span className="scr-btn scr-btn--yellow">{e.copy}</span>
+          <span className="scr-btn scr-btn--primary">{e.copy}</span>
         </div>
         <p className="scr-end__stats">
           {e.stats.map((st) => (
@@ -289,7 +289,7 @@ export function ResultsScreen({ s }: { s: S }) {
   const r = s.results;
   return (
     <div className="scr scr--console" data-results>
-      <Side s={s} on={2} />
+      <Side s={s} on={1} />
       <div className="scr-main scr-res">
         <div className="scr-head">
           <p className="scr-h3">{r.title}</p>

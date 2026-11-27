@@ -13,8 +13,9 @@ site's code was removed then (it stays in git history).
 - Keep from the old site: the boldness, huge type, bold effects, the premium Apple feel, smooth
   scroll-triggered motion. Everything else is new.
 - Direction: `modern-frontend` cinematic-scroll, nothing blended in.
-- Colour: a light Apple-style ground. The teacher chapter turns deep teal (the teacher app's
-  colours); the student chapter, built later, turns blue and yellow (the student app's).
+- Colour: a light Apple-style ground. The teacher chapter turns the teacher app's light blue
+  (its pale window, white panels, navy ink and brand blue; until 2026-11-28 it was deep teal); the
+  student chapter turns blue and yellow (the student app's).
 - One long page: hero, teacher chapter, student chapter (later), trust, booking, footer.
 - Phones get the same choreography as desktop. Smoothness is an engineering job, not a cut.
 - Signature moment: the laptop and the projected class view in sync. A question leaves the
@@ -40,8 +41,8 @@ of: no hype, no jargon, short sentences, real facts. Physical reference: the sig
 well-run public building, set by a designer who cared.
 
 ### Aesthetic direction
-- Light first. The ground is a paper white tinted towards the teacher teal; text is a teal-black
-  ink. The teacher chapter is the one deep-teal moment, entered with a theme morph.
+- Light first. The ground is a paper white; text is a dark ink. The teacher chapter wears the
+  teacher app's light blue, entered with a theme morph; the brand blue marks the main button.
 - Type does the heavy lifting: enormous Cyrillic display lines, plain body, almost no boxes.
 - The product is the protagonist: a laptop and a classroom board, drawn in the page (not
   photos), with the teacher app's real layout as the placeholder screen.
@@ -66,7 +67,7 @@ well-run public building, set by a designer who cared.
 - Cyrillic sets 20 to 30 % wider than Latin: display lines are written short and balanced
   (`text-wrap: balance`), never hyphenated.
 
-### Colour (OKLCH, neutrals tinted to the teal hue)
+### Colour
 | Token | Value | Use |
 |---|---|---|
 | `--paper` | `oklch(98.6% 0.004 200)` | Page ground |
@@ -74,12 +75,17 @@ well-run public building, set by a designer who cared.
 | `--ink` | `oklch(23% 0.035 220)` | Text on paper |
 | `--ink-2` | `oklch(44% 0.025 220)` | Secondary text on paper (7:1) |
 | `--line` | `oklch(88% 0.01 205)` | Hairlines |
-| `--deep` `#124554`, `--panel` `#145667`, `--ground-top` `#155869`, `--ground` `#32878C`, `--shadow` `#0A2E37` | teacher app | The teacher chapter |
-| `--yellow` `#FFC83E`, `--yellow-deep` `#CEA034` | teacher app | The live moment; the main button on teal |
-| `--on-teal-2` | `oklch(86% 0.03 200)` | Secondary text on teal |
+| `--deep` `#134785`, `--deep-hover` `#0F3B6F` | teacher app | The brand blue: main button, links, marks |
+| `--shadow` `#0A2347` | teacher app | Navy: words in the teacher chapter and on yellow |
+| `--ground-top` `#EEF2F7`, `--ground` `#E6EDF5`, `--panel` `#FFFFFF`, `--tint` `#E1EDFB` | teacher app | The teacher chapter and the drawn app screens |
+| `--yellow` `#FFC83E`, `--yellow-deep` `#CEA034` | both apps | The live moment; the main button on the student blue |
+| `--on-teal-2` | `#4A5B74` | Secondary text in the teacher chapter |
 
-Main button: deep teal fill with paper text on the light ground; yellow fill with ink text on
-teal. One main button per viewport. Secondary actions are chevron links ("Погледнете како
+The teacher chapter and every drawn screen (`.scr`) set `--on-teal` to navy; elsewhere it is the
+white of words on the brand blue and on the student blue.
+
+Main button: brand blue fill with paper text on the light grounds; yellow fill with ink text on
+the student blue. One main button per viewport. Secondary actions are chevron links ("Погледнете како
 работи ›"). Red is not used on the site.
 
 ### Layout
@@ -109,7 +115,7 @@ the hero). Refresh them whenever an app changes:
 - **Laptop**: aluminium-tinted lid and base, 16:10 screen. Holds the teacher console.
 - **Board**: a wall screen, thin dark frame, 16:9. Holds the projected class view.
 - **Phone**: rounded body with an island, 9:19.5. Holds the student app (student chapter).
-- Placeholder screens follow the real app layouts (teacher: teal sidebar with four items) and
+- Placeholder screens follow the real app layouts (teacher: white sidebar with Lessons and Library, as in the app) and
   carry a small "Пример" label.
 
 ## Motion
@@ -156,10 +162,10 @@ the hero). Refresh them whenever an app changes:
 | Act | Scene | Theme |
 |---|---|---|
 | Hook | Hero: the slogan, "Иднината на Наставата." (2026-11-25; before, "Целиот клас одговара."). Pinned for two screens: the text clears, the headline becomes the caption, the laptop settles on the desk, the student's phone moves to the front of a stack of the class's 28 other phones beside it, and their edges light yellow front to back as the count reaches 29 | Paper |
-| Build | Teacher chapter opener: ready before the bell | Morph to teal |
-| Build | Prepare: plays once on arrival. The file and the line of emphasis land, the AI writes, the questions appear, one tap on Harder rewrites them | Teal |
-| Climax | In class: pinned for three screens. Students join (0 to 27), Send is pressed, the question flies from the laptop to the board, answers and the timer count, the bars fill, the right answer is revealed. One caption per beat | Teal |
-| Build | After class: plays once. Present, late and absent count in; the most-missed questions fill | Teal to paper |
+| Build | Teacher chapter opener: ready before the bell | Morph to light blue |
+| Build | Prepare: plays once on arrival. The file and the line of emphasis land, the AI writes, the questions appear, one tap on Harder rewrites them | Light blue |
+| Climax | In class: pinned for three screens. Students join (0 to 27), Send is pressed, the question flies from the laptop to the board, answers and the timer count, the bars fill, the right answer is revealed. One caption per beat | Light blue |
+| Build | After class: plays once. Present, late and absent count in; the most-missed questions fill | Light blue to paper |
 | Build | Class results: plays once. Attendance bars grow, topics and anonymous questions arrive | Paper |
 | Build | Student opener: same phone, a different job (school Google or Microsoft sign-in) | Blue |
 | Build | Student, scan: plays once. The line sweeps the board's code, the check lands: present | Blue |

@@ -97,8 +97,8 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
           </section>
         </div>
 
-        {/* Act 2, build: the teacher chapter, the page's one deep-teal moment. */}
-        <div className="chapter" id="teacher" data-theme="teal" tabIndex={-1}>
+        {/* Act 2, build: the teacher chapter, in the teacher app's light blue. */}
+        <div className="chapter" id="teacher" data-theme="sky" tabIndex={-1}>
           <section className="scene opener" aria-labelledby="teacher-title">
             <div className="wrap">
               <p className="kicker kicker--on-teal" data-reveal>
