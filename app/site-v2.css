@@ -716,6 +716,11 @@ body.v2 {
 /* Phones: the headline across the width, one line of deck, and the devices already in the first
    screen, side by side, the phone over the laptop's right edge only. */
 @media (max-width: 767px) {
+  /* Less air over the kicker, so the two apps' buttons sit higher in the first screen. */
+  .hero {
+    padding-top: calc(var(--nav-h) + clamp(0.75rem, 3svh, 1.5rem));
+  }
+
   .hero__title .line:nth-child(2) {
     padding-left: 0;
   }
@@ -750,6 +755,33 @@ body.v2 {
     top: -6%;
     bottom: auto;
     width: 31%;
+  }
+}
+
+/* Tablets and computers. The hero is one pinned screen that clips what falls below it, so the
+   headline is held to two lines and to a sixth of the screen's height, and the deck under it, with
+   the buttons into the two apps, stays in that screen. Macedonian's "на Наставата." needs 6.47 times
+   the font size plus its indent: above 11rem it wraps to a third line on wide screens. */
+@media (min-width: 768px) {
+  .hero__title {
+    font-size: clamp(2.5rem, min(12.5vw, 16svh), 12.5rem);
+  }
+
+  .hero__title:lang(mk) {
+    font-size: clamp(2.5rem, min(12.5vw, 16svh, 11rem), 12.5rem);
+  }
+}
+
+/* Under 880px tall (most laptops' browsers, a tablet on its side) there is no room for the long
+   deck: it takes the phones' two lines and drops the meta line. */
+@media (min-width: 768px) and (max-height: 879px) {
+  .hero__lead,
+  .hero__meta {
+    display: none;
+  }
+
+  .hero__lead-short {
+    display: block;
   }
 }
 
