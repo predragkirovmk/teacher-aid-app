@@ -45,7 +45,9 @@ async function request<T>(method: string, path: string, { query, body, keepalive
   const timer = setTimeout(() => abort.abort(), TIMEOUT_MS);
   let res: Response;
   try {
-    res = await fetch(url, { method, headers, body: payload, credentials: "include", signal: abort.signal, keepalive });
+    res = await fetch(url, { method, headers, body: payload, credentials: "include",
+      // The path tells the API which app is asking when one browser is signed in to both /teacher and /app.
+      referrerPolicy: "no-referrer-when-downgrade", signal: abort.signal, keepalive });
   } catch (e) {
     // Offline, blocked, refused or timed out: the app treats them alike.
     throw new ApiError("network", { cause: e });

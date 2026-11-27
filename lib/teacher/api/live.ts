@@ -74,7 +74,9 @@ async function request<T>(method: string, path: string, { body, timeout = TIMEOU
   else signal?.addEventListener("abort", stop, { once: true });
   let res: Response;
   try {
-    res = await fetch(`${apiBase}${path}`, { method, headers, body: payload, credentials: "include", keepalive: keep, signal: abort.signal });
+    res = await fetch(`${apiBase}${path}`, { method, headers, body: payload, credentials: "include",
+      // The path tells the API which app is asking when one browser is signed in to both /teacher and /app.
+      referrerPolicy: "no-referrer-when-downgrade", keepalive: keep, signal: abort.signal });
   } catch (e) {
     // Offline, blocked, refused or timed out: the app treats them alike.
     throw new ApiError("network", { cause: e });
