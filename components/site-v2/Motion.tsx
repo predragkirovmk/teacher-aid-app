@@ -211,9 +211,10 @@ export function Motion() {
             }
 
             /* In class (act 2, climax): the stage pins for three screens of scroll and plays one
-               question through. Students join, the teacher clicks Send, the question flies from the
-               laptop to the board, the answers come in on both screens, and the right one is
-               revealed. One caption per beat. */
+               real lesson, captured beat by beat on the projector and on the teacher's laptop. The
+               class joins, Send is pressed, the question flies from the laptop to the board, the
+               answers come in, and when the time is up both screens show the right answer. One
+               caption per beat. */
             const live = document.querySelector<HTMLElement>("[data-live]");
             const liveStage = live?.querySelector<HTMLElement>(".live__stage");
             const L = <T extends Element = HTMLElement>(sel: string) => live?.querySelector<T>(sel) ?? null;
@@ -225,13 +226,9 @@ export function Motion() {
 
             if (live && liveStage && boardQ && row && card) {
               const steps = LA("[data-step]");
-              const bars = LA("[data-bar]");
-              const fills = LA("[data-bar-fill]");
-              const send = L("[data-send]");
-              const revealBtn = L("[data-reveal-btn]");
 
               // The card is the board's question, laid over it at its size and type; it starts
-              // shrunk onto the console's row and flies home.
+              // shrunk onto the laptop's question, line for line, and flies home.
               placeCard = () => {
                 const b = box(boardQ, liveStage);
                 Object.assign(card.style, { left: `${b.x}px`, top: `${b.y}px`, width: `${b.w}px`, fontSize: getComputedStyle(boardQ).fontSize });
@@ -241,17 +238,12 @@ export function Motion() {
               const fromRow = () => {
                 const a = box(row, liveStage);
                 const b = box(boardQ, liveStage);
-                const scale = a.w / b.w;
-                return { x: a.x - b.x, y: a.y + (a.h - b.h * scale) / 2 - b.y, scale };
+                return { x: a.x - b.x, y: a.y - b.y, scale: a.h / b.h };
               };
 
               gsap.set(steps, { autoAlpha: (i) => (i === 0 ? 1 : 0) });
-              gsap.set(L("[data-board-lobby]"), { autoAlpha: 1 });
-              gsap.set(L("[data-board-q]"), { autoAlpha: 0 });
-              gsap.set(L("[data-send-label]"), { opacity: 1 });
-              gsap.set(L("[data-sent-label]"), { opacity: 0 });
-              gsap.set(fills, { scaleX: 0 });
-              gsap.set([...LA("[data-bar-pct]"), L("[data-ring]"), L("[data-reveal-fill]")], { opacity: 0 });
+              gsap.set(LA('[data-live-frame]:not([data-live-frame="join1"])'), { autoAlpha: 0 });
+              gsap.set(L("[data-send]"), { opacity: 0 });
 
               const tl = gsap.timeline({
                 defaults: { ease: "none" },
@@ -272,35 +264,33 @@ export function Motion() {
                 tl
                   .to(steps[i - 1], { autoAlpha: 0, y: -10, duration: 0.22 }, at)
                   .fromTo(steps[i], { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.35 }, at + 0.26);
+              // A capture arrives over the one before it, on the board or the laptop or both.
+              const arrive = (where: "board" | "laptop" | "both", name: string, at: number, duration = 0.3) =>
+                tl.fromTo(
+                  LA(`${where === "both" ? "" : `.live__${where} `}[data-live-frame="${name}"]`),
+                  { autoAlpha: 0 },
+                  { autoAlpha: 1, duration, immediateRender: false },
+                  at,
+                );
 
-              // 1. Students scan in.
-              counter(tl, [L("[data-joined]"), L("[data-c-joined]")], 0, 27, 1.8, 0.2);
-              // 2. Send: the button presses, the question leaves the laptop for the board.
+              // 1. Students scan in: the count grows on both screens.
+              arrive("both", "join2", 0.6, 0.5);
+              // 2. The lesson starts, Send is pressed, the question leaves the laptop for the board.
+              arrive("both", "ready", 1.9);
               beat(1, 2.1);
-              tl.to(send, { scale: 0.95, duration: 0.12 }, 2.3)
-                .to(send, { scale: 1, duration: 0.2 }, 2.42)
-                .to(L("[data-send-label]"), { opacity: 0, duration: 0.15 }, 2.45)
-                .to(L("[data-sent-label]"), { opacity: 1, duration: 0.15 }, 2.45)
+              tl.fromTo(L("[data-send]"), { opacity: 0.45, scale: 1 }, { opacity: 0, scale: 1.25, duration: 0.45, ease: "power2.out", immediateRender: false }, 2.3)
                 .fromTo(card, { autoAlpha: 0, x: () => fromRow().x, y: () => fromRow().y, scale: () => fromRow().scale }, { autoAlpha: 1, duration: 0.15 }, 2.4)
-                .to(card, { x: 0, y: 0, scale: 1, duration: 1.2, ease: "power2.inOut" }, 2.55)
-                .to(L("[data-board-lobby]"), { autoAlpha: 0, duration: 0.4 }, 2.9)
-                .to(L("[data-board-q]"), { autoAlpha: 1, duration: 0.4 }, 3.2)
-                .to(L("[data-flycard-bg]"), { opacity: 0, duration: 0.3 }, 3.5)
-                .to(card, { autoAlpha: 0, duration: 0.2 }, 3.85);
-              // 3. The answers come in on the board and the console; the timer runs down.
+                .to(card, { x: 0, y: 0, scale: 1, duration: 1.2, ease: "power2.inOut" }, 2.55);
+              arrive("laptop", "open1", 2.5);
+              arrive("board", "open1", 3.2, 0.4);
+              tl.to(L("[data-flycard-bg]"), { opacity: 0, duration: 0.3 }, 3.5).to(card, { autoAlpha: 0, duration: 0.2 }, 3.85);
+              // 3. The answers come in on both screens and the time runs down.
               beat(2, 3.9);
-              counter(tl, [L("[data-answered]"), L("[data-c-answered]")], 0, 24, 2.6, 4);
-              counter(tl, [L("[data-timer]")], 20, 0, 2.6, 4);
-              tl.to(fills, { scaleX: (_, el) => parseFloat((el as HTMLElement).parentElement?.style.getPropertyValue("--share") ?? "0"), duration: 2.4, ease: "power1.out", stagger: 0.05 }, 4.1);
-              // 4. Reveal: the button presses, the right answer rings, the rest step back.
+              arrive("both", "open2", 5, 0.6);
+              // 4. The time is up: both screens show the right answer.
               beat(3, 6.8);
-              tl.to(revealBtn, { scale: 0.95, duration: 0.12 }, 6.9)
-                .to(revealBtn, { scale: 1, duration: 0.2 }, 7.02)
-                .to(L("[data-reveal-fill]"), { opacity: 1, duration: 0.2 }, 6.95)
-                .to(L("[data-ring]"), { opacity: 1, duration: 0.35 }, 7.1)
-                .to(bars.filter((b) => !b.classList.contains("is-right")), { opacity: 0.55, duration: 0.35 }, 7.1)
-                .to(LA("[data-bar-pct]"), { opacity: 1, duration: 0.35 }, 7.1)
-                .to({}, { duration: 1.6 });
+              arrive("both", "shown", 7, 0.4);
+              tl.to({}, { duration: 1.6 });
             }
 
             /* After class: the attendance tiles count in and the most-missed questions fill. */

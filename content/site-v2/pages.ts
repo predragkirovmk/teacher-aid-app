@@ -29,7 +29,8 @@ export type PageKey =
   | "quiz"
   | "attendance"
   | "ai"
-  | "press";
+  | "press"
+  | "video";
 
 /** Each page's path in each language. The pairs are each other's hreflang alternates. */
 export const pagePaths: Record<PageKey, Record<Lang, string>> = {
@@ -44,6 +45,7 @@ export const pagePaths: Record<PageKey, Record<Lang, string>> = {
   forms: { mk: "/google-forms-ili-teacheraid", en: "/en/google-forms-or-teacheraid" },
   quiz: { mk: "/kako-da-napravite-kviz", en: "/en/how-to-make-a-quiz" },
   attendance: { mk: "/prisustvo-so-qr-kod", en: "/en/qr-code-attendance" },
+  video: { mk: "/vodich", en: "/en/video-guide" },
 };
 
 export const homePaths: Record<Lang, string> = { mk: "/", en: "/en" };
@@ -62,6 +64,7 @@ export const pageUpdated: Record<PageKey | "home", string> = {
   forms: "2026-11-25",
   quiz: "2026-11-25",
   attendance: "2026-11-25",
+  video: "2026-11-27",
 };
 
 export type QA = { q: string; a: string[] };
@@ -89,6 +92,8 @@ export type ArticleDict = {
   lead: string;
   sections: Section[];
   sources?: { label: string; href: string }[];
+  /** The guide film under the page's head (components/GuideVideo.tsx), with its VideoObject. */
+  video?: true;
 };
 
 export type ChromeDict = {
@@ -107,6 +112,8 @@ export type ChromeDict = {
   sectionsLabel: string;
   /** The home page's list of the reading pages, before the booking scene. */
   readMore: { kicker: string; title: string };
+  /** The guide film: the home hero's button, the pop-up and the video page. The film is in Macedonian. */
+  video: { cta: string; title: string; description: string; chapters: string; close: string };
 };
 
 export const chrome: Record<Lang, ChromeDict> = {
@@ -130,6 +137,13 @@ export const chrome: Record<Lang, ChromeDict> = {
     },
     sectionsLabel: "Делови од почетната страница",
     readMore: { kicker: "Прочитајте повеќе", title: "Пред да ни пишете." },
+    video: {
+      cta: "Видео-водич, 3 минути",
+      title: "Видео-водич за TeacherAid",
+      description: "Рики, бувот на TeacherAid, Ве води низ еден час во апликацијата за наставници: подготовка, час и резултати.",
+      chapters: "Делови од видеото",
+      close: "Затвори го видеото",
+    },
   },
   en: {
     homeName: "Home",
@@ -151,6 +165,13 @@ export const chrome: Record<Lang, ChromeDict> = {
     },
     sectionsLabel: "Sections of the home page",
     readMore: { kicker: "Read more", title: "Before you write to us." },
+    video: {
+      cta: "Video guide, 3 min, in Macedonian",
+      title: "TeacherAid video guide, in Macedonian",
+      description: "Riki, TeacherAid's owl, walks through one lesson in the teacher app: preparing it, holding it and seeing the results.",
+      chapters: "Parts of the video",
+      close: "Close the video",
+    },
   },
 };
 
@@ -1312,6 +1333,74 @@ const pressEn: ArticleDict = {
   ],
 };
 
+const videoMk: ArticleDict = {
+  key: "video",
+  lang: "mk",
+  meta: {
+    title: "Видео-водич за TeacherAid: еден час од подготовка до резултати",
+    description:
+      "Видео од три минути: како наставникот подготвува лекција со TeacherAid, како учениците се приклучуваат со QR-код, како тече часот и каде се резултатите после него.",
+  },
+  name: "Видео-водич",
+  kicker: "Видео-водич · 3 минути",
+  title: "Еден час, од почеток до крај.",
+  lead: "Рики, бувот на TeacherAid, Ве води низ апликацијата за наставници. Паузирајте кога сакате и следете во апликацијата.",
+  video: true,
+  sections: [
+    {
+      id: "sto-pokazuva",
+      title: "Што покажува видеото",
+      list: [
+        "Како подготвувате лекција: додавате материјал, а TeacherAid предлага прашања.",
+        "Како ги прегледувате прашањата и менувате што сакате.",
+        "Како го почнувате часот: учениците го скенираат QR-кодот и се приклучуваат.",
+        "Како тече часот: секое прашање го испраќате Вие, кога сакате.",
+        "Што добивате на крајот и каде е часот после тоа, во Библиотека.",
+      ],
+    },
+    {
+      id: "probajte",
+      title: "Пробајте сами",
+      paras: ["Отворете ја апликацијата за наставници и поминете ги истите чекори. Ако нешто не е јасно, пишете ни."],
+      links: [{ label: "Апликација за наставници", href: "https://app.teacheraid.education/teacher" }],
+    },
+  ],
+};
+
+const videoEn: ArticleDict = {
+  key: "video",
+  lang: "en",
+  meta: {
+    title: "TeacherAid video guide: one lesson from preparing it to the results",
+    description:
+      "A three-minute video in Macedonian: how a teacher prepares a lesson with TeacherAid, how students join by QR code, how the lesson runs and where the results are afterwards.",
+  },
+  name: "Video guide",
+  kicker: "Video guide · 3 minutes · in Macedonian",
+  title: "One lesson, start to finish.",
+  lead: "Riki, TeacherAid's owl, walks you through the teacher app. The video is in Macedonian, with Macedonian captions. Pause it whenever you like and follow along in the app.",
+  video: true,
+  sections: [
+    {
+      id: "what-it-shows",
+      title: "What the video shows",
+      list: [
+        "How you prepare a lesson: you add material and TeacherAid suggests questions.",
+        "How you review the questions and change what you like.",
+        "How you start the lesson: students scan the QR code and join.",
+        "How the lesson runs: you send each question when you decide.",
+        "What you get at the end, and where the lesson is afterwards, in the Library.",
+      ],
+    },
+    {
+      id: "try-it",
+      title: "Try it yourself",
+      paras: ["Open the teacher app and go through the same steps. If anything is unclear, write to us."],
+      links: [{ label: "The teacher app", href: "https://app.teacheraid.education/teacher" }],
+    },
+  ],
+};
+
 export const pages: Record<PageKey, Record<Lang, ArticleDict>> = {
   faq: { mk: faqMk, en: faqEn },
   alternative: { mk: alternativeMk, en: alternativeEn },
@@ -1324,10 +1413,12 @@ export const pages: Record<PageKey, Record<Lang, ArticleDict>> = {
   forms: { mk: formsMk, en: formsEn },
   quiz: { mk: quizMk, en: quizEn },
   attendance: { mk: attendanceMk, en: attendanceEn },
+  video: { mk: videoMk, en: videoEn },
 };
 
-/** The order of the pages in the footer and the home page's list: the questions, the comparisons, the guides, then about us. */
+/** The order of the pages in the footer and the home page's list: the video guide, the questions, the comparisons, the guides, then about us. */
 export const pageOrder: PageKey[] = [
+  "video",
   "faq",
   "alternative",
   "mentimeter",

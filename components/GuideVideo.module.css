@@ -1,0 +1,137 @@
+/* The guide film, the same on the website and in the teacher app: colours come from the page (currentColor), the film's frame is dark. */
+
+.player {
+  display: grid;
+  gap: 12px;
+}
+
+.video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  background: #0b1b33;
+}
+
+.chapters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chapters button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  color: inherit;
+  font: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* The time in bold, not dimmed: the teacher app keeps every word at full contrast. */
+.chapters button span {
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.chapters button:active {
+  transform: scale(0.97);
+}
+
+.chapters button:focus-visible,
+.close:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .chapters button:hover {
+    background: color-mix(in srgb, currentColor 14%, transparent);
+  }
+}
+
+/* The dialog covers the screen; the film sits in the middle at the largest 16:9 that fits, and a click beside it closes it. */
+.dialog {
+  --pad: clamp(16px, 4vw, 48px);
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: var(--pad);
+  border: 0;
+  background: transparent;
+  color: #fff;
+}
+
+.dialog[open] {
+  display: grid;
+  place-items: center;
+}
+
+.dialog::backdrop {
+  background: rgb(5 12 24 / 0.88);
+}
+
+.frame {
+  width: min(100%, 1280px, calc((100dvh - 2 * var(--pad)) * 16 / 9));
+}
+
+.close {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.14);
+  color: #fff;
+  cursor: pointer;
+}
+
+.dialog[open] .frame {
+  animation: rise 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.dialog[open]::backdrop {
+  animation: fade 200ms ease-out;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog[open] .frame,
+  .dialog[open]::backdrop {
+    animation: none;
+  }
+}
+
+/* The page under the open film does not scroll (phones scroll natively, without the website's smooth scroll to stop). */
+:global(html):has(.dialog[open]) {
+  overflow: hidden;
+}

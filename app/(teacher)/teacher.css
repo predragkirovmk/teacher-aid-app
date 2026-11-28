@@ -1493,6 +1493,14 @@ button {
   /* The words, not the padding, line up with the text above. */
   margin-left: -0.75rem;
 }
+/* The guide film's button (components/GuideVideo.tsx), lined up the same way. */
+.guide__video {
+  margin-left: -0.75rem;
+}
+/* Help: the guide film fills its card. */
+.help__video {
+  justify-items: stretch;
+}
 .card .guide__note {
   margin-top: calc(var(--sp-1) * -1);
   font-size: var(--fs-small);

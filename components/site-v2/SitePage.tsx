@@ -1,5 +1,7 @@
-import { ArrowRightIcon, ClockCounterClockwiseIcon, GlobeHemisphereEastIcon, LockKeyIcon, SparkleIcon } from "@phosphor-icons/react/ssr";
-import { homePaths, pageUpdated } from "@/content/site-v2/pages";
+import { ArrowRightIcon, ClockCounterClockwiseIcon, GlobeHemisphereEastIcon, LockKeyIcon, PlayCircleIcon, SparkleIcon } from "@phosphor-icons/react/ssr";
+import { GuideVideoButton } from "@/components/GuideVideo";
+import liveCapture from "@/content/site-v2/live-capture.json";
+import { chrome, homePaths, pageUpdated } from "@/content/site-v2/pages";
 import type { SiteV2Dict } from "@/content/site-v2/types";
 import { ClassStack } from "./ClassStack";
 import { SiteFooter } from "./Footer";
@@ -8,7 +10,7 @@ import { Board, Laptop, Phone } from "./Devices";
 import { Motion } from "./Motion";
 import { Nav } from "./Nav";
 import { ReadMore } from "./ReadMore";
-import { BoardScreen, EndScreen, LiveConsoleScreen, PhoneShot, ReportSheets, ResultsScreen, Shot } from "./Screens";
+import { EndScreen, LiveFrames, PhoneShot, ReportSheets, ResultsScreen, Shot } from "./Screens";
 
 // One icon per data fact, in the order they are written: the EU, the AI, staff access, retention.
 const FACT_ICONS = [GlobeHemisphereEastIcon, SparkleIcon, LockKeyIcon, ClockCounterClockwiseIcon];
@@ -21,6 +23,7 @@ const FACT_ICONS = [GlobeHemisphereEastIcon, SparkleIcon, LockKeyIcon, ClockCoun
 export function SitePageV2({ t }: { t: SiteV2Dict }) {
   const s = t.screens;
   const mailto = `mailto:${t.book.email}`;
+  const video = chrome[t.lang].video;
 
   return (
     <>
@@ -56,6 +59,10 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
                   <a className="btn btn--quiet" href="https://app.teacheraid.education/app">
                     {t.hero.student}
                   </a>
+                  <GuideVideoButton title={video.title} closeLabel={video.close} className="chev hero__video">
+                    <PlayCircleIcon size={28} weight="fill" aria-hidden="true" />
+                    {video.cta}
+                  </GuideVideoButton>
                 </div>
                 <ul className="hero__meta">
                   {t.hero.meta.map((m) => (
@@ -91,8 +98,8 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
           </section>
         </div>
 
-        {/* Act 2, build: the teacher chapter, the page's one deep-teal moment. */}
-        <div className="chapter" id="teacher" data-theme="teal" tabIndex={-1}>
+        {/* Act 2, build: the teacher chapter, in the teacher app's light blue. */}
+        <div className="chapter" id="teacher" data-theme="sky" tabIndex={-1}>
           <section className="scene opener" aria-labelledby="teacher-title">
             <div className="wrap">
               <p className="kicker kicker--on-teal" data-reveal>
@@ -171,14 +178,20 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
                 </ol>
                 <div className="live__stage">
                   <Board label={s.alt.live} className="live__board">
-                    <BoardScreen s={s} lang={t.lang} />
+                    <LiveFrames device="b" lang={t.lang} sizes="(max-width: 899px) 92vw, 1000px" />
                   </Board>
                   <Laptop className="live__laptop">
-                    <LiveConsoleScreen s={s} />
+                    <LiveFrames device="t" lang={t.lang} sizes="(max-width: 899px) 92vw, 500px" />
                   </Laptop>
-                  <p className="flycard" data-flycard aria-hidden="true">
+                  {/* The question as the projector sets it, flown from the laptop to the board. */}
+                  <p
+                    className="flycard"
+                    data-flycard
+                    aria-hidden="true"
+                    style={{ fontWeight: Number(liveCapture[t.lang].to.weight), lineHeight: liveCapture[t.lang].to.line }}
+                  >
                     <span className="flycard__bg" data-flycard-bg />
-                    <span className="flycard__text">{s.board.question}</span>
+                    <span className="flycard__text">{liveCapture[t.lang].question}</span>
                   </p>
                 </div>
               </div>

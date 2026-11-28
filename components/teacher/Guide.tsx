@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowLeftIcon, ArrowRightIcon, CalendarCheckIcon, FileTextIcon, GearSixIcon, ListChecksIcon, QrCodeIcon, SparkleIcon, type Icon } from "@phosphor-icons/react";
+import { ArrowLeftIcon, ArrowRightIcon, CalendarCheckIcon, FileTextIcon, GearSixIcon, ListChecksIcon, PlayCircleIcon, QrCodeIcon, SparkleIcon, type Icon } from "@phosphor-icons/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { GuideVideoButton } from "@/components/GuideVideo";
 import { Mark } from "@/components/app/Mark";
 import { setFirstRunDone, useMe } from "@/lib/teacher/api/hooks";
 import { leaveGuideUnsaved } from "@/lib/teacher/first-run";
@@ -101,6 +102,12 @@ export function Guide() {
           <p className="guide__body" key={`body-${step}`}>
             {t(current.body)}
           </p>
+
+          {/* The same three steps shown in a real lesson, for the teacher who would rather watch; on every step, out of the way of Next. */}
+          <GuideVideoButton title={t("video.title")} closeLabel={t("close")} className="btn btn--quiet guide__video">
+            <PlayCircleIcon size={24} weight="fill" aria-hidden="true" />
+            {t("guide.video")}
+          </GuideVideoButton>
 
           {error !== null && <Problem title={t("guide.error.title")}>{te(error)}</Problem>}
 

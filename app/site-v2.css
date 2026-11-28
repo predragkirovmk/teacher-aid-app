@@ -14,17 +14,21 @@
   --ink-2: oklch(44% 0.025 220);
   --line: oklch(88% 0.01 205);
 
-  /* The teacher app's own colours (docs/teacher-plan.md on the teacher branch). */
-  --deep: #124554;
-  --panel: #145667;
-  --ground-top: #155869;
-  --ground: #32878c;
-  --shadow: #0a2e37;
+  /* The teacher app's own colours (app/(teacher)/teacher.css): its brand blue and navy, and the
+     light window, white panels and second ink the teacher chapter and the drawn screens wear. */
+  --deep: #134785;
+  --deep-hover: #0f3b6f;
+  --shadow: #0a2347;
+  --ground-top: #eef2f7;
+  --ground: #e6edf5;
+  --panel: #ffffff;
+  --tint: #e1edfb;
   --yellow: #ffc83e;
   --yellow-deep: #cea034;
+  /* Words on the brand blue and on the student blue; the teacher chapter turns it navy. */
   --on-teal: oklch(98.6% 0.004 200);
-  --on-teal-2: oklch(86% 0.03 200);
-  --line-teal: oklch(100% 0 0 / 0.16);
+  --on-teal-2: #4a5b74;
+  --line-teal: rgba(10, 35, 71, 0.1);
 
   /* The student app's blue and yellow, for the phone. */
   --blue: #1a5dae;
@@ -217,7 +221,7 @@ body.v2 {
 }
 
 .kicker--on-teal {
-  color: var(--yellow);
+  color: var(--deep);
 }
 
 /* "01 Подготовка": the scene's number in display type, then its name. */
@@ -234,7 +238,7 @@ body.v2 {
   font-family: var(--display);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--yellow);
+  color: var(--deep);
 }
 
 .index--ink {
@@ -288,12 +292,12 @@ body.v2 {
 
 .btn--primary {
   background: var(--deep);
-  color: var(--on-teal);
+  color: var(--paper);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .btn--primary:hover {
-    background: var(--shadow);
+    background: var(--deep-hover);
   }
 }
 
@@ -303,18 +307,35 @@ body.v2 {
   box-shadow: inset 0 0 0 1.5px currentColor;
 }
 
-/* On teal the main action turns yellow, with dark ink (white on yellow fails contrast). */
-.chapter .btn--primary,
-.nav:is([data-nav-theme="teal"], [data-nav-theme="blue"]) .btn--primary {
+/* On the student blue the main action turns yellow, with dark ink (white on yellow fails contrast). */
+.chapter--student .btn--primary,
+.nav[data-nav-theme="blue"] .btn--primary {
   background: var(--yellow);
   color: var(--shadow);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .chapter .btn--primary:hover,
-  .nav:is([data-nav-theme="teal"], [data-nav-theme="blue"]) .btn--primary:hover {
+  .chapter--student .btn--primary:hover,
+  .nav[data-nav-theme="blue"] .btn--primary:hover {
     background: var(--yellow-deep);
   }
+}
+
+/* The guide film's button, a chevron link with a play mark (components/GuideVideo.tsx). */
+.hero__video {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* The video page: the film between the head and the text, wider than the text and lined up with it. */
+.article__video {
+  max-width: calc(64rem + 2 * var(--gutter));
+  margin-inline: 0;
+  padding-top: clamp(2rem, 6vh, 4rem);
 }
 
 /* Apple's chevron link: the secondary action, never a box. */
@@ -386,9 +407,9 @@ body.v2 {
     color 240ms ease;
 }
 
-.nav[data-nav-theme="teal"] {
+.nav[data-nav-theme="sky"] {
   --nav-bg: var(--ground-top);
-  --nav-fg: var(--on-teal);
+  --nav-fg: var(--shadow);
   --nav-line: var(--line-teal);
 }
 
@@ -485,7 +506,7 @@ body.v2 {
   display: none;
 }
 
-.nav:is([data-nav-theme="teal"], [data-nav-theme="blue"]) :focus-visible {
+.nav[data-nav-theme="blue"] :focus-visible {
   outline-color: var(--yellow);
 }
 
@@ -699,6 +720,11 @@ body.v2 {
 /* Phones: the headline across the width, one line of deck, and the devices already in the first
    screen, side by side, the phone over the laptop's right edge only. */
 @media (max-width: 767px) {
+  /* Less air over the kicker, so the two apps' buttons sit higher in the first screen. */
+  .hero {
+    padding-top: calc(var(--nav-h) + clamp(0.75rem, 3svh, 1.5rem));
+  }
+
   .hero__title .line:nth-child(2) {
     padding-left: 0;
   }
@@ -733,6 +759,33 @@ body.v2 {
     top: -6%;
     bottom: auto;
     width: 31%;
+  }
+}
+
+/* Tablets and computers. The hero is one pinned screen that clips what falls below it, so the
+   headline is held to two lines and to a sixth of the screen's height, and the deck under it, with
+   the buttons into the two apps, stays in that screen. Macedonian's "на Наставата." needs 6.47 times
+   the font size plus its indent: above 11rem it wraps to a third line on wide screens. */
+@media (min-width: 768px) {
+  .hero__title {
+    font-size: clamp(2.5rem, min(12.5vw, 16svh), 12.5rem);
+  }
+
+  .hero__title:lang(mk) {
+    font-size: clamp(2.5rem, min(12.5vw, 16svh, 11rem), 12.5rem);
+  }
+}
+
+/* Under 880px tall (most laptops' browsers, a tablet on its side) there is no room for the long
+   deck: it takes the phones' two lines and drops the meta line. */
+@media (min-width: 768px) and (max-height: 879px) {
+  .hero__lead,
+  .hero__meta {
+    display: none;
+  }
+
+  .hero__lead-short {
+    display: block;
   }
 }
 
@@ -1007,12 +1060,11 @@ body.v2 {
   color: var(--on-teal);
 }
 
-.chapter :focus-visible {
-  outline-color: var(--yellow);
-}
-
-.chapter .chev {
-  color: var(--on-teal);
+/* The teacher chapter wears the teacher app's light colours, and so do the drawn app screens
+   wherever they stand: the words that sit on them turn navy. */
+.chapter[data-theme="sky"],
+.scr {
+  --on-teal: var(--shadow);
 }
 
 .scene {
@@ -1140,9 +1192,9 @@ body.v2 {
   }
 }
 
-/* The climax: the room darkens like a projector is on. */
+/* The climax: the room takes the blue light of the projector. */
 .live {
-  background: linear-gradient(180deg, var(--ground-top) 0%, var(--deep) 18%, var(--deep) 82%, var(--ground-top) 100%);
+  background: linear-gradient(180deg, var(--ground-top) 0%, var(--tint) 18%, var(--tint) 82%, var(--ground-top) 100%);
 }
 
 .live .wrap {
@@ -1185,7 +1237,7 @@ body.v2 {
 }
 
 .live__steps li span {
-  color: var(--yellow);
+  color: var(--deep);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1205,17 +1257,19 @@ body.v2 {
   align-items: end;
 }
 
+/* The real class view fills the whole board, so the laptop stands beside it, in front of its
+   frame only. */
 .live__board {
-  grid-column: 1 / 12;
+  grid-column: 1 / 9;
   grid-row: 1;
 }
 
 /* Offset with a margin, not a transform, so the motion layer measures it where it is. */
 .live__laptop {
-  grid-column: 8 / -1;
+  grid-column: 9 / -1;
   grid-row: 1;
   z-index: 2;
-  margin-bottom: -4%;
+  margin: 0 0 -6% -2%;
 }
 
 /* The question on its way from the laptop to the board. Placed and sized by the motion layer. */
@@ -1225,10 +1279,9 @@ body.v2 {
   left: 0;
   z-index: 3;
   margin: 0;
-  font-family: var(--display);
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  line-height: 1.08;
+  /* The projector's type; its weight and leading come from the capture. */
+  font-family: var(--text);
+  white-space: nowrap;
   color: var(--on-teal);
   transform-origin: 0 0;
   pointer-events: none;
@@ -1245,6 +1298,19 @@ body.v2 {
 
 .flycard__text {
   position: relative;
+}
+
+/* Boxes over the captures, measured in them: where the question sits on each screen, and Send. */
+.live__mark {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* Send, pressed: a ripple of the brand blue off the button. */
+.live__press {
+  border-radius: 999px;
+  background: var(--deep);
+  opacity: 0;
 }
 
 .live__copy {
@@ -1288,8 +1354,13 @@ body.v2 {
 }
 
 .chapter--student .kicker--on-teal,
-.chapter--student .index span {
+.chapter--student .index span,
+.chapter--student .chev {
   color: var(--on-teal);
+}
+
+.chapter--student :focus-visible {
+  outline-color: var(--yellow);
 }
 
 .chapter--student :is(.index, .note, .split .body, .opener__body, .answer__lead) {
@@ -1373,14 +1444,6 @@ body.v2 {
 .chapter--director {
   background: var(--paper);
   color: var(--ink);
-}
-
-.chapter--director :focus-visible {
-  outline-color: var(--deep);
-}
-
-.chapter--director .chev {
-  color: var(--deep);
 }
 
 .chapter--director :is(.opener__body, .report__lead) {
@@ -1774,7 +1837,7 @@ body.v2 {
 .laptop__screen {
   aspect-ratio: 16 / 10;
   border-radius: 0.5%;
-  background: var(--deep);
+  background: var(--ground-top);
 }
 
 .laptop__base {
@@ -1856,7 +1919,8 @@ body.v2 {
 /* ---------- Captures of the real apps ---------- */
 
 /* A teacher capture fills the laptop's 16:10 screen exactly. */
-.laptop__screen > .shot {
+.laptop__screen > .shot,
+.board__screen > .shot {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -1929,8 +1993,8 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
   bottom: 2.5cqw;
   padding: 0.5cqw 1.2cqw;
   border-radius: 999px;
-  background: oklch(100% 0 0 / 0.14);
-  color: var(--on-teal);
+  background: var(--tint);
+  color: var(--deep);
   font-size: 1.3cqw;
   font-weight: 600;
 }
@@ -1949,13 +2013,16 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
   white-space: nowrap;
 }
 
-.scr-btn--yellow {
-  background: var(--yellow);
-  color: var(--shadow);
+/* After the lesson nothing is live, so the main button is the brand blue again. */
+.scr-btn--primary {
+  background: var(--deep);
+  color: var(--panel);
 }
 
+/* The teacher app's quiet button: tinted, in the brand blue. */
 .scr-btn--ghost {
-  box-shadow: inset 0 0 0 0.12cqw oklch(100% 0 0 / 0.5);
+  background: var(--tint);
+  color: var(--deep);
 }
 
 /* Teacher console: the Today screen. */
@@ -1970,7 +2037,8 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
   flex-direction: column;
   gap: 3cqw;
   padding: 2.6cqw 1.6cqw;
-  background: var(--deep);
+  background: var(--panel);
+  box-shadow: 0.1cqw 0 0 var(--line-teal);
 }
 
 .scr-side__brand {
@@ -2006,8 +2074,8 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
 }
 
 .scr-side li.is-on {
-  background: var(--panel);
-  color: var(--on-teal);
+  background: var(--tint);
+  color: var(--deep);
 }
 
 .scr-dot {
@@ -2018,7 +2086,7 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
 }
 
 .is-on .scr-dot {
-  background: var(--yellow);
+  background: var(--deep);
   box-shadow: none;
 }
 
@@ -2051,228 +2119,6 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-/* The class view on the board: the join screen, then the question layer. */
-.scr--board {
-  background: linear-gradient(180deg, var(--ground-top), var(--ground));
-}
-
-.scr-board__lobby,
-.scr-board__q {
-  position: absolute;
-  inset: 0;
-  padding: 3.6cqw 4.4cqw;
-}
-
-/* The finished state is the question; the motion layer starts on the join screen. Content keeps
-   to the top half on the right, clear of the laptop in front. */
-.scr-board__lobby {
-  display: flex;
-  align-items: flex-start;
-  gap: 5cqw;
-  padding-top: 5cqw;
-  opacity: 0;
-}
-
-.scr-qr {
-  flex: none;
-  width: 24cqw;
-  padding: 1.4cqw;
-  border-radius: 1.6cqw;
-  background: #fff;
-}
-
-.scr-qr svg {
-  display: block;
-  width: 100%;
-}
-
-.scr-lobby {
-  display: flex;
-  flex-direction: column;
-  gap: 1.6cqw;
-}
-
-.scr-lobby__scan {
-  max-width: 24ch;
-  font-size: 2.1cqw;
-  font-weight: 600;
-  color: var(--on-teal-2);
-}
-
-.scr-lobby__code {
-  font-family: var(--display);
-  font-size: 6.5cqw;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-}
-
-.scr-lobby__joined {
-  font-size: 2cqw;
-  color: var(--on-teal-2);
-}
-
-.scr-lobby__joined b {
-  font-family: var(--display);
-  font-size: 3.4cqw;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: var(--yellow);
-}
-
-.scr-board__q {
-  display: grid;
-  /* The left column ends near the board's middle, so the laptop never covers an answer. */
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-  grid-template-rows: auto auto minmax(0, 1fr);
-  column-gap: 4cqw;
-  row-gap: 2.2cqw;
-}
-
-.scr-board__top {
-  grid-column: 1;
-  display: flex;
-  align-items: center;
-  gap: 2.4cqw;
-  font-size: 1.5cqw;
-  font-weight: 600;
-  color: var(--on-teal-2);
-}
-
-.scr-board__side {
-  grid-column: 2;
-  grid-row: 1 / 3;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1.6cqw;
-  text-align: right;
-}
-
-.scr-timer {
-  display: grid;
-  place-items: center;
-  width: 8cqw;
-  height: 8cqw;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 0.5cqw var(--yellow);
-  color: var(--on-teal);
-  font-family: var(--display);
-  font-size: 3.2cqw;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.scr-board__count {
-  font-size: 1.6cqw;
-  color: var(--on-teal-2);
-}
-
-.scr-board__count b {
-  display: block;
-  font-family: var(--display);
-  font-size: 5cqw;
-  font-weight: 800;
-  line-height: 1;
-  color: var(--on-teal);
-  font-variant-numeric: tabular-nums;
-}
-
-.scr-board__question {
-  grid-column: 1;
-  max-width: 30ch;
-  font-family: var(--display);
-  font-size: 3.6cqw;
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  line-height: 1.08;
-}
-
-.scr-bars {
-  grid-column: 1;
-  align-self: end;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 1.1cqw;
-}
-
-.scr-bars li {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 1.4cqw;
-  padding: 1.3cqw 1.8cqw;
-  border-radius: 1.4cqw;
-  background: var(--panel);
-  overflow: hidden;
-  font-size: 1.7cqw;
-  font-weight: 600;
-}
-
-/* The share of the class: a scaled layer, filled with a transform. */
-.scr-bars__fill {
-  position: absolute;
-  inset: 0;
-  transform-origin: left center;
-  transform: scaleX(var(--share, 0));
-  background: oklch(100% 0 0 / 0.1);
-}
-
-.scr-bars li.is-right .scr-bars__fill {
-  background: oklch(100% 0 0 / 0.2);
-}
-
-/* The right answer, revealed: a yellow ring (yellow tints over teal turn olive). */
-.scr-bars__ring {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0 0.28cqw var(--yellow);
-  pointer-events: none;
-}
-
-.scr-bars__key {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  width: 3.2cqw;
-  height: 3.2cqw;
-  border-radius: 0.8cqw;
-  background: oklch(100% 0 0 / 0.14);
-  font-family: var(--display);
-  font-weight: 800;
-}
-
-.is-right .scr-bars__key {
-  background: var(--yellow);
-  color: var(--shadow);
-}
-
-.scr-bars__label {
-  position: relative;
-  z-index: 1;
-}
-
-.scr-bars__pct {
-  position: relative;
-  z-index: 1;
-  margin-left: auto;
-  font-family: var(--display);
-  font-variant-numeric: tabular-nums;
-}
-
 /* Shared bits of the teacher screens. */
 :where(.scr) :where(p, ol, ul) {
   margin: 0;
@@ -2283,8 +2129,6 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
   font-weight: 600;
   color: var(--on-teal-2);
 }
-
-
 
 
 .scr-sub {
@@ -2300,139 +2144,9 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
   inset: 0;
   transform-origin: left center;
   transform: scaleX(var(--share, 0));
-  background: oklch(100% 0 0 / 0.1);
+  background: var(--tint);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* The live console. */
-.scr--live {
-  display: flex;
-  flex-direction: column;
-  background: linear-gradient(180deg, var(--ground-top), var(--ground));
-}
-
-.scr--live .scr-btn {
-  padding: 0.9cqw 1.8cqw;
-  font-size: 1.3cqw;
-}
-
-.scr-live__bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.8cqw 3cqw;
-  background: var(--deep);
-  font-size: 1.5cqw;
-  color: var(--on-teal-2);
-}
-
-.scr-live__bar b {
-  color: var(--on-teal);
-}
-
-/* The teacher app's End red, a shade deeper so white text on it passes 4.5:1. */
-.scr--live .scr-btn--end {
-  background: #d61f1c;
-  color: #fff;
-  font-weight: 700;
-}
-
-.scr-live__body {
-  flex: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 28%;
-  gap: 2.4cqw;
-  padding: 2.6cqw 3cqw;
-}
-
-.scr-live__qs {
-  display: flex;
-  flex-direction: column;
-  gap: 1.1cqw;
-}
-
-.scr-live__qs li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.6cqw;
-  padding: 1.5cqw 1.8cqw;
-  border-radius: 1.2cqw;
-  background: var(--panel);
-  font-size: 1.45cqw;
-}
-
-.scr-live__qs li:not(.is-current) {
-  color: var(--on-teal-2);
-}
-
-.scr-live__qs li.is-current {
-  box-shadow: inset 0 0 0 0.2cqw oklch(100% 0 0 / 0.35);
-}
-
-/* Send, then Sent: two labels in one place. The finished state is Sent. */
-.scr-send {
-  display: grid;
-}
-
-.scr-send > span {
-  grid-area: 1 / 1;
-  text-align: center;
-}
-
-.scr-send [data-send-label] {
-  opacity: 0;
-}
-
-.scr-live__side {
-  display: flex;
-  flex-direction: column;
-  gap: 1.8cqw;
-}
-
-.scr-live__side p {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3cqw;
-  font-size: 1.3cqw;
-  color: var(--on-teal-2);
-}
-
-.scr-live__side b {
-  font-family: var(--display);
-  font-size: 3.8cqw;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: var(--on-teal);
-}
-
-.scr-reveal {
-  position: relative;
-  justify-content: center;
-}
-
-.scr-reveal i {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0 0.24cqw var(--yellow);
-}
 
 /* After End. */
 .scr-end__stats {
@@ -2527,7 +2241,7 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
   flex: 1;
   height: 100%;
   border-radius: 0.5cqw 0.5cqw 0 0;
-  background: oklch(100% 0 0 / 0.32);
+  background: var(--tint);
   transform-origin: center bottom;
   transform: scaleY(var(--v, 1));
 }
@@ -2549,53 +2263,6 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
   flex-direction: column;
   gap: 0.8cqw;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 /* The director's monthly report: two A4 sheets of white paper, type in cqw of the sheet. */
@@ -2758,7 +2425,7 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
 }
 
 .sheet__bars i.is-now {
-  background: var(--ground);
+  background: var(--deep);
 }
 
 .sheet__cols {
