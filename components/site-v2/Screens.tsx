@@ -1,11 +1,12 @@
 import { Mark } from "@/components/app/Mark";
 import type { SiteV2Dict } from "@/content/site-v2/types";
+import liveCapture from "@/content/site-v2/live-capture.json";
 
 /*
   The devices' screens. Where an app has the screen, it is a capture of the real app (Shot, from
-  scripts/site-v2-capture.mjs). Where the teacher app has not built it yet (the live console, the
-  class view, the end of a lesson, a class's page, the director's report), it is drawn here, laid
-  out like the app will be and tagged "Example"; each is replaced by a capture once the app has it.
+  scripts/site-v2-capture.mjs), the live console and the projector's class view among them. The rest
+  (the end of a lesson, a class's page, the director's report) is drawn here, laid out like the app
+  and tagged "Example"; each is replaced by a capture once the app has it.
 
   The drawn screens are pictures, so their titles are styled text, not headings: they never enter
   the page's outline. Every screen renders in its final state; the motion layer sets the earlier states itself and
@@ -14,10 +15,11 @@ import type { SiteV2Dict } from "@/content/site-v2/types";
 
 type S = SiteV2Dict["screens"];
 
-// The captures' sizes: teacher screens are the laptop's 16:10, student screens the phone's screen
-// under its status bar (390x798).
+// The captures' sizes: teacher screens are the laptop's 16:10, the projector's screens the board's
+// 16:9, student screens the phone's screen under its status bar (390x798).
 const SHOTS = {
   t: { widths: [960, 1800], w: 1800, h: 1125 },
+  b: { widths: [960, 1800], w: 1800, h: 1013 },
   s: { widths: [420, 780], w: 780, h: 1596 },
 } as const;
 
@@ -55,7 +57,7 @@ export function Shot({
   eager?: boolean;
   className?: string;
 } & Record<`data-${string}`, string | boolean>) {
-  const k = SHOTS[name[0] as "t" | "s"];
+  const k = SHOTS[name[0] as keyof typeof SHOTS];
   const src = (w: number) => `/site-v2/screens/${name}-${lang}-${w}.webp`;
   return (
     // eslint-disable-next-line @next/next/no-img-element -- static captures with their own srcset; no optimiser needed
@@ -74,12 +76,6 @@ export function Shot({
     />
   );
 }
-
-const KEYS = ["А", "Б", "В", "Г"];
-const KEYS_EN = ["A", "B", "C", "D"];
-
-// Illustrative answer shares for the board: the right answer (index 1) leads, as in a real class.
-const SHARES = [12, 62, 17, 9];
 
 /** The teacher app's sidebar: its two places, Lessons and Library, one of them current. */
 function Side({ s, on }: { s: S; on: number }) {
@@ -101,143 +97,39 @@ function Side({ s, on }: { s: S; on: number }) {
   );
 }
 
-/** The live console on the teacher's laptop: the questions to send and who is in and answering. */
-export function LiveConsoleScreen({ s }: { s: S }) {
-  const l = s.live;
-  return (
-    <div className="scr scr--live" data-console>
-      <div className="scr-live__bar">
-        <span>
-          <b>{l.course}</b> · {l.state}
-        </span>
-        <span className="scr-btn scr-btn--end">{l.end}</span>
-      </div>
-      <div className="scr-live__body">
-        <ol className="scr-live__qs">
-          {l.questions.map((q, i) => (
-            <li key={q} className={i === 0 ? "is-current" : undefined} data-send-row={i === 0 || undefined}>
-              <span>{q}</span>
-              {i === 0 ? (
-                <span className="scr-btn scr-btn--yellow scr-send" data-send>
-                  <span data-send-label>{l.send}</span>
-                  <span data-sent-label>{l.sent}</span>
-                </span>
-              ) : (
-                <span className="scr-btn scr-btn--ghost">{l.send}</span>
-              )}
-            </li>
-          ))}
-        </ol>
-        <aside className="scr-live__side">
-          <p>
-            {l.joined}
-            <span>
-              <b data-c-joined>27</b> {l.of}
-            </span>
-          </p>
-          <p>
-            {l.answered}
-            <span>
-              <b data-c-answered>24</b> {l.of}
-            </span>
-          </p>
-          <span className="scr-btn scr-btn--ghost scr-reveal" data-reveal-btn>
-            <i data-reveal-fill />
-            <span>{l.reveal}</span>
-          </span>
-        </aside>
-      </div>
-      <span className="scr-tag">{s.example}</span>
-    </div>
-  );
-}
+// One real lesson, captured beat by beat (scripts/site-v2-capture.mjs): the class joins, the lesson
+// starts, the question is sent, the answers come in, the time runs out and the answer is shown.
+const LIVE_BEATS = ["join1", "join2", "ready", "open1", "open2", "shown"] as const;
 
-// A QR-like pattern for the board's join screen: drawn, not encoded, so it cannot be scanned.
-const QR_SIZE = 21;
-function finder(x: number, y: number) {
-  for (const [fx, fy] of [
-    [0, 0],
-    [14, 0],
-    [0, 14],
-  ]) {
-    const dx = x - fx;
-    const dy = y - fy;
-    if (dx >= 0 && dx < 7 && dy >= 0 && dy < 7) {
-      const ring = Math.max(Math.abs(dx - 3), Math.abs(dy - 3));
-      return ring === 3 || ring <= 1 ? 1 : 0;
-    }
-  }
-  return -1;
-}
-function FakeQr() {
-  const cells: React.ReactNode[] = [];
-  for (let y = 0; y < QR_SIZE; y++) {
-    for (let x = 0; x < QR_SIZE; x++) {
-      const f = finder(x, y);
-      const on = f === -1 ? (x * 7 + y * 13 + ((x * y) % 5)) % 3 === 0 : f === 1;
-      if (on) cells.push(<rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" />);
-    }
-  }
-  return (
-    <svg viewBox={`-1 -1 ${QR_SIZE + 2} ${QR_SIZE + 2}`} aria-hidden="true">
-      <rect x="-1" y="-1" width={QR_SIZE + 2} height={QR_SIZE + 2} fill="#fff" />
-      <g fill="#0a2347">{cells}</g>
-    </svg>
-  );
-}
+// A box measured in the capture, as a share of its screen, placed over the picture.
+const place = ({ x, y, w, h }: { x: number; y: number; w: number; h: number }): React.CSSProperties => ({
+  left: `${x * 100}%`,
+  top: `${y * 100}%`,
+  width: `${w * 100}%`,
+  height: `${h * 100}%`,
+});
 
-/** The projected class view: the join screen, then the question, the timer and the answer bars. */
-export function BoardScreen({ s, lang }: { s: S; lang: "mk" | "en" }) {
-  const b = s.board;
-  const keys = lang === "mk" ? KEYS : KEYS_EN;
+/**
+ * The lesson on one screen: the board (b, the projector's screen) or the teacher's laptop (t). The
+ * captures stack in order, so the last, the answer shown, is what reads without the motion layer.
+ * Over them sit the boxes the motion layer flies the question between and presses Send on.
+ */
+export function LiveFrames({ device, lang, sizes }: { device: "b" | "t"; lang: "mk" | "en"; sizes: string }) {
+  const at = liveCapture[lang];
   return (
-    <div className="scr scr--board" data-board>
-      <div className="scr-board__lobby" data-board-lobby>
-        <span className="scr-qr">
-          <FakeQr />
-        </span>
-        <span className="scr-lobby">
-          <span className="scr-lobby__scan">{b.lobby.scan}</span>
-          <span className="scr-lobby__code">{b.lobby.code}</span>
-          <span className="scr-lobby__joined">
-            <b data-joined>{b.lobby.joined}</b> {b.lobby.of}
-          </span>
-        </span>
-      </div>
-      {/* Two columns: the question and its answers on the left, the clock and the count on the
-          right. The bottom right stays clear, where the teacher's laptop stands in front. */}
-      <div className="scr-board__q" data-board-q>
-        <div className="scr-board__top">
-          <span>{b.course}</span>
-          <span>{b.progress}</span>
-        </div>
-        <div className="scr-board__side">
-          <span className="scr-timer" data-timer>
-            {b.timer}
-          </span>
-          <p className="scr-board__count">
-            <b data-answered>{b.answered.n}</b> {b.answered.of}
-          </p>
-        </div>
-        <p className="scr-board__question" data-board-question>
-          {b.question}
-        </p>
-        <ol className="scr-bars">
-          {b.answers.map((a, i) => (
-            <li key={a} className={i === 1 ? "is-right" : undefined} data-bar style={{ "--share": SHARES[i] / 100 } as React.CSSProperties}>
-              {i === 1 && <span className="scr-bars__ring" data-ring />}
-              <span className="scr-bars__key">{keys[i]}</span>
-              <span className="scr-bars__label">{a}</span>
-              <span className="scr-bars__fill" data-bar-fill />
-              <span className="scr-bars__pct" data-bar-pct>
-                {SHARES[i]}%
-              </span>
-            </li>
-          ))}
-        </ol>
-      </div>
-      <span className="scr-tag">{s.example}</span>
-    </div>
+    <>
+      {LIVE_BEATS.map((beat) => (
+        <Shot key={beat} name={`${device}-live-${beat}`} lang={lang} sizes={sizes} data-live-frame={beat} />
+      ))}
+      {device === "b" ? (
+        <span className="live__mark" data-board-question style={{ ...place(at.to), fontSize: `${at.to.size}cqw` }} />
+      ) : (
+        <>
+          <span className="live__mark" data-send-row style={place(at.from)} />
+          <span className="live__mark live__press" data-send style={place(at.send)} />
+        </>
+      )}
+    </>
   );
 }
 

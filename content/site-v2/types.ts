@@ -81,28 +81,6 @@ export type SiteV2Dict = {
     };
     /** The teacher app's sidebar, for the screens that are still drawn. */
     console: { nav: string[] };
-    board: {
-      course: string;
-      progress: string;
-      question: string;
-      answers: string[];
-      timer: string;
-      answered: { n: string; of: string };
-      /** Before the first question: the join code and who is in. */
-      lobby: { scan: string; code: string; joined: string; of: string };
-    };
-    live: {
-      course: string;
-      state: string;
-      end: string;
-      joined: string;
-      answered: string;
-      of: string;
-      send: string;
-      sent: string;
-      reveal: string;
-      questions: string[];
-    };
     end: {
       title: string;
       course: string;

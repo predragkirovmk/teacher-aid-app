@@ -1,5 +1,6 @@
 import { ArrowRightIcon, ClockCounterClockwiseIcon, GlobeHemisphereEastIcon, LockKeyIcon, PlayCircleIcon, SparkleIcon } from "@phosphor-icons/react/ssr";
 import { GuideVideoButton } from "@/components/GuideVideo";
+import liveCapture from "@/content/site-v2/live-capture.json";
 import { chrome, homePaths, pageUpdated } from "@/content/site-v2/pages";
 import type { SiteV2Dict } from "@/content/site-v2/types";
 import { ClassStack } from "./ClassStack";
@@ -9,7 +10,7 @@ import { Board, Laptop, Phone } from "./Devices";
 import { Motion } from "./Motion";
 import { Nav } from "./Nav";
 import { ReadMore } from "./ReadMore";
-import { BoardScreen, EndScreen, LiveConsoleScreen, PhoneShot, ReportSheets, ResultsScreen, Shot } from "./Screens";
+import { EndScreen, LiveFrames, PhoneShot, ReportSheets, ResultsScreen, Shot } from "./Screens";
 
 // One icon per data fact, in the order they are written: the EU, the AI, staff access, retention.
 const FACT_ICONS = [GlobeHemisphereEastIcon, SparkleIcon, LockKeyIcon, ClockCounterClockwiseIcon];
@@ -177,14 +178,20 @@ export function SitePageV2({ t }: { t: SiteV2Dict }) {
                 </ol>
                 <div className="live__stage">
                   <Board label={s.alt.live} className="live__board">
-                    <BoardScreen s={s} lang={t.lang} />
+                    <LiveFrames device="b" lang={t.lang} sizes="(max-width: 899px) 92vw, 1000px" />
                   </Board>
                   <Laptop className="live__laptop">
-                    <LiveConsoleScreen s={s} />
+                    <LiveFrames device="t" lang={t.lang} sizes="(max-width: 899px) 92vw, 500px" />
                   </Laptop>
-                  <p className="flycard" data-flycard aria-hidden="true">
+                  {/* The question as the projector sets it, flown from the laptop to the board. */}
+                  <p
+                    className="flycard"
+                    data-flycard
+                    aria-hidden="true"
+                    style={{ fontWeight: Number(liveCapture[t.lang].to.weight), lineHeight: liveCapture[t.lang].to.line }}
+                  >
                     <span className="flycard__bg" data-flycard-bg />
-                    <span className="flycard__text">{s.board.question}</span>
+                    <span className="flycard__text">{liveCapture[t.lang].question}</span>
                   </p>
                 </div>
               </div>

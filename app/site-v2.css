@@ -1257,17 +1257,19 @@ body.v2 {
   align-items: end;
 }
 
+/* The real class view fills the whole board, so the laptop stands beside it, in front of its
+   frame only. */
 .live__board {
-  grid-column: 1 / 12;
+  grid-column: 1 / 9;
   grid-row: 1;
 }
 
 /* Offset with a margin, not a transform, so the motion layer measures it where it is. */
 .live__laptop {
-  grid-column: 8 / -1;
+  grid-column: 9 / -1;
   grid-row: 1;
   z-index: 2;
-  margin-bottom: -4%;
+  margin: 0 0 -6% -2%;
 }
 
 /* The question on its way from the laptop to the board. Placed and sized by the motion layer. */
@@ -1277,10 +1279,9 @@ body.v2 {
   left: 0;
   z-index: 3;
   margin: 0;
-  font-family: var(--display);
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  line-height: 1.08;
+  /* The projector's type; its weight and leading come from the capture. */
+  font-family: var(--text);
+  white-space: nowrap;
   color: var(--on-teal);
   transform-origin: 0 0;
   pointer-events: none;
@@ -1297,6 +1298,19 @@ body.v2 {
 
 .flycard__text {
   position: relative;
+}
+
+/* Boxes over the captures, measured in them: where the question sits on each screen, and Send. */
+.live__mark {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* Send, pressed: a ripple of the brand blue off the button. */
+.live__press {
+  border-radius: 999px;
+  background: var(--deep);
+  opacity: 0;
 }
 
 .live__copy {
@@ -1905,7 +1919,8 @@ body.v2 {
 /* ---------- Captures of the real apps ---------- */
 
 /* A teacher capture fills the laptop's 16:10 screen exactly. */
-.laptop__screen > .shot {
+.laptop__screen > .shot,
+.board__screen > .shot {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -1996,11 +2011,6 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
   border-radius: 999px;
   font-weight: 600;
   white-space: nowrap;
-}
-
-.scr-btn--yellow {
-  background: var(--yellow);
-  color: var(--shadow);
 }
 
 /* After the lesson nothing is live, so the main button is the brand blue again. */
@@ -2109,229 +2119,6 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-/* The class view on the board: the join screen, then the question layer. */
-.scr--board {
-  background: linear-gradient(180deg, var(--ground-top), var(--ground));
-}
-
-.scr-board__lobby,
-.scr-board__q {
-  position: absolute;
-  inset: 0;
-  padding: 3.6cqw 4.4cqw;
-}
-
-/* The finished state is the question; the motion layer starts on the join screen. Content keeps
-   to the top half on the right, clear of the laptop in front. */
-.scr-board__lobby {
-  display: flex;
-  align-items: flex-start;
-  gap: 5cqw;
-  padding-top: 5cqw;
-  opacity: 0;
-}
-
-.scr-qr {
-  flex: none;
-  width: 24cqw;
-  padding: 1.4cqw;
-  border-radius: 1.6cqw;
-  background: var(--panel);
-  box-shadow: 0 0 0 0.1cqw var(--line-teal);
-}
-
-.scr-qr svg {
-  display: block;
-  width: 100%;
-}
-
-.scr-lobby {
-  display: flex;
-  flex-direction: column;
-  gap: 1.6cqw;
-}
-
-.scr-lobby__scan {
-  max-width: 24ch;
-  font-size: 2.1cqw;
-  font-weight: 600;
-  color: var(--on-teal-2);
-}
-
-.scr-lobby__code {
-  font-family: var(--display);
-  font-size: 6.5cqw;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-}
-
-.scr-lobby__joined {
-  font-size: 2cqw;
-  color: var(--on-teal-2);
-}
-
-.scr-lobby__joined b {
-  font-family: var(--display);
-  font-size: 3.4cqw;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: var(--deep);
-}
-
-.scr-board__q {
-  display: grid;
-  /* The left column ends near the board's middle, so the laptop never covers an answer. */
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-  grid-template-rows: auto auto minmax(0, 1fr);
-  column-gap: 4cqw;
-  row-gap: 2.2cqw;
-}
-
-.scr-board__top {
-  grid-column: 1;
-  display: flex;
-  align-items: center;
-  gap: 2.4cqw;
-  font-size: 1.5cqw;
-  font-weight: 600;
-  color: var(--on-teal-2);
-}
-
-.scr-board__side {
-  grid-column: 2;
-  grid-row: 1 / 3;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1.6cqw;
-  text-align: right;
-}
-
-.scr-timer {
-  display: grid;
-  place-items: center;
-  width: 8cqw;
-  height: 8cqw;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 0.5cqw var(--yellow);
-  color: var(--on-teal);
-  font-family: var(--display);
-  font-size: 3.2cqw;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.scr-board__count {
-  font-size: 1.6cqw;
-  color: var(--on-teal-2);
-}
-
-.scr-board__count b {
-  display: block;
-  font-family: var(--display);
-  font-size: 5cqw;
-  font-weight: 800;
-  line-height: 1;
-  color: var(--on-teal);
-  font-variant-numeric: tabular-nums;
-}
-
-.scr-board__question {
-  grid-column: 1;
-  max-width: 30ch;
-  font-family: var(--display);
-  font-size: 3.6cqw;
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  line-height: 1.08;
-}
-
-.scr-bars {
-  grid-column: 1;
-  align-self: end;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 1.1cqw;
-}
-
-.scr-bars li {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 1.4cqw;
-  padding: 1.3cqw 1.8cqw;
-  border-radius: 1.4cqw;
-  background: var(--panel);
-  overflow: hidden;
-  font-size: 1.7cqw;
-  font-weight: 600;
-}
-
-/* The share of the class: a scaled layer, filled with a transform. */
-.scr-bars__fill {
-  position: absolute;
-  inset: 0;
-  transform-origin: left center;
-  transform: scaleX(var(--share, 0));
-  background: var(--ground-top);
-}
-
-.scr-bars li.is-right .scr-bars__fill {
-  background: var(--tint);
-}
-
-/* The right answer, revealed: a navy ring and key, as on the class view. */
-.scr-bars__ring {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0 0.28cqw var(--shadow);
-  pointer-events: none;
-}
-
-.scr-bars__key {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  width: 3.2cqw;
-  height: 3.2cqw;
-  border-radius: 0.8cqw;
-  background: var(--tint);
-  font-family: var(--display);
-  font-weight: 800;
-}
-
-.is-right .scr-bars__key {
-  background: var(--shadow);
-  color: var(--panel);
-}
-
-.scr-bars__label {
-  position: relative;
-  z-index: 1;
-}
-
-.scr-bars__pct {
-  position: relative;
-  z-index: 1;
-  margin-left: auto;
-  font-family: var(--display);
-  font-variant-numeric: tabular-nums;
-}
-
 /* Shared bits of the teacher screens. */
 :where(.scr) :where(p, ol, ul) {
   margin: 0;
@@ -2342,8 +2129,6 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
   font-weight: 600;
   color: var(--on-teal-2);
 }
-
-
 
 
 .scr-sub {
@@ -2362,137 +2147,6 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
   background: var(--tint);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* The live console. */
-.scr--live {
-  display: flex;
-  flex-direction: column;
-  background: linear-gradient(180deg, var(--ground-top), var(--ground));
-}
-
-.scr--live .scr-btn {
-  padding: 0.9cqw 1.8cqw;
-  font-size: 1.3cqw;
-}
-
-.scr-live__bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.8cqw 3cqw;
-  background: var(--panel);
-  box-shadow: 0 0.1cqw 0 var(--line-teal);
-  font-size: 1.5cqw;
-  color: var(--on-teal-2);
-}
-
-.scr-live__bar b {
-  color: var(--on-teal);
-}
-
-/* The teacher app's End red, a shade deeper so white text on it passes 4.5:1. */
-.scr--live .scr-btn--end {
-  background: #d61f1c;
-  color: #fff;
-  font-weight: 700;
-}
-
-.scr-live__body {
-  flex: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 28%;
-  gap: 2.4cqw;
-  padding: 2.6cqw 3cqw;
-}
-
-.scr-live__qs {
-  display: flex;
-  flex-direction: column;
-  gap: 1.1cqw;
-}
-
-.scr-live__qs li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.6cqw;
-  padding: 1.5cqw 1.8cqw;
-  border-radius: 1.2cqw;
-  background: var(--panel);
-  font-size: 1.45cqw;
-}
-
-.scr-live__qs li:not(.is-current) {
-  color: var(--on-teal-2);
-}
-
-.scr-live__qs li.is-current {
-  box-shadow: inset 0 0 0 0.2cqw var(--deep);
-}
-
-/* Send, then Sent: two labels in one place. The finished state is Sent. */
-.scr-send {
-  display: grid;
-}
-
-.scr-send > span {
-  grid-area: 1 / 1;
-  text-align: center;
-}
-
-.scr-send [data-send-label] {
-  opacity: 0;
-}
-
-.scr-live__side {
-  display: flex;
-  flex-direction: column;
-  gap: 1.8cqw;
-}
-
-.scr-live__side p {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3cqw;
-  font-size: 1.3cqw;
-  color: var(--on-teal-2);
-}
-
-.scr-live__side b {
-  font-family: var(--display);
-  font-size: 3.8cqw;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: var(--on-teal);
-}
-
-.scr-reveal {
-  position: relative;
-  justify-content: center;
-}
-
-.scr-reveal i {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0 0.24cqw var(--yellow);
-}
 
 /* After End. */
 .scr-end__stats {
@@ -2609,53 +2263,6 @@ html:not(.motion) .answer__phone [data-ans-shot]:not([data-ans-shot="2"]) {
   flex-direction: column;
   gap: 0.8cqw;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 /* The director's monthly report: two A4 sheets of white paper, type in cqw of the sheet. */

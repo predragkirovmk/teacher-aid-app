@@ -115,8 +115,9 @@ the hero). Refresh them whenever an app changes:
 - **Laptop**: aluminium-tinted lid and base, 16:10 screen. Holds the teacher console.
 - **Board**: a wall screen, thin dark frame, 16:9. Holds the projected class view.
 - **Phone**: rounded body with an island, 9:19.5. Holds the student app (student chapter).
-- Placeholder screens follow the real app layouts (teacher: white sidebar with Lessons and Library, as in the app) and
-  carry a small "Пример" label.
+- The live scene shows captures of the real apps. The screens the apps do not have yet are drawn:
+  they follow the real app layouts (teacher: white sidebar with Lessons and Library, as in the app)
+  and carry a small "Пример" label.
 
 ## Motion
 
@@ -164,7 +165,7 @@ the hero). Refresh them whenever an app changes:
 | Hook | Hero: the slogan, "Иднината на Наставата." (2026-11-25; before, "Целиот клас одговара."). Pinned for two screens: the text clears, the headline becomes the caption, the laptop settles on the desk, the student's phone moves to the front of a stack of the class's 28 other phones beside it, and their edges light yellow front to back as the count reaches 29 | Paper |
 | Build | Teacher chapter opener: ready before the bell | Morph to light blue |
 | Build | Prepare: plays once on arrival. The file and the line of emphasis land, the AI writes, the questions appear, one tap on Harder rewrites them | Light blue |
-| Climax | In class: pinned for three screens. Students join (0 to 27), Send is pressed, the question flies from the laptop to the board, answers and the timer count, the bars fill, the right answer is revealed. One caption per beat | Light blue |
+| Climax | In class: pinned for three screens, on captures of one real lesson (the projector's class view on the board, the live console on the laptop; `scripts/site-v2-capture.mjs`). The class joins, the lesson starts, Send is pressed, the question flies from the laptop to the board, the answers come in as the time runs down, and when it is up both screens show the right answer. One caption per beat | Light blue |
 | Build | After class: plays once. Present, late and absent count in; the most-missed questions fill | Light blue to paper |
 | Build | Class results: plays once. Attendance bars grow, topics and anonymous questions arrive | Paper |
 | Build | Student opener: same phone, a different job (school Google or Microsoft sign-in) | Blue |
